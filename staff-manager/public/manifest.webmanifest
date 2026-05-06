@@ -1,0 +1,16 @@
+{
+  "name": "Hawaii 업무보고",
+  "short_name": "업무보고",
+  "description": "Hawaii Group 일일 업무 보고 시스템",
+  "lang": "ko",
+  "start_url": "/staff-manager/",
+  "scope": "/staff-manager/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f5f4",
+  "theme_color": "#1f1f1f",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

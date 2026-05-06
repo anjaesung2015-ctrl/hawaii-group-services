@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+@page { size: A4; margin: 0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif; color: #1a1a1a; line-height: 1.6; }
+
+.cover {
+  height: 297mm;
+  background: linear-gradient(135deg, #0a3d2e 0%, #1a6b4a 40%, #2d8f65 100%);
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  color: white; text-align: center; position: relative; overflow: hidden;
+  page-break-after: always;
+}
+.cover::before {
+  content: '🎾'; font-size: 200px; position: absolute; top: 40px; right: -30px; opacity: 0.08;
+}
+.cover-badge { background: rgba(255,255,255,0.15); padding: 8px 24px; border-radius: 30px; font-size: 13px; letter-spacing: 3px; margin-bottom: 30px; text-transform: uppercase; }
+.cover h1 { font-size: 42px; font-weight: 800; letter-spacing: 2px; margin-bottom: 10px; }
+.cover h2 { font-size: 22px; font-weight: 300; opacity: 0.9; margin-bottom: 40px; }
+.cover-tagline { font-size: 15px; opacity: 0.7; font-style: italic; margin-top: 20px; }
+.cover-info { margin-top: 50px; font-size: 14px; opacity: 0.8; }
+.cover-info span { margin: 0 15px; }
+
+.page { padding: 40px 50px; page-break-after: always; min-height: 297mm; position: relative; }
+.page:last-child { page-break-after: auto; }
+
+.section-title {
+  font-size: 24px; font-weight: 800; color: #0a3d2e; margin-bottom: 25px;
+  padding-bottom: 10px; border-bottom: 3px solid #2d8f65;
+}
+.intro-text { font-size: 15px; color: #444; margin-bottom: 30px; line-height: 1.8; }
+
+.day-card {
+  background: #f8faf9; border-left: 4px solid #2d8f65; border-radius: 0 8px 8px 0;
+  padding: 18px 22px; margin-bottom: 16px;
+}
+.day-card h3 { font-size: 16px; color: #0a3d2e; margin-bottom: 8px; }
+.day-card ul { list-style: none; padding: 0; }
+.day-card li { font-size: 13px; color: #333; padding: 3px 0; padding-left: 18px; position: relative; }
+.day-card li::before { content: '•'; color: #2d8f65; position: absolute; left: 0; font-weight: bold; }
+.day-note { font-size: 11px; color: #888; margin-top: 6px; font-style: italic; }
+
+.price-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+.price-table th { background: #0a3d2e; color: white; padding: 14px 20px; text-align: left; font-size: 14px; }
+.price-table td { padding: 14px 20px; border-bottom: 1px solid #e0e0e0; font-size: 14px; }
+.price-table tr:nth-child(even) { background: #f5f8f6; }
+.price-highlight { font-weight: 700; color: #0a3d2e; font-size: 16px; }
+
+.include-grid { display: flex; gap: 30px; margin-top: 20px; }
+.include-box { flex: 1; }
+.include-box h4 { font-size: 15px; margin-bottom: 12px; }
+.include-box.yes h4 { color: #2d8f65; }
+.include-box.no h4 { color: #c0392b; }
+.include-box li { font-size: 13px; padding: 4px 0; list-style: none; }
+.include-box.yes li::before { content: '✔ '; color: #2d8f65; }
+.include-box.no li::before { content: '✘ '; color: #c0392b; }
+
+.footer-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: #0a3d2e; color: white; text-align: center;
+  padding: 12px; font-size: 11px; letter-spacing: 1px;
+}
+
+.contact-section {
+  background: linear-gradient(135deg, #0a3d2e, #1a6b4a);
+  color: white; border-radius: 12px; padding: 35px; margin-top: 40px; text-align: center;
+}
+.contact-section h3 { font-size: 20px; margin-bottom: 15px; }
+.contact-section p { font-size: 14px; opacity: 0.9; }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-badge">2026 SEASON</div>
+  <h1>TENNIS TOUR<br>MONGOLIA</h1>
+  <h2>일반반 프로그램 안내</h2>
+  <p class="cover-tagline">Where Training Meets Adventure</p>
+  <div class="cover-info">
+    <span>📅 2026년 5월 ~ 9월</span>
+    <span>📆 4박 5일</span>
+    <span>✈️ 인천 직항 3.5h</span>
+  </div>
+</div>
+
+<!-- PAGE 1: 소개 + 1~2일차 -->
+<div class="page">
+  <div class="section-title">캠프 소개</div>
+  <div class="intro-text">
+    아시안게임 금메달리스트와 한국에서 동행하는 전문 코치가 함께하는<br>
+    <strong>콜라보 테니스 트레이닝 + 몽골 프리미엄 투어</strong>입니다.<br>
+    초급부터 중급까지, 누구나 참여 가능합니다.
+  </div>
+
+  <div class="section-title">프로그램 일정</div>
+
+  <div class="day-card">
+    <h3>🛬 1일차 — 울란바토르 도착</h3>
+    <ul>
+      <li>공항 픽업 및 호텔 체크인</li>
+      <li>환영 오리엔테이션</li>
+      <li>웰컴 기프트 증정</li>
+    </ul>
+    <div class="day-note">※ 시작 시간은 항공기 도착 시간에 따라 조정됩니다.</div>
+  </div>
+
+  <div class="day-card">
+    <h3>🎾 2일차 — 울란바토르 테니스 캠프</h3>
+    <ul>
+      <li>08:00 아침 식사</li>
+      <li>09:00~12:00 테니스 트레이닝 및 훈련</li>
+      <li>13:00 점심 식사</li>
+      <li>14:00~17:30 테니스 전술 및 패턴 드릴 (코치: 아시안게임 금메달리스트)</li>
+      <li>19:00~22:00 맥주 및 바베큐 파티 🍖</li>
+    </ul>
+  </div>
+
+  <div class="day-card">
+    <h3>🎾 3일차 — 테니스 캠프 + 시내 투어</h3>
+    <ul>
+      <li>08:00 아침 식사</li>
+      <li>09:00~12:00 테니스 트레이닝 및 훈련</li>
+      <li>13:00 점심 식사</li>
+      <li>14:00~17:30 테니스 전술 및 패턴 드릴</li>
+      <li>19:00 울란바토르 시내 관광 및 저녁 식사</li>
+    </ul>
+  </div>
+
+  <div class="footer-bar">TENNIS TOUR MONGOLIA 2026</div>
+</div>
+
+<!-- PAGE 2: 4~5일차 + 가격 -->
+<div class="page">
+
+  <div class="day-card">
+    <h3>🏔️ 4일차 — 테를지 · 촌진볼독</h3>
+    <ul>
+      <li>09:00 아침 식사</li>
+      <li>11:00 촌진볼독 (칭기스 칸 동상) 관광</li>
+      <li>13:00 점심 식사</li>
+      <li>15:00 승마 체험 🐎</li>
+      <li>16:00 자연 경관 감상 및 트레킹</li>
+      <li>19:00 저녁 식사 — 허르헉 (몽골 전통 음식)</li>
+      <li>21:00 게르 체험 및 캠프파이어 🔥</li>
+    </ul>
+  </div>
+
+  <div class="day-card">
+    <h3>✈️ 5일차 — 아리야발 사원 · 울란바토르 복귀</h3>
+    <ul>
+      <li>09:00 아침 식사</li>
+      <li>10:00 아리야발 사원 관광 및 하이킹</li>
+      <li>11:30 거북바위 기념사진 촬영 📸</li>
+      <li>12:30 울란바토르 시내로 복귀</li>
+      <li>13:30 점심 식사</li>
+      <li>15:00 백화점 쇼핑 🛍️</li>
+      <li>18:00 저녁 식사 — 훠궈(HOT POT)</li>
+    </ul>
+    <div class="day-note">※ 항공편 시간에 따라 일정이 조정될 수 있습니다.</div>
+  </div>
+
+  <br>
+  <div class="section-title">가격 안내</div>
+
+  <table class="price-table">
+    <tr><th>패키지</th><th>가격 (1인)</th></tr>
+    <tr><td>4인 그룹</td><td class="price-highlight">₩1,590,000</td></tr>
+    <tr><td>1인 프라이빗</td><td class="price-highlight">₩2,500,000</td></tr>
+  </table>
+
+  <div class="include-grid">
+    <div class="include-box yes">
+      <h4>✔ 포함</h4>
+      <ul>
+        <li>숙소 (전 기간)</li>
+        <li>식사 (1일 3식)</li>
+        <li>테니스 레슨</li>
+        <li>테를지 투어</li>
+        <li>승마 · 게르 체험</li>
+        <li>공항 픽업</li>
+      </ul>
+    </div>
+    <div class="include-box no">
+      <h4>✘ 불포함</h4>
+      <ul>
+        <li>국제 항공권</li>
+        <li>개인 음료 (물 무료 제공)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="contact-section">
+    <h3>문의 및 예약</h3>
+    <p>추가 궁금하신 점은 언제든 편하게 문의해 주세요.</p>
+    <p style="margin-top:10px; font-size: 16px; font-weight: bold;">TENNIS TOUR MONGOLIA</p>
+    <p style="font-style: italic; opacity: 0.8;">Where Training Meets Adventure</p>
+  </div>
+
+  <div class="footer-bar">TENNIS TOUR MONGOLIA 2026</div>
+</div>
+
+</body>
+</html>

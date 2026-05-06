@@ -1,0 +1,308 @@
+<!DOCTYPE html><html lang="ko"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🎾 테니스 기록지</title>
+<style>
+@media print{.no-print{display:none!important}.page-break{page-break-before:always}body{background:#fff!important;color:#000!important}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f0f23;color:#e2e8f0;padding:1rem}
+.tabs{display:flex;gap:0.3rem;flex-wrap:wrap;margin-bottom:1rem}
+.tab{padding:0.5rem 1rem;border-radius:8px;cursor:pointer;font-size:0.85rem;background:#1a1a2e;color:#94a3b8;border:1px solid #334155}
+.tab.active{background:#f59e0b;color:#000;font-weight:700;border-color:#f59e0b}
+.form-page{display:none;background:#fff;color:#000;border-radius:12px;padding:1.5rem;max-width:800px;margin:0 auto}
+.form-page.active{display:block}
+.form-page h1{font-size:1.3rem;text-align:center;margin-bottom:0.5rem;border-bottom:3px solid #000;padding-bottom:0.5rem}
+.form-page h2{font-size:1rem;margin:1rem 0 0.5rem;color:#333;border-bottom:1px solid #ddd;padding-bottom:0.3rem}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.3rem;margin-bottom:1rem}
+.info-row{display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;padding:0.2rem 0;border-bottom:1px dotted #ccc}
+.info-row label{font-weight:700;min-width:70px;color:#333}
+.info-row input,.info-row select{flex:1;border:none;border-bottom:1px solid #999;padding:0.2rem;font-size:0.85rem;outline:none}
+table{width:100%;border-collapse:collapse;font-size:0.8rem;margin-bottom:1rem}
+th,td{border:1px solid #999;padding:0.3rem;text-align:center}
+th{background:#f0f0f0;font-weight:700;font-size:0.75rem}
+td input{width:100%;border:none;text-align:center;font-size:0.8rem;padding:0.2rem}
+.court{width:100%;max-width:400px;margin:0.5rem auto;background:#2d8c3c;border-radius:4px;padding:0.5rem;position:relative}
+.court-inner{border:2px solid #fff;aspect-ratio:2/1;position:relative}
+.court-net{position:absolute;left:50%;top:0;bottom:0;width:2px;background:#fff}
+.court-service{position:absolute;left:25%;right:25%;top:0;bottom:0;border:1px solid rgba(255,255,255,0.5)}
+.court-center{position:absolute;left:50%;top:50%;width:0;border-top:1px solid rgba(255,255,255,0.5);width:50%;transform:translateX(-50%)}
+.rating{display:flex;gap:0.2rem}
+.rating span{width:20px;height:20px;border:1px solid #999;border-radius:50%;text-align:center;line-height:20px;font-size:0.65rem;cursor:pointer}
+.notes-area{width:100%;min-height:60px;border:1px solid #ccc;border-radius:4px;padding:0.5rem;font-size:0.85rem;resize:vertical}
+.print-btn{background:#f59e0b;color:#000;border:none;padding:0.6rem 1.5rem;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.9rem;margin:0.5rem}
+.back-btn{background:#1a1a2e;color:#e2e8f0;border:1px solid #334155;padding:0.5rem 1rem;border-radius:8px;cursor:pointer;font-size:0.85rem;text-decoration:none;display:inline-block;margin-bottom:1rem}
+</style></head><body>
+
+<a href="./" class="back-btn no-print">← 레슨 관리로 돌아가기</a>
+
+<div class="tabs no-print">
+  <div class="tab active" onclick="showForm('match')">🏆 경기 기록지</div>
+  <div class="tab" onclick="showForm('practice')">📝 연습 일지</div>
+  <div class="tab" onclick="showForm('eval')">📊 선수 평가지</div>
+  <div class="tab" onclick="showForm('mental')">🧠 멘탈 차트</div>
+  <div class="tab" onclick="showForm('tactic')">🎯 전술 분석</div>
+  <div class="tab" onclick="showForm('physical')">💪 체력 테스트</div>
+  <div class="tab" onclick="showForm('report')">📋 주간 리포트</div>
+</div>
+
+<div class="no-print" style="margin-bottom:1rem">
+  <button class="print-btn" onclick="window.print()">🖨️ 인쇄하기</button>
+  <button class="print-btn" style="background:#3b82f6;color:#fff" onclick="savePDF()">📄 PDF 저장</button>
+</div>
+
+<!-- 1. 경기 기록지 -->
+<div class="form-page active" id="form-match">
+  <h1>🏆 테니스 경기 기록지 (Match Stats Sheet)</h1>
+  <div class="info-grid">
+    <div class="info-row"><label>대회명</label><input></div>
+    <div class="info-row"><label>날짜</label><input type="date"></div>
+    <div class="info-row"><label>선수</label><input></div>
+    <div class="info-row"><label>상대</label><input></div>
+    <div class="info-row"><label>코트</label><input placeholder="하드/클레이/잔디"></div>
+    <div class="info-row"><label>라운드</label><input placeholder="1R/QF/SF/F"></div>
+  </div>
+  
+  <h2>📊 스코어</h2>
+  <table>
+    <tr><th></th><th>1세트</th><th>2세트</th><th>3세트</th><th>최종</th></tr>
+    <tr><td style="font-weight:700">선수</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td style="font-weight:700">상대</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+  </table>
+  
+  <h2>📈 서브 통계</h2>
+  <table>
+    <tr><th></th><th>1st 서브 %</th><th>1st 서브 득점</th><th>2nd 서브 득점</th><th>에이스</th><th>더블폴트</th></tr>
+    <tr><td>선수</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td>상대</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+  </table>
+  
+  <h2>📈 리턴 & 랠리</h2>
+  <table>
+    <tr><th></th><th>리턴 득점률</th><th>포핸드 위너</th><th>백핸드 위너</th><th>언포스드 에러</th><th>네트 득점</th><th>브레이크 포인트</th></tr>
+    <tr><td>선수</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td><td><input placeholder="/"></td></tr>
+    <tr><td>상대</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td><td><input placeholder="/"></td></tr>
+  </table>
+  
+  <h2>💡 분석 & 메모</h2>
+  <table>
+    <tr><th style="width:30%">항목</th><th>내용</th></tr>
+    <tr><td>잘한 점</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td>개선할 점</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td>상대 약점</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td>다음 경기 전략</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+  </table>
+</div>
+
+<!-- 2. 연습 일지 -->
+<div class="form-page" id="form-practice">
+  <h1>📝 테니스 연습 일지 (Practice Journal)</h1>
+  <div class="info-grid">
+    <div class="info-row"><label>날짜</label><input type="date"></div>
+    <div class="info-row"><label>시간</label><input placeholder="16:00-19:00"></div>
+    <div class="info-row"><label>코치</label><input></div>
+    <div class="info-row"><label>선수</label><input></div>
+    <div class="info-row"><label>코트 수</label><input placeholder="3면"></div>
+    <div class="info-row"><label>컨디션</label><select><option>최상</option><option>좋음</option><option>보통</option><option>피곤</option><option>부상</option></select></div>
+  </div>
+  
+  <h2>📋 훈련 내용</h2>
+  <table>
+    <tr><th style="width:15%">시간</th><th style="width:25%">훈련 항목</th><th style="width:35%">세부 내용</th><th style="width:10%">강도</th><th style="width:15%">비고</th></tr>
+    <tr><td><input value="16:00"></td><td><input value="웜업/스트레칭"></td><td><input></td><td><input value="★★☆"></td><td><input></td></tr>
+    <tr><td><input value="16:15"></td><td><input value="미니테니스"></td><td><input></td><td><input value="★★☆"></td><td><input></td></tr>
+    <tr><td><input value="16:30"></td><td><input value="랠리 드릴"></td><td><input></td><td><input value="★★★"></td><td><input></td></tr>
+    <tr><td><input value="17:00"></td><td><input value="서브 연습"></td><td><input></td><td><input value="★★★"></td><td><input></td></tr>
+    <tr><td><input value="17:30"></td><td><input value="전술 훈련"></td><td><input></td><td><input value="★★★"></td><td><input></td></tr>
+    <tr><td><input value="18:00"></td><td><input value="포인트 매치"></td><td><input></td><td><input value="★★★"></td><td><input></td></tr>
+    <tr><td><input value="18:30"></td><td><input value="체력 훈련"></td><td><input></td><td><input value="★★★"></td><td><input></td></tr>
+    <tr><td><input value="18:50"></td><td><input value="쿨다운"></td><td><input></td><td><input value="★☆☆"></td><td><input></td></tr>
+  </table>
+  
+  <h2>🎯 오늘의 포커스 & 피드백</h2>
+  <table>
+    <tr><td style="font-weight:700;width:30%">오늘의 목표</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td style="font-weight:700">달성도 (1-10)</td><td><input style="width:50px"> / 10</td></tr>
+    <tr><td style="font-weight:700">코치 피드백</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td style="font-weight:700">다음 훈련 과제</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+  </table>
+</div>
+
+<!-- 3. 선수 평가지 -->
+<div class="form-page" id="form-eval">
+  <h1>📊 선수 종합 평가지 (Player Evaluation)</h1>
+  <div class="info-grid">
+    <div class="info-row"><label>선수명</label><input></div>
+    <div class="info-row"><label>평가일</label><input type="date"></div>
+    <div class="info-row"><label>코치명</label><input></div>
+    <div class="info-row"><label>레벨</label><select><option>초급</option><option>중급</option><option>상급</option><option>선수반</option></select></div>
+  </div>
+  
+  <h2>🎾 기술 평가 (각 항목 1~10점)</h2>
+  <table>
+    <tr><th>분류</th><th>항목</th><th>점수</th><th>코멘트</th></tr>
+    <tr><td rowspan="3" style="font-weight:700">그라운드 스트로크</td><td>포핸드 (파워/일관성)</td><td><input style="width:40px">/10</td><td><input></td></tr>
+    <tr><td>백핸드 (파워/일관성)</td><td><input style="width:40px">/10</td><td><input></td></tr>
+    <tr><td>슬라이스/드롭샷</td><td><input style="width:40px">/10</td><td><input></td></tr>
+    <tr><td rowspan="3" style="font-weight:700">서브</td><td>1st 서브 (파워/정확도)</td><td><input style="width:40px">/10</td><td><input></td></tr>
+    <tr><td>2nd 서브 (안정성/변화)</td><td><input style="width:40px">/10</td><td><input></td></tr>
+    <tr><td>킥/슬라이스 서브</td><td><input style="width:40px">/10</td><td><input></td></tr>
+    <tr><td rowspan="2" style="font-weight:700">네트</td><td>발리 (포/백)</td><td><input style="width:40px">/10</td><td><input></td></tr>
+    <tr><td>오버헤드/스매시</td><td><input style="width:40px">/10</td><td><input></td></tr>
+    <tr><td rowspan="3" style="font-weight:700">전술</td><td>코트 포지셔닝</td><td><input style="width:40px">/10</td><td><input></td></tr>
+    <tr><td>패턴 플레이</td><td><input style="width:40px">/10</td><td><input></td></tr>
+    <tr><td>상황 판단력</td><td><input style="width:40px">/10</td><td><input></td></tr>
+    <tr><td rowspan="3" style="font-weight:700">체력/멘탈</td><td>풋워크/스피드</td><td><input style="width:40px">/10</td><td><input></td></tr>
+    <tr><td>체력/지구력</td><td><input style="width:40px">/10</td><td><input></td></tr>
+    <tr><td>멘탈/집중력</td><td><input style="width:40px">/10</td><td><input></td></tr>
+  </table>
+  
+  <h2>📝 종합 평가</h2>
+  <table>
+    <tr><td style="font-weight:700;width:30%">강점</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td style="font-weight:700">약점/개선점</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td style="font-weight:700">단기 목표 (1개월)</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td style="font-weight:700">장기 목표 (6개월)</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td style="font-weight:700">총점</td><td><input style="width:60px"> / 140</td></tr>
+  </table>
+</div>
+
+<!-- 4. 멘탈 차트 -->
+<div class="form-page" id="form-mental">
+  <h1>🧠 경기 멘탈 분석 차트</h1>
+  <div class="info-grid">
+    <div class="info-row"><label>선수</label><input></div>
+    <div class="info-row"><label>날짜</label><input type="date"></div>
+    <div class="info-row"><label>대회/상대</label><input></div>
+    <div class="info-row"><label>결과</label><input></div>
+  </div>
+  
+  <h2>😤 감정 추적 (게임별)</h2>
+  <table>
+    <tr><th>세트-게임</th><th>스코어</th><th>감정(1-5)</th><th>에너지(1-5)</th><th>집중(1-5)</th><th>트리거/상황</th></tr>
+    <tr><td>1-1</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td>1-2</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td>1-3</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td>1-4</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td>1-5</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td>1-6</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td colspan="6" style="background:#f0f0f0;font-weight:700">─── 2세트 ───</td></tr>
+    <tr><td>2-1</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td>2-2</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td>2-3</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td>2-4</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td>2-5</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td>2-6</td><td><input></td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+  </table>
+  <p style="font-size:0.75rem;color:#666">감정: 1=매우 침착 2=침착 3=보통 4=불안 5=분노/포기 | 에너지: 1=고갈 5=충만 | 집중: 1=산만 5=몰입</p>
+  
+  <h2>📝 멘탈 분석</h2>
+  <table>
+    <tr><td style="font-weight:700;width:35%">가장 좋았던 순간</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td style="font-weight:700">가장 힘들었던 순간</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td style="font-weight:700">루틴 실행도 (서브/리턴)</td><td><input> / 10</td></tr>
+    <tr><td style="font-weight:700">다음 경기 멘탈 목표</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+  </table>
+</div>
+
+<!-- 5. 전술 분석 -->
+<div class="form-page" id="form-tactic">
+  <h1>🎯 전술 분석 (Tactical Analysis)</h1>
+  <div class="info-grid">
+    <div class="info-row"><label>선수</label><input></div>
+    <div class="info-row"><label>상대</label><input></div>
+    <div class="info-row"><label>날짜</label><input type="date"></div>
+    <div class="info-row"><label>서피스</label><input></div>
+  </div>
+  
+  <h2>🎾 코트 다이어그램</h2>
+  <div class="court">
+    <div class="court-inner">
+      <div class="court-net"></div>
+      <div class="court-service"></div>
+    </div>
+  </div>
+  <p style="font-size:0.75rem;color:#666;text-align:center">코트에 화살표/위치 직접 그리기 (인쇄 후 펜으로)</p>
+  
+  <h2>📊 서브 패턴 분석</h2>
+  <table>
+    <tr><th></th><th>와이드</th><th>바디</th><th>T</th><th>성공률</th></tr>
+    <tr><td style="font-weight:700">듀스 사이드 1st</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td style="font-weight:700">듀스 사이드 2nd</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td style="font-weight:700">애드 사이드 1st</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td style="font-weight:700">애드 사이드 2nd</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+  </table>
+  
+  <h2>🔑 전술 포인트</h2>
+  <table>
+    <tr><td style="font-weight:700;width:35%">주요 승리 패턴</td><td><textarea class="notes-area" rows="2" placeholder="예: 와이드 서브 → 오픈코트 포핸드"></textarea></td></tr>
+    <tr><td style="font-weight:700">실점 패턴</td><td><textarea class="notes-area" rows="2" placeholder="예: 백핸드 크로스에 밀림"></textarea></td></tr>
+    <tr><td style="font-weight:700">상대 약점</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td style="font-weight:700">다음 경기 전략</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+  </table>
+</div>
+
+<!-- 6. 체력 테스트 -->
+<div class="form-page" id="form-physical">
+  <h1>💪 테니스 체력 테스트 (Fitness Test)</h1>
+  <div class="info-grid">
+    <div class="info-row"><label>선수</label><input></div>
+    <div class="info-row"><label>날짜</label><input type="date"></div>
+    <div class="info-row"><label>키/몸무게</label><input placeholder="170cm/65kg"></div>
+    <div class="info-row"><label>테스트 주기</label><input placeholder="월간/분기"></div>
+  </div>
+  
+  <h2>🏃 체력 측정</h2>
+  <table>
+    <tr><th>항목</th><th>측정값</th><th>이전</th><th>목표</th><th>등급</th></tr>
+    <tr><td style="font-weight:700">20m 왕복달리기 (beep test)</td><td><input placeholder="레벨"></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td style="font-weight:700">5-10-5 민첩성 (초)</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td style="font-weight:700">스파이더 테스트 (초)</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td style="font-weight:700">서비스 스피드 (km/h)</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td style="font-weight:700">플랭크 (초)</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td style="font-weight:700">제자리 멀리뛰기 (cm)</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td style="font-weight:700">메디신볼 던지기 (m)</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td style="font-weight:700">유연성 (앉아 앞으로 굽히기)</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td style="font-weight:700">악력 (좌/우 kg)</td><td><input></td><td><input></td><td><input></td><td><input></td></tr>
+    <tr><td style="font-weight:700">부상 상태</td><td colspan="4"><input style="width:100%"></td></tr>
+  </table>
+</div>
+
+<!-- 7. 주간 리포트 -->
+<div class="form-page" id="form-report">
+  <h1>📋 주간 훈련 리포트</h1>
+  <div class="info-grid">
+    <div class="info-row"><label>선수</label><input></div>
+    <div class="info-row"><label>주차</label><input placeholder="2026년 3월 2주차"></div>
+    <div class="info-row"><label>코치</label><input></div>
+    <div class="info-row"><label>프로그램</label><input placeholder="선수반"></div>
+  </div>
+  
+  <h2>📅 주간 훈련 요약</h2>
+  <table>
+    <tr><th>요일</th><th>훈련 테마</th><th>시간</th><th>강도</th><th>주요 내용</th><th>평가</th></tr>
+    <tr><td style="font-weight:700">월 (안정성)</td><td><input></td><td><input placeholder="3h"></td><td><input placeholder="★★★"></td><td><input></td><td><input placeholder="A~F"></td></tr>
+    <tr><td style="font-weight:700">화 (코트리커버리)</td><td><input></td><td><input placeholder="3h"></td><td><input placeholder="★★★"></td><td><input></td><td><input placeholder="A~F"></td></tr>
+    <tr><td style="font-weight:700">수 (올라운드)</td><td><input></td><td><input placeholder="3h"></td><td><input placeholder="★★★"></td><td><input></td><td><input placeholder="A~F"></td></tr>
+    <tr><td style="font-weight:700">목 (복식)</td><td><input></td><td><input placeholder="3h"></td><td><input placeholder="★★★"></td><td><input></td><td><input placeholder="A~F"></td></tr>
+    <tr><td style="font-weight:700">금 (게임)</td><td><input></td><td><input placeholder="3h"></td><td><input placeholder="★★★"></td><td><input></td><td><input placeholder="A~F"></td></tr>
+  </table>
+  
+  <h2>📊 주간 평가</h2>
+  <table>
+    <tr><td style="font-weight:700;width:30%">이번 주 목표 달성도</td><td><input style="width:40px"> / 10</td></tr>
+    <tr><td style="font-weight:700">기술적 발전 사항</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td style="font-weight:700">체력/멘탈 상태</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td style="font-weight:700">다음 주 목표</td><td><textarea class="notes-area" rows="2"></textarea></td></tr>
+    <tr><td style="font-weight:700">코치 총평</td><td><textarea class="notes-area" rows="3"></textarea></td></tr>
+  </table>
+</div>
+
+<script>
+function showForm(id){
+  document.querySelectorAll('.form-page').forEach(f=>f.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('form-'+id)?.classList.add('active');
+  event.target.classList.add('active');
+}
+function savePDF(){window.print();}
+</script>
+</body></html>

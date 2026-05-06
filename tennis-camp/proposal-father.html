@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+@page { size: A4; margin: 0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif; color: #2a2a2a; line-height: 1.8; }
+
+.cover {
+  height: 297mm; padding: 60px;
+  background: linear-gradient(160deg, #1a1a2e 0%, #2d3561 50%, #3b4a7a 100%);
+  display: flex; flex-direction: column; justify-content: center;
+  color: white; position: relative; overflow: hidden;
+  page-break-after: always;
+}
+.cover::after {
+  content: ''; position: absolute; bottom: -50px; right: -50px;
+  width: 300px; height: 300px; border-radius: 50%;
+  background: rgba(255,255,255,0.03);
+}
+.cover-label { font-size: 13px; letter-spacing: 4px; opacity: 0.5; margin-bottom: 40px; text-transform: uppercase; }
+.cover h1 { font-size: 36px; font-weight: 800; line-height: 1.3; margin-bottom: 20px; }
+.cover h1 span { color: #7eb8da; }
+.cover-sub { font-size: 16px; opacity: 0.7; margin-bottom: 50px; line-height: 1.6; }
+.cover-meta { font-size: 13px; opacity: 0.4; margin-top: auto; }
+
+.page { padding: 50px 55px; page-break-after: always; min-height: 297mm; position: relative; }
+.page:last-child { page-break-after: auto; }
+
+h2 { font-size: 22px; font-weight: 800; color: #1a1a2e; margin-bottom: 20px; padding-bottom: 8px; border-bottom: 2px solid #7eb8da; }
+h3 { font-size: 16px; font-weight: 700; color: #2d3561; margin: 20px 0 10px; }
+
+p { font-size: 14px; margin-bottom: 14px; }
+.highlight { background: #f0f5fa; border-left: 4px solid #7eb8da; padding: 18px 22px; border-radius: 0 8px 8px 0; margin: 18px 0; }
+.highlight p { margin-bottom: 6px; }
+.highlight strong { color: #2d3561; }
+
+.warn-box { background: #fff8f0; border-left: 4px solid #e8a54b; padding: 18px 22px; border-radius: 0 8px 8px 0; margin: 18px 0; }
+.safe-box { background: #f0faf4; border-left: 4px solid #4caf7d; padding: 18px 22px; border-radius: 0 8px 8px 0; margin: 18px 0; }
+
+.compare-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+.compare-table th { padding: 12px 16px; text-align: left; font-size: 13px; }
+.compare-table .col-before { background: #fee; color: #c0392b; }
+.compare-table .col-after { background: #efe; color: #1a8a4a; }
+.compare-table td { padding: 12px 16px; border-bottom: 1px solid #eee; font-size: 13px; }
+
+.number-grid { display: flex; gap: 15px; margin: 20px 0; flex-wrap: wrap; }
+.number-card { flex: 1; min-width: 130px; background: #f5f8fc; border-radius: 10px; padding: 20px; text-align: center; }
+.number-card .num { font-size: 24px; font-weight: 800; color: #2d3561; }
+.number-card .label { font-size: 11px; color: #888; margin-top: 4px; }
+
+.timeline { margin: 20px 0; }
+.timeline-item { display: flex; margin-bottom: 14px; }
+.timeline-dot { width: 12px; height: 12px; border-radius: 50%; background: #7eb8da; margin-top: 5px; margin-right: 15px; flex-shrink: 0; }
+.timeline-content { flex: 1; }
+.timeline-date { font-size: 12px; color: #888; font-weight: 600; }
+.timeline-text { font-size: 13px; color: #333; }
+
+ul { padding-left: 20px; margin: 10px 0; }
+li { font-size: 14px; margin-bottom: 6px; }
+
+.closing { background: linear-gradient(135deg, #1a1a2e, #2d3561); color: white; border-radius: 12px; padding: 40px; margin-top: 30px; }
+.closing h3 { color: #7eb8da; font-size: 18px; margin-bottom: 15px; }
+.closing p { font-size: 14px; opacity: 0.9; line-height: 1.8; }
+
+.footer { position: absolute; bottom: 20px; left: 55px; right: 55px; font-size: 10px; color: #ccc; text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-label">가족 제안서</div>
+  <h1>아이들의 테니스,<br><span>이번엔 다릅니다</span></h1>
+  <div class="cover-sub">
+    올인이 아닌 원정.<br>
+    몽골의 안정된 기반 위에서,<br>
+    아이들에게 세계 무대의 기회를 열어주고 싶습니다.
+  </div>
+  <div class="cover-meta">2026년 3월 · 안재성</div>
+</div>
+
+<!-- PAGE 1 -->
+<div class="page">
+
+  <h2>아버지께</h2>
+
+  <p>
+    아버지, 이 제안서를 드리는 건 과거의 실수를 반복하려는 게 아닙니다.
+    오히려 <strong>과거의 교훈을 바탕으로</strong>, 이번에는 완전히 다른 방식으로
+    아이들에게 기회를 주고 싶어서입니다.
+  </p>
+
+  <p>
+    제주도에서의 경험이 힘들었다는 걸 잘 압니다.
+    저도 그때를 돌아보면 아직 마음이 무겁습니다.
+    하지만 그 시간이 있었기에 지금의 저와 아이들이 있습니다.
+  </p>
+
+  <h2>그때와 지금은 다릅니다</h2>
+
+  <table class="compare-table">
+    <tr>
+      <th class="col-before">❌ 제주도 때 (과거)</th>
+      <th class="col-after">✅ 지금 계획</th>
+    </tr>
+    <tr>
+      <td>한국에 올인 — 이주해서 정착</td>
+      <td>몽골 기반 유지, 2주 단위 원정</td>
+    </tr>
+    <tr>
+      <td>수입 없이 코트만 운영</td>
+      <td>3개 사업 안정 운영 중 (피트니스/컴플렉스/식당/샵)</td>
+    </tr>
+    <tr>
+      <td>협회 갈등, 법적 분쟁</td>
+      <td>대회 참가만 — 현지 정치 無관여</td>
+    </tr>
+    <tr>
+      <td>가족 전체가 불안정</td>
+      <td>아이들만 짧은 원정, 가정은 몽골에 안정</td>
+    </tr>
+    <tr>
+      <td>끝이 안 보이는 투자</td>
+      <td>연간 예산 확정, 수익화 모델 있음</td>
+    </tr>
+  </table>
+
+  <h2>구체적인 계획</h2>
+
+  <h3>🎯 핵심 컨셉: "올인이 아닌 원정"</h3>
+
+  <div class="highlight">
+    <p>몽골에서 훈련하고, 한국 ITF 주니어 대회에 <strong>연 4~5회, 2주씩</strong> 원정 참가.</p>
+    <p>생활 기반, 사업, 가정 — 모두 몽골에 그대로 유지합니다.</p>
+  </div>
+
+  <h3>👨‍👧‍👦 아이들 현황</h3>
+
+  <div class="highlight">
+    <p><strong>아들 (2010년생, 16세)</strong></p>
+    <p>팔꿈치 부상 → 수술 후 재활 중 → 2026 하반기 복귀 목표</p>
+    <p>9월 J200/J300 하이라이트 시즌 참가 목표</p>
+  </div>
+
+  <div class="highlight">
+    <p><strong>딸 (2012년생, 14세)</strong></p>
+    <p>현재 선수 활동 중, 실력은 있지만 시합 경험이 부족</p>
+    <p>국제 대회 경험이 성장의 핵심 — 지금이 적기</p>
+  </div>
+
+  <div class="footer">아이들의 테니스, 이번엔 다릅니다 — 안재성</div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page">
+
+  <h2>재정 계획</h2>
+
+  <p>가장 걱정되실 부분, 솔직하게 숫자로 보여드립니다.</p>
+
+  <h3>💰 연간 원정 비용 (자녀 2명 + 코치 기준)</h3>
+
+  <div class="number-grid">
+    <div class="number-card"><div class="num">4~5회</div><div class="label">연간 원정 횟수</div></div>
+    <div class="number-card"><div class="num">2주</div><div class="label">회당 기간</div></div>
+    <div class="number-card"><div class="num">~2,800만</div><div class="label">연간 총 비용 (원)</div></div>
+  </div>
+
+  <h3>📈 수익화 구조</h3>
+
+  <div class="safe-box">
+    <p><strong>비용만 나가는 게 아닙니다.</strong></p>
+    <p>외부 선수도 함께 원정 참가 → <strong>1인당 500만원/2주</strong> 참가비</p>
+    <p>4명만 모집해도 2,000만원 → 실질 부담 <strong>연 800만원 수준</strong></p>
+    <p>몽골 테니스 캠프 사업과 시너지 — 캠프 참가자 중 원정 희망자 연결</p>
+  </div>
+
+  <h3>🏢 현재 사업 상황 (안정적)</h3>
+
+  <ul>
+    <li><strong>하와이 스포츠 센터</strong> — 피트니스 + 테니스 코트, 직원 12명, 회원 ~400명</li>
+    <li><strong>스포츠 컴플렉스</strong> — 테니스 코트 3면 + 연습코트 1면</li>
+    <li><strong>하와이샵</strong> — 라켓, 스트링, 신발, 화장품, 공구</li>
+    <li><strong>식당</strong> — 한국 음식 (치킨, 갈비찜, 도가니탕)</li>
+  </ul>
+
+  <div class="warn-box">
+    <p><strong>⚠️ 제주도 때와의 가장 큰 차이:</strong></p>
+    <p>그때는 테니스가 유일한 수입원이었습니다.</p>
+    <p>지금은 <strong>4개 사업이 안정적으로 돌아가는 상태</strong>에서, 여유 자금으로 아이들에게 기회를 주는 것입니다.</p>
+  </div>
+
+  <h2>원정 일정 (2026)</h2>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-date">3~6월</div>
+        <div class="timeline-text">아들 재활 완료 + 몽골 내 집중 훈련 / 딸 시합 준비 훈련</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-date">7월</div>
+        <div class="timeline-text">첫 원정 — 한국 ITF 주니어 (J100급, 감 잡기)</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-date">8월</div>
+        <div class="timeline-text">두 번째 원정 — ATF 또는 J200급</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-date">9월 ⭐</div>
+        <div class="timeline-text">하이라이트 시즌 — J200/J300 집중 참가</div>
+      </div>
+    </div>
+    <div class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <div class="timeline-date">10~11월</div>
+        <div class="timeline-text">시즌 마무리 원정 + 성과 평가</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">아이들의 테니스, 이번엔 다릅니다 — 안재성</div>
+</div>
+
+<!-- PAGE 3 -->
+<div class="page">
+
+  <h2>리스크 관리</h2>
+
+  <p>아버지가 걱정하실 만한 부분, 하나하나 대비해놨습니다.</p>
+
+  <div class="warn-box">
+    <p><strong>"또 돈만 쓰고 끝나면 어쩌려고?"</strong></p>
+  </div>
+  <div class="safe-box">
+    <p>→ 1차 원정(7월) 후 성과 평가. 의미 없으면 <strong>즉시 중단</strong>.</p>
+    <p>→ 2주 단위이기 때문에 손절이 빠릅니다. 올인이 아닙니다.</p>
+  </div>
+
+  <div class="warn-box">
+    <p><strong>"사업은 누가 봐?"</strong></p>
+  </div>
+  <div class="safe-box">
+    <p>→ 원정 중에도 몽골 사업은 직원들이 운영. 이미 시스템화 완료.</p>
+    <p>→ 재영이(동생)가 만든 예약/관리 시스템 + 저도 원격으로 매출/운영 체크 가능.</p>
+  </div>
+
+  <div class="warn-box">
+    <p><strong>"아이가 다치면?"</strong></p>
+  </div>
+  <div class="safe-box">
+    <p>→ 아들은 수술 + 재활 완료 후 참가. 무리하지 않습니다.</p>
+    <p>→ 원정마다 코치 동행, 컨디션 관리 철저히.</p>
+  </div>
+
+  <div class="warn-box">
+    <p><strong>"학업은?"</strong></p>
+  </div>
+  <div class="safe-box">
+    <p>→ 2주 단위 원정이라 학업 공백 최소화.</p>
+    <p>→ 방학 기간(7~8월) 위주로 일정 집중.</p>
+  </div>
+
+  <h2>왜 지금인가</h2>
+
+  <div class="highlight">
+    <p><strong>아들 16세, 딸 14세 — 주니어 테니스의 골든 에이지입니다.</strong></p>
+    <p>ITF 주니어 대회는 18세까지. 지금 시작하지 않으면 기회의 창이 닫힙니다.</p>
+    <p>특히 딸은 14세, 지금부터 3~4년간 국제 대회 경험을 쌓으면 충분히 성장할 수 있습니다.</p>
+  </div>
+
+  <h2>아버지께 드리는 약속</h2>
+
+  <div class="closing">
+    <h3>이번엔 다릅니다</h3>
+    <p>
+      1. 몽골을 떠나지 않습니다. 사업도, 가정도 여기 그대로입니다.<br>
+      2. 올인하지 않습니다. 2주 원정, 안 되면 바로 돌아옵니다.<br>
+      3. 돈만 쓰지 않습니다. 외부 선수 모집으로 수익 구조를 만들었습니다.<br>
+      4. 혼자 하지 않습니다. 코치, 시스템, 동생의 도움이 있습니다.<br>
+      5. 1차 원정 후 솔직하게 보고드리겠습니다. 가능성이 없으면 접겠습니다.<br>
+      <br>
+      아이들에게 세계적인 선수가 될 기회를 한 번만 열어주고 싶습니다.<br>
+      이번엔 제가 준비된 상태에서, 안전하게 도전합니다.<br>
+      <br>
+      믿어주십시오.
+    </p>
+  </div>
+
+  <div class="footer">아이들의 테니스, 이번엔 다릅니다 — 안재성</div>
+</div>
+
+</body>
+</html>

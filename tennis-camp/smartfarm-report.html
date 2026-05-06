@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+@page { size: A4; margin: 0; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif; color: #1a1a1a; line-height: 1.7; }
+
+.cover {
+  height: 297mm; padding: 60px;
+  background: linear-gradient(150deg, #1b4332 0%, #2d6a4f 40%, #40916c 100%);
+  display: flex; flex-direction: column; justify-content: center;
+  color: white; position: relative; overflow: hidden;
+  page-break-after: always;
+}
+.cover::after { content: '🌱'; font-size: 250px; position: absolute; bottom: -30px; right: -20px; opacity: 0.06; }
+.cover-label { font-size: 12px; letter-spacing: 5px; opacity: 0.5; margin-bottom: 40px; text-transform: uppercase; }
+.cover h1 { font-size: 38px; font-weight: 800; line-height: 1.3; margin-bottom: 15px; }
+.cover h1 span { color: #95d5b2; }
+.cover-sub { font-size: 15px; opacity: 0.75; line-height: 1.7; margin-bottom: 40px; }
+.cover-stats { display: flex; gap: 25px; margin-top: 20px; }
+.cover-stat { background: rgba(255,255,255,0.1); padding: 15px 20px; border-radius: 8px; text-align: center; }
+.cover-stat .num { font-size: 22px; font-weight: 800; }
+.cover-stat .label { font-size: 11px; opacity: 0.7; margin-top: 4px; }
+.cover-meta { font-size: 12px; opacity: 0.4; margin-top: auto; }
+
+.page { padding: 45px 50px; page-break-after: always; min-height: 297mm; position: relative; }
+.page:last-child { page-break-after: auto; }
+
+h2 { font-size: 21px; font-weight: 800; color: #1b4332; margin-bottom: 18px; padding-bottom: 8px; border-bottom: 3px solid #40916c; }
+h3 { font-size: 15px; font-weight: 700; color: #2d6a4f; margin: 18px 0 10px; }
+p { font-size: 13px; margin-bottom: 12px; }
+ul { padding-left: 18px; margin: 8px 0 14px; }
+li { font-size: 13px; margin-bottom: 5px; }
+
+.info-box { background: #f0faf4; border-left: 4px solid #40916c; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 14px 0; }
+.warn-box { background: #fff8f0; border-left: 4px solid #e8a54b; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 14px 0; }
+.key-box { background: #f0f5fa; border-left: 4px solid #3b82f6; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 14px 0; }
+
+.grid2 { display: flex; gap: 15px; margin: 14px 0; flex-wrap: wrap; }
+.grid2 > div { flex: 1; min-width: 200px; }
+.card { background: #f8faf9; border-radius: 10px; padding: 18px; margin-bottom: 12px; }
+.card h4 { font-size: 14px; color: #1b4332; margin-bottom: 8px; }
+.card p { font-size: 12px; color: #555; margin-bottom: 4px; }
+
+.table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 12px; }
+.table th { background: #1b4332; color: white; padding: 10px 14px; text-align: left; }
+.table td { padding: 10px 14px; border-bottom: 1px solid #e8e8e8; }
+.table tr:nth-child(even) { background: #f5f8f6; }
+.em { font-weight: 700; color: #1b4332; }
+
+.num-grid { display: flex; gap: 12px; margin: 16px 0; flex-wrap: wrap; }
+.num-item { flex: 1; min-width: 100px; background: #f0faf4; border-radius: 8px; padding: 15px; text-align: center; }
+.num-item .n { font-size: 20px; font-weight: 800; color: #1b4332; }
+.num-item .l { font-size: 10px; color: #666; margin-top: 3px; }
+
+.step { display: flex; margin-bottom: 14px; }
+.step-num { width: 36px; height: 36px; border-radius: 50%; background: #40916c; color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; margin-right: 14px; flex-shrink: 0; }
+.step-content { flex: 1; }
+.step-title { font-size: 14px; font-weight: 700; color: #1b4332; }
+.step-desc { font-size: 12px; color: #555; margin-top: 3px; }
+
+.verdict { background: linear-gradient(135deg, #1b4332, #2d6a4f); color: white; border-radius: 12px; padding: 30px; margin-top: 20px; }
+.verdict h3 { color: #95d5b2; font-size: 18px; margin-bottom: 12px; }
+.verdict p { font-size: 13px; opacity: 0.9; }
+
+.footer { position: absolute; bottom: 18px; left: 50px; right: 50px; font-size: 9px; color: #ccc; text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-label">사업 타당성 분석</div>
+  <h1>몽골 스마트팜<br><span>사업성 보고서</span></h1>
+  <div class="cover-sub">
+    겨울 -30°C, 채소 수입 의존도 60%+<br>
+    울란바토르에서 연중 신선 채소를 공급하면?
+  </div>
+  <div class="cover-stats">
+    <div class="cover-stat"><div class="num">60%+</div><div class="label">채소 수입 의존</div></div>
+    <div class="cover-stat"><div class="num">-30°C</div><div class="label">겨울 기온</div></div>
+    <div class="cover-stat"><div class="num">1.5M+</div><div class="label">UB 인구</div></div>
+    <div class="cover-stat"><div class="num">₮70K/kg</div><div class="label">딸기 가격</div></div>
+  </div>
+  <div class="cover-meta">2026년 3월 · Hawaii Group 내부 검토용</div>
+</div>
+
+<!-- PAGE 1: 왜 몽골인가 -->
+<div class="page">
+
+  <h2>1. 왜 몽골에서 스마트팜인가?</h2>
+
+  <h3>🌍 몽골 농업 현실</h3>
+  <div class="grid2">
+    <div>
+      <div class="card">
+        <h4>극한 기후</h4>
+        <p>겨울 -30~-40°C, 노지 재배 가능 기간 5~9월 (약 5개월)</p>
+        <p>나머지 7개월간 신선 채소 = 100% 수입 (중국/한국)</p>
+      </div>
+      <div class="card">
+        <h4>높은 수입 의존도</h4>
+        <p>채소류 60~80% 수입 의존</p>
+        <p>과일류 90%+ 수입 (딸기, 토마토 등 프리미엄 가격)</p>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h4>높은 채소 가격</h4>
+        <p>겨울철 상추 1kg: ₮8,000~15,000</p>
+        <p>딸기 1kg: ₮50,000~70,000 (수입)</p>
+        <p>토마토 1kg: ₮10,000~20,000 (겨울)</p>
+      </div>
+      <div class="card">
+        <h4>정부 정책 지원</h4>
+        <p>몽골 정부 "식량혁명(Food Revolution)" 캠페인</p>
+        <p>한국 정부 지원 스마트팜 모델 사업 진행 중 (MULS)</p>
+        <p>수입 대체 국내 생산 장려 정책</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>💡 핵심 기회</h3>
+  <div class="info-box">
+    <p><strong>몽골은 세계에서 스마트팜이 가장 필요한 나라 중 하나입니다.</strong></p>
+    <p>• 극한 기후 → 실내 재배 필수</p>
+    <p>• 높은 수입 가격 → 현지 생산 시 가격 경쟁력 확보</p>
+    <p>• 정부 지원 → 수입 대체 산업 적극 육성</p>
+    <p>• 인구 집중 → UB에 전체 인구 절반(150만+) 거주, 유통 간단</p>
+  </div>
+
+  <h2>2. 재성님에게 맞는 이유</h2>
+
+  <div class="info-box">
+    <p>🔹 <strong>식당 운영 중</strong> → 자체 식재료 공급 가능 (원가 절감 + 신선도 차별화)</p>
+    <p>🔹 <strong>피트니스 센터</strong> → 건강식/샐러드 바 연계 가능</p>
+    <p>🔹 <strong>하와이샵</strong> → 유통 채널 이미 보유</p>
+    <p>🔹 <strong>컴플렉스 부지</strong> → 설치 공간 확보 가능성</p>
+    <p>🔹 <strong>재영님(동생)</strong> → IoT/시스템 구축 기술력</p>
+    <p>🔹 <strong>한국 네트워크</strong> → 스마트팜 장비/기술 조달 유리</p>
+  </div>
+
+  <div class="footer">몽골 스마트팜 사업성 보고서 — Hawaii Group</div>
+</div>
+
+<!-- PAGE 2: 사업 모델 -->
+<div class="page">
+
+  <h2>3. 추천 사업 모델</h2>
+
+  <h3>🥬 Option A: 컨테이너 스마트팜 (소규모 시작)</h3>
+
+  <table class="table">
+    <tr><th>항목</th><th>내용</th></tr>
+    <tr><td>형태</td><td>40ft 컨테이너 × 2~3대 (수직형 수경재배)</td></tr>
+    <tr><td>작물</td><td>상추, 케일, 허브, 새싹채소 → 식당 자체 공급 + 외부 판매</td></tr>
+    <tr><td>생산량</td><td>컨테이너 1대당 월 200~500kg 엽채류</td></tr>
+    <tr><td>장점</td><td>초기 투자 적음, 빠른 시작(2~3개월), 이동 가능</td></tr>
+    <tr><td>초기 비용</td><td class="em">₩3,000~8,000만 / 대 (₮80~210M)</td></tr>
+  </table>
+
+  <h3>🍓 Option B: 소형 온실 (중규모)</h3>
+
+  <table class="table">
+    <tr><th>항목</th><th>내용</th></tr>
+    <tr><td>형태</td><td>이중보온 스마트온실 200~500㎡</td></tr>
+    <tr><td>작물</td><td>딸기, 토마토, 파프리카 (고부가가치)</td></tr>
+    <tr><td>생산량</td><td>연간 5~15톤</td></tr>
+    <tr><td>장점</td><td>딸기 프리미엄 가격(₮50~70K/kg), 높은 수익성</td></tr>
+    <tr><td>초기 비용</td><td class="em">₩1~3억 (₮260M~790M)</td></tr>
+  </table>
+
+  <h3>⭐ 추천: A → B 단계별 확장</h3>
+  <div class="info-box">
+    <p><strong>Phase 1:</strong> 컨테이너 2대로 시작 → 식당 공급 + 시장 테스트 (6개월)</p>
+    <p><strong>Phase 2:</strong> 검증 후 소형 온실 증설 → 딸기/토마토 고부가 작물</p>
+    <p><strong>Phase 3:</strong> B2B 납품 (호텔, 레스토랑, 마트) + 브랜딩</p>
+  </div>
+
+  <h2>4. 수익성 시뮬레이션</h2>
+
+  <h3>💰 Phase 1: 컨테이너 2대 (엽채류)</h3>
+
+  <table class="table">
+    <tr><th>항목</th><th>월간</th><th>연간</th></tr>
+    <tr><td>생산량</td><td>600~1,000kg</td><td>7~12톤</td></tr>
+    <tr><td>판매가 (₮8,000~12,000/kg)</td><td>₮6~10M</td><td class="em">₮72~120M</td></tr>
+    <tr><td>운영비 (전기/양액/인건비)</td><td>₮2~3M</td><td>₮24~36M</td></tr>
+    <tr><td>자체소비 절감 (식당)</td><td>₮1~2M</td><td>₮12~24M</td></tr>
+    <tr><td><strong>순이익 (추정)</strong></td><td><strong>₮5~9M</strong></td><td class="em"><strong>₮60~108M</strong></td></tr>
+  </table>
+  <p style="font-size:11px; color:#888;">※ 초기 투자 ₮160~420M 기준, 투자회수 2~4년</p>
+
+  <h3>💰 Phase 2 추가: 딸기 온실 (300㎡)</h3>
+
+  <table class="table">
+    <tr><th>항목</th><th>시즌 (10~5월)</th></tr>
+    <tr><td>생산량</td><td>3~5톤</td></tr>
+    <tr><td>판매가 (₮40,000~60,000/kg)</td><td class="em">₮150~250M</td></tr>
+    <tr><td>운영비</td><td>₮40~60M</td></tr>
+    <tr><td><strong>순이익 (추정)</strong></td><td class="em"><strong>₮100~190M</strong></td></tr>
+  </table>
+
+  <div class="footer">몽골 스마트팜 사업성 보고서 — Hawaii Group</div>
+</div>
+
+<!-- PAGE 3: 리스크 + 실행 계획 -->
+<div class="page">
+
+  <h2>5. 리스크와 대응</h2>
+
+  <div class="grid2">
+    <div>
+      <div class="warn-box">
+        <p><strong>⚡ 전기료</strong></p>
+        <p>몽골 겨울 난방 + LED 조명 = 전기비 부담</p>
+        <p>→ 대응: 이중보온 설계, 태양광 패널 보조, 야간 전력 활용</p>
+      </div>
+      <div class="warn-box">
+        <p><strong>🔧 기술/유지보수</strong></p>
+        <p>스마트팜 장비 고장 시 현지 A/S 어려움</p>
+        <p>→ 대응: 한국 업체와 유지보수 계약, 재영님 기술 지원</p>
+      </div>
+    </div>
+    <div>
+      <div class="warn-box">
+        <p><strong>🌱 재배 기술</strong></p>
+        <p>수경재배 경험 필요</p>
+        <p>→ 대응: 한국 스마트팜 단기 연수(1~2주) + MULS 협력</p>
+      </div>
+      <div class="warn-box">
+        <p><strong>📦 판로 확보</strong></p>
+        <p>안정적 B2B 납품처 필요</p>
+        <p>→ 대응: 자체 식당 소화 + 피트니스 회원 대상 직판 → 호텔/마트 확장</p>
+      </div>
+    </div>
+  </div>
+
+  <h2>6. 실행 로드맵</h2>
+
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <div class="step-title">리서치 & 벤치마킹 (1~2개월)</div>
+      <div class="step-desc">한국 컨테이너 스마트팜 업체 3~5곳 견적 비교, MULS 스마트팜 프로젝트 방문, 몽골 현지 스마트팜 사례 조사</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <div class="step-title">단기 연수 & 기술 습득 (2주)</div>
+      <div class="step-desc">한국 스마트팜 혁신밸리 또는 민간 업체에서 수경재배 실습, 장비 선정 및 발주</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <div class="step-title">파일럿 설치 (2~3개월)</div>
+      <div class="step-desc">컨테이너 2대 설치 (센터 or 컴플렉스 부지), 엽채류 첫 재배 시작</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <div class="step-title">운영 안정화 & 판로 개척 (3~6개월)</div>
+      <div class="step-desc">식당 자체 공급 시작, 피트니스 회원 대상 신선 채소 박스 판매, 품질/수량 안정화</div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">5</div>
+    <div class="step-content">
+      <div class="step-title">확장 결정 (6~12개월 후)</div>
+      <div class="step-desc">성과 기반으로 딸기 온실 증설 여부 결정, B2B 납품 확대 (호텔, 레스토랑, 이마트 등)</div>
+    </div>
+  </div>
+
+  <h2>7. 결론</h2>
+
+  <div class="verdict">
+    <h3>🌱 사업성 판단: 유망 (★★★★☆)</h3>
+    <p>
+      <strong>강점:</strong> 몽골 채소 시장은 공급 부족 + 높은 가격 → 진입 타이밍 좋음<br>
+      <strong>시너지:</strong> 식당/피트니스/샵과 연계 → 자체 소비 + 유통 채널 이미 보유<br>
+      <strong>리스크:</strong> 전기료와 기술 유지보수가 핵심 과제 → 단계적 접근으로 관리 가능<br><br>
+      컨테이너 2대(₩6,000~1.5억)로 시작해서 검증 후 확장하는 전략이 가장 현실적입니다.<br>
+      재성님의 기존 사업 인프라와 결합하면 독보적인 경쟁력을 가질 수 있습니다.
+    </p>
+  </div>
+
+  <div class="footer">몽골 스마트팜 사업성 보고서 — Hawaii Group</div>
+</div>
+
+</body>
+</html>

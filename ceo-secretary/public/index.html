@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>100억비서</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e2e8f0;font-family:-apple-system,sans-serif}
+.hide{display:none!important}
+input,select,textarea{padding:10px;border-radius:10px;border:1px solid #2d3748;background:#111827;color:#e2e8f0;font-size:16px;width:100%}
+textarea{resize:vertical;min-height:80px}
+button{cursor:pointer}
+.card{background:#111827;border-radius:16px;padding:16px;margin-bottom:12px;border:1px solid #1e293b}
+.header{background:#111827;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;border-bottom:1px solid #1e293b}
+.nav{display:flex;justify-content:space-around;background:#111827;border-top:1px solid #1e293b;position:fixed;bottom:0;left:0;right:0;z-index:100;padding:6px 0}
+.nav button{border:none;background:none;color:#64748b;font-size:10px;padding:6px 0;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:60px}
+.nav button.on{color:#f59e0b}
+.nav button span{font-size:20px}
+.main{padding:12px 12px 80px;max-width:500px;margin:0 auto}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.big-num{font-size:24px;font-weight:900;color:#f59e0b}
+.sub{font-size:11px;color:#64748b;margin-top:2px}
+.green{color:#22c55e}.red{color:#ef4444}.yellow{color:#f59e0b}.blue{color:#3b82f6}
+.pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.check-item{display:flex;align-items:center;gap:10px;padding:12px;background:#1e293b;border-radius:12px;margin-bottom:6px}
+.check-item.done{opacity:.4}
+.check-item.done .check-text{text-decoration:line-through}
+.check-box{width:24px;height:24px;border-radius:8px;border:2px solid #334155;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;color:#fff}
+.check-box.on{background:#22c55e;border-color:#22c55e}
+.check-text{flex:1;font-size:14px}
+.alert-box{padding:10px 14px;border-radius:12px;margin-bottom:8px;font-size:13px;display:flex;align-items:flex-start;gap:8px}
+.alert-red{background:rgba(239,68,68,.1);border-left:3px solid #ef4444;color:#fca5a5}
+.alert-yellow{background:rgba(245,158,11,.1);border-left:3px solid #f59e0b;color:#fde68a}
+.alert-green{background:rgba(34,197,94,.1);border-left:3px solid #22c55e;color:#86efac}
+.alert-blue{background:rgba(59,130,246,.1);border-left:3px solid #3b82f6;color:#93c5fd}
+.btn{padding:12px;border:none;border-radius:12px;font-weight:700;font-size:15px;width:100%}
+.btn-y{background:#f59e0b;color:#000}
+.btn-g{background:#22c55e;color:#fff}
+.btn-r{background:#ef4444;color:#fff}
+.btn-o{background:#1e293b;color:#e2e8f0}
+.btn-sm{padding:8px 14px;font-size:13px;width:auto;border-radius:8px}
+.progress{height:10px;background:#1e293b;border-radius:5px;overflow:hidden;margin-top:6px}
+.progress-fill{height:100%;border-radius:5px}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#22c55e;color:#000;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:700;z-index:999}
+</style></head><body>
+
+<!-- 로그인 -->
+<div id="login" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px">
+<div style="text-align:center;width:100%;max-width:300px">
+<div style="font-size:48px;margin-bottom:8px">🏆</div>
+<div style="font-size:24px;font-weight:900;color:#f59e0b;margin-bottom:4px">100억비서</div>
+<div style="font-size:13px;color:#64748b;margin-bottom:24px">안재성 회장님의 비서</div>
+<input id="pw" type="password" placeholder="비밀번호" style="text-align:center;font-size:18px;margin-bottom:12px">
+<button class="btn btn-y" onclick="doLogin()">시작</button>
+<p id="err" style="color:#ef4444;margin-top:8px;font-size:12px"></p>
+</div></div>
+
+<!-- 앱 -->
+<div id="app" class="hide">
+<div class="header">
+<div style="font-size:15px;font-weight:800;color:#f59e0b">🏆 100억비서</div>
+<button class="btn-sm btn-o" onclick="doLogout()">나가기</button>
+</div>
+<div class="main" id="content"></div>
+<div class="nav">
+<button class="on" onclick="go('home')"><span>🏠</span>홈</button>
+<button onclick="go('todo')"><span>✅</span>할일</button>
+<button onclick="go('proj')"><span>📋</span>프로젝트</button>
+<button onclick="go('memo')"><span>📝</span>메모</button>
+</div>
+</div>
+
+<script>
+var T=null,BASE='/ceo/api';
+function gc(n){return(document.cookie.match(new RegExp(n+'=([^;]+)'))||[])[1]||null}
+function sc(n,v){document.cookie=n+'='+v+';path=/;max-age=2592000;SameSite=Lax'}
+function F(p,o){o=o||{};var h={'Content-Type':'application/json'};if(T)h['Authorization']='Bearer '+T;o.headers=h;if(o.body&&typeof o.body==='object')o.body=JSON.stringify(o.body);return fetch(BASE+p,o).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'오류');return d})})}
+function fmt(n){return(n||0).toLocaleString()+'₮'}
+function toast(m){var el=document.createElement('div');el.className='toast';el.textContent=m;document.body.appendChild(el);setTimeout(function(){el.remove()},2500)}
+
+function doLogin(){var p=document.getElementById('pw').value;F('/login',{method:'POST',body:{password:p}}).then(function(d){T=d.token;sc('ceo_token',T);try{localStorage.setItem('ceo_t',T)}catch(e){}init()}).catch(function(e){document.getElementById('err').textContent=e.message})}
+document.getElementById('pw').onkeydown=function(e){if(e.key==='Enter')doLogin()};
+function doLogout(){sc('ceo_token','');try{localStorage.removeItem('ceo_t')}catch(e){}location.reload()}
+
+function init(){T=T||(function(){try{return localStorage.getItem('ceo_t')}catch(e){}})()||gc('ceo_token');if(!T){document.getElementById('login').style.display='flex';document.getElementById('app').classList.add('hide');return}document.getElementById('login').style.display='none';document.getElementById('app').classList.remove('hide');go('home')}
+
+function go(id){document.querySelectorAll('.nav button').forEach(function(b){b.classList.remove('on')});var names={home:'🏠',todo:'✅',money:'💰',team:'👥',memo:'📝'};document.querySelectorAll('.nav button').forEach(function(b){if(b.querySelector('span').textContent===names[id])b.classList.add('on')});
+if(id==='home')loadHome();else if(id==='todo')loadTodo();else if(id==='money')loadMoney();else if(id==='team')loadTeam();else if(id==='proj')loadProj();else if(id==='proj')loadProj();else if(id==='memo')loadMemo()}
+
+// ========== 홈 (Notion 위젯 대시보드) ==========
+// ========== 포탈(바로가기) 편집 헬퍼 ==========
+function getPortalApps(){
+  var def = [{n:'POS',e:'🛒',u:'/pos/'},{n:'재무',e:'💵',u:'/finance/'},{n:'레슨',e:'📚',u:'/lesson-manager/'},{n:'테니스',e:'🎾',u:'/tennis/'},{n:'샵',e:'📦',u:'/shop/'},{n:'채팅',e:'💬',u:'/chat/'}];
+  try { var s = localStorage.getItem('portalApps'); if (s) { var a = JSON.parse(s); if (Array.isArray(a)) return a; } } catch(e){}
+  return def;
+}
+function setPortalApps(arr){ try { localStorage.setItem('portalApps', JSON.stringify(arr)); } catch(e){} }
+function editPortal(idx){
+  var apps = getPortalApps();
+  var a = apps[idx]; if (!a) return;
+  var act = prompt('"'+a.n+'" 편집:\n1 = 이름 변경\n2 = 아이콘 변경\n3 = 주소 변경\n4 = 삭제\n(빈 칸/취소: 닫기)', '');
+  if (!act) return;
+  act = act.trim();
+  if (act === '1') { var v = prompt('새 이름:', a.n); if (v && v.trim()) { apps[idx].n = v.trim(); setPortalApps(apps); loadHome(); } }
+  else if (act === '2') { var v = prompt('새 아이콘 (이모지 1개):', a.e); if (v && v.trim()) { apps[idx].e = v.trim(); setPortalApps(apps); loadHome(); } }
+  else if (act === '3') { var v = prompt('새 주소 (예: /pos/ 또는 https://...):', a.u); if (v && v.trim()) { apps[idx].u = v.trim(); setPortalApps(apps); loadHome(); } }
+  else if (act === '4') { if (confirm('"'+a.n+'" 삭제할까요?')) { apps.splice(idx,1); setPortalApps(apps); loadHome(); } }
+}
+function addPortal(){
+  var n = prompt('이름:', ''); if (!n || !n.trim()) return;
+  var e = prompt('아이콘 (이모지 1개):', '🔗'); if (e === null) return;
+  var u = prompt('주소 (예: /pos/ 또는 https://example.com):', '/'); if (!u || !u.trim()) return;
+  var apps = getPortalApps();
+  apps.push({n:n.trim(), e:(e.trim()||'🔗'), u:u.trim()});
+  setPortalApps(apps);
+  loadHome();
+}
+function attachPortalLongPress(){
+  document.querySelectorAll('.portal-btn').forEach(function(btn){
+    var idx = parseInt(btn.getAttribute('data-portal-idx'),10);
+    var lp = null;
+    function start(){ if(lp) clearTimeout(lp); lp = setTimeout(function(){ lp = null; window.__portalLongFired = true; editPortal(idx); }, 500); }
+    function cancel(){ if(lp){ clearTimeout(lp); lp = null; } }
+    btn.addEventListener('touchstart', start, {passive:true});
+    btn.addEventListener('touchend', cancel);
+    btn.addEventListener('touchmove', cancel);
+    btn.addEventListener('touchcancel', cancel);
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('mouseup', cancel);
+    btn.addEventListener('mouseleave', cancel);
+    btn.addEventListener('contextmenu', function(ev){ ev.preventDefault(); window.__portalLongFired = true; editPortal(idx); });
+  });
+}
+
+function loadHome(){
+  Promise.all([F('/smart-brief'),F('/countdown'),F('/integrated'),F('/today'),F('/missions')]).then(function(res){
+    var b=res[0]||{},cd=res[1]||{},d=res[2]||{},today=res[3]||{},missions=res[4]||{};
+    var ft=d.financeToday||{};
+    var todoDone=(today.items||[]).filter(function(i){return i.is_done}).length;
+    var todoTotal=(today.items||[]).length;
+    var todoPct=todoTotal?Math.round(todoDone/todoTotal*100):0;
+
+    var h='';
+
+    // ===== 헤더: 인사 + 날짜 =====
+    var dt=new Date();var dStr=(dt.getMonth()+1)+'월 '+dt.getDate()+'일 '+['일','월','화','수','목','금','토'][dt.getDay()]+'요일';
+    h+='<div style="margin-bottom:14px"><div style="font-size:11px;color:#64748b;letter-spacing:1px">'+dStr+'</div><div style="font-size:20px;font-weight:800;margin-top:2px">'+(b.greeting||'안녕하세요')+'</div></div>';
+
+    // ===== 긴급 알림 =====
+    if(b.urgent&&b.urgent.length){b.urgent.forEach(function(u){h+='<div class="alert-box alert-red" style="cursor:pointer" data-go="todo">🚨 '+u+'</div>'})}
+
+    // ===== 100억 카운트다운 =====
+    h+='<div class="card" style="text-align:center;background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #f59e0b;margin-bottom:12px">';
+    h+='<div style="font-size:11px;color:#64748b;letter-spacing:2px">100억까지</div>';
+    h+='<div class="big-num" style="font-size:30px;margin:6px 0;color:#f59e0b">'+fmt(cd.remaining||0)+'</div>';
+    h+='<div class="sub">'+(cd.pct||0)+'% · 약 '+(cd.monthsRemaining||'?')+'개월 페이스</div>';
+    h+='<div class="progress" style="margin-top:8px"><div class="progress-fill" style="width:'+Math.min(cd.pct||0,100)+'%;background:linear-gradient(90deg,#f59e0b,#22c55e)"></div></div>';
+    h+='</div>';
+
+    // ===== 🎖️ 오늘의 미션 =====
+    var ms=(missions&&missions.missions)||[];
+    if(ms.length){
+      var msum=missions.summary||{total:0,done:0,pct:0};
+      h+='<div class="card" style="margin-bottom:12px;border:1px solid #8b5cf6;background:linear-gradient(135deg,rgba(139,92,246,.08),rgba(15,23,42,.5))">';
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
+      h+='<div style="font-size:13px;font-weight:800;color:#a78bfa">🎖️ 오늘의 미션</div>';
+      h+='<div style="font-size:11px;color:#94a3b8">'+msum.done+'/'+msum.total+' · '+msum.pct+'%</div>';
+      h+='</div>';
+      h+='<div class="progress" style="margin-bottom:10px;height:4px"><div class="progress-fill" style="width:'+msum.pct+'%;background:#8b5cf6"></div></div>';
+      ms.forEach(function(m){
+        h+='<div style="display:flex;align-items:flex-start;gap:8px;padding:8px;background:rgba(15,23,42,.5);border-radius:8px;margin-bottom:6px;cursor:pointer" data-mission="'+m.id+'">';
+        h+='<div class="check-box'+(m.is_done?' on':'')+'" style="flex-shrink:0;width:18px;height:18px;line-height:18px;font-size:11px">'+(m.is_done?'✓':'')+'</div>';
+        h+='<div style="flex:1;min-width:0">';
+        h+='<div style="font-size:12px;font-weight:600;'+(m.is_done?'text-decoration:line-through;opacity:.5':'')+'">'+(m.emoji||'•')+' '+m.title+'</div>';
+        if(m.detail)h+='<div style="font-size:10px;color:#94a3b8;margin-top:2px">'+m.detail+'</div>';
+        h+='</div>';
+        h+='</div>';
+      });
+      h+='</div>';
+    }
+
+    // ===== 위젯 2개: 체크리스트 + 매출 =====
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">';
+    h+='<div class="card" style="cursor:pointer;border-left:3px solid '+(todoPct>=80?'#22c55e':todoPct>=50?'#f59e0b':'#3b82f6')+'" data-go="todo">';
+    h+='<div style="font-size:11px;color:#94a3b8;font-weight:700;margin-bottom:6px">📋 오늘 체크리스트</div>';
+    h+='<div style="font-size:18px;font-weight:800">'+todoDone+'<span style="font-size:12px;color:#64748b">/'+todoTotal+'</span> <span style="font-size:13px;color:'+(todoPct>=80?'#22c55e':'#f59e0b')+'">'+todoPct+'%</span></div>';
+    h+='<div class="progress" style="margin-top:6px"><div class="progress-fill" style="width:'+todoPct+'%;background:'+(todoPct>=80?'#22c55e':todoPct>=50?'#f59e0b':'#3b82f6')+'"></div></div>';
+    h+='</div>';
+    h+='<div class="card" style="border-left:3px solid #22c55e">';
+    h+='<div style="font-size:11px;color:#22c55e;font-weight:700;margin-bottom:6px">💰 오늘 매출</div>';
+    h+='<div style="font-size:16px;font-weight:800;color:#22c55e">'+fmt(ft.income||0)+'</div>';
+    if(ft.expense)h+='<div style="font-size:11px;color:#ef4444;margin-top:2px">지출 -'+fmt(ft.expense)+'</div>';
+    h+='</div>';
+    h+='</div>';
+
+    // ===== 바로가기 =====
+    h+='<div class="card" style="margin-bottom:8px"><div style="font-size:13px;font-weight:700;margin-bottom:8px">바로가기</div>';
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px" id="portal-grid">';
+    getPortalApps().forEach(function(a, i){
+      h+='<button class="btn-o portal-btn" style="padding:10px 4px;border:1px solid #334155;border-radius:10px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:2px;-webkit-user-select:none;user-select:none" data-app="'+a.u+'" data-portal-idx="'+i+'"><span style="font-size:18px">'+a.e+'</span>'+a.n+'</button>';
+    });
+    h+='<button class="portal-add" style="padding:10px 4px;border:1px dashed #334155;border-radius:10px;font-size:11px;color:#64748b;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px"><span style="font-size:18px">+</span>추가</button>';
+    h+='</div><div style="font-size:10px;color:#64748b;margin-top:6px;text-align:center">길게 누르면 편집/삭제</div></div>';
+
+    document.getElementById('content').innerHTML=h;
+
+    document.getElementById('content').onclick=function(e){
+      var t=e.target;
+      while(t&&t!==this&&!t.getAttribute('data-app')&&!t.getAttribute('data-go')&&!t.getAttribute('data-mission')&&!(t.classList&&t.classList.contains('portal-add'))){t=t.parentElement}
+      if(!t||t===this)return;
+      if(t.classList&&t.classList.contains('portal-add')){if(window.__portalLongFired){window.__portalLongFired=false;return}addPortal();return}
+      if(t.getAttribute&&t.getAttribute('data-portal-idx')!==null && window.__portalLongFired){window.__portalLongFired=false;return}
+      if(t.getAttribute('data-mission')){F('/missions/'+t.getAttribute('data-mission')+'/toggle',{method:'PUT'}).then(function(){toast('미션!');loadHome()});return}
+      var url=t.getAttribute('data-app');
+      var goto=t.getAttribute('data-go');
+      if(url){window.open(url,'_blank')}
+      else if(goto){go(goto)}
+    };
+    attachPortalLongPress();
+  }).catch(function(e){document.getElementById('content').innerHTML='<div class="alert-box alert-red">'+(e.message||e)+'</div>'})
+}
+
+
+// ========== 할일 (Sunsama 스타일) ==========
+function loadTodo(){
+  Promise.all([F('/today'),F('/top10'),F('/missions')]).then(function(res){
+    var d=res[0],top=res[1],missions=res[2];
+    var items=d.items||[];var notes=d.notes||[];
+    var ms=(missions&&missions.missions)||[];
+    var msum=(missions&&missions.summary)||{total:0,done:0,pct:0};
+    var done=items.filter(function(i){return i.is_done}).length;
+    var pct=items.length?Math.round(done/items.length*100):0;
+    var priority=notes.find(function(n){return n.type==='priority'});
+    var brain=notes.find(function(n){return n.type==='brain'});
+    var tomorrow=notes.find(function(n){return n.type==='tomorrow'});
+
+    var dt=new Date();var dStr=(dt.getMonth()+1)+'/'+dt.getDate()+' '+['일','월','화','수','목','금','토'][dt.getDay()];
+
+    // ===== 헤더 =====
+    var h='<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:11px;color:#64748b">'+dStr+'</div><div style="font-size:18px;font-weight:800;margin-top:2px">오늘 하루</div></div>';
+    h+='<div style="text-align:right"><div style="font-size:22px;font-weight:800;color:'+(pct>=80?'#22c55e':pct>=50?'#f59e0b':'#3b82f6')+'">'+pct+'%</div><div style="font-size:11px;color:#64748b">'+done+'/'+items.length+'</div></div></div>';
+    h+='<div class="progress" style="margin-top:8px;height:6px"><div class="progress-fill" style="width:'+pct+'%;background:'+(pct>=80?'#22c55e':pct>=50?'#f59e0b':'#3b82f6')+'"></div></div></div>';
+
+    // ===== 🎖️ 오늘의 미션 =====
+    if(ms.length){
+      h+='<div class="card" style="margin-bottom:12px;border:1px solid #8b5cf6;background:linear-gradient(135deg,rgba(139,92,246,.08),rgba(15,23,42,.5))">';
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
+      h+='<div style="font-size:13px;font-weight:800;color:#a78bfa">🎖️ 오늘의 미션</div>';
+      h+='<div style="display:flex;gap:6px;align-items:center"><span style="font-size:11px;color:#94a3b8">'+msum.done+'/'+msum.total+'</span>';
+      h+='<button id="regen-missions" style="font-size:10px;padding:3px 8px;background:transparent;border:1px solid #334155;border-radius:6px;color:#94a3b8;cursor:pointer">🔄 재생성</button></div>';
+      h+='</div>';
+      h+='<div class="progress" style="margin-bottom:10px;height:4px"><div class="progress-fill" style="width:'+msum.pct+'%;background:#8b5cf6"></div></div>';
+      ms.forEach(function(m){
+        h+='<div style="display:flex;align-items:flex-start;gap:8px;padding:8px;background:rgba(15,23,42,.5);border-radius:8px;margin-bottom:6px;cursor:pointer" data-mission="'+m.id+'">';
+        h+='<div class="check-box'+(m.is_done?' on':'')+'" style="flex-shrink:0;width:20px;height:20px;line-height:20px;font-size:12px">'+(m.is_done?'✓':'')+'</div>';
+        h+='<div style="flex:1;min-width:0">';
+        h+='<div style="font-size:12px;font-weight:600;'+(m.is_done?'text-decoration:line-through;opacity:.5':'')+'">'+(m.emoji||'•')+' '+m.title+'</div>';
+        if(m.detail)h+='<div style="font-size:10px;color:#94a3b8;margin-top:2px;line-height:1.4">'+m.detail+'</div>';
+        h+='<div style="font-size:9px;color:#64748b;margin-top:3px">['+m.category+']</div>';
+        h+='</div>';
+        h+='</div>';
+      });
+      h+='</div>';
+    }
+
+    // ===== 🎯 오늘 1순위 (Hero 카드) =====
+    h+='<div class="card" style="background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(245,158,11,.02));border:1px solid #f59e0b;margin-bottom:12px">';
+    h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:14px">🎯</span><span style="font-size:13px;font-weight:800;color:#f59e0b">오늘 1순위</span><span style="font-size:10px;color:#64748b;margin-left:auto">단 한 가지</span></div>';
+    h+='<textarea id="n-priority" rows="2" placeholder="오늘 가장 중요한 1가지를 적으세요" style="background:rgba(15,23,42,.6);border:1px solid #334155">'+(priority?priority.content:'')+'</textarea>';
+    h+='<button class="btn-sm btn-y" style="margin-top:6px;width:100%" id="save-priority">저장</button></div>';
+
+    // ===== 시간블록 카드 (Sunsama 스타일) =====
+    var sections=[
+      {key:'morning',emoji:'🌅',label:'아침 루틴',color:'#f59e0b',time:'06-12시'},
+      {key:'afternoon',emoji:'☀️',label:'점심·오후',color:'#3b82f6',time:'12-18시'},
+      {key:'evening',emoji:'🌙',label:'저녁·마감',color:'#8b5cf6',time:'18시 이후'}
+    ];
+    sections.forEach(function(sec){
+      var its=items.filter(function(i){return i.section===sec.key});
+      var sDone=its.filter(function(i){return i.is_done}).length;
+      var sPct=its.length?Math.round(sDone/its.length*100):0;
+      h+='<div class="card" style="margin-bottom:10px;border-left:3px solid '+sec.color+'">';
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+      h+='<div><span style="font-size:14px">'+sec.emoji+'</span> <span style="font-size:13px;font-weight:700">'+sec.label+'</span> <span style="font-size:10px;color:#64748b;margin-left:4px">'+sec.time+'</span></div>';
+      h+='<span style="font-size:11px;color:'+sec.color+';font-weight:700">'+sDone+'/'+its.length+'</span></div>';
+      if(its.length){
+        h+='<div class="progress" style="height:3px;margin-bottom:8px"><div class="progress-fill" style="width:'+sPct+'%;background:'+sec.color+'"></div></div>';
+        its.forEach(function(i){h+=renderCheck(i)});
+      } else {
+        h+='<div style="font-size:11px;color:#64748b;font-style:italic;padding:6px 0">할 일 없음</div>';
+      }
+      h+='</div>';
+    });
+
+    // ===== 🌙 데일리 리플렉션 (저녁 섹션 강조) =====
+    var hour=new Date().getHours();
+    h+='<div class="card" style="margin-bottom:10px;background:rgba(139,92,246,.05);border:1px solid #8b5cf6">';
+    h+='<div style="font-size:13px;font-weight:700;color:#a78bfa;margin-bottom:8px">🌙 데일리 리플렉션 '+(hour>=18?'<span style="font-size:10px;color:#fbbf24;margin-left:4px">⏰ 지금 작성</span>':'')+'</div>';
+    h+='<div style="font-size:11px;color:#94a3b8;margin-bottom:6px">내일 1순위 (자기 전 미리 정해두기)</div>';
+    h+='<textarea id="n-tomorrow" rows="2" placeholder="내일 가장 먼저 할 1가지" style="background:rgba(15,23,42,.6);border:1px solid #334155">'+(tomorrow?tomorrow.content:'')+'</textarea>';
+    h+='<button class="btn-sm btn-y" style="margin-top:6px;width:100%" id="save-tomorrow">내일 1순위 저장</button>';
+    h+='</div>';
+
+    // ===== 🧠 머릿속 비우기 =====
+    h+='<div class="card" style="margin-bottom:12px;border-left:3px solid #8b5cf6">';
+    h+='<div style="font-size:13px;font-weight:700;margin-bottom:6px">🧠 머릿속 비우기 <span style="font-size:10px;color:#64748b;font-weight:400">· 걱정·아이디어·생각 다 쏟아내기</span></div>';
+    h+='<textarea id="n-brain" rows="4" placeholder="머릿속에 떠다니는 거 다 적어보세요. 적으면 사라집니다." style="background:rgba(15,23,42,.6);border:1px solid #334155">'+(brain?brain.content:'')+'</textarea>';
+    h+='<button class="btn-sm btn-o" style="margin-top:6px;width:100%" id="save-brain">저장</button></div>';
+
+    // ===== 🎯 내 목표 (컴팩트) =====
+    h+='<div class="card">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:14px;font-weight:700;color:#f59e0b">🎯 내 목표</div><span style="font-size:11px;color:#64748b">'+top.length+'/10</span></div>';
+
+    if(!top.length){
+      h+='<div style="text-align:center;padding:16px;color:#64748b">';
+      h+='<div style="font-size:24px;margin-bottom:8px">🎯</div>';
+      h+='<div style="font-size:13px;margin-bottom:4px">목표를 추가하세요!</div>';
+      h+='<div style="font-size:11px">100억을 위해 지금 해야 할 일을 적어보세요</div>';
+      h+='</div>';
+    }
+
+    top.forEach(function(t){
+      var color=t.progress>=80?'#22c55e':t.progress>=50?'#f59e0b':t.progress>0?'#3b82f6':'#64748b';
+      var emoji=t.progress>=100?'🎉':t.progress>=75?'🔥':t.progress>=50?'💪':t.progress>=25?'🚀':'⭐';
+      h+='<div style="background:#1e293b;border-radius:10px;padding:10px;margin-bottom:8px;border-left:3px solid '+color+'">';
+      h+='<div style="display:flex;justify-content:space-between;align-items:center">';
+      h+='<div style="font-size:13px;font-weight:600">'+emoji+' '+t.action+'</div>';
+      h+='<span style="font-size:12px;font-weight:800;color:'+color+'">'+t.progress+'%</span></div>';
+      if(t.owner||t.deadline)h+='<div style="font-size:11px;color:#64748b;margin-top:3px">'+(t.owner||'')+( t.deadline?' · 마감: '+t.deadline:'')+'</div>';
+      if(t.note)h+='<div style="font-size:11px;color:#94a3b8;margin-top:3px;font-style:italic">'+t.note+'</div>';
+      h+='<div class="progress" style="margin-top:6px"><div class="progress-fill" style="width:'+t.progress+'%;background:'+color+'"></div></div>';
+      h+='<div style="display:flex;gap:3px;margin-top:6px">';
+      [0,25,50,75,100].forEach(function(p){h+='<button style="flex:1;padding:5px;border:1px solid '+(t.progress===p?'#f59e0b':'#334155')+';background:'+(t.progress===p?'rgba(245,158,11,.2)':'transparent')+';color:#e2e8f0;border-radius:6px;font-size:10px;cursor:pointer" data-top="'+t.id+'" data-prog="'+p+'">'+p+'%</button>'});
+      h+='</div>';
+      h+='<div style="display:flex;gap:4px;margin-top:6px">';
+      h+='<button style="flex:1;padding:4px;background:#1e293b;border:1px solid #334155;color:#64748b;border-radius:6px;font-size:10px;cursor:pointer" data-delt="'+t.id+'">삭제</button>';
+      h+='</div>';
+      h+='</div>';
+    });
+
+    // 목표 추가 폼
+    h+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid #1e293b">';
+    h+='<div style="font-size:12px;font-weight:700;color:#64748b;margin-bottom:6px">+ 새 목표 추가</div>';
+    h+='<input id="new-goal" placeholder="목표를 입력하세요 (예: 유니폼 매니저 채용)" style="margin-bottom:6px">';
+    h+='<div style="display:flex;gap:4px;margin-bottom:6px"><input id="new-owner" placeholder="담당 (예: 사장님)" style="flex:1"><input id="new-deadline" type="date" placeholder="마감일" style="flex:1"></div>';
+    h+='<button class="btn btn-y" style="width:100%" id="add-goal">목표 추가</button>';
+    h+='</div></div>';
+
+    document.getElementById('content').innerHTML=h;
+
+    // 이벤트 바인딩
+    document.getElementById('content').onclick=function(e){
+      var t=e.target;
+      if(t.getAttribute('data-edit')){var eid=t.getAttribute('data-edit');var etitle=t.getAttribute('data-etitle');var newTitle=prompt('수정:',etitle);if(newTitle&&newTitle.trim()&&newTitle!==etitle){F('/today/'+eid+'/edit',{method:'PUT',body:{title:newTitle.trim()}}).then(function(){loadTodo()})}return;}
+      if(t.classList.contains('check-box')||t.parentElement.classList.contains('check-item')){
+        var id=t.getAttribute('data-id')||t.querySelector('.check-box')?.getAttribute('data-id');
+        if(id)F('/today/'+id+'/toggle',{method:'PUT'}).then(function(){loadTodo()});
+      }
+      if(t.getAttribute('data-top')){
+        F('/top10/'+t.getAttribute('data-top'),{method:'PUT',body:{progress:+t.getAttribute('data-prog')}}).then(function(){toast('업데이트!');loadTodo()});
+      }
+      if(t.getAttribute('data-delt')){
+        if(confirm('이 목표를 삭제할까요?'))F('/top10/'+t.getAttribute('data-delt'),{method:'PUT',body:{is_active:0}}).then(function(){toast('삭제!');loadTodo()});
+      }
+      if(t.id==='add-goal'){
+        var action=document.getElementById('new-goal');
+        var owner=document.getElementById('new-owner');
+        var deadline=document.getElementById('new-deadline');
+        if(!action||!action.value.trim())return;
+        F('/top10',{method:'POST',body:{action:action.value.trim(),owner:owner?owner.value:'',deadline:deadline?deadline.value:'',kpi:''}}).then(function(){toast('목표 추가!');loadTodo()});
+      }
+      if(t.id==='save-priority'){saveNote('priority',priority?priority.id:null)}
+      if(t.id==='save-brain'){saveNote('brain',brain?brain.id:null)}
+      if(t.id==='save-tomorrow'){saveNote('tomorrow',tomorrow?tomorrow.id:null)}
+      if(t.id==='regen-missions'){if(confirm('오늘 미션을 다시 생성할까요?'))F('/missions/regenerate',{method:'POST',body:{}}).then(function(){toast('재생성!');loadTodo()})}
+      // 미션 토글 (체크박스 또는 카드 클릭)
+      var mEl=t;while(mEl&&mEl!==document.getElementById('content')&&!mEl.getAttribute('data-mission')){mEl=mEl.parentElement}
+      if(mEl&&mEl.getAttribute('data-mission')){F('/missions/'+mEl.getAttribute('data-mission')+'/toggle',{method:'PUT'}).then(function(){toast('미션!');loadTodo()})}
+    };
+  }).catch(function(e){document.getElementById('content').innerHTML='<div class="alert-box alert-red">'+e.message+'</div>'})
+}
+
+function renderCheck(i){return'<div class="check-item'+(i.is_done?' done':'')+'" style="position:relative"><div class="check-box'+(i.is_done?' on':'')+'" data-id="'+i.id+'">'+(i.is_done?'✓':'')+'</div><span class="check-text">'+i.title+'</span>'+(i.done_at?'<span style="font-size:10px;color:#64748b">'+i.done_at.slice(11,16)+'</span>':'')+'<span style="font-size:10px;color:#64748b;cursor:pointer;margin-left:4px" data-edit="'+i.id+'" data-etitle="'+i.title.replace(/"/g,'&quot;')+'">✏️</span></div>'}
+
+function saveNote(type,id){
+  var el=document.getElementById('n-'+type);if(!el)return;
+  var content=el.value.trim();
+  var msg=type==='brain'?'메모로 이동! 🧠✨':'저장!';
+  var done=function(){toast(msg);if(type==='brain'){el.value='';loadTodo()}else if(!id){loadTodo()}};
+  if(id){F('/today/note/'+id,{method:'PUT',body:{content:content}}).then(done)}
+  else{F('/today/note',{method:'POST',body:{type:type,content:content}}).then(done)}
+}
+
+// ========== 매출 ==========
+function loadMoney(){
+  F('/finance-summary').then(function(d){
+    var h='<div style="text-align:center;margin-bottom:12px"><div style="font-size:14px;font-weight:700">💰 매출 현황</div></div>';
+
+    // 오늘
+    var todayTotal=0;(d.today||[]).forEach(function(s){todayTotal+=s.total});
+    h+='<div class="card" style="text-align:center"><div class="sub">오늘 전체 매출</div><div class="big-num green">'+fmt(todayTotal)+'</div></div>';
+
+    // 사업부별 오늘
+    if(d.today&&d.today.length){h+='<div class="g2">';d.today.forEach(function(s){h+='<div class="card" style="text-align:center"><div class="sub">'+s.name+'</div><div style="font-size:16px;font-weight:800;color:#22c55e">'+fmt(s.total)+'</div></div>'});h+='</div>';}
+
+    // 이번달
+    h+='<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:8px">이번달 사업부별</div>';
+    (d.month||[]).forEach(function(m){
+      h+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #1e293b;font-size:13px">';
+      h+='<span>'+m.name+'</span>';
+      h+='<span><span class="green">+'+fmt(m.income)+'</span> <span class="red">-'+fmt(m.expense)+'</span></span>';
+      h+='</div>';
+    });
+    h+='</div>';
+
+    // 100억 진척률
+    var yi=d.yearIncome||0;var pct=Math.round(yi/10000000000*1000)/10;
+    h+='<div class="card" style="text-align:center"><div class="sub">2026년 누적 매출 (100억 목표)</div>';
+    h+='<div class="big-num" style="margin:4px 0">'+fmt(yi)+'</div>';
+    h+='<div class="sub">'+pct+'% 달성</div>';
+    h+='<div class="progress" style="margin-top:6px"><div class="progress-fill" style="width:'+Math.min(pct,100)+'%;background:linear-gradient(90deg,#f59e0b,#22c55e)"></div></div></div>';
+
+    // 월별 그래프
+    var monthly=d.monthly||[];
+    var mm={};monthly.forEach(function(m){if(!mm[m.m])mm[m.m]={i:0,e:0};mm[m.m][m.type==='income'?'i':'e']+=m.total});
+    var months=Object.keys(mm).sort();
+    var maxV=1;months.forEach(function(m){if(mm[m].i>maxV)maxV=mm[m].i});
+    var mNames={'01':'1월','02':'2월','03':'3월','04':'4월','05':'5월','06':'6월','07':'7월','08':'8월','09':'9월','10':'10월','11':'11월','12':'12월'};
+
+    h+='<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:8px">월별 매출</div>';
+    h+='<div style="display:flex;align-items:flex-end;gap:4px;height:120px">';
+    months.forEach(function(m){
+      var ih=Math.max(Math.round(mm[m].i/maxV*100),3);
+      h+='<div style="flex:1;display:flex;flex-direction:column;align-items:center">';
+      h+='<div style="font-size:8px;color:#22c55e;margin-bottom:2px">'+Math.round(mm[m].i/1000000)+'M</div>';
+      h+='<div style="width:100%;max-width:20px;background:linear-gradient(180deg,#22c55e,#16a34a);border-radius:3px 3px 0 0;height:'+ih+'px"></div>';
+      h+='<div style="font-size:9px;color:#64748b;margin-top:2px">'+(mNames[m.slice(5,7)]||m)+'</div>';
+      h+='</div>';
+    });
+    h+='</div></div>';
+
+    document.getElementById('content').innerHTML=h;
+    document.getElementById('content').onclick=function(e){var t=e.target;while(t&&t!==this){if(t.getAttribute('data-go')){go(t.getAttribute('data-go'));return;}t=t.parentElement;}};
+  }).catch(function(e){document.getElementById('content').innerHTML='<div class="alert-box alert-red">'+e.message+'</div>'})
+}
+
+// ========== 위임 ==========
+function loadTeam(){
+  F('/delegation').then(function(items){
+    var pending=items.filter(function(i){return i.status==='pending'});
+    var progress=items.filter(function(i){return i.status==='progress'});
+    var done=items.filter(function(i){return i.status==='done'});
+
+    var h='<div style="text-align:center;margin-bottom:12px"><div style="font-size:14px;font-weight:700">📋 위임 보드</div><div class="sub">시킨 일 추적</div></div>';
+
+    // 추가
+    h+='<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:8px">새 업무 위임</div>';
+    h+='<input id="d-task" placeholder="뭘 시킬까요?" style="margin-bottom:6px">';
+    h+='<div class="g2" style="margin-bottom:6px"><input id="d-who" placeholder="누구에게"><input id="d-when" type="date" placeholder="마감일"></div>';
+    h+='<button class="btn btn-y" id="add-deleg">위임하기</button></div>';
+
+    // 대기중
+    if(pending.length){
+      h+='<div style="font-size:12px;font-weight:700;color:#f59e0b;margin:8px 0 4px">⏳ 대기중 ('+pending.length+')</div>';
+      pending.forEach(function(i){h+=renderDeleg(i)});
+    }
+
+    // 진행중
+    if(progress.length){
+      h+='<div style="font-size:12px;font-weight:700;color:#3b82f6;margin:8px 0 4px">🔄 진행중 ('+progress.length+')</div>';
+      progress.forEach(function(i){h+=renderDeleg(i)});
+    }
+
+    // 완료
+    if(done.length){
+      h+='<div style="font-size:12px;font-weight:700;color:#22c55e;margin:8px 0 4px">✅ 완료 ('+done.length+')</div>';
+      done.forEach(function(i){h+=renderDeleg(i)});
+    }
+
+    if(!items.length)h+='<div style="text-align:center;color:#64748b;padding:20px">아직 위임한 업무가 없어요</div>';
+
+    document.getElementById('content').innerHTML=h;
+
+    // 이벤트
+    document.getElementById('content').onclick=function(e){
+      var t=e.target;
+      if(t.id==='add-deleg'){
+        var task=document.getElementById('d-task').value.trim();
+        var who=document.getElementById('d-who').value.trim();
+        var when=document.getElementById('d-when').value;
+        if(!task)return;
+        F('/delegation',{method:'POST',body:{task:task,assignee:who,deadline:when}}).then(function(){toast('위임 완료!');loadTeam()});
+      }
+      if(t.getAttribute('data-ds')){
+        F('/delegation/'+t.getAttribute('data-did'),{method:'PUT',body:{status:t.getAttribute('data-ds')}}).then(function(){loadTeam()});
+      }
+      if(t.getAttribute('data-dd')){
+        F('/delegation/'+t.getAttribute('data-dd'),{method:'DELETE'}).then(function(){loadTeam()});
+      }
+    };
+  }).catch(function(e){document.getElementById('content').innerHTML='<div class="alert-box alert-red">'+e.message+'</div>'})
+}
+
+function renderDeleg(i){
+  var statusColor={pending:'#f59e0b',progress:'#3b82f6',done:'#22c55e'}[i.status];
+  var h='<div class="card" style="border-left:3px solid '+statusColor+'">';
+  h+='<div style="font-size:14px;font-weight:700;margin-bottom:4px">'+i.task+'</div>';
+  h+='<div style="font-size:12px;color:#64748b">'+( i.assignee||'-')+' · '+(i.deadline||'마감 없음')+'</div>';
+  h+='<div style="display:flex;gap:4px;margin-top:8px">';
+  if(i.status!=='progress')h+='<button class="btn-sm btn-o" data-did="'+i.id+'" data-ds="progress">진행중</button>';
+  if(i.status!=='done')h+='<button class="btn-sm" style="background:#22c55e;color:#fff" data-did="'+i.id+'" data-ds="done">완료</button>';
+  h+='<button class="btn-sm" style="background:#ef4444;color:#fff" data-dd="'+i.id+'">삭제</button>';
+  h+='</div></div>';
+  return h;
+}
+
+// ========== 메모 ==========
+function loadMemo(){
+  F('/memos').then(function(items){
+    var h='<div style="text-align:center;margin-bottom:12px"><div style="font-size:14px;font-weight:700">📝 빠른 메모</div></div>';
+
+    h+='<div class="card"><textarea id="new-memo" rows="3" placeholder="생각나는 거 바로 적기..."></textarea>';
+    h+='<button class="btn btn-y" style="margin-top:8px" id="add-memo">메모 저장</button></div>';
+
+    items.forEach(function(m){
+      h+='<div class="card" style="position:relative"><div style="font-size:13px;white-space:pre-wrap">'+m.content+'</div>';
+      h+='<div style="font-size:10px;color:#64748b;margin-top:6px">'+(m.created_at||'')+'</div>';
+      h+='<button style="position:absolute;top:10px;right:10px;background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px" data-delmemo="'+m.id+'">X</button></div>';
+    });
+
+    if(!items.length)h+='<div style="text-align:center;color:#64748b;padding:20px">메모가 없어요</div>';
+
+    document.getElementById('content').innerHTML=h;
+
+    document.getElementById('content').onclick=function(e){
+      var t=e.target;
+      if(t.id==='add-memo'){
+        var content=document.getElementById('new-memo').value.trim();
+        if(!content)return;
+        F('/memos',{method:'POST',body:{content:content}}).then(function(){toast('저장!');loadMemo()});
+      }
+      if(t.getAttribute('data-delmemo')){
+        F('/memos/'+t.getAttribute('data-delmemo'),{method:'DELETE'}).then(function(){loadMemo()});
+      }
+    };
+  }).catch(function(e){document.getElementById('content').innerHTML='<div class="alert-box alert-red">'+e.message+'</div>'})
+}
+
+// BOOT
+T=(function(){try{return localStorage.getItem('ceo_t')}catch(e){}})()||gc('ceo_token');
+if(T)init();else{document.getElementById('login').style.display='flex';document.getElementById('app').classList.add('hide')}
+
+var projShowDone=false; // 완료 토글 상태
+
+function loadProj(){
+  Promise.all([F('/projects/summary'),F('/projects'+(projShowDone?'?archived=1':'')),F('/projects/weekly')]).then(function(res){
+    var summary=res[0];var all=res[1];var weekly=res[2];
+    var h='<div style="text-align:center;margin-bottom:12px"><div style="font-size:18px;font-weight:800;color:#f59e0b">100 Projects</div><div class="sub">피트니스 센터 샵</div></div>';
+
+    // 주간 진척 카드
+    var ws=new Date(weekly.week_start.replace(' ','T')); var wsLabel=(ws.getMonth()+1)+'/'+ws.getDate();
+    h+='<div class="card" style="margin-bottom:12px;background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #f59e0b">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    h+='<div style="font-size:13px;font-weight:800;color:#f59e0b">📅 이번주 진척 ('+wsLabel+'~)</div>';
+    h+='<div style="font-size:11px;color:#94a3b8">'+weekly.summary.total_movers+'개 변동</div>';
+    h+='</div>';
+    if(weekly.summary.total_movers===0 && weekly.summary.new_completed===0){
+      h+='<div style="text-align:center;color:#64748b;font-size:12px;padding:8px">이번주 아직 변동 없음. 한 개라도 진척시켜보세요!</div>';
+    } else {
+      h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">';
+      h+='<div style="text-align:center;padding:6px;background:rgba(34,197,94,.1);border-radius:6px"><div style="font-size:18px;font-weight:800;color:#22c55e">+'+weekly.summary.total_delta+'%</div><div style="font-size:10px;color:#94a3b8">총 진척</div></div>';
+      h+='<div style="text-align:center;padding:6px;background:rgba(245,158,11,.1);border-radius:6px"><div style="font-size:18px;font-weight:800;color:#f59e0b">'+weekly.summary.total_movers+'</div><div style="font-size:10px;color:#94a3b8">움직인 PJ</div></div>';
+      h+='<div style="text-align:center;padding:6px;background:rgba(59,130,246,.1);border-radius:6px"><div style="font-size:18px;font-weight:800;color:#3b82f6">'+weekly.summary.new_completed+'</div><div style="font-size:10px;color:#94a3b8">신규 완료</div></div>';
+      h+='</div>';
+      // 사업부별
+      if(weekly.by_biz.length){
+        h+='<div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap">';
+        weekly.by_biz.forEach(function(b){
+          var emoji={피트니스:'💪',센터:'🎾',샵:'🏪'}[b.biz]||'📦';
+          h+='<div style="flex:1;padding:4px 6px;background:#0f172a;border-radius:6px;font-size:10px;text-align:center">'+emoji+' '+b.biz+' <span style="color:#22c55e;font-weight:700">+'+b.total_delta+'%</span></div>';
+        });
+        h+='</div>';
+      }
+      // 신규 완료
+      if(weekly.new_done.length){
+        h+='<div style="font-size:11px;color:#22c55e;font-weight:700;margin-bottom:4px">✅ 이번주 완료</div>';
+        weekly.new_done.slice(0,5).forEach(function(d){
+          h+='<div style="font-size:11px;padding:3px 6px;background:rgba(34,197,94,.08);border-radius:4px;margin-bottom:2px">'+d.title+' <span style="color:#64748b">('+d.biz+')</span></div>';
+        });
+      }
+      // Top movers (완료 제외)
+      var topMovers=weekly.movers.filter(function(m){return m.to<100}).slice(0,5);
+      if(topMovers.length){
+        h+='<div style="font-size:11px;color:#3b82f6;font-weight:700;margin:6px 0 4px">📈 진척 Top</div>';
+        topMovers.forEach(function(m){
+          h+='<div style="font-size:11px;padding:3px 6px;background:rgba(59,130,246,.08);border-radius:4px;margin-bottom:2px;display:flex;justify-content:space-between">';
+          h+='<span>'+m.title+'</span><span style="color:#22c55e;font-weight:700">'+m.from+'→'+m.to+'%</span></div>';
+        });
+      }
+    }
+    h+='</div>';
+
+    // 사업부 요약
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">';
+    summary.forEach(function(s){
+      var pct=Math.round(s.avg||0);
+      var emoji={피트니스:'💪',센터:'🎾',샵:'🏪'}[s.biz]||'📦';
+      h+='<div class="card" style="text-align:center;cursor:pointer" data-fbiz="'+s.biz+'">';
+      h+='<div style="font-size:16px">'+emoji+'</div>';
+      h+='<div style="font-size:12px;font-weight:700">'+s.biz+'</div>';
+      h+='<div style="font-size:11px;color:#64748b">완료 '+s.done+'/'+s.total+' · 남은 '+s.active+'</div>';
+      h+='<div class="progress" style="margin-top:4px"><div class="progress-fill" style="width:'+pct+'%;background:'+(pct>=70?'#22c55e':pct>=30?'#f59e0b':'#3b82f6')+'"></div></div>';
+      h+='</div>';
+    });
+    h+='</div>';
+
+    h+='<div style="display:flex;gap:4px;margin-bottom:8px;align-items:center;flex-wrap:wrap" id="proj-filters">';
+    h+='<button data-fbiz="" style="padding:5px 12px;border-radius:15px;border:1px solid #f59e0b;background:rgba(245,158,11,.2);color:#f59e0b;font-size:11px;cursor:pointer">전체</button>';
+    h+='<button data-fbiz="피트니스" style="padding:5px 12px;border-radius:15px;border:1px solid #334155;background:transparent;color:#e2e8f0;font-size:11px;cursor:pointer">피트니스</button>';
+    h+='<button data-fbiz="센터" style="padding:5px 12px;border-radius:15px;border:1px solid #334155;background:transparent;color:#e2e8f0;font-size:11px;cursor:pointer">센터</button>';
+    h+='<button data-fbiz="샵" style="padding:5px 12px;border-radius:15px;border:1px solid #334155;background:transparent;color:#e2e8f0;font-size:11px;cursor:pointer">샵</button>';
+    h+='<button id="proj-toggle-done" style="margin-left:auto;padding:5px 12px;border-radius:15px;border:1px solid '+(projShowDone?'#22c55e':'#334155')+';background:'+(projShowDone?'rgba(34,197,94,.2)':'transparent')+';color:'+(projShowDone?'#22c55e':'#94a3b8')+';font-size:11px;cursor:pointer">'+(projShowDone?'✅ 완료만 보기':'📋 진행중만')+'</button>';
+    h+='</div>';
+    h+='<div id="proj-list"></div>';
+    document.getElementById('content').innerHTML=h;
+    renderProjects(all,'');
+    document.getElementById('content').onclick=function(e){
+      var t=e.target;while(t&&t!==this){
+        if(t.id==='proj-toggle-done'){projShowDone=!projShowDone;loadProj();return}
+        if(t.getAttribute('data-fbiz')!==null){var biz=t.getAttribute('data-fbiz');var url='/projects?'+(projShowDone?'archived=1&':'')+(biz?'biz='+encodeURIComponent(biz):'');F(url).then(function(items){renderProjects(items,biz)});document.querySelectorAll('#proj-filters button[data-fbiz]').forEach(function(b){var a=b.getAttribute('data-fbiz')===biz;b.style.borderColor=a?'#f59e0b':'#334155';b.style.background=a?'rgba(245,158,11,.2)':'transparent';b.style.color=a?'#f59e0b':'#e2e8f0'});return}
+        if(t.getAttribute('data-pid')){F('/projects/'+t.getAttribute('data-pid'),{method:'PUT',body:{progress:+t.getAttribute('data-pp')}}).then(function(){toast('업데이트!');loadProj()});return}
+        t=t.parentElement;
+      }
+    };
+  }).catch(function(e){document.getElementById('content').innerHTML='<div class="alert-box alert-red">'+e.message+'</div>'});
+}
+
+
+function renderProjects(items, biz){
+  var cats={};
+  items.forEach(function(p){
+    var key=p.biz+'/'+p.category;
+    if(!cats[key])cats[key]={biz:p.biz,category:p.category,items:[]};
+    cats[key].items.push(p);
+  });
+
+  var h='';
+  Object.keys(cats).forEach(function(key){
+    var g=cats[key];
+    var done=g.items.filter(function(p){return p.progress>=100}).length;
+    var emoji={피트니스:'💪',센터:'🎾',샵:'🏪'}[g.biz]||'📦';
+    h+='<div class="card">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    h+='<div style="font-size:13px;font-weight:700">'+emoji+' '+g.biz+' · '+g.category+'</div>';
+    h+='<span style="font-size:11px;color:#64748b">'+done+'/'+g.items.length+'</span>';
+    h+='</div>';
+
+    g.items.forEach(function(p){
+      var color=p.progress>=100?'#22c55e':p.progress>=50?'#f59e0b':p.progress>0?'#3b82f6':'#334155';
+      var star=p.priority?'⭐ ':'';
+      h+='<div style="display:flex;align-items:center;gap:8px;padding:8px;background:#1e293b;border-radius:8px;margin-bottom:4px;border-left:3px solid '+color+'">';
+      h+='<div style="flex:1"><div style="font-size:12px;'+(p.progress>=100?'text-decoration:line-through;opacity:.5':'')+'">'+star+p.num+'. '+p.title+'</div>';
+      if(p.note)h+='<div style="font-size:10px;color:#94a3b8;font-style:italic;margin-top:2px">'+p.note+'</div>';
+      h+='</div>';
+      h+='<div style="display:flex;gap:2px">';
+      [0,50,100].forEach(function(v){
+        h+='<button style="padding:3px 6px;border:1px solid '+(p.progress===v?'#f59e0b':'#334155')+';background:'+(p.progress===v?'rgba(245,158,11,.2)':'transparent')+';color:#e2e8f0;border-radius:4px;font-size:9px;cursor:pointer" data-pid="'+p.id+'" data-pp="'+v+'">'+(v===0?'시작전':v===50?'진행중':'완료')+'</button>';
+      });
+      h+='</div></div>';
+    });
+    h+='</div>';
+  });
+
+  if(!items.length)h+='<div style="text-align:center;color:#64748b;padding:20px">프로젝트가 없습니다</div>';
+
+  var el=document.getElementById('proj-list');
+  if(el){
+    el.innerHTML=h;
+    el.onclick=function(e){
+      var t=e.target;
+      if(t.getAttribute('data-pid')){
+        F('/projects/'+t.getAttribute('data-pid'),{method:'PUT',body:{progress:+t.getAttribute('data-pp')}}).then(function(){toast('업데이트!');filterProj(biz||'')});
+      }
+    };
+  }
+}
+
+</script></body></html>

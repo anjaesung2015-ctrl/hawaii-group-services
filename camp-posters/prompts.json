@@ -1,0 +1,9 @@
+[
+  {
+    "file": "01-close-up-detail-photo-showing-how-a-wooden-slat-room-divider.png",
+    "prompt": "Close-up detail photo showing how a wooden slat room divider partition is installed in a dormitory room with white marble tile floor and exposed ceiling pipes. The photo shows the construction details clearly:\n\n1. Bottom: A horizontal wooden beam (50x50mm) is bolted to the white tile floor using stainless steel L-brackets and concrete anchor bolts. The brackets are evenly spaced every 60cm.\n\n2. Middle: Vertical wooden slats (30x40mm, natural light wood) are mounted to the top and bottom beams, spaced 4cm apart. Each slat is screwed in with two screws top and two screws bottom.\n\n3. Top: Another horizontal beam connects to a pipe clamp bracket that grips one of the grey ceiling pipes for stability, plus an L-bracket into the concrete ceiling.\n\n4. The partition meets the wall on the left side with an L-bracket anchored into the cream-colored wall.\n\n5. An opening/doorway of about 80cm is visible where no slats are installed, allowing passage between zones.\n\nClear instructional/technical photo style, well-lit, showing construction methodology. Like a DIY installation guide photo. Clean workshop quality.",
+    "model": "dall-e-3",
+    "size": "1792x1024",
+    "quality": "hd"
+  }
+]

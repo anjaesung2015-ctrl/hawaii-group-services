@@ -1,0 +1,8 @@
+node_modules/
+*.bak
+*.bak-*
+.bak-*
+*.db-shm
+*.db-wal
+.env
+notifications.json

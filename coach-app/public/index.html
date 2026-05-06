@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎾 Hawaii Coach</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f172a;color:#e2e8f0;font-size:14px}
+.hide{display:none!important}
+#app{min-height:100vh;display:flex;flex-direction:column;max-width:520px;margin:0 auto;background:#0f172a}
+.header{padding:14px 16px;background:#0f172a;border-bottom:1px solid #1e293b;position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center}
+.header h1{font-size:16px;font-weight:800;color:#22c55e}
+.phase-badge{padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700;cursor:pointer}
+.main{flex:1;padding:14px 16px 80px;overflow-y:auto}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#0f172a;border-top:1px solid #1e293b;display:flex;max-width:520px;margin:0 auto}
+.nav button{flex:1;padding:10px 0;background:none;border:none;color:#64748b;font-size:10px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+.nav button.on{color:#22c55e}
+.nav button span{font-size:18px}
+.card{background:#1e293b;border-radius:12px;padding:14px;margin-bottom:10px}
+.sub{font-size:11px;color:#64748b}
+.btn{padding:10px 14px;border-radius:8px;border:none;font-size:14px;font-weight:700;cursor:pointer}
+.btn-g{background:#22c55e;color:#fff}
+.btn-y{background:#f59e0b;color:#fff}
+.btn-o{background:transparent;color:#e2e8f0;border:1px solid #334155}
+.btn-sm{padding:6px 10px;font-size:12px;border-radius:6px;border:none;cursor:pointer}
+input,textarea,select{width:100%;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;font-family:inherit;resize:vertical}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#22c55e;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:100;animation:fade 2.5s}
+@keyframes fade{0%,100%{opacity:0}10%,90%{opacity:1}}
+.alert-box{padding:10px;border-radius:8px;margin-bottom:8px;font-size:12px}
+.alert-red{background:rgba(239,68,68,.1);border:1px solid #ef4444;color:#fca5a5}
+.alert-green{background:rgba(34,197,94,.1);border:1px solid #22c55e;color:#86efac}
+.alert-blue{background:rgba(59,130,246,.1);border:1px solid #3b82f6;color:#93bbfc}
+.day-pill{display:inline-block;padding:4px 8px;border-radius:6px;font-size:10px;font-weight:700;margin-right:4px}
+.block-row{display:flex;gap:10px;padding:10px;background:rgba(15,23,42,.5);border-radius:8px;margin-bottom:6px}
+.block-time{font-size:11px;font-weight:800;color:#22c55e;min-width:70px;flex-shrink:0}
+.block-name{font-size:13px;font-weight:600}
+.block-detail{font-size:11px;color:#94a3b8;margin-top:3px}
+.tab-pill{padding:6px 12px;border-radius:15px;font-size:11px;cursor:pointer;border:1px solid #334155;background:transparent;color:#94a3b8;margin-right:4px;margin-bottom:6px}
+.tab-pill.on{border-color:#22c55e;background:rgba(34,197,94,.15);color:#22c55e}
+.drill-card{background:rgba(15,23,42,.5);border-radius:8px;padding:10px;margin-bottom:6px;border-left:3px solid #334155;cursor:pointer}
+.drill-card.easy{border-left-color:#22c55e}
+.drill-card.medium{border-left-color:#f59e0b}
+.drill-card.hard{border-left-color:#ef4444}
+
+#login{position:fixed;inset:0;background:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+#login .logo{font-size:48px;margin-bottom:12px}
+#login h2{font-size:22px;font-weight:800;margin-bottom:24px;color:#22c55e}
+#login input{max-width:300px;margin-bottom:12px}
+#login button{max-width:300px;width:100%;background:#22c55e;color:#fff;padding:12px;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer}
+#err{color:#ef4444;font-size:12px;margin-top:8px}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="logo">🎾</div>
+  <h2>Hawaii Coach</h2>
+  <input id="pw" type="password" placeholder="비밀번호" autocomplete="current-password">
+  <button onclick="doLogin()">로그인</button>
+  <div id="err"></div>
+</div>
+
+<div id="app" class="hide">
+  <div class="header">
+    <h1 id="header-title">🎾 Coach</h1>
+    <div id="phase-badge" class="phase-badge">로딩...</div>
+  </div>
+  <div class="main" id="content"></div>
+  <div class="nav">
+    <button class="on" onclick="go('home')"><span>🏠</span>오늘</button>
+    <button onclick="go('program')"><span>📅</span>프로그램</button>
+    <button onclick="go('drills')"><span>🎯</span>드릴</button>
+    <button onclick="go('groups')"><span>👥</span>그룹</button>
+    <button onclick="go('athletes')"><span>👤</span>선수</button>
+    <button onclick="go('sessions')"><span>📓</span>일지</button>
+  </div>
+</div>
+
+<script>
+var T=null, BASE='/coach/api';
+var DAY_NAMES=['','월','화','수','목','금','토','일'];
+var currentTab='home';
+
+function gc(n){return(document.cookie.match(new RegExp(n+'=([^;]+)'))||[])[1]||null}
+function sc(n,v){document.cookie=n+'='+v+';path=/;max-age=2592000;SameSite=Lax'}
+function F(p,o){o=o||{};var h={'Content-Type':'application/json'};if(T)h['Authorization']='Bearer '+T;o.headers=h;if(o.body&&typeof o.body==='object')o.body=JSON.stringify(o.body);return fetch(BASE+p,o).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'오류');return d})})}
+function toast(m){var el=document.createElement('div');el.className='toast';el.textContent=m;document.body.appendChild(el);setTimeout(function(){el.remove()},2500)}
+function esc(s){return(s||'').toString().replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+
+function doLogin(){
+  var p=document.getElementById('pw').value;
+  F('/login',{method:'POST',body:{password:p}}).then(function(d){
+    T=d.token;sc('coach_token',T);
+    try{localStorage.setItem('coach_t',T)}catch(e){}
+    init();
+  }).catch(function(e){document.getElementById('err').textContent=e.message});
+}
+document.getElementById('pw').onkeydown=function(e){if(e.key==='Enter')doLogin()};
+
+function init(){
+  T=T||(function(){try{return localStorage.getItem('coach_t')}catch(e){}})()||gc('coach_token');
+  if(!T){document.getElementById('login').style.display='flex';document.getElementById('app').classList.add('hide');return}
+  document.getElementById('login').style.display='none';
+  document.getElementById('app').classList.remove('hide');
+  // 초기 history 진입 — 뒤로가기 처리용
+  history.replaceState({tab:'home'},'','#home');
+  go('home',true);
+}
+
+function go(id, fromPop){
+  currentTab=id;
+  document.querySelectorAll('.nav button').forEach(function(b){b.classList.remove('on')});
+  var emojis={home:'🏠',program:'📅',drills:'🎯',groups:'👥',athletes:'👤',sessions:'📓'};
+  document.querySelectorAll('.nav button').forEach(function(b){if(b.querySelector('span').textContent===emojis[id])b.classList.add('on')});
+  if(id==='home')loadHome();
+  else if(id==='program')loadProgram();
+  else if(id==='drills')loadDrills();
+  else if(id==='groups')loadGroups();
+  else if(id==='athletes')loadAthletes();
+  else if(id==='sessions')loadSessions();
+  // history에 push (popstate로 진입한 경우는 push하지 않음)
+  if(!fromPop){
+    history.pushState({tab:id},'','#'+id);
+  }
+}
+
+// 뒤로가기 = 홈으로 (편집 모드면 취소 후 홈)
+window.addEventListener('popstate',function(){
+  if(!T)return; // 로그인 전이면 무시
+  if(homeEditMode){homeEditMode=false;homeEditState=null}
+  // 홈이 아니면 홈으로, 홈이면 그대로 머무르기
+  if(currentTab!=='home'){
+    go('home',true);
+    history.pushState({tab:'home'},'','#home');
+  } else {
+    history.pushState({tab:'home'},'','#home');
+    toast('홈입니다');
+  }
+});
+
+// ========== 단계 뱃지 ==========
+function refreshPhaseBadge(){
+  Promise.all([F('/settings/phase'),F('/phases')]).then(function(res){
+    var cur=res[0].phase, phases=res[1];
+    var info=phases[cur]||{label:cur,color:'#3b82f6'};
+    var el=document.getElementById('phase-badge');
+    el.textContent=info.label;
+    el.style.background=info.color+'33';
+    el.style.color=info.color;
+    el.style.border='1px solid '+info.color;
+    el.onclick=function(){showPhasePicker(cur,phases)};
+  });
+}
+
+function showPhasePicker(cur, phases){
+  var h='<div class="card"><div style="font-size:14px;font-weight:700;margin-bottom:10px">단계 선택</div>';
+  Object.keys(phases).forEach(function(p){
+    var info=phases[p];
+    var on=p===cur;
+    h+='<div class="tab-pill '+(on?'on':'')+'" data-phase="'+p+'" style="display:block;padding:12px;margin-bottom:6px;border-radius:8px;font-size:13px;text-align:center;font-weight:700">'+info.label+'</div>';
+  });
+  h+='<button class="btn btn-o" style="width:100%;margin-top:10px" onclick="loadHome()">취소</button></div>';
+  document.getElementById('content').innerHTML=h;
+  document.getElementById('content').onclick=function(e){
+    var t=e.target;while(t&&t!==this&&!t.getAttribute('data-phase')){t=t.parentElement}
+    if(t&&t.getAttribute('data-phase')){
+      F('/settings/phase',{method:'PUT',body:{phase:t.getAttribute('data-phase')}}).then(function(){
+        toast('단계 변경!');refreshPhaseBadge();loadHome();
+      });
+    }
+  };
+}
+
+// ========== 홈 (오늘 훈련) ==========
+var homeEditMode=false;
+var homeEditState=null; // {title, blocks}
+
+// ========== 드릴 선택 모달 (라이브러리에서 블록/운동 채우기) ==========
+function ensureDrillModal(){
+  if (document.getElementById('drill-modal-bg')) return;
+  var bg = document.createElement('div');
+  bg.id = 'drill-modal-bg';
+  bg.style.cssText = 'display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;padding:16px';
+  bg.innerHTML = '<div id="drill-modal" style="background:#1a1a2e;border-radius:14px;padding:16px;max-width:500px;width:100%;max-height:80vh;display:flex;flex-direction:column"></div>';
+  document.body.appendChild(bg);
+}
+function showDrillModal(html){
+  ensureDrillModal();
+  var bg = document.getElementById('drill-modal-bg');
+  document.getElementById('drill-modal').innerHTML = html;
+  bg.style.display = 'flex';
+}
+function closeDrillModal(){
+  var bg = document.getElementById('drill-modal-bg');
+  if (bg) bg.style.display = 'none';
+}
+function pickDrill(onSelect){
+  F('/drills').then(function(all){
+    var cats = [];
+    all.forEach(function(d){ if (cats.indexOf(d.category)<0) cats.push(d.category); });
+    cats.sort();
+    showDrillModal(
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:16px;font-weight:700;color:#f1f5f9">🎯 드릴 선택 ('+all.length+'개)</div><button onclick="closeDrillModal()" style="background:#334155;border:none;color:#e2e8f0;padding:6px 12px;border-radius:6px;cursor:pointer">취소</button></div>'+
+      '<input type="text" id="dm-search" placeholder="이름/상세 검색..." style="width:100%;padding:8px;margin-bottom:6px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0">'+
+      '<select id="dm-cat" style="width:100%;padding:8px;margin-bottom:8px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0">'+
+        '<option value="">전체 카테고리</option>'+
+        cats.map(function(c){return '<option value="'+_esc(c)+'">'+_esc(c)+'</option>'}).join('')+
+      '</select>'+
+      '<div id="dm-list" style="flex:1;overflow-y:auto;border:1px solid #334155;border-radius:6px;padding:4px;background:#0f172a"></div>'
+    );
+    function renderList(){
+      var q = document.getElementById('dm-search').value.toLowerCase();
+      var cat = document.getElementById('dm-cat').value;
+      var filtered = all.filter(function(d){
+        if (cat && d.category !== cat) return false;
+        if (q && !((d.name||'').toLowerCase().indexOf(q)>=0 || (d.detail||'').toLowerCase().indexOf(q)>=0)) return false;
+        return true;
+      });
+      document.getElementById('dm-list').innerHTML = filtered.slice(0, 80).map(function(d){
+        return '<div style="padding:8px;border-bottom:1px solid #1e293b;font-size:12px;cursor:pointer;color:#e2e8f0" onclick="window._dmPick('+d.id+')">'+
+          '<div><span style="color:#fbbf24;font-weight:600">['+_esc(d.category)+']</span> '+_esc(d.name)+(d.duration?' <span style="color:#94a3b8">'+d.duration+'분</span>':'')+'</div>'+
+          (d.detail?'<div style="font-size:11px;color:#94a3b8;margin-top:2px">'+_esc(d.detail)+'</div>':'')+
+        '</div>';
+      }).join('') + (filtered.length === 0 ? '<div style="padding:20px;color:#94a3b8;text-align:center">결과 없음</div>' : (filtered.length>80?'<div style="padding:8px;color:#94a3b8;font-size:11px;text-align:center">처음 80개만 — 검색 좁히세요</div>':''));
+    }
+    document.getElementById('dm-search').oninput = renderList;
+    document.getElementById('dm-cat').onchange = renderList;
+    window._dmPick = function(id){
+      var d = all.find(function(x){return x.id===id});
+      closeDrillModal();
+      if (d && onSelect) onSelect(d);
+    };
+    renderList();
+  }).catch(function(e){ alert('드릴 로드 실패: '+(e.message||e)); });
+}
+function _esc(x){ return String(x||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); }
+
+
+
+function loadHome(){
+  refreshPhaseBadge();
+  Promise.all([F('/today'),F('/groups'),F('/sessions?from='+new Date(Date.now()-7*86400000).toISOString().slice(0,10))]).then(function(res){
+    var today=res[0],groups=res[1],recent=res[2];
+    var t=today; // 기존 코드 호환
+    var dt=new Date();var dStr=(dt.getMonth()+1)+'월 '+dt.getDate()+'일';
+    var h='';
+
+    // 헤더
+    h+='<div style="margin-bottom:14px"><div class="sub">'+dStr+' '+t.day_name+'요일</div>';
+    h+='<div style="font-size:20px;font-weight:800;margin-top:2px">오늘의 훈련</div></div>';
+
+    // 오늘 프로그램
+    if(t.program||homeEditMode){
+      var prog=t.program||{title:'',blocks:[]};
+      h+='<div class="card" style="border-left:3px solid '+t.phase_color+'">';
+      h+='<div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:10px">';
+      h+='<div style="flex:1;min-width:0"><div style="font-size:11px;color:'+t.phase_color+';font-weight:700">'+t.phase_label+'</div>';
+      if(homeEditMode){
+        h+='<input id="edit-title" value="'+esc(homeEditState.title)+'" placeholder="프로그램 제목" style="margin-top:4px;font-size:14px;font-weight:700">';
+      } else {
+        h+='<div style="font-size:16px;font-weight:800;margin-top:2px">'+esc(prog.title)+'</div>';
+      }
+      h+='</div>';
+      h+='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">';
+      h+='<div class="day-pill" style="background:'+t.phase_color+'33;color:'+t.phase_color+'">'+t.day_name+'요일</div>';
+      if(homeEditMode){
+        h+='<button class="btn-sm btn-o" id="edit-cancel" style="font-size:10px">취소</button>';
+      } else {
+        h+='<button class="btn-sm btn-o" id="edit-toggle" style="font-size:10px">✏️ 편집</button>';
+      }
+      h+='</div></div>';
+
+      var blocks=homeEditMode?homeEditState.blocks:prog.blocks;
+      blocks.forEach(function(b,idx){
+        if(homeEditMode){
+          h+='<div class="block-row" style="flex-direction:column;gap:4px">';
+          h+='<div style="display:flex;gap:6px;align-items:center">';
+          h+='<input data-edit-time="'+idx+'" value="'+esc(b.time||'')+'" placeholder="시간" style="width:80px;font-size:11px;padding:6px">';
+          h+='<input data-edit-name="'+idx+'" value="'+esc(b.name||'')+'" placeholder="훈련 이름" style="flex:1;font-size:13px;padding:6px;font-weight:600">';
+          h+='<button class="btn-sm btn-o" data-edit-del="'+idx+'" style="background:rgba(239,68,68,.1);border-color:#ef4444;color:#fca5a5;padding:6px 10px">🗑️</button>';
+          h+='</div>';
+          h+='<input data-edit-detail="'+idx+'" value="'+esc(b.detail||'')+'" placeholder="상세 (선택)" style="font-size:11px;padding:6px">';
+          h+='</div>';
+        } else {
+          h+='<div class="block-row">';
+          h+='<div class="block-time">'+esc(b.time||'')+'</div>';
+          h+='<div style="flex:1"><div class="block-name">'+esc(b.name||'')+'</div>';
+          if(b.detail)h+='<div class="block-detail">'+esc(b.detail)+'</div>';
+          h+='</div></div>';
+        }
+      });
+
+      if(homeEditMode){
+        h+='<div style="display:flex;gap:6px;margin-top:8px">';
+        h+='<button class="btn-sm btn-o" id="edit-add" style="flex:1;border-style:dashed">+ 블록 직접</button>';
+        h+='<button class="btn-sm btn-y" id="edit-add-drill" style="flex:1">🎯 드릴에서</button>';
+        h+='</div>';
+        h+='<div style="display:flex;gap:6px;margin-top:10px">';
+        h+='<button class="btn btn-y" id="edit-reset" style="flex:1">🔄 시드 복구</button>';
+        h+='<button class="btn btn-g" id="edit-save" style="flex:2">💾 저장</button>';
+        h+='</div>';
+      } else {
+        h+='<div style="display:flex;gap:6px;margin-top:10px">';
+        h+='<button class="btn btn-g" style="flex:2" onclick="quickLog()">📓 일지로 저장</button>';
+        h+='<a class="btn btn-o" href="/coach/api/export/today.csv" style="flex:1;text-decoration:none;text-align:center;color:#e2e8f0;line-height:24px">📊 엑셀</a>';
+        h+='</div>';
+      }
+      h+='</div>';
+    } else {
+      h+='<div class="alert-box alert-blue">이 단계에 오늘 요일 프로그램이 없습니다.';
+      h+='<div style="margin-top:8px"><button class="btn-sm btn-g" id="edit-create">+ 새로 만들기</button></div></div>';
+    }
+
+    // 그룹 프리셋 빠른 선택
+    h+='<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:10px">👥 그룹 프리셋</div>';
+    groups.slice(0,4).forEach(function(g){
+      h+='<div style="padding:10px;background:rgba(15,23,42,.5);border-radius:8px;margin-bottom:6px;cursor:pointer" data-group-id="'+g.id+'">';
+      h+='<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700">'+esc(g.name)+'</span><span class="sub">'+g.duration+'분</span></div>';
+      h+='<div class="sub" style="margin-top:2px">'+esc(g.description||'')+'</div>';
+      h+='</div>';
+    });
+    h+='<button class="btn-sm btn-o" style="width:100%;margin-top:6px" onclick="go(\'groups\')">전체 보기 →</button>';
+    h+='</div>';
+
+    // 최근 일지
+    if(recent.length){
+      h+='<div class="card"><div style="font-size:13px;font-weight:700;margin-bottom:10px">📓 최근 일지 ('+recent.length+')</div>';
+      recent.slice(0,5).forEach(function(s){
+        h+='<div style="padding:8px;background:rgba(15,23,42,.5);border-radius:6px;margin-bottom:4px">';
+        h+='<div style="font-size:12px;font-weight:600">'+esc(s.date)+' · '+esc(s.title||s.group_name||'훈련')+'</div>';
+        if(s.notes)h+='<div class="sub" style="margin-top:2px">'+esc(s.notes.slice(0,60))+(s.notes.length>60?'...':'')+'</div>';
+        h+='</div>';
+      });
+      h+='<button class="btn-sm btn-o" style="width:100%;margin-top:6px" onclick="go(\'sessions\')">전체 보기 →</button>';
+      h+='</div>';
+    }
+
+    document.getElementById('content').innerHTML=h;
+
+    function syncEditState(){
+      if(!homeEditMode)return;
+      homeEditState.title=document.getElementById('edit-title').value;
+      homeEditState.blocks=homeEditState.blocks.map(function(_,idx){
+        return {
+          time:document.querySelector('[data-edit-time="'+idx+'"]').value,
+          name:document.querySelector('[data-edit-name="'+idx+'"]').value,
+          detail:document.querySelector('[data-edit-detail="'+idx+'"]').value
+        };
+      });
+    }
+
+    document.getElementById('content').onclick=function(e){
+      var el=e.target;
+      // 편집 모드 진입 (기존 프로그램 있으면 복사, 없으면 빈 상태)
+      if(el.id==='edit-toggle'||el.id==='edit-create'){
+        homeEditMode=true;
+        var srcProg=today.program||{title:'',blocks:[]};
+        homeEditState={title:srcProg.title||'',blocks:JSON.parse(JSON.stringify(srcProg.blocks||[]))};
+        loadHome();return;
+      }
+      if(el.id==='edit-cancel'){homeEditMode=false;homeEditState=null;loadHome();return}
+      if(el.id==='edit-add-drill'){
+        homeEditState.title=document.getElementById('edit-title').value;
+        pickDrill(function(d){
+          homeEditState.blocks.push({time:(d.duration?d.duration+'분':'30분'),name:d.name,detail:d.detail||''});
+          loadHome();
+        });
+        return;
+      }
+      if(el.id==='edit-add'){
+        syncEditState();
+        homeEditState.blocks.push({time:'30분',name:'',detail:''});
+        loadHome();return;
+      }
+      if(el.getAttribute('data-edit-del')!==null){
+        syncEditState();
+        homeEditState.blocks.splice(+el.getAttribute('data-edit-del'),1);
+        loadHome();return;
+      }
+      if(el.id==='edit-save'){
+        syncEditState();
+        F('/programs/'+today.phase+'/'+today.day_of_week,{method:'PUT',body:{title:homeEditState.title,blocks:homeEditState.blocks}}).then(function(){
+          toast('저장!');homeEditMode=false;homeEditState=null;loadHome();
+        }).catch(function(err){toast('오류: '+err.message)});
+        return;
+      }
+      if(el.id==='edit-reset'){
+        if(!confirm('마스터 시드 데이터로 복구할까요? 현재 변경사항이 사라집니다.'))return;
+        F('/programs/'+today.phase+'/'+today.day_of_week+'/reset',{method:'POST',body:{}}).then(function(){
+          toast('복구!');homeEditMode=false;homeEditState=null;loadHome();
+        });
+        return;
+      }
+      // 그룹 카드 클릭
+      var p=el;while(p&&p!==this&&!p.getAttribute('data-group-id')){p=p.parentElement}
+      if(p&&p.getAttribute('data-group-id')){go('groups')}
+    };
+  }).catch(function(e){document.getElementById('content').innerHTML='<div class="alert-box alert-red">'+e.message+'</div>'});
+}
+
+// 오늘 일지로 빠른 저장
+function quickLog(){
+  F('/today').then(function(t){
+    if(!t.program)return;
+    F('/sessions',{method:'POST',body:{
+      date:t.date, phase:t.phase, group_name:'',
+      title:t.program.title, blocks:t.program.blocks,
+      notes:'', feedback:''
+    }}).then(function(){toast('일지 저장!');go('sessions')});
+  });
+}
+
+// ========== 프로그램 (단계 × 요일 전체 보기, 편집 가능) ==========
+var currentProgPhase=null;
+var progEditDow=null; // 현재 편집중인 요일 (1~6)
+var progEditState=null; // {title, blocks}
+var progDaysCache=null;
+
+function loadProgram(){
+  Promise.all([F('/phases'),F('/settings/phase')]).then(function(res){
+    var phases=res[0];
+    if(!currentProgPhase)currentProgPhase=res[1].phase;
+    var h='<div style="font-size:18px;font-weight:800;margin-bottom:12px">📅 단계별 프로그램</div>';
+    h+='<div style="margin-bottom:12px">';
+    Object.keys(phases).forEach(function(p){
+      var info=phases[p];var on=p===currentProgPhase;
+      h+='<button class="tab-pill '+(on?'on':'')+'" data-pp="'+p+'">'+info.label+'</button>';
+    });
+    h+='</div>';
+    h+='<div id="prog-list">로딩...</div>';
+    document.getElementById('content').innerHTML=h;
+    loadProgramDays(currentProgPhase, phases);
+    document.getElementById('content').onclick=function(e){
+      var t=e.target;while(t&&t!==this&&!t.getAttribute('data-pp')){t=t.parentElement}
+      if(t&&t.getAttribute('data-pp')){currentProgPhase=t.getAttribute('data-pp');progEditDow=null;loadProgram()}
+    };
+  });
+}
+
+function loadProgramDays(phase, phases){
+  F('/phases/'+phase+'/programs').then(function(days){
+    progDaysCache=days;
+    renderProgramDays(phase, phases, days);
+  });
+}
+
+function renderProgramDays(phase, phases, days){
+  var info=phases[phase]||{};
+  var h='';
+  days.forEach(function(d){
+    var isEditing = progEditDow===d.day_of_week;
+    var blocks = isEditing ? progEditState.blocks : d.blocks;
+    var title = isEditing ? progEditState.title : d.title;
+
+    h+='<div class="card" style="border-left:3px solid '+(info.color||'#3b82f6')+'">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:8px">';
+    h+='<div style="flex:1;min-width:0">';
+    h+='<div style="font-size:11px;color:'+(info.color||'#3b82f6')+';font-weight:700">'+DAY_NAMES[d.day_of_week]+'요일</div>';
+    if(isEditing){
+      h+='<input id="pe-title" value="'+esc(title)+'" placeholder="프로그램 제목" style="margin-top:4px;font-size:14px;font-weight:700">';
+    } else {
+      h+='<div style="font-size:14px;font-weight:700;margin-top:2px">'+esc(title)+'</div>';
+    }
+    h+='</div>';
+    if(isEditing){
+      h+='<button class="btn-sm btn-o" data-pe-cancel="1" style="font-size:10px">취소</button>';
+    } else {
+      h+='<button class="btn-sm btn-o" data-pe-edit="'+d.day_of_week+'" style="font-size:10px">✏️</button>';
+    }
+    h+='</div>';
+
+    blocks.forEach(function(b,idx){
+      if(isEditing){
+        h+='<div class="block-row" style="flex-direction:column;gap:4px">';
+        h+='<div style="display:flex;gap:6px;align-items:center">';
+        h+='<input data-pe-time="'+idx+'" value="'+esc(b.time||'')+'" placeholder="시간" style="width:80px;font-size:11px;padding:6px">';
+        h+='<input data-pe-name="'+idx+'" value="'+esc(b.name||'')+'" placeholder="훈련 이름" style="flex:1;font-size:13px;padding:6px;font-weight:600">';
+        h+='<button class="btn-sm btn-o" data-pe-del="'+idx+'" style="background:rgba(239,68,68,.1);border-color:#ef4444;color:#fca5a5;padding:6px 10px">🗑️</button>';
+        h+='</div>';
+        h+='<input data-pe-detail="'+idx+'" value="'+esc(b.detail||'')+'" placeholder="상세 (선택)" style="font-size:11px;padding:6px">';
+        h+='</div>';
+      } else {
+        h+='<div class="block-row">';
+        h+='<div class="block-time">'+esc(b.time||'')+'</div>';
+        h+='<div style="flex:1"><div class="block-name">'+esc(b.name||'')+'</div>';
+        if(b.detail)h+='<div class="block-detail">'+esc(b.detail)+'</div>';
+        h+='</div></div>';
+      }
+    });
+
+    if(isEditing){
+      h+='<div style="display:flex;gap:6px;margin-top:8px">';
+      h+='<button class="btn-sm btn-o" data-pe-add="1" style="flex:1;border-style:dashed">+ 블록 직접</button>';
+      h+='<button class="btn-sm btn-y" data-pe-add-drill="1" style="flex:1">🎯 드릴에서</button>';
+      h+='</div>';
+      h+='<div style="display:flex;gap:6px;margin-top:10px">';
+      h+='<button class="btn btn-y" data-pe-reset="'+d.day_of_week+'" style="flex:1">🔄 시드 복구</button>';
+      h+='<button class="btn btn-g" data-pe-save="'+d.day_of_week+'" style="flex:2">💾 저장</button>';
+      h+='</div>';
+    }
+    h+='</div>';
+  });
+
+  // 새 요일 프로그램 만들기 (없는 요일이 있으면)
+  var existingDows=days.map(function(d){return d.day_of_week});
+  for(var dow=1;dow<=6;dow++){
+    if(existingDows.indexOf(dow)===-1){
+      h+='<div class="card" style="border:1px dashed #334155;text-align:center;color:#64748b">';
+      h+='<div style="font-size:13px;margin-bottom:6px">'+DAY_NAMES[dow]+'요일 프로그램 없음</div>';
+      h+='<button class="btn-sm btn-g" data-pe-create="'+dow+'">+ 새로 만들기</button>';
+      h+='</div>';
+    }
+  }
+
+  document.getElementById('prog-list').innerHTML=h;
+
+  function syncEdit(){
+    if(progEditDow===null)return;
+    progEditState.title=document.getElementById('pe-title').value;
+    progEditState.blocks=progEditState.blocks.map(function(_,idx){
+      return {
+        time:document.querySelector('[data-pe-time="'+idx+'"]').value,
+        name:document.querySelector('[data-pe-name="'+idx+'"]').value,
+        detail:document.querySelector('[data-pe-detail="'+idx+'"]').value
+      };
+    });
+  }
+
+  document.getElementById('prog-list').onclick=function(e){
+    var t=e.target;
+    if(t.getAttribute('data-pe-edit')){
+      progEditDow=+t.getAttribute('data-pe-edit');
+      var d=days.find(function(x){return x.day_of_week===progEditDow});
+      progEditState={title:d.title,blocks:JSON.parse(JSON.stringify(d.blocks))};
+      renderProgramDays(phase, phases, days);return;
+    }
+    if(t.getAttribute('data-pe-cancel')){progEditDow=null;progEditState=null;renderProgramDays(phase, phases, days);return}
+    if(t.getAttribute('data-pe-add')){syncEdit();progEditState.blocks.push({time:'30분',name:'',detail:''});renderProgramDays(phase, phases, days);return}
+    if(t.getAttribute('data-pe-del')!==null && t.getAttribute('data-pe-del')!==''){
+      syncEdit();progEditState.blocks.splice(+t.getAttribute('data-pe-del'),1);renderProgramDays(phase, phases, days);return;
+    }
+    if(t.getAttribute('data-pe-save')){
+      syncEdit();
+      var dow=+t.getAttribute('data-pe-save');
+      F('/programs/'+phase+'/'+dow,{method:'PUT',body:{title:progEditState.title,blocks:progEditState.blocks}}).then(function(){
+        toast('저장!');progEditDow=null;progEditState=null;loadProgramDays(phase, phases);
+      });return;
+    }
+    if(t.getAttribute('data-pe-reset')){
+      if(!confirm('마스터 시드 데이터로 복구할까요?'))return;
+      var dow=+t.getAttribute('data-pe-reset');
+      F('/programs/'+phase+'/'+dow+'/reset',{method:'POST',body:{}}).then(function(){
+        toast('복구!');progEditDow=null;progEditState=null;loadProgramDays(phase, phases);
+      });return;
+    }
+    if(t.getAttribute('data-pe-create')){
+      var dow=+t.getAttribute('data-pe-create');
+      var title=prompt(DAY_NAMES[dow]+'요일 프로그램 제목:');
+      if(!title)return;
+      F('/programs/'+phase+'/'+dow,{method:'PUT',body:{title:title,blocks:[{time:'30분',name:'새 블록',detail:''}]}}).then(function(){
+        toast('생성!');progEditDow=dow;
+        loadProgramDays(phase, phases);
+      });
+      return;
+    }
+  };
+}
+
+// ========== 드릴 라이브러리 ==========
+var drillFilter={category:'',level:'',search:''};
+function loadDrills(){
+  Promise.all([F('/drills/categories'),F('/drills?'+toQS(drillFilter))]).then(function(res){
+    var cats=res[0],drills=res[1];
+    var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+    h+='<div style="font-size:18px;font-weight:800">🎯 드릴 라이브러리 <span class="sub">'+drills.length+'개</span></div>';
+    h+='<a class="btn-sm btn-o" href="/coach/api/export/drills.csv" style="text-decoration:none;color:#e2e8f0">📊 엑셀</a></div>';
+    h+='<input id="drill-search" placeholder="🔍 검색..." style="margin-bottom:10px" value="'+esc(drillFilter.search)+'">';
+    h+='<div style="margin-bottom:8px">';
+    h+='<button class="tab-pill '+(drillFilter.category===''?'on':'')+'" data-cat="">전체</button>';
+    cats.forEach(function(c){h+='<button class="tab-pill '+(drillFilter.category===c.category?'on':'')+'" data-cat="'+esc(c.category)+'">'+esc(c.category)+' '+c.c+'</button>'});
+    h+='</div>';
+    h+='<div style="margin-bottom:12px">';
+    ['','easy','medium','hard'].forEach(function(l){
+      var label={'':'전체','easy':'🟢 쉬움','medium':'🟡 보통','hard':'🔴 어려움'}[l];
+      h+='<button class="tab-pill '+(drillFilter.level===l?'on':'')+'" data-lv="'+l+'">'+label+'</button>';
+    });
+    h+='</div>';
+    drills.forEach(function(d){
+      h+='<div class="drill-card '+d.level+'">';
+      h+='<div style="display:flex;justify-content:space-between"><span style="font-size:13px;font-weight:700">'+esc(d.name)+'</span><span class="sub">'+d.duration+'분</span></div>';
+      h+='<div style="font-size:10px;color:#64748b;margin-top:2px">['+esc(d.category)+']</div>';
+      if(d.detail)h+='<div class="block-detail" style="margin-top:4px">'+esc(d.detail)+'</div>';
+      h+='</div>';
+    });
+    document.getElementById('content').innerHTML=h;
+
+    var srch=document.getElementById('drill-search');
+    srch.oninput=function(){clearTimeout(window._t);window._t=setTimeout(function(){drillFilter.search=srch.value;loadDrills()},300)};
+    document.getElementById('content').onclick=function(e){
+      var t=e.target;
+      if(t.getAttribute('data-cat')!==null){drillFilter.category=t.getAttribute('data-cat');loadDrills();return}
+      if(t.getAttribute('data-lv')!==null){drillFilter.level=t.getAttribute('data-lv');loadDrills();return}
+    };
+  });
+}
+
+function toQS(obj){return Object.keys(obj).filter(function(k){return obj[k]}).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(obj[k])}).join('&')}
+
+// ========== 그룹 프리셋 ==========
+var grpEditId=null; // 편집중인 그룹 id (-1이면 신규 추가)
+var grpEditState=null; // {name, description, duration, blocks}
+
+function loadGroups(){
+  Promise.all([F('/groups'),F('/templates')]).then(function(res){
+    renderGroups(res[0], res[1]);
+  });
+}
+
+function renderGroups(groups, templates){
+  templates = templates || [];
+  var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+  h+='<div style="font-size:18px;font-weight:800">👥 그룹 프리셋</div>';
+  if(grpEditId===null)h+='<button class="btn-sm btn-g" data-grp-new="1">+ 새 그룹</button>';
+  h+='</div>';
+  h+='<div class="sub" style="margin-bottom:8px">사장님 메소드 ('+groups.length+') · 외국 아카데미 ('+templates.length+')</div>';
+
+  // 신규 추가 모드
+  if(grpEditId===-1){
+    h+=renderGroupEdit({id:-1});
+  }
+
+  groups.forEach(function(g){
+    var isEditing = grpEditId===g.id;
+    if(isEditing){
+      h+=renderGroupEdit(g);
+    } else {
+      h+='<div class="card">';
+      h+='<div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:8px">';
+      h+='<div style="flex:1;min-width:0">';
+      h+='<div style="font-size:14px;font-weight:700">'+esc(g.name)+'</div>';
+      h+='<div class="sub">'+esc(g.description||'')+' · '+g.duration+'분</div>';
+      h+='</div>';
+      h+='<div style="display:flex;gap:4px">';
+      h+='<button class="btn-sm btn-o" data-grp-edit="'+g.id+'" style="font-size:10px;padding:4px 8px">✏️</button>';
+      h+='<button class="btn-sm btn-o" data-grp-del="'+g.id+'" style="font-size:10px;padding:4px 8px;border-color:#ef4444;color:#fca5a5">🗑️</button>';
+      h+='</div></div>';
+      g.blocks.forEach(function(b){
+        h+='<div class="block-row">';
+        h+='<div class="block-time">'+esc(b.time||'')+'</div>';
+        h+='<div style="flex:1"><div class="block-name">'+esc(b.name||'')+'</div>';
+        if(b.detail)h+='<div class="block-detail">'+esc(b.detail)+'</div>';
+        h+='</div></div>';
+      });
+      h+='<button class="btn-sm btn-g" style="width:100%;margin-top:8px" data-use-group="'+g.id+'">📓 이 프리셋으로 일지 시작</button>';
+      h+='</div>';
+    }
+  });
+
+  // 외국 아카데미 메소드 (templates) 섹션
+  if(templates.length){
+    h+='<div style="margin-top:18px;padding-top:14px;border-top:1px solid #1e293b">';
+    h+='<div style="font-size:14px;font-weight:700;color:#a78bfa;margin-bottom:8px">📚 외국 아카데미 메소드 ('+templates.length+')</div>';
+    h+='<div class="sub" style="margin-bottom:10px">Nadal / IMG / Mouratoglou / Bollettieri 등 시그니처 — 클릭하면 운동 상세 보기</div>';
+    // 메소드별 그룹화
+    var byMethod={};
+    templates.forEach(function(t){
+      var m=t.methodology||'기타';
+      if(!byMethod[m])byMethod[m]=[];
+      byMethod[m].push(t);
+    });
+    Object.keys(byMethod).forEach(function(m){
+      h+='<div style="font-size:11px;color:#64748b;margin:8px 0 4px;text-transform:uppercase;letter-spacing:1px">'+m+'</div>';
+      byMethod[m].forEach(function(t){
+        h+='<div class="card" data-tmpl="'+t.id+'" style="cursor:pointer;border-left:3px solid #a78bfa">';
+        h+='<div style="font-size:13px;font-weight:700">'+esc(t.name)+'</div>';
+        h+='<div class="sub" style="margin-top:2px">'+esc(t.description||'')+'</div>';
+        h+='</div>';
+      });
+    });
+    h+='</div>';
+  }
+
+  document.getElementById('content').innerHTML=h;
+
+  function syncGrp(){
+    if(grpEditId===null)return;
+    grpEditState.name=document.getElementById('ge-name').value;
+    grpEditState.description=document.getElementById('ge-desc').value;
+    grpEditState.duration=+document.getElementById('ge-dur').value||60;
+    grpEditState.blocks=grpEditState.blocks.map(function(_,idx){
+      return {
+        time:document.querySelector('[data-ge-time="'+idx+'"]').value,
+        name:document.querySelector('[data-ge-name="'+idx+'"]').value,
+        detail:document.querySelector('[data-ge-detail="'+idx+'"]').value
+      };
+    });
+  }
+
+  document.getElementById('content').onclick=function(e){
+    var t=e.target;
+    if(t.getAttribute('data-grp-new')){
+      grpEditId=-1;
+      grpEditState={name:'',description:'',duration:120,blocks:[{time:'30분',name:'',detail:''}]};
+      renderGroups(groups);return;
+    }
+    if(t.getAttribute('data-grp-edit')){
+      grpEditId=+t.getAttribute('data-grp-edit');
+      var g=groups.find(function(x){return x.id===grpEditId});
+      grpEditState={name:g.name,description:g.description||'',duration:g.duration||60,blocks:JSON.parse(JSON.stringify(g.blocks))};
+      renderGroups(groups);return;
+    }
+    if(t.getAttribute('data-grp-del')){
+      if(!confirm('이 그룹 프리셋을 삭제할까요?'))return;
+      F('/groups/'+t.getAttribute('data-grp-del'),{method:'DELETE'}).then(function(){toast('삭제!');loadGroups()});
+      return;
+    }
+    if(t.getAttribute('data-ge-cancel')){grpEditId=null;grpEditState=null;renderGroups(groups);return}
+    if(t.getAttribute('data-ge-add-drill')){syncGrp();pickDrill(function(d){grpEditState.blocks.push({time:(d.duration?d.duration+'분':'30분'),name:d.name,detail:d.detail||''});renderGroups(groups);});return}
+    if(t.getAttribute('data-ge-add')){syncGrp();grpEditState.blocks.push({time:'30분',name:'',detail:''});renderGroups(groups);return}
+    if(t.getAttribute('data-ge-block-del')!==null && t.getAttribute('data-ge-block-del')!==''){
+      syncGrp();grpEditState.blocks.splice(+t.getAttribute('data-ge-block-del'),1);renderGroups(groups);return;
+    }
+    if(t.getAttribute('data-ge-save')){
+      syncGrp();
+      if(!grpEditState.name||!grpEditState.name.trim()){alert('이름은 필수');return}
+      var id=+t.getAttribute('data-ge-save');
+      var body={name:grpEditState.name,description:grpEditState.description,duration:grpEditState.duration,blocks:grpEditState.blocks};
+      var p=id<0?F('/groups',{method:'POST',body:body}):F('/groups/'+id,{method:'PUT',body:body});
+      p.then(function(){toast('저장!');grpEditId=null;grpEditState=null;loadGroups()});
+      return;
+    }
+    if(t.getAttribute('data-use-group')){
+      var g=groups.find(function(x){return x.id===+t.getAttribute('data-use-group')});
+      if(g){
+        var date=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Ulaanbaatar'});
+        F('/sessions',{method:'POST',body:{date:date,group_name:g.name,title:g.name,blocks:g.blocks,notes:'',feedback:''}}).then(function(){toast('일지 시작!');go('sessions')});
+      }
+      return;
+    }
+    // 외국 아카데미 템플릿 클릭 → 상세 보기
+    var p=t;while(p&&p!==this&&!p.getAttribute('data-tmpl')){p=p.parentElement}
+    if(p&&p.getAttribute('data-tmpl')){showTemplateDetail(+p.getAttribute('data-tmpl'),'groups')}
+  };
+}
+
+function renderGroupEdit(g){
+  var s=grpEditState;
+  var h='<div class="card" style="border:1px solid #22c55e">';
+  h+='<div style="font-size:13px;font-weight:700;color:#22c55e;margin-bottom:8px">'+(g.id<0?'+ 새 그룹':'✏️ 편집')+'</div>';
+  h+='<input id="ge-name" value="'+esc(s.name)+'" placeholder="그룹 이름 (예: 엘리트 선수반)" style="margin-bottom:6px">';
+  h+='<input id="ge-desc" value="'+esc(s.description)+'" placeholder="설명 (선택)" style="margin-bottom:6px">';
+  h+='<input id="ge-dur" type="number" value="'+s.duration+'" placeholder="총 시간(분)" style="margin-bottom:8px">';
+  s.blocks.forEach(function(b,idx){
+    h+='<div class="block-row" style="flex-direction:column;gap:4px">';
+    h+='<div style="display:flex;gap:6px;align-items:center">';
+    h+='<input data-ge-time="'+idx+'" value="'+esc(b.time||'')+'" placeholder="시간" style="width:80px;font-size:11px;padding:6px">';
+    h+='<input data-ge-name="'+idx+'" value="'+esc(b.name||'')+'" placeholder="블록 이름" style="flex:1;font-size:13px;padding:6px;font-weight:600">';
+    h+='<button class="btn-sm btn-o" data-ge-block-del="'+idx+'" style="background:rgba(239,68,68,.1);border-color:#ef4444;color:#fca5a5;padding:6px 10px">🗑️</button>';
+    h+='</div>';
+    h+='<input data-ge-detail="'+idx+'" value="'+esc(b.detail||'')+'" placeholder="상세 (선택)" style="font-size:11px;padding:6px">';
+    h+='</div>';
+  });
+  h+='<div style="display:flex;gap:6px;margin-top:8px">';
+  h+='<button class="btn-sm btn-o" data-ge-add="1" style="flex:1;border-style:dashed">+ 블록 직접</button>';
+  h+='<button class="btn-sm btn-y" data-ge-add-drill="1" style="flex:1">🎯 드릴에서</button>';
+  h+='</div>';
+  h+='<div style="display:flex;gap:6px;margin-top:10px">';
+  h+='<button class="btn btn-o" data-ge-cancel="1" style="flex:1">취소</button>';
+  h+='<button class="btn btn-g" data-ge-save="'+g.id+'" style="flex:2">💾 저장</button>';
+  h+='</div></div>';
+  return h;
+}
+
+// ========== 일지 ==========
+function loadSessions(){
+  F('/sessions').then(function(rows){
+    var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+    h+='<div style="font-size:18px;font-weight:800">📓 훈련 일지 <span class="sub">'+rows.length+'개</span></div>';
+    h+='<a class="btn-sm btn-o" href="/coach/api/export/sessions.csv" style="text-decoration:none;color:#e2e8f0">📊 엑셀</a></div>';
+    h+='<button class="btn btn-g" style="width:100%;margin-bottom:12px" onclick="quickLog()">+ 오늘 일지 새로 만들기</button>';
+    if(!rows.length){h+='<div class="alert-box alert-blue">아직 일지가 없습니다. 홈에서 "오늘 일지로 저장" 또는 그룹 프리셋에서 시작하세요.</div>'}
+    rows.forEach(function(s){
+      h+='<div class="card">';
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+      h+='<div><div style="font-size:13px;font-weight:700">'+esc(s.date)+'</div>';
+      h+='<div class="sub">'+esc(s.title||s.group_name||'훈련')+'</div></div>';
+      h+='<button class="btn-sm btn-o" data-del-sess="'+s.id+'">삭제</button></div>';
+      if(s.blocks&&s.blocks.length){
+        s.blocks.forEach(function(b){
+          h+='<div style="font-size:11px;padding:4px 0;color:#94a3b8">• '+esc(b.time||'')+' '+esc(b.name||'')+'</div>';
+        });
+      }
+      h+='<textarea data-notes-id="'+s.id+'" rows="2" placeholder="메모/피드백" style="margin-top:8px">'+esc(s.notes||'')+'</textarea>';
+      h+='<button class="btn-sm btn-y" style="margin-top:6px" data-save-sess="'+s.id+'">저장</button>';
+      h+='</div>';
+    });
+    document.getElementById('content').innerHTML=h;
+    document.getElementById('content').onclick=function(e){
+      var t=e.target;
+      if(t.getAttribute('data-del-sess')){
+        if(confirm('이 일지를 삭제할까요?'))F('/sessions/'+t.getAttribute('data-del-sess'),{method:'DELETE'}).then(loadSessions);
+      }
+      if(t.getAttribute('data-save-sess')){
+        var id=t.getAttribute('data-save-sess');
+        var notes=document.querySelector('[data-notes-id="'+id+'"]').value;
+        var s=rows.find(function(x){return x.id===+id});
+        F('/sessions/'+id,{method:'PUT',body:{title:s.title,blocks:s.blocks,attendance:s.attendance,notes:notes,feedback:s.feedback||''}}).then(function(){toast('저장!')});
+      }
+    };
+  });
+}
+
+// ========== 선수 ==========
+var currentAthleteId=null;
+function loadAthletes(){
+  if(currentAthleteId){return loadAthleteDetail(currentAthleteId)}
+  F('/athletes').then(function(athletes){
+    var h='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+    h+='<div style="font-size:18px;font-weight:800">👤 선수</div>';
+    h+='<button class="btn-sm btn-g" id="ath-add">+ 새 선수</button></div>';
+    if(!athletes.length)h+='<div class="alert-box alert-blue">아직 등록된 선수가 없습니다.</div>';
+    athletes.forEach(function(a){
+      h+='<div class="card" data-ath="'+a.id+'" style="cursor:pointer">';
+      h+='<div style="display:flex;justify-content:space-between;align-items:center">';
+      h+='<div><div style="font-size:14px;font-weight:700">'+esc(a.name)+'</div>';
+      h+='<div class="sub">'+esc(a.level||'-')+(a.age?' · '+esc(a.age)+'세':'')+'</div></div>';
+      h+='<div style="font-size:11px;color:#22c55e">→</div></div></div>';
+    });
+    document.getElementById('content').innerHTML=h;
+    document.getElementById('content').onclick=function(e){
+      var t=e.target;
+      if(t.id==='ath-add'){
+        var name=prompt('선수 이름:');if(!name)return;
+        var level=prompt('레벨 (예: 엘리트, 동호인, 키즈):','엘리트');
+        var age=prompt('나이 (선택):','');
+        F('/athletes',{method:'POST',body:{name:name,level:level||'',age:age?+age:null}}).then(function(){toast('추가!');loadAthletes()});
+        return;
+      }
+      var p=t;while(p&&p!==this&&!p.getAttribute('data-ath')){p=p.parentElement}
+      if(p&&p.getAttribute('data-ath')){currentAthleteId=+p.getAttribute('data-ath');loadAthleteDetail(currentAthleteId)}
+    };
+  });
+}
+
+function loadAthleteDetail(aid){
+  Promise.all([F('/athletes'),F('/athletes/'+aid+'/programs')]).then(function(res){
+    var a=res[0].find(function(x){return x.id===aid});
+    var programs=res[1];
+    if(!a){currentAthleteId=null;return loadAthletes()}
+    var shareUrl=window.location.origin+'/coach/share/'+a.share_token;
+    var h='<div style="margin-bottom:12px"><button class="btn-sm btn-o" id="ath-back">← 선수 목록</button></div>';
+    h+='<div class="card">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:start">';
+    h+='<div><div style="font-size:18px;font-weight:800">'+esc(a.name)+'</div>';
+    h+='<div class="sub" style="margin-top:2px">'+esc(a.level||'-')+(a.age?' · '+esc(a.age)+'세':'')+'</div></div>';
+    h+='<button class="btn-sm btn-o" id="ath-edit">✏️</button></div>';
+    h+='<div style="margin-top:10px;padding:8px;background:rgba(34,197,94,.1);border-radius:6px;font-size:11px;word-break:break-all" id="share-url">🔗 '+shareUrl+'</div>';
+    h+='<div style="display:flex;gap:6px;margin-top:8px">';
+    h+='<button class="btn-sm btn-o" id="copy-share" style="flex:1">📋 링크 복사</button>';
+    h+='<button class="btn-sm btn-o" id="regen-token" style="flex:1">🔄 새 토큰</button>';
+    h+='<a class="btn-sm btn-o" href="/coach/api/export/athletes/'+aid+'/programs.csv" style="flex:1;text-decoration:none;text-align:center;color:#e2e8f0">📊 엑셀</a>';
+    h+='</div></div>';
+
+    // 프로그램 추가
+    h+='<button class="btn btn-g" style="width:100%;margin-bottom:10px" id="prg-add">+ 오늘 프로그램 추가</button>';
+
+    if(!programs.length)h+='<div class="alert-box alert-blue">아직 프로그램이 없습니다.</div>';
+    programs.forEach(function(p){
+      h+='<div class="card" style="border-left:3px solid #22c55e">';
+      h+='<div style="display:flex;justify-content:space-between;margin-bottom:6px">';
+      h+='<div><div style="font-size:13px;font-weight:700">'+esc(p.program_date)+' · '+esc(p.title||'무제')+'</div>';
+      if(p.coach_note)h+='<div class="sub">'+esc(p.coach_note)+'</div></div>';
+      h+='<button class="btn-sm btn-o" data-prg-del="'+p.id+'" style="font-size:10px">🗑️</button></div>';
+      if(p.exercises&&p.exercises.length){
+        p.exercises.forEach(function(e){
+          h+='<div style="padding:6px;background:rgba(15,23,42,.5);border-radius:6px;margin-bottom:4px;display:flex;gap:8px;align-items:start">';
+          h+='<input type="checkbox" '+(e.done?'checked':'')+' data-ex-toggle="'+e.id+'" style="width:auto;margin-top:2px">';
+          h+='<div style="flex:1;font-size:12px">';
+          h+='<div style="font-weight:600;'+(e.done?'text-decoration:line-through;opacity:.5':'')+'">['+esc(e.category)+'] '+esc(e.name)+'</div>';
+          var meta=[];
+          if(e.sets)meta.push(e.sets+'set');if(e.reps)meta.push(e.reps+'rep');if(e.duration_min)meta.push(e.duration_min+'분');
+          if(meta.length)h+='<div class="sub">'+meta.join(' · ')+'</div>';
+          if(e.notes)h+='<div class="sub" style="font-style:italic">'+esc(e.notes)+'</div>';
+          h+='</div>';
+          h+='<button class="btn-sm btn-o" data-ex-del="'+e.id+'" style="font-size:10px">🗑️</button>';
+          h+='</div>';
+        });
+      }
+      h+='<button class="btn-sm btn-o" style="width:100%;margin-top:6px;border-style:dashed" data-ex-add="'+p.id+'">+ 운동 추가</button>';
+      h+='<button class="btn-sm btn-o" style="width:100%;margin-top:4px" data-tmpl-apply="'+p.id+'">📚 템플릿 적용</button>';
+      h+='</div>';
+    });
+    document.getElementById('content').innerHTML=h;
+    document.getElementById('content').onclick=function(e){
+      var t=e.target;
+      if(t.id==='ath-back'){currentAthleteId=null;loadAthletes();return}
+      if(t.id==='copy-share'){
+        navigator.clipboard.writeText(shareUrl).then(function(){toast('복사!')}).catch(function(){
+          // fallback
+          var ta=document.createElement('textarea');ta.value=shareUrl;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('복사!');
+        });
+        return;
+      }
+      if(t.id==='regen-token'){
+        if(!confirm('새 공유 토큰을 만들면 기존 링크는 무효화됩니다. 진행할까요?'))return;
+        F('/athletes/'+aid+'/regen-token',{method:'POST',body:{}}).then(function(){toast('토큰 갱신!');loadAthleteDetail(aid)});
+        return;
+      }
+      if(t.id==='ath-edit'){
+        var name=prompt('이름:',a.name);if(!name)return;
+        var level=prompt('레벨:',a.level||'');
+        var age=prompt('나이:',a.age||'');
+        F('/athletes/'+aid,{method:'PUT',body:{name:name,level:level,age:age?+age:null}}).then(function(){toast('수정!');loadAthleteDetail(aid)});
+        return;
+      }
+      if(t.id==='prg-add'){
+        var date=prompt('날짜 (YYYY-MM-DD):',new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Ulaanbaatar'}));if(!date)return;
+        var title=prompt('제목:','');
+        F('/athletes/'+aid+'/programs',{method:'POST',body:{program_date:date,title:title,coach_note:''}}).then(function(){toast('추가!');loadAthleteDetail(aid)}).catch(function(e){alert(e.message)});
+        return;
+      }
+      if(t.getAttribute('data-prg-del')){
+        if(!confirm('이 프로그램을 삭제할까요?'))return;
+        F('/programs/'+t.getAttribute('data-prg-del'),{method:'DELETE'}).then(function(){toast('삭제!');loadAthleteDetail(aid)});
+        return;
+      }
+      if(t.getAttribute('data-ex-toggle')){
+        var done=t.checked?1:0;
+        F('/exercises/'+t.getAttribute('data-ex-toggle'),{method:'PUT',body:{done:done}}).then(function(){toast(done?'완료!':'해제')});
+        return;
+      }
+      if(t.getAttribute('data-ex-del')){
+        F('/exercises/'+t.getAttribute('data-ex-del'),{method:'DELETE'}).then(function(){loadAthleteDetail(aid)});
+        return;
+      }
+      if(t.getAttribute('data-ex-add')){
+        var pid=t.getAttribute('data-ex-add');
+        var category=prompt('카테고리 (technical/strength/movement/tactical/conditioning/match/mental/recovery/vision/nutrition):','technical');if(!category)return;
+        var name=prompt('운동 이름:');if(!name)return;
+        var sets=prompt('세트 (선택):','');
+        var reps=prompt('반복 (선택):','');
+        var duration=prompt('시간/분 (선택):','');
+        F('/programs/'+pid+'/exercises',{method:'POST',body:{category:category,name:name,sets:sets?+sets:null,reps:reps?+reps:null,duration_min:duration?+duration:null}}).then(function(){toast('추가!');loadAthleteDetail(aid)});
+        return;
+      }
+      if(t.getAttribute('data-tmpl-apply')){
+        var pid=t.getAttribute('data-tmpl-apply');
+        F('/templates').then(function(tmpls){
+          var names=tmpls.map(function(x,i){return (i+1)+'. '+x.name});
+          var pick=prompt('적용할 템플릿 번호:\n'+names.join('\n'));
+          if(!pick)return;
+          var idx=+pick-1;if(!tmpls[idx])return alert('잘못된 번호');
+          F('/programs/'+pid+'/apply-template/'+tmpls[idx].id,{method:'POST',body:{}}).then(function(d){toast(d.count+'개 운동 추가!');loadAthleteDetail(aid)});
+        });
+        return;
+      }
+    };
+  });
+}
+
+function showTemplateDetail(tid, fromTab){
+  fromTab = fromTab || 'groups';
+  F('/templates/'+tid).then(function(t){
+    var backLabel = fromTab==='athletes' ? '← 선수' : '← 그룹';
+    var h='<div style="margin-bottom:12px"><button class="btn-sm btn-o" id="t-back">'+backLabel+'</button></div>';
+    h+='<div class="card" style="border:1px solid #a78bfa">';
+    h+='<div style="font-size:16px;font-weight:800;color:#a78bfa">'+esc(t.name)+'</div>';
+    h+='<div class="sub" style="margin-top:4px">'+esc(t.description||'')+'</div>';
+    h+='<div style="margin-top:12px">';
+    (t.exercises||[]).forEach(function(e){
+      h+='<div style="padding:8px;background:rgba(15,23,42,.5);border-radius:6px;margin-bottom:4px">';
+      h+='<div style="font-size:12px;font-weight:600">['+esc(e.category)+'] '+esc(e.name)+'</div>';
+      var meta=[];if(e.sets)meta.push(e.sets+'set');if(e.reps)meta.push(e.reps+'rep');if(e.duration_min)meta.push(e.duration_min+'분');
+      if(meta.length)h+='<div class="sub">'+meta.join(' · ')+'</div>';
+      if(e.notes)h+='<div class="sub" style="font-style:italic">'+esc(e.notes)+'</div>';
+      h+='</div>';
+    });
+    h+='</div></div>';
+    document.getElementById('content').innerHTML=h;
+    document.getElementById('t-back').onclick=function(){
+      if(fromTab==='athletes')loadAthletes();
+      else loadGroups();
+    };
+  });
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>레슨 관리</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",sans-serif;margin:0;background:#f5f5f4;color:#1f1f1f;padding:16px}
+  .container{max-width:900px;margin:0 auto}
+  .header{display:flex;justify-content:space-between;align-items:center;margin:0 0 16px}
+  h1{font-size:22px;font-weight:600;margin:0}
+  .lang-btn{padding:6px 12px;background:#fff;border:1px solid #e5e5e4;border-radius:6px;font-size:12px;cursor:pointer}
+  .tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+  .tab{flex:1;min-width:80px;padding:10px 12px;background:#fff;border:1px solid #e5e5e4;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;transition:all .15s}
+  .tab:hover{background:#fafaf9}
+  .tab.active{background:#1f1f1f;color:#fff;border-color:#1f1f1f}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:16px}
+  .stat{background:#fff;border:1px solid #e5e5e4;border-radius:8px;padding:12px}
+  .stat-label{font-size:12px;color:#6b6b6a;margin-bottom:4px}
+  .stat-value{font-size:22px;font-weight:600}
+  .stat-value.warn{color:#b87a0c}
+  .stat-value.danger{color:#b91c1c}
+  .toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+  input[type=text],input[type=tel],input[type=number],input[type=date],input[type=time],input[type=month],input[type=password],select,textarea{padding:8px 10px;border:1px solid #d6d6d3;border-radius:6px;font-size:14px;font-family:inherit;background:#fff;color:#1f1f1f}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:#1f1f1f}
+  button{padding:8px 14px;background:#fff;border:1px solid #d6d6d3;border-radius:6px;cursor:pointer;font-size:14px;font-family:inherit;font-weight:500;transition:all .15s;color:#1f1f1f}
+  button:hover{background:#fafaf9}
+  button:active{transform:scale(.98)}
+  button.primary{background:#1f1f1f;color:#fff;border-color:#1f1f1f}
+  button.primary:hover{background:#333}
+  button.mini{padding:4px 10px;font-size:12px;font-weight:400}
+  button.danger{color:#b91c1c}
+  button.success{background:#ecfdf5;color:#047857;border-color:#a7f3d0}
+  button.warn{background:#fffbeb;color:#b45309;border-color:#fcd34d}
+  button.fail{background:#fef2f2;color:#b91c1c;border-color:#fecaca}
+  button.info{background:#eff6ff;color:#1e40af;border-color:#bfdbfe}
+  .card{background:#fff;border:1px solid #e5e5e4;border-radius:8px;padding:12px 14px;margin-bottom:8px}
+  .card-row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .name{font-weight:600;font-size:15px}
+  .sub{font-size:12px;color:#6b6b6a;margin-top:2px}
+  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;font-weight:500;margin-left:6px;vertical-align:middle}
+  .badge-active{background:#ecfdf5;color:#047857}
+  .badge-warn{background:#fffbeb;color:#b45309}
+  .badge-danger{background:#fef2f2;color:#b91c1c}
+  .actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .empty{text-align:center;padding:40px 20px;color:#9b9b98;font-size:14px}
+  .footer-bar{margin-top:24px;padding-top:16px;border-top:1px solid #e5e5e4;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center;padding:16px}
+  .modal-bg.show{display:flex}
+  .modal{background:#fff;border-radius:12px;padding:20px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+  .modal h3{font-size:17px;font-weight:600;margin:0 0 14px}
+  .field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+  .field label{font-size:12px;color:#6b6b6a;font-weight:500}
+  .field input,.field select,.field textarea{width:100%}
+  .field-row{display:flex;gap:8px}
+  .field-row .field{flex:1}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+  .panel{display:none}
+  .panel.show{display:block}
+  .checkbox-list{max-height:200px;overflow-y:auto;padding:8px;border:1px solid #e5e5e4;border-radius:6px}
+  .checkbox-list label{display:block;padding:4px 0;font-size:13px;cursor:pointer}
+  .right{text-align:right}
+  .save-indicator{font-size:11px;color:#9b9b98;margin-left:auto}
+  .menu-dropdown{position:relative}
+  .menu-btn{padding:8px 12px;background:#fff;border:1px solid #e5e5e4;border-radius:8px;cursor:pointer;font-size:18px;line-height:1}
+  .menu-list{position:absolute;top:100%;right:0;margin-top:4px;background:#fff;border:1px solid #e5e5e4;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.08);min-width:200px;z-index:50;display:none;overflow:hidden}
+  .menu-list.open{display:block}
+  .menu-list button{display:flex;align-items:center;gap:8px;width:100%;padding:10px 14px;background:transparent;border:none;border-radius:0;font-size:14px;text-align:left;cursor:pointer;color:#1f1f1f}
+  .menu-list button:hover{background:#f5f5f4}
+  .menu-list .divider{height:1px;background:#e5e5e4;margin:4px 0}
+  /* 로그인 */
+  #login{display:flex;align-items:center;justify-content:center;min-height:80vh}
+  .login-card{background:#fff;border:1px solid #e5e5e4;border-radius:12px;padding:32px;width:100%;max-width:360px;text-align:center}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="login-card">
+    <div style="font-size:42px;margin-bottom:8px">🎾</div>
+    <h2 style="margin:0 0 6px;font-size:20px" data-i18n="title">레슨 관리</h2>
+    <p style="color:#6b6b6a;font-size:13px;margin:0 0 20px" data-i18n="login_sub">간편한 학생/출석/결제 관리</p>
+    <div class="field"><label data-i18n="username">아이디</label><input type="text" id="lg-user" autocomplete="username"></div>
+    <div class="field"><label data-i18n="password">비밀번호</label><input type="password" id="lg-pass" autocomplete="current-password"></div>
+    <button class="primary" style="width:100%;padding:10px" onclick="doLogin()" data-i18n="login">로그인</button>
+    <p id="lg-err" style="color:#b91c1c;font-size:13px;margin:10px 0 0;min-height:18px"></p>
+    <button class="lang-btn" style="margin-top:12px" onclick="toggleLang()">🌐 한 / Мн</button>
+  </div>
+</div>
+
+<div class="container" id="app" style="display:none">
+  <div class="header">
+    <h1>🎾 <span data-i18n="title">레슨 관리</span></h1>
+    <div class="menu-dropdown">
+      <button class="menu-btn" onclick="toggleHeaderMenu(event)" title="메뉴">⋮</button>
+      <div class="menu-list" id="header-menu">
+        <button onclick="closeHeaderMenu();sendUnpaidNotify()">🔔 <span data-i18n="notify">알림 보내기</span></button>
+        <button onclick="closeHeaderMenu();openPrograms()">⚙️ <span data-i18n="programs">프로그램 설정</span></button>
+        <button onclick="closeHeaderMenu();openAttSheet()">📅 <span data-i18n="att_sheet">출석표</span></button>
+        <div class="divider"></div>
+        <button onclick="closeHeaderMenu();exportStudentsCSV()">📊 <span data-i18n="export_csv">엑셀(CSV) 내보내기</span></button>
+        <button onclick="closeHeaderMenu();importStudentsCSV()">📥 <span data-i18n="import_csv">CSV 불러오기</span></button>
+        <button onclick="closeHeaderMenu();downloadBackup()">💾 <span data-i18n="backup">전체 백업</span></button>
+        <button onclick="closeHeaderMenu();restoreBackup()">♻️ <span data-i18n="restore">복원</span></button>
+        <div class="divider"></div>
+        <button onclick="closeHeaderMenu();toggleLang()">🌐 한 / Мн</button>
+        <button onclick="closeHeaderMenu();logout()" style="color:#b91c1c">🚪 <span data-i18n="logout">로그아웃</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="students" data-i18n="tab_students">수강생</button>
+    <button class="tab" data-tab="schedule" data-i18n="tab_schedule">일정</button>
+    <button class="tab" data-tab="attendance" data-i18n="tab_attend">출석</button>
+    <button class="tab" data-tab="payment" data-i18n="tab_pay">결제</button>
+    <button class="tab" onclick="window.location.href='/coach/'" style="background:linear-gradient(135deg,#ef4444,#dc2626);color:white;border:none">🏃 코치 프로그램</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-label" data-i18n="stat_total">전체 수강생</div><div class="stat-value" id="stat-total">0명</div></div>
+    <div class="stat"><div class="stat-label" data-i18n="stat_active">활성 회원</div><div class="stat-value" id="stat-active">0명</div></div>
+    <div class="stat"><div class="stat-label" data-i18n="stat_expiring">만료 임박</div><div class="stat-value warn" id="stat-expiring">0명</div></div>
+    <div class="stat"><div class="stat-label" data-i18n="stat_revenue">이번달 매출</div><div class="stat-value" id="stat-revenue">0₮</div></div>
+  </div>
+
+  <!-- 수강생 -->
+  <div class="panel show" id="panel-students">
+    <div class="toolbar">
+      <input type="text" id="search-input" data-i18n-ph="search" placeholder="이름 또는 전화번호 검색" style="flex:1;min-width:180px" oninput="renderStudents()">
+      <select id="filter-status" style="width:130px" onchange="renderStudents()">
+        <option value="all" data-i18n="all">전체</option>
+        <option value="active" data-i18n="active">활성</option>
+        <option value="expiring" data-i18n="expiring">만료 임박</option>
+        <option value="expired" data-i18n="expired">만료</option>
+      </select>
+      <button class="primary" onclick="editStudent(null)" data-i18n="add_student">+ 신규 등록</button>
+    </div>
+    <div id="student-list"></div>
+  </div>
+
+  <!-- 일정 -->
+  <div class="panel" id="panel-schedule">
+    <div class="toolbar">
+      <input type="date" id="schedule-date" style="width:160px" onchange="renderSchedule()">
+      <button class="primary" onclick="editSchedule(null)" data-i18n="add_lesson">+ 레슨 추가</button>
+    </div>
+    <div id="schedule-list"></div>
+  </div>
+
+  <!-- 출석 -->
+  <div class="panel" id="panel-attendance">
+    <div class="toolbar">
+      <input type="date" id="att-date" style="width:160px" onchange="renderAttendance()">
+      <span style="font-size:13px;color:#6b6b6a" data-i18n="att_hint">해당 날짜의 레슨 수강생 출석을 체크하세요</span>
+    </div>
+    <div id="attendance-list"></div>
+  </div>
+
+  <!-- 결제 -->
+  <div class="panel" id="panel-payment">
+    <div class="toolbar">
+      <select id="pay-month" style="width:160px" onchange="renderPayments()"></select>
+      <span class="save-indicator" id="pay-summary"></span>
+    </div>
+    <div id="payment-list"></div>
+  </div>
+
+  <div style="text-align:right;margin-top:16px;font-size:11px;color:#9b9b98" id="save-status"></div>
+</div>
+
+<div class="modal-bg" id="modal-bg"><div class="modal" id="modal-content"></div></div>
+
+<script>
+// ===== i18n =====
+let LANG=localStorage.getItem('lesson_lang')||'ko';
+const I18N={
+  ko:{
+    title:'레슨 관리',login_sub:'간편한 학생/출석/결제 관리',login:'로그인',username:'아이디',password:'비밀번호',logout:'로그아웃',
+    tab_students:'수강생',tab_schedule:'일정',tab_attend:'출석',tab_pay:'결제',
+    stat_total:'전체 수강생',stat_active:'활성 회원',stat_expiring:'만료 임박',stat_revenue:'이번달 매출',
+    search:'이름 또는 전화번호 검색',all:'전체',active:'활성',expiring:'만료 임박',expired:'만료',
+    add_student:'+ 신규 등록',add_lesson:'+ 레슨 추가',att_hint:'해당 날짜의 레슨 수강생 출석을 체크하세요',
+    export_csv:'엑셀(CSV) 내보내기',import_csv:'CSV 불러오기',backup:'전체 백업',restore:'복원',programs:'프로그램 설정',att_sheet:'출석표',
+    name:'이름',phone:'전화번호',level:'레벨',theme:'테마',gender:'성별',male:'남',female:'여',
+    program:'프로그램',billing:'결제 방식',monthly:'월정액',per_session:'회수제 (1회권)',
+    start_date:'등록일',end_date:'만료일',total_sessions:'총 횟수',used_sessions:'사용 횟수',note:'특이사항',
+    save:'저장',cancel:'취소',edit:'수정',renew:'재등록',pay:'결제',memo:'메모',del:'삭제',close:'닫기',
+    no_students:'등록된 수강생이 없습니다.',press_add:'상단의 [+ 신규 등록] 버튼을 눌러주세요.',
+    remaining:'잔여',sessions_unit:'회',
+    confirm_delete:'을(를) 정말 삭제하시겠습니까?\n관련 출석/결제 기록도 모두 삭제됩니다.',
+    enter_name:'이름을 입력하세요',
+    no_today_lesson:'예정된 레슨이 없습니다.',court:'코트',time:'시간',date:'날짜',students_attend:'참여 수강생',no_today_att:'예정된 수강생이 없습니다.',schedule_first:'일정 탭에서 먼저 레슨을 추가하세요.',
+    confirm_del_lesson:'일정을 삭제하시겠습니까?',no_pay:'결제 기록이 없습니다.',pay_btn_hint:'수강생 탭의 [결제] 버튼으로 추가하세요.',
+    confirm_del_pay:'결제 기록을 삭제하시겠습니까?',pay_amount:'금액',pay_method:'결제 방법',pay_note:'메모',
+    cash:'현금',card:'카드',qpay:'QPay',transfer:'이체',
+    renew_title:'재등록',cur_remaining:'현재 잔여',add_count:'추가 횟수',new_end:'새 만료일',pay_amount_optional:'결제 금액 (선택)',
+    sum_after:'재등록 후 총 횟수에 합산됩니다.',renew_complete:'재등록 완료',
+    pay_record:'결제 기록',pay_for:'님 결제 기록',
+    memo_for:'님 메모',new_memo:'새 메모',add_memo:'메모 추가',no_memo:'메모 없음',
+    schedule_for:'일정',edit_lesson:'레슨 수정',no_students_first:'먼저 수강생을 등록하세요',
+    sum_label:'합계',
+    today:'오늘',saved:'저장됨',
+    select_student:'수강생을 선택해주세요',
+    notify:'알림',notify_confirm:'미납/잔여횟수 부족 학생에게 알림을 보낼까요?',notify_none:'알릴 학생이 없습니다',notify_sent:'알림 전송됨',
+    program_settings:'프로그램 설정',new_program:'프로그램 추가',billing_session:'회수제',
+    monthly_fee:'월 수강료',per_session_fee:'1회 참가비',days_label:'요일',start:'시작',end:'종료',
+  },
+  mn:{
+    title:'Хичээлийн удирдлага',login_sub:'Сурагч/Ирц/Төлбөр',login:'Нэвтрэх',username:'Хэрэглэгч',password:'Нууц үг',logout:'Гарах',
+    tab_students:'Сурагч',tab_schedule:'Хуваарь',tab_attend:'Ирц',tab_pay:'Төлбөр',
+    stat_total:'Нийт сурагч',stat_active:'Идэвхтэй',stat_expiring:'Дуусах',stat_revenue:'Энэ сар',
+    search:'Нэр эсвэл утсаар хайх',all:'Бүгд',active:'Идэвхтэй',expiring:'Дуусах',expired:'Дууссан',
+    add_student:'+ Нэмэх',add_lesson:'+ Хичээл нэмэх',att_hint:'Тухайн өдрийн хичээлийн ирцийг бүртгэнэ үү',
+    export_csv:'CSV экспорт',import_csv:'CSV импорт',backup:'Бүгдийг хадгалах',restore:'Сэргээх',programs:'Хөтөлбөр',att_sheet:'Ирцийн хуудас',
+    name:'Нэр',phone:'Утас',level:'Түвшин',theme:'Сэдэв',gender:'Хүйс',male:'Эр',female:'Эм',
+    program:'Хөтөлбөр',billing:'Төлбөр',monthly:'Сар бүр',per_session:'Удаагаар',
+    start_date:'Бүртгэсэн',end_date:'Дуусах',total_sessions:'Нийт',used_sessions:'Ашигласан',note:'Тэмдэглэл',
+    save:'Хадгалах',cancel:'Цуцлах',edit:'Засах',renew:'Шинэчлэх',pay:'Төлбөр',memo:'Тэмдэглэл',del:'Устгах',close:'Хаах',
+    no_students:'Сурагч байхгүй.',press_add:'Дээд талын [+ Нэмэх] товчийг дарна уу.',
+    remaining:'Үлдэгдэл',sessions_unit:'удаа',
+    confirm_delete:' үнэхээр устгах уу?\nИрц/Төлбөрийн бүртгэл бас устгана.',
+    enter_name:'Нэрээ оруулна уу',
+    no_today_lesson:'Хичээл байхгүй.',court:'Талбай',time:'Цаг',date:'Огноо',students_attend:'Оролцогчид',no_today_att:'Сурагч байхгүй.',schedule_first:'Эхлээд хуваарь тохируулна уу.',
+    confirm_del_lesson:'Хуваарийг устгах уу?',no_pay:'Төлбөрийн бүртгэл байхгүй.',pay_btn_hint:'Сурагч табын [Төлбөр] дарж нэмнэ үү.',
+    confirm_del_pay:'Төлбөрийн бүртгэл устгах уу?',pay_amount:'Дүн',pay_method:'Арга',pay_note:'Тэмдэглэл',
+    cash:'Бэлэн',card:'Карт',qpay:'QPay',transfer:'Шилжүүлэг',
+    renew_title:'Шинэчлэх',cur_remaining:'Одоогийн үлдэгдэл',add_count:'Нэмэх удаа',new_end:'Шинэ дуусах',pay_amount_optional:'Төлбөр (заавал биш)',
+    sum_after:'Шинэчилснээр нийт тоонд нэмэгдэнэ.',renew_complete:'Шинэчилсэн',
+    pay_record:'Төлбөр бүртгэх',pay_for:'-ын төлбөр',
+    memo_for:'-ын тэмдэглэл',new_memo:'Шинэ тэмдэглэл',add_memo:'Нэмэх',no_memo:'Тэмдэглэл байхгүй',
+    schedule_for:'Хуваарь',edit_lesson:'Хичээл засах',no_students_first:'Эхлээд сурагч нэмнэ үү',
+    sum_label:'Нийт',
+    today:'Өнөөдөр',saved:'Хадгалсан',
+    select_student:'Сурагч сонгоно уу',
+    notify:'Сануулга',notify_confirm:'Төлбөргүй сурагчдад сануулга илгээх үү?',notify_none:'Сануулах сурагч байхгүй',notify_sent:'Илгээгдсэн',
+    program_settings:'Хөтөлбөр',new_program:'Хөтөлбөр нэмэх',billing_session:'Удаагаар',
+    monthly_fee:'Сарын төлбөр',per_session_fee:'1 удаа',days_label:'Өдөр',start:'Эхлэх',end:'Дуусах',
+  }
+};
+function t(k){return (I18N[LANG]&&I18N[LANG][k])||I18N.ko[k]||k}
+function applyI18N(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=t(el.dataset.i18n));
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>el.placeholder=t(el.dataset.i18nPh));
+  document.title=t('title');
+}
+function toggleLang(){LANG=LANG==='ko'?'mn':'ko';localStorage.setItem('lesson_lang',LANG);applyI18N();if(authToken)render()}
+
+// ===== API =====
+const _p=window.location.pathname.replace(/\/+$/,'');const API=_p==='/'||_p===''?'':_p;
+let authToken=localStorage.getItem('lesson_token');
+let currentUser=JSON.parse(localStorage.getItem('lesson_user')||'null');
+let programs=[];
+let courts=[];
+let _students=[];
+let _payments=[];
+let _sessions=[]; // schedules
+let _attendance=[];
+
+async function api(u,o={}){
+  o.headers={...o.headers,Authorization:'Bearer '+authToken,'Content-Type':'application/json'};
+  return fetch(API+u,o);
+}
+function todayStr(){return new Date(Date.now()+8*3600000).toISOString().slice(0,10)}
+function fmtMoney(n){return (Number(n)||0).toLocaleString('ko-KR')+'₮'}
+function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function $(id){return document.getElementById(id)}
+function g(id){return $(id)?.value?.trim()||''}
+function daysBetween(a,b){return Math.ceil((new Date(b)-new Date(a))/86400000)}
+
+async function doLogin(){
+  const r=await fetch(API+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:g('lg-user'),password:g('lg-pass')})});
+  const d=await r.json();
+  if(!r.ok){$('lg-err').textContent=d.error||'로그인 실패';return}
+  authToken=d.token;currentUser=d.user;
+  localStorage.setItem('lesson_token',authToken);
+  localStorage.setItem('lesson_user',JSON.stringify(currentUser));
+  init();
+}
+function logout(){localStorage.removeItem('lesson_token');localStorage.removeItem('lesson_user');location.reload()}
+
+async function init(){
+  $('login').style.display='none';
+  $('app').style.display='block';
+  $('schedule-date').value=todayStr();
+  $('att-date').value=todayStr();
+  await reloadAll();
+}
+
+async function reloadAll(){
+  const [progs,crts,stus,pays,sess]=await Promise.all([
+    api('/api/programs').then(r=>r.json()),
+    api('/api/courts').then(r=>r.json()),
+    api('/api/students').then(r=>r.json()),
+    api('/api/payments').then(r=>r.json()),
+    api('/api/sessions').then(r=>r.json()),
+  ]);
+  programs=progs;courts=crts;_students=stus;_payments=pays;_sessions=sess;
+  render();
+}
+
+function getStatus(s){
+  if(!s.end_date) return 'expired';
+  const d=daysBetween(todayStr(),s.end_date);
+  if(d<0) return 'expired';
+  if(d<=7) return 'expiring';
+  return 'active';
+}
+function statusBadge(s){
+  const st=getStatus(s);
+  if(st==='active') return `<span class="badge badge-active">${t('active')}</span>`;
+  if(st==='expiring') return `<span class="badge badge-warn">${t('expiring')}</span>`;
+  return `<span class="badge badge-danger">${t('expired')}</span>`;
+}
+
+// ===== 렌더 =====
+function render(){renderStats();renderStudents();renderSchedule();renderAttendance();renderPayments();applyI18N()}
+
+function renderStats(){
+  $('stat-total').textContent=_students.length+'명';
+  const active=_students.filter(s=>getStatus(s)==='active').length;
+  const expiring=_students.filter(s=>getStatus(s)==='expiring').length;
+  $('stat-active').textContent=active+'명';
+  $('stat-expiring').textContent=expiring+'명';
+  const ym=todayStr().slice(0,7);
+  const rev=_payments.filter(p=>(p.payment_date||'').startsWith(ym)).reduce((a,b)=>a+(b.amount||0),0);
+  $('stat-revenue').textContent=fmtMoney(rev);
+}
+
+function renderStudents(){
+  const q=(g('search-input')||'').toLowerCase();
+  const f=g('filter-status')||'all';
+  const list=_students.filter(s=>{
+    if(q&&!(s.name.toLowerCase().includes(q)||(s.phone||'').includes(q))) return false;
+    if(f!=='all'&&getStatus(s)!==f) return false;
+    return true;
+  }).slice().sort((a,b)=>{
+    const order={expiring:0,active:1,expired:2};
+    return order[getStatus(a)]-order[getStatus(b)];
+  });
+  const el=$('student-list');
+  if(!list.length){el.innerHTML=`<div class="empty">${t('no_students')}<br>${t('press_add')}</div>`;return}
+  el.innerHTML=list.map(s=>{
+    const total=s.total_sessions||0;
+    const used=s.used_sessions||0;
+    const remaining=Math.max(0,total-used);
+    const endInfo=s.end_date?`~ ${s.end_date}`:'-';
+    const memos=parseMemos(s);
+    return `<div class="card">
+      <div class="card-row">
+        <div>
+          <div class="name">${escapeHtml(s.name)} ${statusBadge(s)}</div>
+          <div class="sub">${escapeHtml(s.phone||'-')} · ${escapeHtml(s.program_name||'-')}</div>
+        </div>
+        <div class="right">
+          <div style="font-size:13px;font-weight:500">${t('remaining')} ${remaining}${t('sessions_unit')} / ${total}${t('sessions_unit')}</div>
+          <div class="sub">${endInfo}</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="mini" onclick="editStudent(${s.id})">${t('edit')}</button>
+        <button class="mini info" onclick="renewStudent(${s.id})">${t('renew')}</button>
+        <button class="mini" onclick="addPayment(${s.id})">${t('pay')}</button>
+        <button class="mini" onclick="viewMemo(${s.id})">${t('memo')}(${memos.length})</button>
+        <button class="mini danger" onclick="deleteStudent(${s.id})">${t('del')}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function parseMemos(s){
+  try { return JSON.parse(s.memos||'[]'); } catch(_) { return []; }
+}
+
+function renderSchedule(){
+  const d=g('schedule-date')||todayStr();
+  const list=_sessions.filter(x=>x.session_date===d&&x.status!=='cancelled')
+    .sort((a,b)=>(a.start_time||'').localeCompare(b.start_time||''));
+  const el=$('schedule-list');
+  if(!list.length){el.innerHTML=`<div class="empty">${d}: ${t('no_today_lesson')}</div>`;return}
+  // For each session, look up enrolled students for that program (best-effort fallback)
+  el.innerHTML=list.map(sc=>{
+    const enrolled=_students.filter(st=>st.program_id===sc.program_id&&st.status==='active');
+    const names=enrolled.map(st=>escapeHtml(st.name)).join(', ');
+    return `<div class="card">
+      <div class="card-row">
+        <div>
+          <div class="name">${escapeHtml(sc.start_time||'')}~${escapeHtml(sc.end_time||'')} · ${escapeHtml(sc.program_name||sc.location||t('court'))}</div>
+          <div class="sub">${names||'-'} (${enrolled.length}명)</div>
+        </div>
+        <div class="actions">
+          <button class="mini" onclick="editSchedule(${sc.id})">${t('edit')}</button>
+          <button class="mini danger" onclick="deleteSchedule(${sc.id})">${t('del')}</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+let _attExpanded=null; // 펼쳐진 프로그램 id
+let _attShowAll=false;
+function dowOfDate(dateStr){
+  const dow=['일','월','화','수','목','금','토'];
+  return dow[new Date(dateStr+'T00:00:00').getDay()];
+}
+function programMeetsOn(prog,dateStr){
+  if(!prog.days) return false;
+  const dow=dowOfDate(dateStr);
+  return prog.days.split(',').map(x=>x.trim()).includes(dow);
+}
+function renderAttendance(){
+  const d=g('att-date')||todayStr();
+  const dow=dowOfDate(d);
+  const activePrograms=programs.filter(p=>p.status!=='inactive');
+  const todaysPrograms=activePrograms.filter(p=>programMeetsOn(p,d));
+  const otherPrograms=activePrograms.filter(p=>!programMeetsOn(p,d));
+  const showList=_attShowAll?activePrograms:todaysPrograms;
+  let html=`<div class="card" style="background:#eff6ff;border-color:#bfdbfe;margin-bottom:8px">
+    <div class="card-row">
+      <div>
+        <strong>📅 ${d} (${dow}요일)</strong>
+        <div class="sub">오늘 수업: ${todaysPrograms.length}개</div>
+      </div>
+      <button class="mini ${_attShowAll?'':'info'}" onclick="_attShowAll=!_attShowAll;renderAttendance()">${_attShowAll?'오늘 수업만':'전체 보기'}</button>
+    </div>
+  </div>`;
+  if(!showList.length){
+    $('attendance-list').innerHTML=html+`<div class="empty">${dow}요일에 수업 있는 프로그램이 없습니다.<br><button class="mini" onclick="_attShowAll=true;renderAttendance()" style="margin-top:8px">전체 프로그램 보기</button></div>`;
+    return;
+  }
+  showList.forEach(prog=>{
+    const enrolled=_students.filter(st=>st.program_id===prog.id&&st.status==='active');
+    const sc=_sessions.find(x=>x.session_date===d&&x.program_id===prog.id&&x.status!=='cancelled');
+    const presentCount=enrolled.filter(s=>{
+      const att=sc?_attendance.find(a=>a.session_id===sc.id&&a.student_id===s.id):null;
+      return att&&(att.status==='present'||att.status==='late');
+    }).length;
+    const isOpen=_attExpanded===prog.id;
+    html+=`<div class="card" style="cursor:pointer">
+      <div class="card-row" onclick="toggleAttClass(${prog.id})" style="${isOpen?'margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #f5f5f4':''}">
+        <div>
+          <div class="name">🎾 ${escapeHtml(prog.name)}</div>
+          <div class="sub">${escapeHtml(prog.start_time||'')}~${escapeHtml(prog.end_time||'')} · ${escapeHtml(prog.days||'')} · ${enrolled.length}명</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="font-size:13px;color:${presentCount>0?'#047857':'#6b6b6a'};font-weight:600">참석 ${presentCount}/${enrolled.length}</div>
+          <span style="font-size:14px;color:#6b6b6a">${isOpen?'▼':'▶'}</span>
+        </div>
+      </div>`;
+    if(isOpen){
+      if(!enrolled.length){
+        html+=`<div class="empty" style="padding:20px">등록된 수강생이 없습니다</div>`;
+      } else {
+        enrolled.forEach(s=>{
+          const att=sc?_attendance.find(a=>a.session_id===sc.id&&a.student_id===s.id):null;
+          const status=att?att.status:null;
+          const remaining=Math.max(0,(s.total_sessions||0)-(s.used_sessions||0));
+          html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f5f5f4">
+            <div>
+              <div style="font-weight:600;font-size:14px">${escapeHtml(s.name)}</div>
+              <div class="sub">${t('remaining')} ${remaining}${t('sessions_unit')}</div>
+            </div>
+            <div style="display:flex;gap:4px">
+              <button class="mini ${status==='present'?'success':''}" onclick="checkAttend(${prog.id},${s.id},'present')">✅ 참석</button>
+              <button class="mini ${status==='late'?'warn':''}" onclick="checkAttend(${prog.id},${s.id},'late')">⏰ 지각</button>
+              <button class="mini ${status==='absent'?'fail':''}" onclick="checkAttend(${prog.id},${s.id},'absent')">❌ 불참</button>
+            </div>
+          </div>`;
+        });
+      }
+    }
+    html+=`</div>`;
+  });
+  $('attendance-list').innerHTML=html;
+}
+
+function toggleAttClass(progId){
+  _attExpanded=_attExpanded===progId?null:progId;
+  // 펼칠 때 출석 데이터 로드
+  if(_attExpanded){
+    loadAttendanceForVisible();
+  } else {
+    renderAttendance();
+  }
+}
+
+// 프로그램 + 날짜로 세션 자동 생성 후 출석 체크
+async function checkAttend(progId,studentId,status){
+  const d=g('att-date')||todayStr();
+  let sc=_sessions.find(x=>x.session_date===d&&x.program_id===progId&&x.status!=='cancelled');
+  if(!sc){
+    const prog=programs.find(p=>p.id===progId);
+    const r=await api('/api/sessions',{method:'POST',body:JSON.stringify({program_id:progId,session_date:d,start_time:prog?.start_time||'19:00',end_time:prog?.end_time||'21:00',location:prog?.location||''})});
+    const dd=await r.json();
+    sc={id:dd.id,session_date:d,program_id:progId,status:'scheduled'};
+    _sessions.push(sc);
+  }
+  await markAttend(sc.id,studentId,status);
+}
+
+function renderPaymentMonths(){
+  const sel=$('pay-month');
+  const months=new Set([todayStr().slice(0,7)]);
+  _payments.forEach(p=>{if(p.payment_date)months.add(p.payment_date.slice(0,7))});
+  const sorted=[...months].sort().reverse();
+  const cur=sel.value||sorted[0];
+  sel.innerHTML=sorted.map(m=>`<option value="${m}" ${m===cur?'selected':''}>${m}</option>`).join('');
+}
+
+function renderPayments(){
+  renderPaymentMonths();
+  const m=g('pay-month')||todayStr().slice(0,7);
+  const list=_payments.filter(p=>(p.payment_date||'').startsWith(m)).sort((a,b)=>(b.payment_date||'').localeCompare(a.payment_date||''));
+  const total=list.reduce((a,b)=>a+(b.amount||0),0);
+  $('pay-summary').textContent=`${m} ${t('sum_label')}: ${fmtMoney(total)} (${list.length})`;
+  const el=$('payment-list');
+  if(!list.length){el.innerHTML=`<div class="empty">${t('no_pay')}<br>${t('pay_btn_hint')}</div>`;return}
+  el.innerHTML=list.map(p=>{
+    const note=p.notes||p.period||'-';
+    return `<div class="card">
+      <div class="card-row">
+        <div>
+          <div class="name">${escapeHtml(p.student_name||'-')}</div>
+          <div class="sub">${escapeHtml(p.payment_date)} · ${escapeHtml(p.program_name||'-')} · ${p.sessions_bought?p.sessions_bought+'회':''} ${escapeHtml(note)}</div>
+        </div>
+        <div class="right">
+          <div style="font-weight:600">${fmtMoney(p.amount)}</div>
+          <div style="display:flex;gap:4px;margin-top:4px;justify-content:flex-end">
+            <button class="mini" onclick="editPayment(${p.id})">${t('edit')}</button>
+            <button class="mini danger" onclick="deletePayment(${p.id})">${t('del')}</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===== 모달 =====
+function showModal(html){$('modal-bg').classList.add('show');$('modal-content').innerHTML=html}
+function closeModal(){$('modal-bg').classList.remove('show')}
+$('modal-bg').onclick=e=>{if(e.target.id==='modal-bg')closeModal()};
+
+// 헤더 메뉴
+function toggleHeaderMenu(e){
+  e?.stopPropagation();
+  $('header-menu').classList.toggle('open');
+}
+function closeHeaderMenu(){$('header-menu').classList.remove('open')}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.menu-dropdown')) closeHeaderMenu();
+});
+
+// ===== 수강생 CRUD =====
+function editStudent(id){
+  const s=id?_students.find(x=>x.id===id):{};
+  const isNew=!id;
+  showModal(`
+    <h3>${isNew?t('add_student'):t('edit')}</h3>
+    <div class="field"><label>${t('name')} *</label><input type="text" id="f-name" value="${escapeHtml(s.name||'')}"></div>
+    <div class="field"><label>${t('phone')}</label><input type="tel" id="f-phone" value="${escapeHtml(s.phone||'')}" placeholder="9999-9999"></div>
+    <div class="field-row">
+      <div class="field"><label>${t('gender')}</label><select id="f-gender"><option value="M" ${s.gender!=='F'?'selected':''}>${t('male')}</option><option value="F" ${s.gender==='F'?'selected':''}>${t('female')}</option></select></div>
+      <div class="field"><label>${t('level')}</label><input type="text" id="f-level" value="${escapeHtml(s.level||'')}" placeholder="예: 초급, 중급, 선수반"></div>
+    </div>
+    <div class="field"><label>${t('program')}</label><select id="f-prog">${programs.map(p=>`<option value="${p.id}" ${s.program_id===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select></div>
+    <div class="field-row">
+      <div class="field"><label>${t('start_date')}</label><input type="date" id="f-start" value="${s.joined_at?s.joined_at.slice(0,10):todayStr()}"></div>
+      <div class="field"><label>${t('end_date')}</label><input type="date" id="f-end" value="${s.end_date||''}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>${t('total_sessions')}</label><input type="number" id="f-total" value="${s.total_sessions||0}" min="0"></div>
+      <div class="field"><label>${t('used_sessions')}</label><input type="number" id="f-used" value="${s.used_sessions||0}" min="0"></div>
+    </div>
+    <div class="field"><label>${t('note')}</label><textarea id="f-note" rows="2">${escapeHtml(s.notes||'')}</textarea></div>
+    <div class="modal-actions">
+      <button onclick="closeModal()">${t('cancel')}</button>
+      <button class="primary" onclick="saveStudent(${id||'null'})">${t('save')}</button>
+    </div>
+  `);
+  setTimeout(()=>$('f-name').focus(),50);
+}
+async function saveStudent(id){
+  const name=g('f-name');
+  if(!name) return alert(t('enter_name'));
+  const body={
+    name,phone:g('f-phone'),gender:g('f-gender'),level:g('f-level'),
+    program_id:Number(g('f-prog')),
+    end_date:g('f-end')||null,
+    total_sessions:Number(g('f-total'))||0,
+    used_sessions:Number(g('f-used'))||0,
+    notes:g('f-note'),
+    payment_type:'per_session'
+  };
+  const r=await api(id?'/api/students/'+id:'/api/students',{method:id?'PUT':'POST',body:JSON.stringify(body)});
+  const d=await r.json();
+  if(!r.ok) return alert(d.error);
+  closeModal();flashSaved();await reloadAll();
+}
+async function deleteStudent(id){
+  const s=_students.find(x=>x.id===id);
+  if(!confirm(`${s.name}${t('confirm_delete')}`)) return;
+  await api('/api/students/'+id,{method:'DELETE'});
+  await reloadAll();
+}
+
+// ===== 재등록 =====
+function renewStudent(id){
+  const s=_students.find(x=>x.id===id);
+  const remaining=Math.max(0,(s.total_sessions||0)-(s.used_sessions||0));
+  const future=new Date();future.setDate(future.getDate()+60);
+  showModal(`
+    <h3>${escapeHtml(s.name)} - ${t('renew_title')}</h3>
+    <div style="font-size:13px;color:#6b6b6a;background:#f9fafb;padding:10px;border-radius:6px;margin-bottom:14px">
+      ${t('cur_remaining')}: <b>${remaining}${t('sessions_unit')}</b><br>
+      ${t('sum_after')}
+    </div>
+    <div class="field-row">
+      <div class="field"><label>${t('add_count')}</label><input type="number" id="r-add" value="8" min="1"></div>
+      <div class="field"><label>${t('new_end')}</label><input type="date" id="r-end" value="${future.toISOString().slice(0,10)}"></div>
+    </div>
+    <div class="field"><label>${t('pay_amount_optional')} (₮)</label><input type="number" id="r-amount" value="0" min="0"></div>
+    <div class="field"><label>${t('pay_method')}</label><select id="r-method"><option value="cash">${t('cash')}</option><option value="card">${t('card')}</option><option value="qpay">QPay</option><option value="transfer">${t('transfer')}</option></select></div>
+    <div class="field"><label>${t('pay_note')}</label><input type="text" id="r-note" value="재등록"></div>
+    <div class="modal-actions">
+      <button onclick="closeModal()">${t('cancel')}</button>
+      <button class="primary" onclick="confirmRenew(${id})">${t('renew_complete')}</button>
+    </div>
+  `);
+}
+async function confirmRenew(id){
+  const body={
+    add_sessions:Number(g('r-add'))||0,
+    end_date:g('r-end')||null,
+    amount:Number(g('r-amount'))||0,
+    payment_method:g('r-method'),
+    note:g('r-note')
+  };
+  const r=await api('/api/students/'+id+'/renew',{method:'POST',body:JSON.stringify(body)});
+  const d=await r.json();
+  if(!r.ok) return alert(d.error);
+  closeModal();flashSaved();await reloadAll();
+}
+
+// ===== 결제 =====
+function addPayment(id){
+  const s=_students.find(x=>x.id===id);
+  const prog=programs.find(p=>p.id===s.program_id);
+  // 월정액 + 결제일 설정된 경우 해당 일자로 디폴트 (이번달 또는 다음달)
+  let defaultDate=todayStr();
+  if(prog?.billing_type==='monthly'&&prog?.billing_day){
+    const today=new Date(todayStr()+'T00:00:00');
+    let y=today.getFullYear(),m=today.getMonth();
+    const lastDay=new Date(y,m+1,0).getDate();
+    const day=Math.min(prog.billing_day,lastDay);
+    defaultDate=`${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+  }
+  showModal(`
+    <h3>${escapeHtml(s.name)} - ${t('pay_record')}${prog?.billing_type==='monthly'&&prog?.billing_day?` <span style="font-size:11px;color:#6b6b6a">(매달 ${prog.billing_day}일)</span>`:''}</h3>
+    <div class="field"><label>${t('date')}</label><input type="date" id="p-date" value="${defaultDate}"></div>
+    <div class="field-row">
+      <div class="field"><label>${t('billing')}</label><select id="p-type" onchange="document.getElementById('p-bought-wrap').style.display=this.value==='per_session'?'block':'none'"><option value="per_session" ${prog?.billing_type!=='monthly'?'selected':''}>${t('per_session')}</option><option value="monthly" ${prog?.billing_type==='monthly'?'selected':''}>${t('monthly')}</option></select></div>
+      <div class="field"><label>${t('pay_amount')} (₮)</label><input type="number" id="p-amount" value="0" min="0"></div>
+    </div>
+    <div class="field" id="p-bought-wrap" style="display:${prog?.billing_type==='monthly'?'none':'block'}"><label>🎟️ ${t('total_sessions')} (회)</label><input type="number" id="p-bought" value="8" min="1" placeholder="회수 입력"></div>
+    <div class="field-row">
+      <div class="field"><label>${t('pay_method')}</label><select id="p-method"><option value="cash">${t('cash')}</option><option value="card">${t('card')}</option><option value="qpay">QPay</option><option value="transfer">${t('transfer')}</option></select></div>
+      <div class="field"><label>${t('pay_note')}</label><input type="text" id="p-note" placeholder="예: 8회권"></div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeModal()">${t('cancel')}</button>
+      <button class="primary" onclick="savePayment(${id})">${t('save')}</button>
+    </div>
+  `);
+}
+async function savePayment(sid){
+  const s=_students.find(x=>x.id===sid);
+  const type=g('p-type');
+  const body={
+    student_id:sid,program_id:s.program_id,
+    amount:Number(g('p-amount'))||0,type,
+    period:g('p-date').slice(0,7),
+    payment_method:g('p-method'),
+    payment_date:g('p-date'),
+    notes:g('p-note')
+  };
+  if(type==='per_session') body.sessions_bought=Number(g('p-bought'))||null;
+  if(!body.amount) return alert(t('pay_amount'));
+  await api('/api/payments',{method:'POST',body:JSON.stringify(body)});
+  // sync total_sessions on student if per_session
+  if(type==='per_session'&&body.sessions_bought){
+    const newTotal=(s.total_sessions||0)+Number(body.sessions_bought);
+    await api('/api/students/'+sid,{method:'PUT',body:JSON.stringify({...s,total_sessions:newTotal,end_date:s.end_date})});
+  }
+  closeModal();flashSaved();await reloadAll();
+}
+function editPayment(id){
+  const p=_payments.find(x=>x.id===id);
+  if(!p) return;
+  showModal(`
+    <h3>${t('edit')} ${t('pay_record')}</h3>
+    <div class="field"><label>${t('date')}</label><input type="date" id="ep-date" value="${p.payment_date}"></div>
+    <div class="field-row">
+      <div class="field"><label>${t('billing')}</label><select id="ep-type"><option value="per_session" ${p.type==='per_session'?'selected':''}>${t('per_session')}</option><option value="monthly" ${p.type==='monthly'?'selected':''}>${t('monthly')}</option></select></div>
+      <div class="field"><label>${t('pay_amount')} (₮)</label><input type="number" id="ep-amount" value="${p.amount}"></div>
+    </div>
+    <div class="field"><label>${t('total_sessions')} (회)</label><input type="number" id="ep-bought" value="${p.sessions_bought||''}" min="0" placeholder="회수 입력"></div>
+    <div class="field-row">
+      <div class="field"><label>${t('pay_method')}</label><select id="ep-method">${['cash','card','qpay','transfer'].map(m=>`<option value="${m}" ${p.payment_method===m?'selected':''}>${t(m)||m}</option>`).join('')}</select></div>
+      <div class="field"><label>${t('pay_note')}</label><input type="text" id="ep-note" value="${escapeHtml(p.notes||p.period||'')}"></div>
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeModal()">${t('cancel')}</button>
+      <button class="primary" onclick="updatePayment(${id})">${t('save')}</button>
+    </div>
+  `);
+}
+async function updatePayment(id){
+  const p=_payments.find(x=>x.id===id);
+  const body={
+    student_id:p.student_id,program_id:p.program_id,
+    amount:Number(g('ep-amount')),
+    type:g('ep-type'),
+    period:g('ep-date').slice(0,7),
+    payment_method:g('ep-method'),
+    payment_date:g('ep-date'),
+    notes:g('ep-note'),
+    sessions_bought:Number(g('ep-bought'))||null
+  };
+  await api('/api/payments/'+id,{method:'PUT',body:JSON.stringify(body)});
+  closeModal();flashSaved();await reloadAll();
+}
+async function deletePayment(id){
+  if(!confirm(t('confirm_del_pay'))) return;
+  await api('/api/payments/'+id,{method:'DELETE'});
+  await reloadAll();
+}
+
+// ===== 메모 =====
+async function viewMemo(id){
+  const r=await api('/api/students/'+id+'/detail').then(x=>x.json());
+  const memos=r.memos||[];
+  const list=memos.map((m,i)=>`<div style="padding:10px;background:#f9fafb;border-radius:6px;margin-bottom:6px">
+    <div style="font-size:11px;color:#9b9b98">${escapeHtml(m.date)}</div>
+    <div style="font-size:13px;margin-top:2px;white-space:pre-wrap">${escapeHtml(m.text)}</div>
+    <button class="mini danger" onclick="deleteMemo(${id},${i})" style="margin-top:4px">${t('del')}</button>
+  </div>`).join('');
+  showModal(`
+    <h3>${escapeHtml(r.student.name)} - ${t('memo')}</h3>
+    <div style="max-height:200px;overflow-y:auto;margin-bottom:12px">${list||`<div class="empty" style="padding:20px">${t('no_memo')}</div>`}</div>
+    <div class="field"><label>${t('new_memo')}</label><textarea id="m-text" rows="3" placeholder="예: 백핸드 슬라이스 연습 필요"></textarea></div>
+    <div class="modal-actions">
+      <button onclick="closeModal()">${t('close')}</button>
+      <button class="primary" onclick="addMemo(${id})">${t('add_memo')}</button>
+    </div>
+  `);
+}
+async function addMemo(id){
+  const text=g('m-text');
+  if(!text) return;
+  await api('/api/students/'+id+'/memos',{method:'POST',body:JSON.stringify({text})});
+  await reloadAll();viewMemo(id);
+}
+async function deleteMemo(id,idx){
+  await api('/api/students/'+id+'/memos/'+idx,{method:'DELETE'});
+  await reloadAll();viewMemo(id);
+}
+
+// ===== 출석 =====
+async function markAttend(sessionId,studentId,status){
+  const att=_attendance.find(a=>a.session_id===sessionId&&a.student_id===studentId);
+  if(att&&att.status===status){
+    // 같은 상태 다시 → 취소
+    await api('/api/sessions/'+sessionId+'/attendance/'+studentId,{method:'DELETE'});
+  } else {
+    await api('/api/sessions/'+sessionId+'/attendance',{method:'POST',body:JSON.stringify({student_id:studentId,status})});
+  }
+  // refresh attendance for this session
+  const r=await api('/api/sessions/'+sessionId+'/attendance').then(x=>x.json());
+  // Update local cache: replace all attendance for this session
+  _attendance=_attendance.filter(a=>a.session_id!==sessionId);
+  (r.students||[]).forEach(st=>{
+    if(st.attend_status&&st.attend_status!=='absent'){
+      _attendance.push({session_id:sessionId,student_id:st.id,status:st.attend_status});
+    }
+  });
+  // Also reload students for used_sessions update
+  _students=await api('/api/students').then(x=>x.json());
+  renderAttendance();renderStats();
+}
+
+// ===== 일정 (sessions) =====
+async function editSchedule(id){
+  const sc=id?_sessions.find(x=>x.id===id):null;
+  const date=sc?sc.session_date:(g('schedule-date')||todayStr());
+  showModal(`
+    <h3>${id?t('edit_lesson'):t('add_lesson')}</h3>
+    <div class="field-row">
+      <div class="field"><label>${t('date')}</label><input type="date" id="sc-date" value="${date}"></div>
+      <div class="field"><label>${t('time')}</label><input type="time" id="sc-time" value="${sc?.start_time||'19:00'}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>${t('end')}</label><input type="time" id="sc-end" value="${sc?.end_time||'21:00'}"></div>
+      <div class="field"><label>${t('program')}</label><select id="sc-prog">${programs.map(p=>`<option value="${p.id}" ${sc?.program_id===p.id?'selected':''}>${escapeHtml(p.name)}</option>`).join('')}</select></div>
+    </div>
+    <div class="field"><label>${t('court')}</label><input type="text" id="sc-court" value="${escapeHtml(sc?.location||'')}" placeholder="1번 코트"></div>
+    <div class="modal-actions">
+      ${id?`<button class="danger" style="margin-right:auto" onclick="deleteSchedule(${id})">${t('del')}</button>`:''}
+      <button onclick="closeModal()">${t('cancel')}</button>
+      <button class="primary" onclick="saveSchedule(${id||'null'})">${t('save')}</button>
+    </div>
+  `);
+}
+async function saveSchedule(id){
+  const body={
+    session_date:g('sc-date'),
+    start_time:g('sc-time'),
+    end_time:g('sc-end'),
+    program_id:Number(g('sc-prog')),
+    location:g('sc-court')
+  };
+  if(id){
+    await api('/api/sessions/'+id,{method:'PUT',body:JSON.stringify(body)});
+  } else {
+    await api('/api/sessions',{method:'POST',body:JSON.stringify(body)});
+  }
+  closeModal();flashSaved();await reloadAll();
+}
+async function deleteSchedule(id){
+  if(!confirm(t('confirm_del_lesson'))) return;
+  await api('/api/sessions/'+id,{method:'PUT',body:JSON.stringify({status:'cancelled'})});
+  closeModal();await reloadAll();
+}
+
+// ===== 알림 =====
+async function sendUnpaidNotify(){
+  if(!confirm(t('notify_confirm'))) return;
+  const r=await api('/api/notify/unpaid',{method:'POST'}).then(x=>x.json());
+  if(!r.ok) return alert('실패');
+  if(r.count===0) return alert('✅ '+t('notify_none'));
+  alert(`📤 ${r.count}명 ${t('notify_sent')}\n\n${r.alerts.slice(0,5).map(a=>`• ${a.name} - ${a.reason}`).join('\n')}`);
+}
+
+// ===== 프로그램 설정 =====
+async function openPrograms(){
+  programs=await api('/api/programs').then(r=>r.json());
+  showModal(`
+    <h3>⚙️ ${t('program_settings')}</h3>
+    <div style="max-height:360px;overflow-y:auto">
+      ${programs.map(p=>`<div style="padding:8px 0;border-bottom:1px solid #f5f5f4">
+        <div class="card-row" style="margin-bottom:4px">
+          <input type="text" value="${escapeHtml(p.name)}" onblur="inlineUpdateProgram(${p.id},'name',this.value)" style="font-weight:600;font-size:14px;border:1px solid transparent;background:transparent;padding:4px;border-radius:4px;flex:1" onfocus="this.style.borderColor='#d6d6d3';this.style.background='#fff'" data-revert="${escapeHtml(p.name)}">
+          <button class="mini info" onclick="editProgram(${p.id})">${t('edit')}</button>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12px;color:#6b6b6a">
+          <span>${p.billing_type==='monthly'?t('monthly')+(p.billing_day?` (매달 ${p.billing_day}일)`:''):t('billing_session')}</span>·
+          <span>${escapeHtml(p.days)}</span>·
+          <span>${escapeHtml(p.start_time)}~${escapeHtml(p.end_time)}</span>·
+          <label style="display:flex;align-items:center;gap:3px">${t('level')}: <input type="text" value="${escapeHtml(p.level==='all'?'':p.level||'')}" placeholder="-" onblur="inlineUpdateProgram(${p.id},'level',this.value||'all')" style="width:100px;padding:3px 6px;border:1px solid #e5e5e4;border-radius:4px;font-size:12px"></label>·
+          <label style="display:flex;align-items:center;gap:3px">${t('theme')}: <input type="text" value="${escapeHtml(p.theme||'')}" placeholder="-" onblur="inlineUpdateProgram(${p.id},'theme',this.value)" style="width:140px;padding:3px 6px;border:1px solid #e5e5e4;border-radius:4px;font-size:12px"></label>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeModal()">${t('close')}</button>
+      <button class="primary" onclick="editProgram(null)">+ ${t('new_program')}</button>
+    </div>
+  `);
+}
+async function inlineUpdateProgram(id,field,value){
+  const p=programs.find(x=>x.id===id);
+  if(!p) return;
+  if(p[field]===value) return; // no change
+  const body={...p,[field]:value};
+  await api('/api/programs/'+id,{method:'PUT',body:JSON.stringify(body)});
+  programs=await api('/api/programs').then(r=>r.json());
+  // 다른 곳에서 보이는 것도 업데이트 (학생 카드 등)
+  flashSaved();
+  // 모달 다시 그리지 않음 — 포커스 유지
+}
+
+async function editProgram(id){
+  const p=id?programs.find(x=>x.id===id):null;
+  showModal(`
+    <h3>${id?t('edit'):t('new_program')}</h3>
+    <div class="field"><label>${t('name')}</label><input type="text" id="pg-name" value="${escapeHtml(p?.name||'')}"></div>
+    <div class="field-row">
+      <div class="field"><label>${t('billing')}</label><select id="pg-billing"><option value="per_session" ${p?.billing_type!=='monthly'?'selected':''}>${t('billing_session')}</option><option value="monthly" ${p?.billing_type==='monthly'?'selected':''}>${t('monthly')}</option></select></div>
+      <div class="field"><label>${t('court')}</label><select id="pg-court"><option value="0">-</option>${courts.map(c=>`<option value="${c.id}" ${p?.court_id===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}</select></div>
+    </div>
+    <div class="field"><label>📅 매월 결제일 (월정액 전용, 1~31, 비우면 30일 롤링)</label><input type="number" id="pg-billday" value="${p?.billing_day||''}" min="1" max="31" placeholder="예: 20"></div>
+    <div class="field-row">
+      <div class="field"><label>${t('days_label')}</label><input type="text" id="pg-days" value="${escapeHtml(p?.days||'화,목')}" placeholder="예: 화,목"></div>
+      <div class="field"><label>${t('level')}</label><input type="text" id="pg-level" value="${escapeHtml(p?.level||'')}" placeholder="예: 초급, 중급, 선수반"></div>
+    </div>
+    <div class="field"><label>${t('theme')||'테마'}</label><input type="text" id="pg-theme" value="${escapeHtml(p?.theme||'')}" placeholder="예: 실력 향상 + 게임"></div>
+    <div class="field-row">
+      <div class="field"><label>${t('per_session_fee')}</label><input type="number" id="pg-per" value="${p?.per_session_fee||0}"></div>
+      <div class="field"><label>${t('monthly_fee')}</label><input type="number" id="pg-mon" value="${p?.monthly_fee||0}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>${t('start')}</label><input type="time" id="pg-start" value="${p?.start_time||'19:00'}"></div>
+      <div class="field"><label>${t('end')}</label><input type="time" id="pg-end" value="${p?.end_time||'21:00'}"></div>
+    </div>
+    <div class="modal-actions">
+      ${id?`<button class="danger" style="margin-right:auto" onclick="delProgram(${id})">${t('del')}</button>`:''}
+      <button onclick="openPrograms()">${t('cancel')}</button>
+      <button class="primary" onclick="saveProgram(${id||'null'})">${t('save')}</button>
+    </div>
+  `);
+}
+async function saveProgram(id){
+  const body={
+    name:g('pg-name'),
+    billing_type:g('pg-billing'),
+    court_id:Number(g('pg-court'))||0,
+    days:g('pg-days'),
+    start_time:g('pg-start'),end_time:g('pg-end'),
+    per_session_fee:Number(g('pg-per')),monthly_fee:Number(g('pg-mon')),
+    level:g('pg-level')||'all',
+    theme:g('pg-theme')||'',
+    billing_day:Number(g('pg-billday'))||null,
+    max_students:8,monthly_sessions:8,location:'',description:''
+  };
+  await api(id?'/api/programs/'+id:'/api/programs',{method:id?'PUT':'POST',body:JSON.stringify(body)});
+  programs=await api('/api/programs').then(r=>r.json());
+  openPrograms();
+}
+async function delProgram(id){
+  if(!confirm(t('confirm_delete')||'?')) return;
+  await api('/api/programs/'+id,{method:'DELETE'});
+  programs=await api('/api/programs').then(r=>r.json());
+  openPrograms();
+}
+
+// ===== 출석표 =====
+async function openAttSheet(){
+  const data=await api('/api/attendance-sheet').then(r=>r.json());
+  if(!data.months)return alert('데이터 없음');
+  const sortedMonths=Object.keys(data.months).sort();
+  let html='<table style="border-collapse:collapse;font-size:11px;min-width:100%"><thead><tr><th style="border:1px solid #e5e5e4;padding:4px;background:#f5f5f4;position:sticky;left:0;z-index:1">이름</th><th style="border:1px solid #e5e5e4;padding:4px;background:#f5f5f4">등록</th>';
+  sortedMonths.forEach(m=>{
+    data.months[m].forEach(d=>{html+=`<th style="border:1px solid #e5e5e4;padding:3px;background:#f5f5f4">${d.slice(8)}</th>`});
+  });
+  html+='</tr></thead><tbody>';
+  data.students.forEach(s=>{
+    const lastPay=s.payments?.length?s.payments[s.payments.length-1]:null;
+    const reg=lastPay?.sessions_bought||'-';
+    html+=`<tr><td style="border:1px solid #e5e5e4;padding:4px;font-weight:600;position:sticky;left:0;background:#fff;z-index:1">${escapeHtml(s.name)}</td><td style="border:1px solid #e5e5e4;padding:4px;text-align:center;color:#b87a0c;font-weight:600">${reg}</td>`;
+    sortedMonths.forEach(m=>{
+      data.months[m].forEach(d=>{
+        const dc=s.dateCounts[d];
+        if(dc&&dc.attended){
+          const over=dc.bought&&dc.count>=dc.bought;
+          html+=`<td onclick="toggleSheetAtt(${s.id},'${d}')" style="border:1px solid #e5e5e4;padding:3px;text-align:center;cursor:pointer;background:${over?'#fef2f2':'#eff6ff'};color:${over?'#b91c1c':'#1e40af'};font-weight:600">${dc.count}</td>`;
+        } else {
+          html+=`<td onclick="toggleSheetAtt(${s.id},'${d}')" style="border:1px solid #e5e5e4;padding:3px;cursor:pointer;opacity:0.4;text-align:center"></td>`;
+        }
+      });
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  showModal(`<h3>📅 ${t('att_sheet')}</h3><div style="overflow-x:auto;-webkit-overflow-scrolling:touch">${html}</div><div class="modal-actions"><button onclick="closeModal()">${t('close')}</button></div>`);
+}
+async function toggleSheetAtt(stuId,date){
+  await api('/api/attendance-toggle',{method:'POST',body:JSON.stringify({student_id:stuId,date})});
+  await reloadAll();openAttSheet();
+}
+
+// ===== CSV / 백업 =====
+function csvEsc(v){return `"${String(v==null?'':v).replace(/"/g,'""')}"`}
+function toCSV(rows){return '﻿'+rows.map(r=>r.map(csvEsc).join(',')).join('\n')}
+function dlFile(content,filename,type){
+  const blob=new Blob([content],{type});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function exportStudentsCSV(){
+  const rows=[['이름','전화번호','레벨','등록일','만료일','총횟수','사용','잔여','상태','특이사항'],
+    ..._students.map(s=>{
+      const total=s.total_sessions||0,used=s.used_sessions||0;
+      return [s.name,s.phone||'',s.level,s.joined_at?s.joined_at.slice(0,10):'',s.end_date||'',total,used,Math.max(0,total-used),({active:'활성',expiring:'만료임박',expired:'만료'})[getStatus(s)],s.notes||''];
+    })];
+  dlFile(toCSV(rows),`수강생명단_${todayStr()}.csv`,'text/csv');
+}
+function parseCSVLine(line){
+  const r=[];let c='',q=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(q){if(ch==='"'&&line[i+1]==='"'){c+='"';i++}else if(ch==='"')q=false;else c+=ch}
+    else{if(ch==='"')q=true;else if(ch===','){r.push(c);c=''}else c+=ch}
+  }
+  r.push(c);return r;
+}
+function importStudentsCSV(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='.csv';
+  inp.onchange=async e=>{
+    const f=e.target.files[0];if(!f)return;
+    const txt=(await f.text()).replace(/^﻿/,'');
+    const lines=txt.split(/\r?\n/).filter(Boolean);
+    if(lines.length<2)return alert('데이터 없음');
+    const h=parseCSVLine(lines[0]);
+    const idx=k=>h.findIndex(x=>x.includes(k));
+    const map={name:idx('이름'),phone:idx('전화'),level:idx('레벨'),start:idx('등록일'),end:idx('만료'),total:idx('총횟수')||idx('횟수'),used:idx('사용'),note:idx('특이')||idx('메모')};
+    if(map.name<0)return alert('"이름" 컬럼 필요');
+    const rows=[];
+    for(let i=1;i<lines.length;i++){
+      const c=parseCSVLine(lines[i]);
+      if(!c[map.name]?.trim())continue;
+      rows.push({
+        name:c[map.name].trim(),phone:map.phone>=0?c[map.phone]:'',
+        level:map.level>=0?(c[map.level].includes('중')?'intermediate':c[map.level].includes('상')?'advanced':'beginner'):'beginner',
+        end_date:map.end>=0?c[map.end]:'',
+        total_sessions:map.total>=0?Number(c[map.total])||0:0,
+        used_sessions:map.used>=0?Number(c[map.used])||0:0,
+        notes:map.note>=0?c[map.note]:'',
+        program:'',gender:'M',payment_type:'per_session'
+      });
+    }
+    if(!confirm(`${rows.length}명 등록?`))return;
+    const r=await api('/api/students/bulk-import',{method:'POST',body:JSON.stringify({rows})}).then(x=>x.json());
+    if(r.error)return alert('실패: '+r.error);
+    alert(`✅ ${r.added}명 등록`);
+    await reloadAll();
+  };
+  inp.click();
+}
+async function downloadBackup(){
+  const r=await api('/api/backup');
+  const blob=await r.blob();
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`lesson_backup_${todayStr()}.json`;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function restoreBackup(){
+  if(!confirm('⚠️ 현재 데이터를 백업으로 덮어씁니다. 계속?'))return;
+  const inp=document.createElement('input');inp.type='file';inp.accept='.json';
+  inp.onchange=async e=>{
+    const f=e.target.files[0];if(!f)return;
+    const txt=await f.text();
+    let dump;try{dump=JSON.parse(txt)}catch(_){return alert('JSON 오류')}
+    const r=await api('/api/restore',{method:'POST',body:JSON.stringify(dump)}).then(x=>x.json());
+    if(r.error)return alert('실패: '+r.error);
+    alert('✅ 복원 완료');location.reload();
+  };
+  inp.click();
+}
+
+function flashSaved(){
+  const el=$('save-status');
+  el.textContent=t('saved')+' '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  setTimeout(()=>{if(el.textContent.startsWith(t('saved')))el.textContent=''},3000);
+}
+
+// ===== 탭 + 뒤로가기 =====
+function switchTab(name,fromHistory){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('show'));
+  $('panel-'+name)?.classList.add('show');
+  if(!fromHistory) history.pushState({tab:name},'','#'+name);
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('.tab').forEach(btn=>{
+  if(btn.dataset.tab) btn.onclick=()=>switchTab(btn.dataset.tab);
+});
+
+// 모달 열 때 history 푸시 (뒤로가기로 닫기)
+const _origShowModal=showModal;
+const _origCloseModal=closeModal;
+showModal=function(html){
+  _origShowModal(html);
+  if(!history.state?.modal) history.pushState({modal:true},'',location.hash);
+};
+closeModal=function(){
+  if(history.state?.modal){history.back();return}
+  _origCloseModal();
+};
+
+// 뒤로가기: 모달 열려있으면 닫기, 아니면 탭 이동 (홈/수강생 기본)
+window.addEventListener('popstate',e=>{
+  if($('modal-bg').classList.contains('show')){
+    _origCloseModal();
+    return;
+  }
+  const tab=e.state?.tab||'students';
+  switchTab(tab,true);
+});
+
+// 초기 상태 설정
+if(authToken&&!history.state) history.replaceState({tab:'students'},'','#students');
+
+// ===== 시작 =====
+applyI18N();
+if(authToken&&currentUser)init();
+$('lg-pass')?.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+
+// 출석 정보 로드 (sessions에 attendance가 직접 없어서 따로 가져와야 함)
+async function loadAttendanceForVisible(){
+  const today=g('att-date')||todayStr();
+  const sess=_sessions.filter(s=>s.session_date===today);
+  _attendance=[];
+  for(const sc of sess){
+    const r=await api('/api/sessions/'+sc.id+'/attendance').then(x=>x.json());
+    (r.students||[]).forEach(st=>{
+      if(st.attend_status&&st.attend_status!=='absent'){
+        _attendance.push({session_id:sc.id,student_id:st.id,status:st.attend_status});
+      }
+    });
+  }
+  renderAttendance();
+}
+// 출석 탭 클릭 시 attendance 데이터 로드
+document.querySelector('.tab[data-tab="attendance"]').addEventListener('click',()=>setTimeout(loadAttendanceForVisible,50));
+$('att-date').addEventListener('change',loadAttendanceForVisible);
+</script>
+<script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});</script>
+</body>
+</html>

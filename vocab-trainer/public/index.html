@@ -1,0 +1,395 @@
+<!DOCTYPE html><html lang="ko"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>📚 영어·몽골어 단어 훈련</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#8b5cf6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a1a;--card:#141428;--card2:#1e1e3a;--primary:#8b5cf6;--success:#22c55e;--danger:#ef4444;--warning:#f59e0b;--info:#3b82f6;--text:#f0f0f0;--text2:#8888aa;--pink:#ec4899}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
+.login-box{background:var(--card);padding:2rem;border-radius:16px;width:100%;max-width:360px;text-align:center}
+.login-box input{width:100%;padding:0.8rem;margin:0.4rem 0;border-radius:10px;border:1px solid var(--card2);background:var(--bg);color:var(--text);font-size:1rem}
+.app-wrap{display:none}
+.header{background:linear-gradient(135deg,#1a0533,#2d1b69);padding:1rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100}
+.header h1{font-size:1.1rem}
+.nav{display:flex;overflow-x:auto;background:var(--card);border-bottom:1px solid rgba(255,255,255,0.05);padding:0 0.5rem}
+.nav-item{padding:0.7rem 0.8rem;font-size:0.8rem;white-space:nowrap;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;transition:all 0.2s}
+.nav-item.active{color:var(--primary);border-color:var(--primary)}
+.content{padding:1rem;max-width:600px;margin:0 auto}
+.section{display:none}.section.active{display:block}
+.card{background:var(--card);border-radius:12px;padding:1rem;margin-bottom:0.8rem}
+.btn{border:none;padding:0.5rem 1rem;border-radius:8px;cursor:pointer;font-size:0.85rem;color:white;display:inline-flex;align-items:center;gap:0.3rem}
+.btn:hover{opacity:0.85}
+.btn-primary{background:var(--primary)}
+.btn-success{background:var(--success)}
+.btn-danger{background:var(--danger)}
+.btn-sm{padding:0.3rem 0.6rem;font-size:0.75rem}
+.btn-lg{padding:0.8rem 2rem;font-size:1.1rem;border-radius:12px}
+.badge{display:inline-block;padding:0.15rem 0.5rem;border-radius:20px;font-size:0.7rem;font-weight:600}
+.form-group{margin-bottom:0.6rem}
+.form-group label{display:block;font-size:0.8rem;color:var(--text2);margin-bottom:0.2rem}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:0.5rem;border-radius:8px;border:1px solid var(--card2);background:var(--bg);color:var(--text);font-size:0.9rem}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:0.5rem;margin-bottom:1rem}
+.stat-card{background:var(--card);border-radius:12px;padding:0.6rem;text-align:center}
+.stat-card .num{font-size:1.5rem;font-weight:700}
+.stat-card .label{font-size:0.7rem;color:var(--text2)}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal{background:var(--card);border-radius:16px;padding:1.5rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+#login-error{color:var(--danger);font-size:0.85rem;margin-top:0.5rem;display:none}
+#modal-container{position:fixed;z-index:200}
+
+/* Quiz card */
+.quiz-card{background:linear-gradient(135deg,var(--card),var(--card2));border-radius:16px;padding:2rem;text-align:center;min-height:250px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:transform 0.3s;position:relative}
+.quiz-card:active{transform:scale(0.98)}
+.quiz-word{font-size:2rem;font-weight:800;margin-bottom:0.5rem}
+.quiz-pron{font-size:1rem;color:var(--text2);margin-bottom:0.5rem}
+.quiz-answer{font-size:1.3rem;font-weight:600;margin-top:1rem;opacity:0;transition:opacity 0.3s}
+.quiz-answer.show{opacity:1}
+.quiz-example{font-size:0.85rem;color:var(--text2);margin-top:0.5rem;font-style:italic}
+.quiz-btns{display:flex;gap:0.8rem;justify-content:center;margin-top:1rem}
+.mastery-bar{display:flex;gap:2px;margin-top:0.3rem}
+.mastery-dot{width:12px;height:4px;border-radius:2px;background:var(--card2)}
+.mastery-dot.filled{background:var(--success)}
+
+/* Streak flame */
+.streak{display:flex;align-items:center;gap:0.3rem;font-size:1.2rem}
+.lang-tab{display:flex;gap:0.3rem;margin-bottom:1rem}
+.lang-btn{padding:0.4rem 1rem;border-radius:20px;border:none;font-size:0.85rem;cursor:pointer;background:var(--card2);color:var(--text2)}
+.lang-btn.active{color:white}
+@media(max-width:600px){.form-row{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,1fr)}}
+</style></head><body>
+
+<div class="login-wrap" id="login-wrap">
+  <div class="login-box">
+    <div style="font-size:3rem;margin-bottom:0.5rem">📚🇺🇸🇲🇳</div>
+    <h1 style="font-size:1.5rem">단어 훈련</h1>
+    <p style="color:var(--text2);margin-bottom:1.5rem;font-size:0.85rem">영어 · 몽골어 매일 10단어</p>
+    <input id="login-user" placeholder="아이디" autofocus>
+    <input id="login-pass" placeholder="비밀번호" type="password">
+    <button class="btn btn-primary" style="width:100%;padding:0.8rem;margin-top:0.5rem;font-size:1rem" onclick="doLogin()">로그인</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<div class="app-wrap" id="app-wrap">
+  <div class="header">
+    <h1>📚 단어 훈련</h1>
+    <div style="display:flex;gap:0.5rem;align-items:center">
+      <div class="streak" id="streak"></div>
+      <button class="btn btn-sm" style="background:var(--card2)" onclick="logout()">로그아웃</button>
+    </div>
+  </div>
+  <div class="nav">
+    <a href="/center/portal" class="nav-item" style="background:rgba(236,72,153,0.1);margin-bottom:6px;text-decoration:none;color:var(--text2)"><i class="fas fa-th-large"></i> ← 포털</a>
+    <div class="nav-item active" onclick="showSec('home')"><i class="fas fa-home"></i> 홈</div>
+    <div class="nav-item" onclick="showSec('quiz')"><i class="fas fa-brain"></i> 퀴즈</div>
+    <div class="nav-item" onclick="showSec('words')"><i class="fas fa-book"></i> 단어장</div>
+    <div class="nav-item" onclick="showSec('add')"><i class="fas fa-plus"></i> 추가</div>
+    <div class="nav-item" onclick="showSec('stats')"><i class="fas fa-chart-bar"></i> 통계</div>
+  </div>
+  <div class="content">
+    <div class="section active" id="sec-home"></div>
+    <div class="section" id="sec-quiz"></div>
+    <div class="section" id="sec-words"></div>
+    <div class="section" id="sec-add"></div>
+    <div class="section" id="sec-stats"></div>
+  </div>
+</div>
+<div id="modal-container"></div>
+
+<script>
+const _p=window.location.pathname.replace(/\/+$/,'');const API=_p==='/'||_p===''?'':_p;
+let currentUser=null,quizWords=[],quizIdx=0,answered=false,curLang='en';
+
+function todayUB(){const d=new Date(Date.now()+8*3600000);return d.toISOString().split('T')[0]}
+function g(id){return document.getElementById(id)?.value||''}
+function closeModal(){document.getElementById('modal-container').innerHTML=''}
+async function apiFetch(url,opts={}){opts.headers={...opts.headers,'Content-Type':'application/json'};return fetch(API+url,opts)}
+
+async function doLogin(){
+  const res=await apiFetch('/api/login',{method:'POST',body:JSON.stringify({username:g('login-user'),password:g('login-pass')})});
+  const d=await res.json();
+  if(!res.ok){document.getElementById('login-error').textContent=d.error;document.getElementById('login-error').style.display='block';return}
+  currentUser=d.user;localStorage.setItem('vocab_token',d.token);localStorage.setItem('vocab_user',JSON.stringify(d.user));showApp();
+}
+function showApp(){document.getElementById('login-wrap').style.display='none';document.getElementById('app-wrap').style.display='block';loadHome()}
+function logout(){localStorage.removeItem('vocab_token');localStorage.removeItem('vocab_user');location.reload()}
+(function(){const t=localStorage.getItem('vocab_token'),u=localStorage.getItem('vocab_user');if(t&&u){currentUser=JSON.parse(u);showApp()}
+document.getElementById('login-pass')?.addEventListener('keypress',e=>{if(e.key==='Enter')doLogin()})})();
+
+let _curSec='home';
+function showSec(n,noPush){
+  if(!noPush&&n!==_curSec)history.pushState({sec:n},'','#'+n);_curSec=n;
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+n)?.classList.add('active');
+  const idx=['home','quiz','words','add','stats'].indexOf(n);
+  document.querySelectorAll('.nav-item:not(a)')[idx]?.classList.add('active');
+  ({home:loadHome,quiz:loadQuiz,words:loadWords,add:loadAdd,stats:loadStats})[n]?.();
+}
+
+// HOME
+async function loadHome(){
+  const stats=await apiFetch('/api/stats').then(r=>r.json());
+  document.getElementById('streak').innerHTML=stats.streak>0?`🔥${stats.streak}`:'';
+  const pct=stats.total>0?Math.round(stats.mastered/stats.total*100):0;
+  document.getElementById('sec-home').innerHTML=`
+    <div style="text-align:center;padding:1rem 0">
+      <div style="font-size:3rem;margin-bottom:0.5rem">📚</div>
+      <h2>안녕하세요, ${currentUser?.name||''}님!</h2>
+      <p style="color:var(--text2)">오늘도 단어 공부 화이팅! 💪</p>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="num" style="color:var(--primary)">${stats.total}</div><div class="label">전체 단어</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--success)">${stats.mastered}</div><div class="label">마스터</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--warning)">${stats.learning}</div><div class="label">학습중</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--info)">${stats.new}</div><div class="label">새 단어</div></div>
+    </div>
+    ${stats.reviewDue>0?`<div class="card" style="border-left:4px solid var(--warning);cursor:pointer" onclick="showSec('quiz')">
+      <div style="display:flex;align-items:center;gap:0.8rem">
+        <span style="font-size:2rem">⏰</span>
+        <div><strong>복습할 단어 ${stats.reviewDue}개!</strong><div style="font-size:0.82rem;color:var(--text2)">탭해서 복습 시작</div></div>
+      </div>
+    </div>`:''}
+    <div class="card" style="cursor:pointer" onclick="showSec('quiz')">
+      <div style="display:flex;align-items:center;gap:0.8rem">
+        <span style="font-size:2rem">🧠</span>
+        <div><strong>퀴즈 시작하기</strong><div style="font-size:0.82rem;color:var(--text2)">플래시카드로 단어 학습</div></div>
+      </div>
+    </div>
+    <div style="margin-top:1rem">
+      <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;font-size:0.85rem"><span>학습 진도</span><span>${pct}%</span></div>
+      <div style="height:8px;background:var(--card2);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--primary),var(--success));border-radius:4px;transition:width 0.5s"></div>
+      </div>
+    </div>
+    ${stats.todayProgress?`<div class="card" style="margin-top:0.8rem">
+      <strong>오늘의 학습</strong>
+      <div style="display:flex;gap:1rem;margin-top:0.3rem;font-size:0.85rem">
+        <span>📖 ${stats.todayProgress.words_studied}개 학습</span>
+        <span style="color:var(--success)">✅ ${stats.todayProgress.words_correct}개 정답</span>
+        <span style="color:var(--danger)">❌ ${stats.todayProgress.words_wrong}개 오답</span>
+      </div>
+    </div>`:''}
+    ${stats.streak>0?`<div style="text-align:center;margin-top:1rem;font-size:1.2rem">🔥 ${stats.streak}일 연속 학습중!</div>`:''}`;
+}
+
+// QUIZ
+async function loadQuiz(){
+  document.getElementById('sec-quiz').innerHTML=`
+    <div class="lang-tab">
+      <span class="lang-btn ${curLang==='en'?'active':''}" style="${curLang==='en'?'background:var(--info)':''}" onclick="curLang='en';startQuiz()">🇺🇸 영어</span>
+      <span class="lang-btn ${curLang==='mn'?'active':''}" style="${curLang==='mn'?'background:var(--success)':''}" onclick="curLang='mn';startQuiz()">🇲🇳 몽골어</span>
+      <span class="lang-btn ${curLang==='all'?'active':''}" style="${curLang==='all'?'background:var(--primary)':''}" onclick="curLang='all';startQuiz()">🌏 전체</span>
+    </div>
+    <div id="quiz-area" style="text-align:center;padding:2rem;color:var(--text2)">로딩중...</div>`;
+  startQuiz();
+}
+
+async function startQuiz(){
+  const url=curLang==='all'?'/api/words/today':'/api/words/today?language='+curLang;
+  quizWords=await apiFetch(url).then(r=>r.json());
+  quizIdx=0;answered=false;
+  if(!quizWords.length){document.getElementById('quiz-area').innerHTML='<div style="padding:3rem"><div style="font-size:3rem;margin-bottom:1rem">🎉</div><strong>복습할 단어가 없어요!</strong><p style="color:var(--text2);margin-top:0.5rem">단어장에서 새 단어를 추가하세요</p></div>';return}
+  // Shuffle
+  quizWords.sort(()=>Math.random()-0.5);
+  showQuizCard();
+}
+
+function showQuizCard(){
+  if(quizIdx>=quizWords.length){
+    document.getElementById('quiz-area').innerHTML=`<div style="padding:2rem">
+      <div style="font-size:3rem;margin-bottom:1rem">🎉</div>
+      <h2>완료!</h2>
+      <p style="color:var(--text2);margin-top:0.5rem">${quizWords.length}개 단어 복습 완료</p>
+      <button class="btn btn-primary btn-lg" style="margin-top:1rem" onclick="startQuiz()">다시 하기</button>
+    </div>`;return;
+  }
+  answered=false;
+  const w=quizWords[quizIdx];
+  const isEn=w.language==='en';
+  const flag=isEn?'🇺🇸':'🇲🇳';
+  const masteryDots=Array(5).fill(0).map((_,i)=>`<div class="mastery-dot${i<(w.mastery_level||0)?' filled':''}"></div>`).join('');
+
+  document.getElementById('quiz-area').innerHTML=`
+    <div style="font-size:0.8rem;color:var(--text2);margin-bottom:0.5rem">${quizIdx+1} / ${quizWords.length}</div>
+    <div class="quiz-card" onclick="revealAnswer()">
+      <div style="position:absolute;top:0.8rem;left:0.8rem;font-size:1.2rem">${flag}</div>
+      <div style="position:absolute;top:0.8rem;right:0.8rem"><span class="badge" style="background:var(--card2)">${w.category||''}</span></div>
+      <div class="quiz-word">${w.word}</div>
+      ${w.pronunciation?`<div class="quiz-pron">${w.pronunciation}</div>`:''}
+      <div class="mastery-bar">${masteryDots}</div>
+      <div class="quiz-answer" id="quiz-answer">
+        <div style="font-size:1.4rem;font-weight:700;color:var(--warning)">${w.meaning_ko}</div>
+        ${w.meaning_mn?`<div style="font-size:0.9rem;color:var(--text2);margin-top:0.3rem">🇲🇳 ${w.meaning_mn}</div>`:''}
+        ${w.example_sentence?`<div class="quiz-example">"${w.example_sentence}"</div>`:''}
+        ${w.example_meaning?`<div style="font-size:0.78rem;color:var(--text2)">${w.example_meaning}</div>`:''}
+      </div>
+      <div style="font-size:0.78rem;color:var(--text2);margin-top:1rem;opacity:0.5" id="tap-hint">탭하면 정답 보기</div>
+    </div>
+    <div class="quiz-btns" id="quiz-btns" style="display:none">
+      <button class="btn btn-danger btn-lg" onclick="answerQuiz(false)"><i class="fas fa-times"></i> 모르겠어</button>
+      <button class="btn btn-success btn-lg" onclick="answerQuiz(true)"><i class="fas fa-check"></i> 알아!</button>
+    </div>`;
+}
+
+function revealAnswer(){
+  if(answered)return;
+  answered=true;
+  document.getElementById('quiz-answer')?.classList.add('show');
+  document.getElementById('quiz-btns').style.display='flex';
+  document.getElementById('tap-hint').style.display='none';
+}
+
+async function answerQuiz(correct){
+  const w=quizWords[quizIdx];
+  await apiFetch('/api/words/'+w.id+'/review',{method:'POST',body:JSON.stringify({correct})});
+  quizIdx++;
+  showQuizCard();
+}
+
+// WORDS
+async function loadWords(){
+  const words=await apiFetch('/api/words').then(r=>r.json());
+  const byDay={};
+  words.forEach(w=>{const d=w.day_number||1;if(!byDay[d])byDay[d]=[];byDay[d].push(w)});
+  const days=Object.keys(byDay).sort((a,b)=>b-a);
+
+  document.getElementById('sec-words').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem"><h2>📖 단어장</h2>
+      <span style="font-size:0.85rem;color:var(--text2)">${words.length}개</span></div>
+    <div class="lang-tab">
+      <span class="lang-btn active" style="background:var(--primary)" onclick="filterWords('all',this)">전체</span>
+      <span class="lang-btn" onclick="filterWords('en',this)">🇺🇸 영어</span>
+      <span class="lang-btn" onclick="filterWords('mn',this)">🇲🇳 몽골어</span>
+    </div>
+    <div id="words-list">
+    ${days.map(d=>`<div class="card word-day" data-day="${d}">
+      <h3 style="font-size:0.9rem;margin-bottom:0.5rem;display:flex;justify-content:space-between">
+        <span>📅 Day ${d}</span>
+        <span style="color:var(--text2);font-size:0.8rem">${byDay[d].length}개</span>
+      </h3>
+      ${byDay[d].map(w=>{
+        const flag=w.language==='en'?'🇺🇸':'🇲🇳';
+        const m=w.mastery_level||0;
+        const masteryDots=Array(5).fill(0).map((_,i)=>`<span style="display:inline-block;width:8px;height:3px;border-radius:2px;margin-right:1px;background:${i<m?'var(--success)':'var(--card2)'}"></span>`).join('');
+        return `<div class="word-item" data-lang="${w.language}" style="display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:0.85rem">
+          <span>${flag}</span>
+          <div style="flex:1">
+            <strong>${w.word}</strong> ${w.pronunciation?`<span style="color:var(--text2);font-size:0.75rem">${w.pronunciation}</span>`:''}
+            <div style="color:var(--text2);font-size:0.78rem">${w.meaning_ko} ${w.meaning_mn?`| 🇲🇳 ${w.meaning_mn}`:''}</div>
+            <div>${masteryDots}</div>
+          </div>
+          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteWord(${w.id})"><i class="fas fa-trash"></i></button>
+        </div>`}).join('')}
+    </div>`).join('')}
+    </div>`;
+}
+
+function filterWords(lang,el){
+  document.querySelectorAll('.lang-tab .lang-btn').forEach(b=>{b.classList.remove('active');b.style.background='var(--card2)'});
+  el.classList.add('active');el.style.background='var(--primary)';
+  document.querySelectorAll('.word-item').forEach(w=>{
+    w.style.display=(lang==='all'||w.dataset.lang===lang)?'flex':'none';
+  });
+}
+
+async function deleteWord(id){if(!confirm('삭제?'))return;await apiFetch('/api/words/'+id,{method:'DELETE'});loadWords()}
+
+// ADD
+function loadAdd(){
+  document.getElementById('sec-add').innerHTML=`
+    <h2 style="margin-bottom:1rem">➕ 단어 추가</h2>
+    <div class="lang-tab">
+      <span class="lang-btn active" style="background:var(--info)" id="add-en" onclick="setAddLang('en')">🇺🇸 영어</span>
+      <span class="lang-btn" id="add-mn" onclick="setAddLang('mn')">🇲🇳 몽골어</span>
+    </div>
+    <div class="card">
+      <input type="hidden" id="aw-lang" value="en">
+      <div class="form-group"><label>단어</label><input id="aw-word" placeholder="resilience"></div>
+      <div class="form-group"><label>한국어 뜻</label><input id="aw-ko" placeholder="회복력"></div>
+      <div class="form-group"><label>몽골어 뜻 (선택)</label><input id="aw-mn" placeholder="Тэсвэр тэвчээр"></div>
+      <div class="form-row">
+        <div class="form-group"><label>발음</label><input id="aw-pron" placeholder="[rɪˈzɪliəns]"></div>
+        <div class="form-group"><label>카테고리</label><select id="aw-cat"><option value="general">일반</option><option value="tennis">테니스</option><option value="business">비즈니스</option><option value="fitness">체력/건강</option><option value="mental">멘탈</option><option value="medical">의료</option><option value="greeting">인사</option><option value="shopping">쇼핑</option><option value="food">음식</option><option value="travel">여행</option><option value="basic">기초</option></select></div>
+      </div>
+      <div class="form-group"><label>예문</label><input id="aw-ex" placeholder="Tennis requires mental resilience."></div>
+      <div class="form-group"><label>예문 해석</label><input id="aw-exm" placeholder="테니스는 정신적 회복력이 필요하다."></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:0.5rem" onclick="addWord()"><i class="fas fa-plus"></i> 추가</button>
+    </div>
+    <div id="add-result"></div>`;
+}
+
+function setAddLang(lang){
+  document.getElementById('aw-lang').value=lang;
+  document.getElementById('add-en').classList.toggle('active',lang==='en');
+  document.getElementById('add-mn').classList.toggle('active',lang==='mn');
+  document.getElementById('add-en').style.background=lang==='en'?'var(--info)':'var(--card2)';
+  document.getElementById('add-mn').style.background=lang==='mn'?'var(--success)':'var(--card2)';
+}
+
+async function addWord(){
+  const body={language:g('aw-lang'),word:g('aw-word'),meaning_ko:g('aw-ko'),meaning_mn:g('aw-mn'),pronunciation:g('aw-pron'),category:g('aw-cat'),example_sentence:g('aw-ex'),example_meaning:g('aw-exm')};
+  if(!body.word||!body.meaning_ko)return alert('단어와 뜻을 입력하세요');
+  await apiFetch('/api/words',{method:'POST',body:JSON.stringify(body)});
+  document.getElementById('add-result').innerHTML='<div class="card" style="border-left:4px solid var(--success);margin-top:0.5rem">✅ <strong>'+body.word+'</strong> 추가 완료!</div>';
+  ['aw-word','aw-ko','aw-mn','aw-pron','aw-ex','aw-exm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+}
+
+// STATS
+async function loadStats(){
+  const stats=await apiFetch('/api/stats').then(r=>r.json());
+  const pct=stats.total>0?Math.round(stats.mastered/stats.total*100):0;
+  document.getElementById('sec-stats').innerHTML=`
+    <h2 style="margin-bottom:1rem">📊 학습 통계</h2>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="num" style="color:var(--primary)">${stats.total}</div><div class="label">전체</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--success)">${stats.mastered}</div><div class="label">마스터 ✅</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--warning)">${stats.learning}</div><div class="label">학습중 📖</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--info)">${stats.new}</div><div class="label">새 단어 🆕</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--danger)">${stats.reviewDue}</div><div class="label">복습 필요 ⏰</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--pink)">${stats.streak}</div><div class="label">연속 학습 🔥</div></div>
+    </div>
+    <div class="card">
+      <strong>마스터 진도</strong>
+      <div style="margin-top:0.5rem">
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.2rem"><span>0%</span><span>${pct}%</span><span>100%</span></div>
+        <div style="height:12px;background:var(--card2);border-radius:6px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--danger),var(--warning),var(--success));border-radius:6px"></div>
+        </div>
+      </div>
+    </div>
+    ${stats.byLang?.length?`<div class="card">
+      <strong>언어별</strong>
+      <div style="display:flex;gap:1rem;margin-top:0.5rem">
+        ${stats.byLang.map(l=>`<div style="flex:1;text-align:center;padding:0.5rem;background:var(--bg);border-radius:8px">
+          <div style="font-size:1.5rem">${l.language==='en'?'🇺🇸':'🇲🇳'}</div>
+          <div style="font-size:1.2rem;font-weight:700">${l.count}</div>
+          <div style="font-size:0.75rem;color:var(--text2)">${l.language==='en'?'영어':'몽골어'}</div>
+        </div>`).join('')}
+      </div>
+    </div>`:''}
+    ${stats.byCat?.length?`<div class="card">
+      <strong>카테고리별</strong>
+      ${stats.byCat.map(c=>`<div style="display:flex;justify-content:space-between;padding:0.3rem 0;font-size:0.85rem;border-bottom:1px solid rgba(255,255,255,0.03)">
+        <span>${c.category}</span><span style="color:var(--text2)">${c.count}개</span>
+      </div>`).join('')}
+    </div>`:''}
+    ${stats.history?.length?`<div class="card">
+      <strong>최근 학습 기록</strong>
+      ${stats.history.slice(0,7).map(h=>`<div style="display:flex;justify-content:space-between;padding:0.3rem 0;font-size:0.82rem;border-bottom:1px solid rgba(255,255,255,0.03)">
+        <span>📅 ${h.study_date}</span>
+        <span>📖 ${h.words_studied} | ✅ ${h.words_correct} | ❌ ${h.words_wrong}</span>
+      </div>`).join('')}
+    </div>`:''}`;
+}
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+
+window.addEventListener('popstate',e=>{if(e.state&&e.state.sec)showSec(e.state.sec,true);else showSec('home',true);});
+if(location.hash){const h=location.hash.slice(1);if(h)setTimeout(()=>showSec(h,true),100);}
+</script></body></html>

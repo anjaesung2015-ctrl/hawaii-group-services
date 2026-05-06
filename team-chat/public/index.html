@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>팀챗 - Hawaii Group</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root{--bg:#0a0a0f;--bg2:#12121a;--card:#1a1a2e;--card2:#252540;--primary:#6366f1;--primary2:#4f46e5;--success:#22c55e;--danger:#ef4444;--text:#e2e8f0;--text2:#64748b;--text3:#475569;--border:rgba(255,255,255,0.06)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;height:100dvh;overflow:hidden}
+.app{display:flex;height:100vh;height:100dvh}
+/* Sidebar - Room List */
+.sidebar{width:320px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-header{padding:1rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.sidebar-header h1{font-size:1.1rem;font-weight:700}
+.room-list{flex:1;overflow-y:auto;padding:0.5rem}
+.room-item{display:flex;align-items:center;gap:0.8rem;padding:0.8rem;border-radius:12px;cursor:pointer;transition:all .15s;margin-bottom:2px}
+.room-item:hover{background:var(--card)}
+.room-item.active{background:var(--primary);color:white}
+.room-item.active .room-meta{color:rgba(255,255,255,0.7)}
+.room-item.active .unread{background:white;color:var(--primary)}
+.room-icon{font-size:1.5rem;min-width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:var(--card);border-radius:12px}
+.room-item.active .room-icon{background:rgba(255,255,255,0.15)}
+.room-info{flex:1;min-width:0}
+.room-name{font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.room-last{font-size:0.8rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.room-meta{display:flex;flex-direction:column;align-items:flex-end;gap:3px;color:var(--text3);font-size:0.7rem}
+.unread{background:var(--primary);color:white;font-size:0.7rem;font-weight:700;min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 5px}
+/* Chat Area */
+.chat-area{flex:1;display:flex;flex-direction:column;background:var(--bg)}
+.chat-header{padding:0.8rem 1.2rem;display:flex;align-items:center;gap:0.8rem;border-bottom:1px solid var(--border);background:var(--bg2);min-height:60px}
+.chat-header .back-btn{display:none;background:none;border:none;color:var(--text);font-size:1.2rem;cursor:pointer;padding:0.3rem}
+.chat-header-info h2{font-size:1rem;font-weight:700}
+.chat-header-info p{font-size:0.75rem;color:var(--text2)}
+.messages{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:0.3rem}
+.msg-group{margin-bottom:0.8rem}
+.msg-sender{font-size:0.75rem;font-weight:600;margin-bottom:3px;display:flex;align-items:center;gap:6px}
+.msg-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:0.7rem;flex-shrink:0}
+.msg-bubble{max-width:75%;padding:0.6rem 0.9rem;border-radius:16px;font-size:0.9rem;line-height:1.5;position:relative;word-wrap:break-word}
+.msg-bubble.other{background:var(--card);border-top-left-radius:4px;margin-left:34px}
+.msg-bubble.mine{background:var(--primary);color:white;margin-left:auto;border-top-right-radius:4px}
+.msg-original{opacity:1}
+.msg-translated{font-size:0.82rem;opacity:0.75;margin-top:5px;padding-top:5px;border-top:1px dashed rgba(255,255,255,0.15)}
+.msg-time{font-size:0.65rem;color:var(--text3);margin-top:2px}
+.msg-bubble.mine .msg-time{text-align:right;color:rgba(255,255,255,0.5)}
+.msg-bubble.other .msg-time{margin-left:34px}
+.msg-translating{font-size:0.75rem;color:var(--text3);font-style:italic;margin-top:2px}
+.msg-bubble.mine .msg-translating{text-align:right;color:rgba(255,255,255,0.4)}
+/* Reply preview */
+.msg-reply{font-size:0.75rem;padding:4px 8px;margin-bottom:4px;border-left:3px solid var(--primary);background:rgba(99,102,241,0.1);border-radius:4px;color:var(--text2)}
+.msg-bubble.mine .msg-reply{border-left-color:rgba(255,255,255,0.5);background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7)}
+/* Input */
+.chat-input{padding:0.6rem 1rem;border-top:1px solid var(--border);background:var(--bg2);display:flex;gap:0.5rem;align-items:flex-end}
+.chat-input textarea{flex:1;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:0.6rem 1rem;color:var(--text);font-size:0.9rem;resize:none;max-height:120px;outline:none;font-family:inherit;line-height:1.4}
+.chat-input textarea:focus{border-color:var(--primary)}
+.send-btn{width:40px;height:40px;border-radius:50%;border:none;background:var(--primary);color:white;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.send-btn:hover{background:var(--primary2);transform:scale(1.05)}
+.send-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+/* Reply bar */
+.reply-bar{display:none;padding:0.4rem 1rem;background:var(--card);border-top:1px solid var(--border);font-size:0.8rem;color:var(--text2);align-items:center;gap:0.5rem}
+.reply-bar.show{display:flex}
+.reply-bar .reply-text{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.reply-bar .reply-close{background:none;border:none;color:var(--text2);cursor:pointer;font-size:1rem}
+/* Typing indicator */
+.typing-indicator{font-size:0.75rem;color:var(--text3);padding:0 1rem 0.3rem;min-height:1.2em;font-style:italic}
+/* No room selected */
+.no-room{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:1.2rem;flex-direction:column;gap:0.5rem}
+.no-room i{font-size:3rem;opacity:0.3}
+/* Online dot */
+.online-dot{width:8px;height:8px;border-radius:50%;background:var(--success);display:inline-block}
+.offline-dot{width:8px;height:8px;border-radius:50%;background:var(--text3);display:inline-block}
+/* Login */
+#login{display:flex;align-items:center;justify-content:center;height:100vh;padding:1rem}
+.login-box{background:var(--card);border-radius:20px;padding:2rem;width:100%;max-width:360px;text-align:center}
+.login-box h1{margin-bottom:0.3rem}
+.login-box p{color:var(--text2);margin-bottom:1.5rem;font-size:0.85rem}
+.login-box input{width:100%;padding:0.7rem 1rem;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text);font-size:0.95rem;margin-bottom:0.8rem;outline:none}
+.login-box input:focus{border-color:var(--primary)}
+.login-box button{width:100%;padding:0.75rem;border:none;border-radius:12px;background:var(--primary);color:white;font-size:1rem;font-weight:700;cursor:pointer}
+.login-box button:hover{background:var(--primary2)}
+.login-error{color:var(--danger);font-size:0.85rem;margin-top:0.5rem}
+#app{display:none}
+/* Lang indicator */
+.lang-badge{font-size:0.6rem;padding:1px 5px;border-radius:8px;font-weight:600;display:inline-block}
+.lang-ko{background:rgba(245,158,11,0.2);color:#f59e0b}
+.lang-mn{background:rgba(34,197,94,0.2);color:#22c55e}
+/* Date separator */
+.date-sep{text-align:center;padding:0.8rem 0;font-size:0.75rem;color:var(--text3);position:relative}
+.date-sep span{background:var(--bg);padding:0 0.8rem;position:relative;z-index:1}
+.date-sep::before{content:'';position:absolute;left:0;right:0;top:50%;border-top:1px solid var(--border)}
+/* Mobile */
+@keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+@media(max-width:768px){
+  .sidebar{position:fixed;left:0;top:0;width:100%;height:100%;z-index:10;transition:transform .25s}
+  .sidebar.hidden{transform:translateX(-100%)}
+  .chat-header .back-btn{display:block}
+  .msg-bubble{max-width:85%}
+}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <div class="login-box">
+    <div style="font-size:2.5rem;margin-bottom:0.5rem">💬</div>
+    <h1>Hawaii Team Chat</h1>
+    <p>사내 메신저 · Дотоод мессенжер</p>
+
+    <!-- 로그인 폼 -->
+    <div id="login-form">
+      <input id="l-user" placeholder="Нэвтрэх нэр / 아이디">
+      <input id="l-pass" type="password" placeholder="Нууц үг / 비밀번호">
+      <button onclick="doLogin()" style="width:100%;padding:0.75rem;border:none;border-radius:12px;background:var(--primary);color:white;font-size:1rem;font-weight:700;cursor:pointer">Нэвтрэх / 로그인</button>
+      <div style="margin-top:1rem;font-size:0.85rem;color:var(--text2)">
+        Бүртгэл байхгүй юу? / 계정이 없으세요?
+        <span style="color:var(--primary);cursor:pointer;font-weight:600" onclick="showRegister()"> Бүртгүүлэх / 회원가입</span>
+      </div>
+    </div>
+
+    <!-- 회원가입 폼 -->
+    <div id="register-form" style="display:none">
+      <input id="r-name" placeholder="Нэр / 이름 (예: Оюунга)">
+      <input id="r-user" placeholder="Нэвтрэх нэр / 아이디 (예: oyuunga)">
+      <input id="r-pass" type="password" placeholder="Нууц үг / 비밀번호">
+      <select id="r-biz" style="width:100%;padding:0.7rem 1rem;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text);font-size:0.95rem;margin-bottom:0.7rem">
+        <option value="fitness">🏋️ Фитнесс / 피트니스</option>
+        <option value="center">🎾 Центр / 센터</option>
+        <option value="shop">🛒 Шоп / 하와이샵</option>
+      </select>
+      <button onclick="doRegister()" style="width:100%;padding:0.75rem;border:none;border-radius:12px;background:var(--success);color:white;font-size:1rem;font-weight:700;cursor:pointer">Бүртгүүлэх / 가입하기</button>
+      <div style="margin-top:1rem;font-size:0.85rem;color:var(--text2)">
+        Бүртгэлтэй юу? / 이미 계정이 있으세요?
+        <span style="color:var(--primary);cursor:pointer;font-weight:600" onclick="showLogin()"> Нэвтрэх / 로그인</span>
+      </div>
+    </div>
+
+    <div id="l-error" class="login-error"></div>
+  </div>
+</div>
+
+<div id="app" class="app">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h1>💬 <span id="sidebar-title">팀챗</span></h1>
+      <div style="display:flex;gap:0.4rem">
+        <button style="background:var(--card);border:none;color:var(--text);padding:0.4rem 0.6rem;border-radius:8px;cursor:pointer;font-size:0.85rem" onclick="toggleLang()" id="my-lang-btn">🇰🇷</button>
+      </div>
+    </div>
+    <div id="notif-banner" style="margin:0.5rem;padding:0.5rem 0.8rem;background:var(--card);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;gap:0.3rem;font-size:0.8rem" >
+      <span class="notif-opt" data-mode="sound" onclick="setNotifMode('sound')" style="flex:1;text-align:center;padding:0.4rem;border-radius:8px;cursor:pointer">🔊</span>
+      <span class="notif-opt" data-mode="vibrate" onclick="setNotifMode('vibrate')" style="flex:1;text-align:center;padding:0.4rem;border-radius:8px;cursor:pointer">📳</span>
+      <span class="notif-opt" data-mode="mute" onclick="setNotifMode('mute')" style="flex:1;text-align:center;padding:0.4rem;border-radius:8px;cursor:pointer">🔇</span>
+    </div>
+    <div class="room-list" id="room-list"></div>
+    <div style="padding:0.8rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:0.5rem">
+      <div class="msg-avatar" id="my-avatar" style="width:32px;height:32px;font-size:0.7rem"></div>
+      <div style="flex:1"><div id="my-name" style="font-size:0.85rem;font-weight:600"></div><div style="font-size:0.7rem;color:var(--text2)" id="my-role"></div></div>
+      <button style="background:none;border:none;color:var(--text2);cursor:pointer;font-size:1rem" onclick="doLogout()" title="로그아웃"><i class="fas fa-sign-out-alt"></i></button>
+    </div>
+  </div>
+
+  <div class="chat-area" id="chat-area">
+    <div class="no-room" id="no-room">
+      <i class="fas fa-comments"></i>
+      <span>채팅방을 선택하세요</span>
+      <span style="font-size:0.8rem">Чатын өрөө сонгоно уу</span>
+    </div>
+    <div id="chat-view" style="display:none;flex:1;display:flex;flex-direction:column;height:100%">
+      <div class="chat-header">
+        <button class="back-btn" onclick="showSidebar()"><i class="fas fa-arrow-left"></i></button>
+        <div style="font-size:1.5rem" id="chat-icon"></div>
+        <div class="chat-header-info">
+          <h2 id="chat-title"></h2>
+          <p id="chat-subtitle"></p>
+        </div>
+      </div>
+      <div class="messages" id="messages"></div>
+      <div class="typing-indicator" id="typing"></div>
+      <div class="reply-bar" id="reply-bar">
+        <i class="fas fa-reply" style="color:var(--primary)"></i>
+        <span class="reply-text" id="reply-text"></span>
+        <button class="reply-close" onclick="cancelReply()">✕</button>
+      </div>
+      <div class="chat-input">
+        <textarea id="msg-input" rows="1" placeholder="메시지 입력... / Мессеж бичих..." oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+        <button class="send-btn" id="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = window.location.pathname.replace(/\/+$/, '');
+let token = localStorage.getItem('chat_token');
+let me = JSON.parse(localStorage.getItem('chat_me') || 'null');
+let ws = null;
+let rooms = [];
+let currentRoom = null;
+let onlineUsers = new Set();
+let replyTo = null;
+let typingTimeout = null;
+
+// ====== 알림 ======
+// 알림: 소리 + 진동 + 화면 배너
+let audioCtx = null;
+function playNotifSound() {
+  if (notifMode !== 'sound') return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // 띵동 소리
+    const osc1 = audioCtx.createOscillator();
+    const osc2 = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc1.connect(gain); osc2.connect(gain); gain.connect(audioCtx.destination);
+    osc1.frequency.value = 830; osc2.frequency.value = 1100;
+    osc1.type = 'sine'; osc2.type = 'sine';
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+    osc1.start(audioCtx.currentTime);
+    osc2.start(audioCtx.currentTime + 0.15);
+    osc1.stop(audioCtx.currentTime + 0.3);
+    osc2.stop(audioCtx.currentTime + 0.5);
+  } catch(e) {}
+}
+
+function vibratePhone() {
+  if (notifMode === 'mute') return;
+  try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch(e) {}
+}
+
+function showTopBanner(title, body) {
+  // 기존 배너 제거
+  document.getElementById('top-notif')?.remove();
+  const div = document.createElement('div');
+  div.id = 'top-notif';
+  div.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;padding:12px 16px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:white;display:flex;align-items:center;gap:10px;cursor:pointer;animation:slideDown .3s;box-shadow:0 4px 20px rgba(0,0,0,0.4);font-size:0.9rem';
+  div.innerHTML = `<div style="font-size:1.5rem">💬</div><div style="flex:1"><div style="font-weight:700;font-size:0.85rem">${title}</div><div style="opacity:0.85;font-size:0.8rem;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${body}</div></div><span style="opacity:0.6;font-size:1.2rem" onclick="event.stopPropagation();this.parentElement.remove()">✕</span>`;
+  div.onclick = () => { div.remove(); };
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 5000);
+}
+
+// 브라우저 알림 권한 요청
+// 알림 모드: sound(소리+진동+배너), vibrate(진동+배너), mute(배너만)
+let notifMode = localStorage.getItem('chat_notif_mode') || 'sound';
+let notifEnabled = true; // 항상 true, 모드로 구분
+
+function requestNotifPermission() {
+  updateNotifBanner();
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function updateNotifBanner() {
+  document.querySelectorAll('.notif-opt').forEach(el => {
+    const m = el.dataset.mode;
+    if (m === notifMode) {
+      el.style.background = m === 'sound' ? 'rgba(99,102,241,0.3)' : m === 'vibrate' ? 'rgba(245,158,11,0.3)' : 'rgba(100,100,100,0.3)';
+      el.style.fontWeight = '700';
+    } else {
+      el.style.background = '';
+      el.style.fontWeight = '';
+    }
+  });
+}
+
+function setNotifMode(mode) {
+  notifMode = mode;
+  localStorage.setItem('chat_notif_mode', mode);
+  updateNotifBanner();
+  // 미리보기
+  if (mode === 'sound') { playNotifSound(); vibratePhone(); }
+  else if (mode === 'vibrate') { vibratePhone(); }
+}
+
+function showNotification(title, body) {
+  // 1. 소리 (🔊 모드만)
+  playNotifSound();
+  
+  // 2. 진동 (🔊, 📳 모드)
+  vibratePhone();
+  
+  // 3. 화면 위 배너 (항상)
+  showTopBanner(title, body);
+  
+  // 4. 브라우저 알림 (탭 비활성 시)
+  if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+    const silent = notifMode === 'mute';
+    const n = new Notification(title, { body, tag: 'team-chat', silent, vibrate: notifMode !== 'mute' ? [200,100,200] : undefined });
+    n.onclick = () => { window.focus(); n.close(); };
+    setTimeout(() => n.close(), 5000);
+  }
+  
+  // 5. 타이틀 깜빡임
+  if (document.hidden) {
+    let blink = true;
+    const origTitle = document.title;
+    const blinkInterval = setInterval(() => {
+      document.title = blink ? `💬 ${title}` : origTitle;
+      blink = !blink;
+    }, 1000);
+    const stopBlink = () => { clearInterval(blinkInterval); document.title = origTitle; window.removeEventListener('focus', stopBlink); };
+    window.addEventListener('focus', stopBlink);
+    setTimeout(stopBlink, 30000);
+  }
+}
+
+// ====== AUTH ======
+async function doLogin() {
+  const res = await fetch(API + '/api/login', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ username: document.getElementById('l-user').value.trim(), password: document.getElementById('l-pass').value }) });
+  const data = await res.json();
+  if (!res.ok) { document.getElementById('l-error').textContent = data.error; return; }
+  token = data.token; me = data.user;
+  localStorage.setItem('chat_token', token);
+  localStorage.setItem('chat_me', JSON.stringify(me));
+  initApp();
+}
+function doLogout() { localStorage.clear(); location.reload(); }
+
+document.getElementById('l-pass')?.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('r-pass')?.addEventListener('keydown', e => { if(e.key==='Enter') doRegister(); });
+
+function showRegister() {
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('register-form').style.display = 'block';
+  document.getElementById('l-error').textContent = '';
+}
+function showLogin() {
+  document.getElementById('login-form').style.display = 'block';
+  document.getElementById('register-form').style.display = 'none';
+  document.getElementById('l-error').textContent = '';
+}
+
+async function doRegister() {
+  const name = document.getElementById('r-name').value.trim();
+  const username = document.getElementById('r-user').value.trim();
+  const password = document.getElementById('r-pass').value;
+  const business = document.getElementById('r-biz').value;
+
+  const res = await fetch(API + '/api/register', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name, username, password, business }) });
+  const data = await res.json();
+  if (!res.ok) { document.getElementById('l-error').textContent = data.error; return; }
+  token = data.token; me = data.user;
+  localStorage.setItem('chat_token', token);
+  localStorage.setItem('chat_me', JSON.stringify(me));
+  initApp();
+}
+
+// ====== INIT ======
+function initApp() {
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+
+  // My profile
+  document.getElementById('my-name').textContent = me.name;
+  document.getElementById('my-role').textContent = me.role === 'admin' ? '사장님' : me.role === 'manager' ? 'Менежер' : 'Ажилтан';
+  document.getElementById('my-avatar').style.background = me.avatar_color;
+  document.getElementById('my-avatar').textContent = me.name[0];
+  document.getElementById('my-lang-btn').textContent = me.lang === 'ko' ? '🇰🇷 한국어' : '🇲🇳 Монгол';
+  document.getElementById('sidebar-title').textContent = me.lang === 'ko' ? '팀챗' : 'Чат';
+
+  requestNotifPermission();
+  connectWS();
+  loadRooms();
+}
+
+// ====== WEBSOCKET ======
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${proto}//${location.host}${API}/ws?token=${token}`;
+  ws = new WebSocket(wsUrl);
+
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    if (data.type === 'presence') {
+      onlineUsers = new Set(data.online);
+      updateOnlineStatus();
+    } else if (data.type === 'new_message') {
+      handleNewMessage(data.message);
+    } else if (data.type === 'message_update') {
+      handleMessageUpdate(data.message);
+    } else if (data.type === 'typing') {
+      showTyping(data.name);
+    }
+  };
+
+  ws.onclose = () => { setTimeout(connectWS, 3000); };
+  ws.onerror = () => {};
+}
+
+// ====== ROOMS ======
+async function loadRooms() {
+  const res = await fetch(API + '/api/rooms', { headers: { 'Authorization': 'Bearer ' + token } });
+  rooms = await res.json();
+  renderRooms();
+}
+
+function renderRooms() {
+  const list = document.getElementById('room-list');
+  list.innerHTML = rooms.map(r => {
+    const isActive = currentRoom?.id === r.id;
+    const lastMsg = r.last_msg ? (r.last_msg_user ? r.last_msg_user + ': ' : '') + r.last_msg.slice(0, 40) : '';
+    const time = r.last_msg_time ? formatTime(r.last_msg_time) : '';
+    return `<div class="room-item ${isActive?'active':''}" onclick="openRoom(${r.id})">
+      <div class="room-icon">${r.icon}</div>
+      <div class="room-info">
+        <div class="room-name">${r.name}</div>
+        <div class="room-last">${lastMsg || (me.lang==='ko'?'메시지 없음':'Мессеж байхгүй')}</div>
+      </div>
+      <div class="room-meta">
+        <span>${time}</span>
+        ${r.unread > 0 ? `<div class="unread">${r.unread > 99 ? '99+' : r.unread}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function formatTime(dt) {
+  if (!dt) return '';
+  // DB에 UB 시간으로 저장됨 — 그대로 파싱
+  const parts = dt.split(' ');
+  const timePart = parts[1] || '';
+  const hm = timePart.slice(0, 5);
+  const datePart = parts[0] || '';
+  const today = nowUBDate();
+  if (datePart === today) {
+    // 오늘이면 시간만
+    return hm;
+  }
+  // 어제/이전이면 날짜
+  return datePart.slice(5).replace('-', '/') + ' ' + hm;
+}
+function nowUBDate() {
+  const d = new Date(Date.now() + 8*3600000);
+  return d.toISOString().split('T')[0];
+}
+
+// ====== CHAT ======
+async function openRoom(roomId) {
+  currentRoom = rooms.find(r => r.id === roomId);
+  if (!currentRoom) return;
+
+  document.getElementById('no-room').style.display = 'none';
+  const cv = document.getElementById('chat-view');
+  cv.style.display = 'flex';
+  document.getElementById('chat-icon').textContent = currentRoom.icon;
+  document.getElementById('chat-title').textContent = currentRoom.name;
+  document.getElementById('chat-subtitle').textContent = currentRoom.member_count + (me.lang==='ko' ? '명' : ' гишүүн');
+
+  // Hide sidebar on mobile
+  document.getElementById('sidebar').classList.add('hidden');
+
+  // Load messages
+  const res = await fetch(API + `/api/rooms/${roomId}/messages`, { headers: { 'Authorization': 'Bearer ' + token } });
+  const msgs = await res.json();
+  renderMessages(msgs);
+
+  // Mark as read
+  if (msgs.length) {
+    const lastId = msgs[msgs.length-1].id;
+    ws?.send(JSON.stringify({ type: 'read', room_id: roomId, msg_id: lastId }));
+    currentRoom.unread = 0;
+    currentRoom.my_last_read = lastId;
+    renderRooms();
+  }
+
+  document.getElementById('msg-input').focus();
+}
+
+function renderMessages(msgs) {
+  const container = document.getElementById('messages');
+  let html = '';
+  let lastDate = '';
+  let lastUserId = null;
+
+  msgs.forEach((m, i) => {
+    const msgDate = (m.created_at || '').split(' ')[0];
+    if (msgDate !== lastDate) {
+      lastDate = msgDate;
+      html += `<div class="date-sep"><span>${msgDate}</span></div>`;
+      lastUserId = null;
+    }
+
+    const isMine = m.user_id === me.id;
+    const showSender = !isMine && m.user_id !== lastUserId;
+    lastUserId = m.user_id;
+
+    const time = (m.created_at || '').split(' ')[1]?.slice(0,5) || '';
+
+    // 두 나라 말 모두 표시
+    let koText = m.translated_ko || (m.original_lang === 'ko' ? m.original_text : null);
+    let mnText = m.translated_mn || (m.original_lang === 'mn' ? m.original_text : null);
+    let mainText = me.lang === 'ko' ? (koText || m.original_text) : (mnText || m.original_text);
+    let transText = me.lang === 'ko' ? mnText : koText;
+    // 같은 텍스트면 번역 안 보여줌
+    if (transText && transText === mainText) transText = null;
+
+    const translating = !m.translated_ko && !m.translated_mn && m.original_lang !== me.lang;
+
+    html += `<div class="msg-group" data-msg-id="${m.id}">`;
+
+    if (showSender) {
+      html += `<div class="msg-sender">
+        <div class="msg-avatar" style="background:${m.avatar_color}">${(m.user_name||'?')[0]}</div>
+        <span>${m.user_name}</span>
+        <span class="lang-badge lang-${m.user_lang||'mn'}">${m.user_lang==='ko'?'한':'Мн'}</span>
+      </div>`;
+    }
+
+    if (m.reply_to && m.reply_text) {
+      html += `<div class="msg-reply" style="${isMine?'margin-left:auto;max-width:75%':'margin-left:34px;max-width:75%'}">${m.reply_user_name}: ${m.reply_text.slice(0,50)}</div>`;
+    }
+
+    html += `<div class="msg-bubble ${isMine?'mine':'other'}" onclick="setReply(${m.id},'${(m.user_name||'').replace(/'/g,"\\'")}','${mainText.replace(/'/g,"\\'").replace(/\n/g,' ').slice(0,50)}')">
+      <div class="msg-original">${escHtml(mainText)}</div>
+      ${transText ? `<div class="msg-translated">${escHtml(transText)}</div>` : ''}
+      ${translating ? `<div class="msg-translating">⏳ ${me.lang==='ko'?'번역 중...':'Орчуулж байна...'}</div>` : ''}
+      <div class="msg-time">${time}</div>
+    </div>`;
+
+    html += `</div>`;
+  });
+
+  container.innerHTML = html;
+  container.scrollTop = container.scrollHeight;
+}
+
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+
+// ====== SEND ======
+async function sendMessage() {
+  const input = document.getElementById('msg-input');
+  const text = input.value.trim();
+  if (!text || !currentRoom) return;
+
+  input.value = '';
+  autoResize(input);
+
+  const body = { text, reply_to: replyTo };
+  cancelReply();
+
+  await fetch(API + `/api/rooms/${currentRoom.id}/messages`, {
+    method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); return; }
+  // Typing indicator
+  if (ws?.readyState === 1 && currentRoom) {
+    ws.send(JSON.stringify({ type: 'typing', room_id: currentRoom.id }));
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ====== REAL-TIME ======
+function handleNewMessage(msg) {
+  // Update room list
+  const room = rooms.find(r => r.id === msg.room_id);
+  if (room) {
+    room.last_msg = msg.original_text;
+    room.last_msg_user = msg.user_name;
+    room.last_msg_time = msg.created_at;
+    if (currentRoom?.id !== msg.room_id) room.unread = (room.unread||0) + 1;
+    rooms.sort((a,b) => (b.last_msg_time||'').localeCompare(a.last_msg_time||''));
+    renderRooms();
+  }
+
+  // 🔔 알림 (내 메시지가 아닐 때)
+  if (msg.user_id !== me.id) {
+    const roomName = room?.name || '';
+    showNotification(`${msg.user_name} (${roomName})`, msg.original_text.slice(0, 100));
+  }
+
+  if (currentRoom?.id === msg.room_id) {
+    appendMessage(msg);
+    // Mark as read
+    ws?.send(JSON.stringify({ type: 'read', room_id: msg.room_id, msg_id: msg.id }));
+  }
+}
+
+function handleMessageUpdate(msg) {
+  if (currentRoom?.id !== msg.room_id) return;
+  const el = document.querySelector(`[data-msg-id="${msg.id}"]`);
+  if (!el) return;
+
+  // Re-render this single message
+  const isMine = msg.user_id === me.id;
+  let koText = msg.translated_ko || (msg.original_lang === 'ko' ? msg.original_text : null);
+  let mnText = msg.translated_mn || (msg.original_lang === 'mn' ? msg.original_text : null);
+  let mainText = me.lang === 'ko' ? (koText || msg.original_text) : (mnText || msg.original_text);
+  let transText = me.lang === 'ko' ? mnText : koText;
+  if (transText && transText === mainText) transText = null;
+
+  const bubble = el.querySelector('.msg-bubble');
+  if (bubble) {
+    const time = (msg.created_at||'').split(' ')[1]?.slice(0,5) || '';
+    bubble.innerHTML = `
+      <div class="msg-original">${escHtml(mainText)}</div>
+      ${transText ? `<div class="msg-translated">${escHtml(transText)}</div>` : ''}
+      <div class="msg-time">${time}</div>`;
+  }
+}
+
+function appendMessage(msg) {
+  const container = document.getElementById('messages');
+  const isMine = msg.user_id === me.id;
+
+  let koText = msg.translated_ko || (msg.original_lang === 'ko' ? msg.original_text : null);
+  let mnText = msg.translated_mn || (msg.original_lang === 'mn' ? msg.original_text : null);
+  let mainText = me.lang === 'ko' ? (koText || msg.original_text) : (mnText || msg.original_text);
+  let transText = me.lang === 'ko' ? mnText : koText;
+  if (transText && transText === mainText) transText = null;
+  const translating = !msg.translated_ko && !msg.translated_mn && msg.original_lang !== me.lang;
+  const time = (msg.created_at||'').split(' ')[1]?.slice(0,5) || '';
+
+  const div = document.createElement('div');
+  div.className = 'msg-group';
+  div.dataset.msgId = msg.id;
+
+  let html = '';
+  if (!isMine) {
+    html += `<div class="msg-sender">
+      <div class="msg-avatar" style="background:${msg.avatar_color}">${(msg.user_name||'?')[0]}</div>
+      <span>${msg.user_name}</span>
+      <span class="lang-badge lang-${msg.user_lang||'mn'}">${msg.user_lang==='ko'?'한':'Мн'}</span>
+    </div>`;
+  }
+  html += `<div class="msg-bubble ${isMine?'mine':'other'}" onclick="setReply(${msg.id},'${(msg.user_name||'').replace(/'/g,"\\'")}','${(mainText||'').replace(/'/g,"\\'").replace(/\n/g,' ').slice(0,50)}')">
+    <div class="msg-original">${escHtml(mainText)}</div>
+    ${transText ? `<div class="msg-translated">${escHtml(transText)}</div>` : ''}
+    ${translating ? `<div class="msg-translating">⏳ ${me.lang==='ko'?'번역 중...':'Орчуулж байна...'}</div>` : ''}
+    <div class="msg-time">${time}</div>
+  </div>`;
+  div.innerHTML = html;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+
+  // Clear typing
+  document.getElementById('typing').textContent = '';
+}
+
+function showTyping(name) {
+  const el = document.getElementById('typing');
+  el.textContent = me.lang === 'ko' ? `${name} 입력 중...` : `${name} бичиж байна...`;
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => { el.textContent = ''; }, 3000);
+}
+
+// ====== REPLY ======
+function setReply(id, name, text) {
+  replyTo = id;
+  document.getElementById('reply-text').textContent = `${name}: ${text}`;
+  document.getElementById('reply-bar').classList.add('show');
+  document.getElementById('msg-input').focus();
+}
+function cancelReply() {
+  replyTo = null;
+  document.getElementById('reply-bar').classList.remove('show');
+}
+
+// ====== LANGUAGE TOGGLE ======
+async function toggleLang() {
+  me.lang = me.lang === 'ko' ? 'mn' : 'ko';
+  localStorage.setItem('chat_me', JSON.stringify(me));
+  document.getElementById('my-lang-btn').textContent = me.lang === 'ko' ? '🇰🇷 한국어' : '🇲🇳 Монгол';
+  document.getElementById('sidebar-title').textContent = me.lang === 'ko' ? '팀챗' : 'Чат';
+  await fetch(API + '/api/me/lang', { method: 'PUT', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ lang: me.lang }) });
+  if (currentRoom) openRoom(currentRoom.id);
+}
+
+// ====== ONLINE STATUS ======
+function updateOnlineStatus() {
+  // Could update room list or user indicators
+}
+
+// ====== SIDEBAR MOBILE ======
+function showSidebar() {
+  document.getElementById('sidebar').classList.remove('hidden');
+}
+
+// ====== INIT ======
+if (token && me) initApp();
+
+// Back button — 절대 앱 밖으로 나가지 않도록
+function initHistory() {
+  history.replaceState({v:1},'','');
+  history.pushState({v:2},'','');
+  history.pushState({v:3},'','');
+}
+initHistory();
+window.addEventListener('popstate', (e) => {
+  if (currentRoom && window.innerWidth <= 768) {
+    showSidebar();
+    currentRoom = null;
+    document.getElementById('chat-view').style.display = 'none';
+    document.getElementById('no-room').style.display = 'flex';
+  }
+  // 항상 히스토리 스택 유지
+  setTimeout(() => { history.pushState({v:Date.now()},'',''); }, 50);
+});
+</script>
+</body>
+</html>

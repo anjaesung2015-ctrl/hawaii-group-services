@@ -1,0 +1,1 @@
+const CACHE='v1';self.addEventListener('fetch',e=>{});

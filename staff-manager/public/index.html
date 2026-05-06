@@ -1,0 +1,1842 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#1f1f1f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="업무보고">
+  <link rel="apple-touch-icon" href="icon-192.png">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Hawaii Staff Manager</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root{--bg:#0f0f23;--card:#1a1a2e;--card2:#16213e;--primary:#f59e0b;--success:#22c55e;--danger:#ef4444;--info:#3b82f6;--text:#e2e8f0;--text2:#94a3b8;--border:#334155}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh}
+.login{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
+.login-box{background:var(--card);border-radius:16px;padding:2rem;width:100%;max-width:360px}
+.login-box h2{text-align:center;margin-bottom:1.5rem;font-size:1.3rem}
+.login-box input{width:100%;padding:0.8rem;margin-bottom:0.8rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:1rem}
+.btn{padding:0.6rem 1.2rem;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:0.9rem;transition:all .2s}
+.btn-primary{background:var(--primary);color:#000;width:100%;padding:0.8rem}
+.btn-sm{background:var(--card2);color:var(--text2);padding:0.4rem 0.8rem;font-size:0.8rem}
+.card{background:var(--card);border-radius:12px;padding:1rem;margin-bottom:1rem}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.8rem;margin-bottom:1rem}
+.stat{background:var(--card);border-radius:12px;padding:1rem;text-align:center}
+.stat-value{font-size:1.5rem;font-weight:800}
+.stat-label{font-size:0.75rem;color:var(--text2);margin-top:0.2rem}
+.header{background:var(--card);padding:0.8rem 1rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100}
+.main{padding:1rem;max-width:900px;margin:0 auto}
+.nav-tabs{display:flex;gap:0.3rem;margin-bottom:1rem;overflow-x:auto;padding-bottom:0.3rem}
+.nav-tab{padding:0.5rem 1rem;border-radius:8px;cursor:pointer;font-size:0.85rem;white-space:nowrap;background:var(--card);color:var(--text2);transition:all .2s}
+.nav-tab.active{background:var(--primary);color:#000;font-weight:700}
+.task-card{background:var(--card2);border-radius:10px;padding:0.8rem;margin-bottom:0.5rem;display:flex;align-items:center;gap:0.8rem;transition:all .2s}
+.task-card.done{opacity:0.5}
+.task-check{width:24px;height:24px;border-radius:50%;border:2px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.task-check.checked{background:var(--success);border-color:var(--success)}
+.task-info{flex:1}
+.task-title{font-size:0.9rem;font-weight:600}
+.task-meta{font-size:0.75rem;color:var(--text2);margin-top:0.2rem}
+.progress-bar{height:8px;background:var(--card2);border-radius:4px;overflow:hidden;margin-top:0.3rem}
+.progress-fill{height:100%;border-radius:4px;transition:width .3s}
+table{width:100%;border-collapse:collapse;font-size:0.85rem}
+th,td{padding:0.5rem;text-align:left;border-bottom:1px solid rgba(255,255,255,0.05)}
+th{color:var(--text2);font-weight:600;font-size:0.75rem}
+.badge{padding:2px 8px;border-radius:12px;font-size:0.7rem;font-weight:700}
+.fab{position:fixed;bottom:1.5rem;right:1.5rem;width:56px;height:56px;border-radius:50%;background:var(--primary);color:#000;border:none;font-size:1.5rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:50}
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center;padding:1rem}
+#modal.open{display:flex}
+.modal-box{background:var(--card);border-radius:16px;padding:1.5rem;width:100%;max-width:400px;max-height:80vh;overflow-y:auto}
+.modal-box h3{margin-bottom:1rem}
+.modal-box label{display:block;font-size:0.8rem;color:var(--text2);margin:0.5rem 0 0.2rem}
+.modal-box input,.modal-box select,.modal-box textarea{width:100%;padding:0.6rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:0.9rem}
+/* 업무보고 (work reports) M2 — added */
+.reports-screen{padding:1rem;max-width:480px;margin:0 auto;color:var(--text)}
+.tabs{display:flex;gap:0.3rem;overflow-x:auto;border-bottom:1px solid var(--border);padding-bottom:0.3rem}
+.tab{padding:0.5rem 0.9rem;border-radius:8px;cursor:pointer;font-size:0.85rem;white-space:nowrap;background:var(--card);color:var(--text2);border:none;transition:all .2s}
+.tab.active{background:var(--primary);color:#000;font-weight:700}
+.panel{padding:1rem;max-width:560px;margin:0 auto;color:var(--text)}
+.field{margin-bottom:0.75rem}
+.field label{display:block;font-size:0.78rem;color:var(--text2);margin-bottom:0.25rem}
+.field input,.field select,.field textarea{width:100%;padding:0.55rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:0.9rem}
+.primary{padding:0.6rem 1rem;border-radius:8px;background:var(--primary);color:#000;font-weight:700;border:none;cursor:pointer;font-size:0.95rem}
+.mini{padding:0.3rem 0.6rem;border-radius:6px;background:var(--card);color:var(--text2);border:1px solid var(--border);font-size:0.75rem;cursor:pointer}
+.sub{font-size:0.75rem;color:var(--text2);margin-top:0.2rem}
+#rp-entry-btn{display:block;width:100%;margin-top:0.8rem;padding:0.55rem;border-radius:8px;background:var(--card);color:var(--text);border:1px solid var(--border);cursor:pointer;font-size:0.85rem;text-align:center}
+</style>
+</head>
+<body>
+
+<div id="app-login" class="login">
+  <div class="login-box">
+    <h2>👥 Hawaii Staff</h2>
+    <input type="text" id="lg-user" placeholder="아이디">
+    <input type="password" id="lg-pass" placeholder="비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn btn-primary" onclick="doLogin()">로그인</button>
+    <button id="rp-entry-btn" type="button" onclick="rpShow()">📋 업무보고 (직원 PIN 로그인)</button>
+  </div>
+</div>
+
+<div id="app-main" style="display:none">
+  <div class="header">
+    <div style="font-weight:800;font-size:1.1rem">👥 Staff</div>
+    <div style="display:flex;align-items:center;gap:0.5rem">
+      <span id="h-user" style="font-size:0.8rem;color:var(--text2)"></span>
+      <button class="btn-sm" onclick="logout()">로그아웃</button>
+    </div>
+  </div>
+  
+  <div class="main">
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
+      <a href="/center/portal" style="padding:0.4rem 0.8rem;border-radius:8px;background:var(--card);color:var(--text2);text-decoration:none;font-size:0.85rem;white-space:nowrap">← 포털</a>
+      <div class="nav-tabs" id="nav-tabs" style="margin-bottom:0"></div>
+    </div>
+    <div id="content"></div>
+  </div>
+  
+  <button class="fab" onclick="openAddTask()">+</button>
+</div>
+
+<!-- 업무보고 패널 -->
+<div class="panel" id="panel-reports" style="display:none">
+  <div style="text-align:right;margin-bottom:0.5rem"><button class="mini" onclick="rpHide()">← 메인 화면</button></div>
+  <div id="reports-login" class="reports-screen">
+    <h3 style="text-align:center;margin-top:20px">👋 Сайн уу! / 안녕하세요!</h3>
+    <p style="text-align:center;color:var(--text2);font-size:13px">Та өөрийн нэрээ сонгоод PIN оруулна уу<br><span style="font-size:11px">(이름을 선택하고 PIN을 입력하세요)</span></p>
+    <div class="field" style="max-width:300px;margin:16px auto">
+      <label>이름 / Нэр</label>
+      <select id="rp-staff-select"><option value="">— 선택 / сонгох —</option></select>
+    </div>
+    <div class="field" style="max-width:300px;margin:0 auto">
+      <label>PIN (4 оронтой)</label>
+      <input type="password" id="rp-pin" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="● ● ● ●" style="text-align:center;font-size:22px;letter-spacing:8px">
+    </div>
+    <div style="text-align:center;margin:16px">
+      <button class="primary" id="rp-login-btn">нэвтрэх (로그인)</button>
+    </div>
+    <div id="rp-login-msg" style="text-align:center;color:#b91c1c;font-size:13px;min-height:20px"></div>
+  </div>
+
+  <div id="reports-app" class="reports-screen" style="display:none">
+    <!-- 로그인 후 화면 — JS가 채움 -->
+  </div>
+</div>
+
+<div id="modal"><div class="modal-box" id="modal-body"></div></div>
+
+<script>
+const _p=window.location.pathname.replace(/\/+$/,'');
+const API=_p==='/'||_p===''?'':_p;
+let token=(function(){try{return localStorage.getItem('staff_token')}catch(e){}})()||(document.cookie.match(/staff_token=([^;]+)/)||[])[1]||null;
+let user=(function(){try{return JSON.parse(localStorage.getItem('staff_user'))}catch(e){}try{var c=(document.cookie.match(/staff_user=([^;]+)/)||[])[1];if(c)return JSON.parse(decodeURIComponent(c))}catch(e){}return null})();
+let currentTab='dashboard';
+let currentDate=new Date().toISOString().split('T')[0];
+
+async function apiFetch(url, opts={}){
+  opts.headers={...opts.headers,'Authorization':'Bearer '+token};
+  if(opts.body&&typeof opts.body==='object'){opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(opts.body);}
+  const r=await fetch(API+url,opts);
+  if(r.status===401){logout();throw new Error('auth');}
+  return r;
+}
+
+function doLogin(){
+  const u=document.getElementById('lg-user').value;
+  const p=document.getElementById('lg-pass').value;
+  fetch(API+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})})
+    .then(r=>r.json()).then(d=>{
+      if(d.error)return alert(d.error);
+      token=d.token;user=d.user;
+      document.cookie='staff_token='+token+';path=/;max-age=2592000;SameSite=Lax';
+      document.cookie='staff_user='+encodeURIComponent(JSON.stringify(user))+';path=/;max-age=2592000;SameSite=Lax';
+      try{localStorage.setItem('staff_token',token);localStorage.setItem('staff_user',JSON.stringify(user))}catch(e){}
+      initApp();
+    });
+}
+
+function logout(){token=null;user=null;document.cookie='staff_token=;path=/;max-age=0';document.cookie='staff_user=;path=/;max-age=0';try{localStorage.removeItem('staff_token');localStorage.removeItem('staff_user')}catch(e){}location.reload();}
+
+function initApp(){
+  document.getElementById('app-login').style.display='none';
+  document.getElementById('app-main').style.display='block';
+  document.getElementById('h-user').textContent=user.name;
+  
+  const tabs = user.role==='admin' ?
+    [{id:'dashboard',icon:'📊',label:'대시보드'},{id:'tasks',icon:'✅',label:'오늘 업무'},{id:'staff',icon:'👥',label:'직원'},{id:'accounts',icon:'🔑',label:'계정'},{id:'templates',icon:'📋',label:'업무 템플릿'},{id:'report',icon:'📈',label:'리포트'},{id:'rp-admin',icon:'📋',label:'업무보고 관리'}] :
+    user.role==='manager' ?
+    [{id:'my-tasks',icon:'✅',label:'내 업무'},{id:'team',icon:'👥',label:'우리 팀'},{id:'my-staff',icon:'👤',label:'직원 관리'},{id:'my-account',icon:'🔑',label:'내 계정'}] :
+    [{id:'my-tasks',icon:'✅',label:'내 업무'},{id:'team',icon:'👥',label:'우리 팀'},{id:'my-account',icon:'🔑',label:'내 계정'}];
+  
+  document.getElementById('nav-tabs').innerHTML=tabs.map(t=>
+    `<div class="nav-tab ${t.id===currentTab?'active':''}" data-tab="${t.id}" onclick="switchTab('${t.id}')">${t.icon} ${t.label}</div>`
+  ).join('');
+  
+  switchTab(tabs[0].id);
+}
+
+function switchTab(tab){
+  currentTab=tab;
+  // 사용자가 명시적으로 탭을 변경할 때 history에 push (뒤로가기 stack 활성화)
+  try {
+    if (!history.state || history.state.tab !== tab) {
+      history.pushState({ guard: 1, tab }, '', location.href);
+    }
+  } catch(e){}
+  document.querySelectorAll('.nav-tab').forEach(t=>{
+    if (t.dataset.tab === tab) t.classList.add('active');
+    else t.classList.remove('active');
+  });
+
+  if(tab==='dashboard')loadDashboard();
+  else if(tab==='tasks')loadTasks();
+  else if(tab==='staff')loadStaff();
+  else if(tab==='accounts')loadAccounts();
+  else if(tab==='templates')loadTemplates();
+  else if(tab==='report')loadReport();
+  else if(tab==='my-tasks')loadMyTasks();
+  else if(tab==='team')loadTeam();
+  else if(tab==='my-staff')loadMyStaff();
+  else if(tab==='my-account')loadMyAccount();
+  else if(tab==='rp-admin')loadRpAdmin();
+}
+
+async function loadDashboard(){
+  // 먼저 오늘 업무 생성
+  await apiFetch('/api/tasks/generate',{method:'POST',body:{date:currentDate}});
+  const d=await apiFetch('/api/dashboard').then(r=>r.json());
+  const pct=d.todayTasks.total?Math.round(100*d.todayTasks.done/d.todayTasks.total):0;
+  
+  document.getElementById('content').innerHTML=`
+    <div style="margin-bottom:1rem">
+      <input type="date" value="${currentDate}" onchange="currentDate=this.value;loadDashboard()" style="padding:0.5rem;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)">
+    </div>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">👥 전체 직원</div><div class="stat-value">${d.totalStaff}</div></div>
+      <div class="stat"><div class="stat-label">✅ 완료율</div><div class="stat-value" style="color:${pct>=80?'var(--success)':pct>=50?'var(--primary)':'var(--danger)'}">${pct}%</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${pct>=80?'var(--success)':pct>=50?'var(--primary)':'var(--danger)'}"></div></div>
+      </div>
+      <div class="stat"><div class="stat-label">📋 전체 업무</div><div class="stat-value">${d.todayTasks.total||0}</div></div>
+      <div class="stat"><div class="stat-label">✅ 완료</div><div class="stat-value" style="color:var(--success)">${d.todayTasks.done||0}</div></div>
+    </div>
+    
+    <h3 style="font-size:1rem;margin-bottom:0.8rem">🏢 사업장별 진행</h3>
+    ${d.byBusiness.map(b=>{
+      const p=b.total?Math.round(100*b.done/b.total):0;
+      const icon={피트니스:'🏋️',샵:'🏪',센터:'🎾',테니스:'🎾'}[b.business]||'📦';
+      return `<div class="card" style="display:flex;align-items:center;gap:1rem">
+        <div style="font-size:1.5rem">${icon}</div>
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between"><strong>${b.business}</strong><span style="color:${p>=80?'var(--success)':'var(--primary)'}">${b.done}/${b.total} (${p}%)</span></div>
+          <div class="progress-bar" style="margin-top:0.3rem"><div class="progress-fill" style="width:${p}%;background:${p>=80?'var(--success)':p>=50?'var(--primary)':'var(--danger)'}"></div></div>
+        </div>
+      </div>`;
+    }).join('')}
+    
+    <h3 style="font-size:1rem;margin:1rem 0 0.8rem">👤 직원별 진행</h3>
+    <div class="card"><table>
+      <thead><tr><th>직원</th><th>사업장</th><th>완료</th><th>진행률</th></tr></thead>
+      <tbody>${d.byStaff.map(s=>{
+        const p=s.total?Math.round(100*s.done/s.total):0;
+        return `<tr><td><strong>${s.name}</strong></td><td style="color:var(--text2)">${s.business}</td>
+          <td>${s.done}/${s.total}</td>
+          <td><span style="color:${p>=80?'var(--success)':p>=50?'var(--primary)':'var(--danger)'}; font-weight:700">${p}%</span></td></tr>`;
+      }).join('')}</tbody>
+    </table></div>
+    
+    ${d.pending.length?`<h3 style="font-size:1rem;margin:1rem 0 0.8rem">⚠️ 미완료 업무 (${d.pending.length}건)</h3>
+    ${d.pending.map(t=>`<div class="task-card">
+      <div class="task-info"><div class="task-title">${t.title}</div>
+      <div class="task-meta">${t.staff_name||'미배정'} · ${t.business}</div></div>
+    </div>`).join('')}`:''}
+  `;
+}
+
+let taskView='day'; // 'day' or 'week'
+
+function getWeekDates(dateStr){
+  const d=new Date(dateStr+'T00:00:00+08:00');
+  const day=d.getDay();
+  const monday=new Date(d);monday.setDate(d.getDate()-(day===0?6:day-1));
+  const dates=[];
+  for(let i=0;i<7;i++){const dd=new Date(monday);dd.setDate(monday.getDate()+i);dates.push(dd.toISOString().split('T')[0]);}
+  return dates;
+}
+
+const dayLabels=['일','월','화','수','목','금','토'];
+const bizIcons={피트니스:'🏋️',샵:'🏪',센터:'🎾',테니스:'🎾'};
+
+async function loadTasks(){
+  if(taskView==='week') return loadTasksWeek();
+  
+  await apiFetch('/api/tasks/generate',{method:'POST',body:{date:currentDate}});
+  const tasks=await apiFetch('/api/tasks?date='+currentDate).then(r=>r.json());
+  
+  const byBiz={};
+  tasks.forEach(t=>{if(!byBiz[t.business])byBiz[t.business]=[];byBiz[t.business].push(t);});
+  
+  document.getElementById('content').innerHTML=`
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap">
+      <input type="date" value="${currentDate}" onchange="currentDate=this.value;loadTasks()" style="padding:0.5rem;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)">
+      <button class="btn ${taskView==='day'?'btn-primary':'btn-sm'}" onclick="taskView='day';loadTasks()">📅 일간</button>
+      <button class="btn ${taskView==='week'?'btn-primary':'btn-sm'}" onclick="taskView='week';loadTasks()">📆 주간</button>
+      <span style="color:var(--text2);font-size:0.85rem">${tasks.length}건</span>
+    </div>
+    ${Object.entries(byBiz).map(([biz,items])=>`
+      <h3 style="font-size:1rem;margin:0.8rem 0 0.5rem">${bizIcons[biz]||'📦'} ${biz}</h3>
+      ${items.map(t=>`<div class="task-card ${t.status==='done'?'done':''}">
+        <div class="task-check ${t.status==='done'?'checked':''}" onclick="toggleTask(${t.id},'${t.status}')">
+          ${t.status==='done'?'<i class="fas fa-check" style="color:#fff;font-size:0.7rem"></i>':''}
+        </div>
+        <div class="task-info">
+          <div class="task-title" style="${t.status==='done'?'text-decoration:line-through':''}">${t.title}</div>
+          <div class="task-meta">${t.staff_name||'미배정'} · ${t.notes||''}</div>
+        </div>
+      </div>`).join('')}
+    `).join('')}
+  `;
+}
+
+async function loadTasksWeek(){
+  const weekDates=getWeekDates(currentDate);
+  await apiFetch('/api/tasks/generate-week',{method:'POST',body:{start:weekDates[0]}});
+  const tasks=await apiFetch('/api/tasks?date_from='+weekDates[0]+'&date_to='+weekDates[6]).then(r=>r.json());
+  
+  // 날짜별 그룹
+  const byDate={};
+  weekDates.forEach(d=>byDate[d]=[]);
+  tasks.forEach(t=>{if(byDate[t.task_date])byDate[t.task_date].push(t);});
+  
+  document.getElementById('content').innerHTML=`
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap">
+      <button class="btn-sm" onclick="currentDate=getWeekDates(new Date(new Date(currentDate+'T00:00:00+08:00').getTime()-7*86400000).toISOString().split('T')[0])[0];loadTasks()">◀ 이전주</button>
+      <input type="date" value="${currentDate}" onchange="currentDate=this.value;loadTasks()" style="padding:0.5rem;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)">
+      <button class="btn-sm" onclick="currentDate=getWeekDates(new Date(new Date(currentDate+'T00:00:00+08:00').getTime()+7*86400000).toISOString().split('T')[0])[0];loadTasks()">다음주 ▶</button>
+      <button class="btn ${taskView==='day'?'btn-primary':'btn-sm'}" onclick="taskView='day';loadTasks()">📅 일간</button>
+      <button class="btn ${taskView==='week'?'btn-primary':'btn-sm'}" onclick="taskView='week';loadTasks()">📆 주간</button>
+    </div>
+    
+    <div style="display:flex;gap:0.3rem;margin-bottom:1rem;overflow-x:auto">
+      ${weekDates.map(d=>{
+        const dt=new Date(d+'T00:00:00+08:00');
+        const dayTasks=byDate[d]||[];
+        const done=dayTasks.filter(t=>t.status==='done').length;
+        const pct=dayTasks.length?Math.round(100*done/dayTasks.length):0;
+        const isToday=d===new Date().toISOString().split('T')[0];
+        return `<div style="flex:1;min-width:80px;background:${isToday?'rgba(245,158,11,0.15)':'var(--card)'};border-radius:10px;padding:0.5rem;text-align:center;cursor:pointer;border:${isToday?'2px solid var(--primary)':'1px solid var(--border)'}" onclick="currentDate='${d}';taskView='day';loadTasks()">
+          <div style="font-size:0.75rem;color:var(--text2)">${dayLabels[dt.getDay()]}</div>
+          <div style="font-size:1.1rem;font-weight:800">${dt.getDate()}</div>
+          <div style="font-size:0.7rem;margin-top:0.2rem;color:${pct>=80?'var(--success)':pct>0?'var(--primary)':'var(--text2)'}">${done}/${dayTasks.length}</div>
+          <div class="progress-bar" style="margin-top:0.3rem;height:4px"><div class="progress-fill" style="width:${pct}%;background:${pct>=80?'var(--success)':pct>=50?'var(--primary)':'var(--danger)'}"></div></div>
+        </div>`;
+      }).join('')}
+    </div>
+    
+    ${weekDates.map(d=>{
+      const dt=new Date(d+'T00:00:00+08:00');
+      const dayTasks=byDate[d]||[];
+      if(!dayTasks.length)return '';
+      const done=dayTasks.filter(t=>t.status==='done').length;
+      const byBiz={};
+      dayTasks.forEach(t=>{if(!byBiz[t.business])byBiz[t.business]=[];byBiz[t.business].push(t);});
+      
+      return `<div class="card" style="margin-bottom:0.8rem;border-left:3px solid ${done===dayTasks.length?'var(--success)':'var(--primary)'}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;cursor:pointer" onclick="var el=document.getElementById('wd-${d}');el.style.display=el.style.display==='none'?'block':'none'">
+          <strong>${dt.getMonth()+1}/${dt.getDate()} (${dayLabels[dt.getDay()]})</strong>
+          <span style="font-size:0.8rem;color:${done===dayTasks.length?'var(--success)':'var(--text2)'}">${done}/${dayTasks.length} ✅ ▼</span>
+        </div>
+        <div id="wd-${d}" style="display:none">
+          ${Object.entries(byBiz).map(([biz,items])=>`
+            <div style="font-size:0.8rem;color:var(--text2);margin:0.3rem 0">${bizIcons[biz]||''} ${biz}</div>
+            ${items.map(t=>`<div class="task-card ${t.status==='done'?'done':''}" style="margin-bottom:0.3rem;padding:0.5rem">
+              <div class="task-check ${t.status==='done'?'checked':''}" onclick="toggleTask(${t.id},'${t.status}')" style="width:20px;height:20px">
+                ${t.status==='done'?'<i class="fas fa-check" style="color:#fff;font-size:0.6rem"></i>':''}
+              </div>
+              <div class="task-info">
+                <div style="font-size:0.8rem;${t.status==='done'?'text-decoration:line-through;opacity:0.5':''}">${t.title}</div>
+                <div style="font-size:0.7rem;color:var(--text2)">${t.staff_name||''}</div>
+              </div>
+            </div>`).join('')}
+          `).join('')}
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+async function toggleTask(id, current){
+  const newStatus=current==='done'?'pending':'done';
+  await apiFetch('/api/tasks/'+id,{method:'PUT',body:{status:newStatus}});
+  if(currentTab==='tasks')loadTasks();
+  else if(currentTab==='dashboard')loadDashboard();
+  else if(currentTab==='my-tasks')loadMyTasks();
+}
+
+async function loadStaff(){
+  const staff=await apiFetch('/api/staff').then(r=>r.json());
+  const byBiz={};
+  staff.forEach(s=>{if(!byBiz[s.business])byBiz[s.business]=[];byBiz[s.business].push(s);});
+  
+  const totalSalary=staff.reduce((s,e)=>s+(e.salary||0),0);
+  document.getElementById('content').innerHTML=`
+    <div class="stat-grid" style="margin-bottom:1rem">
+      <div class="stat" style="border:1px solid rgba(59,130,246,0.3)"><div class="stat-value" style="color:var(--info)">${staff.length}명</div><div class="stat-label">총 인원</div></div>
+      <div class="stat" style="border:1px solid rgba(245,158,11,0.3)"><div class="stat-value" style="color:var(--primary);font-size:1.2rem">${totalSalary.toLocaleString()}₮</div><div class="stat-label">월 급여 합계</div></div>
+    </div>
+    <button class="btn btn-primary" style="width:auto;margin-bottom:1rem" onclick="openAddStaff()">+ 직원 추가</button>
+    ${Object.entries(byBiz).map(([biz,items])=>`
+      <h3 style="font-size:1rem;margin:0.8rem 0 0.5rem">${{피트니스:'🏋️',샵:'🏪',센터:'🎾',테니스:'🎾'}[biz]||'📦'} ${biz} (${items.length}명)</h3>
+      <div class="card"><table>
+        <thead><tr><th>이름</th><th>직급</th><th>포지션</th><th>급여</th><th>근무일</th></tr></thead>
+        <tbody>${items.map(s=>`<tr onclick="openEditStaff(${s.id})" style="cursor:pointer">
+          <td><strong>${s.name}</strong></td>
+          <td><span class="badge" style="background:${s.role==='매니저'||s.role==='총매니저'?'rgba(245,158,11,0.2);color:var(--primary)':s.role==='대표'?'rgba(239,68,68,0.2);color:var(--danger)':'rgba(59,130,246,0.2);color:var(--info)'}">${s.role}</span></td>
+          <td style="color:var(--text2)">${s.position||'-'}</td>
+          <td style="color:var(--primary);font-weight:600">${(s.salary||0).toLocaleString()}₮</td>
+          <td style="font-size:0.75rem;color:var(--text2)">${s.work_days||'-'}<br>${s.work_start||'09:00'}~${s.work_end||'18:00'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    `).join('')}
+  `;
+}
+
+async function loadTemplates(){
+  const tpls=await apiFetch('/api/templates').then(r=>r.json());
+  const byBiz={};
+  tpls.forEach(t=>{if(!byBiz[t.business])byBiz[t.business]=[];byBiz[t.business].push(t);});
+  
+  document.getElementById('content').innerHTML=`
+    <button class="btn btn-primary" style="width:auto;margin-bottom:1rem" onclick="openAddTemplate()">+ 업무 추가</button>
+    ${Object.entries(byBiz).map(([biz,items])=>`
+      <h3 style="font-size:1rem;margin:0.8rem 0 0.5rem">${{피트니스:'🏋️',샵:'🏪',센터:'🎾',테니스:'🎾'}[biz]||'📦'} ${biz}</h3>
+      ${items.map(t=>`<div class="task-card">
+        <div style="font-size:1.2rem">${t.priority==='high'?'🔴':'🔵'}</div>
+        <div class="task-info">
+          <div class="task-title">${t.title}</div>
+          <div class="task-meta">${t.position||'전체'} · ${t.time_slot||''}</div>
+        </div>
+        <button class="btn-sm" style="color:var(--danger)" onclick="deleteTemplate(${t.id})">삭제</button>
+      </div>`).join('')}
+    `).join('')}
+  `;
+}
+
+async function deleteTemplate(id){
+  if(!confirm('삭제할까요?'))return;
+  await apiFetch('/api/templates/'+id,{method:'DELETE'});
+  loadTemplates();
+}
+
+async function loadReport(){
+  const d=await apiFetch('/api/report').then(r=>r.json());
+  document.getElementById('content').innerHTML=`
+    <h3 style="font-size:1rem;margin-bottom:0.8rem">📅 최근 7일 완료율</h3>
+    <div class="card">${d.daily.map(day=>{
+      const p=day.total?Math.round(100*day.done/day.total):0;
+      return `<div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:0.5rem">
+        <span style="font-size:0.8rem;width:80px;color:var(--text2)">${day.task_date.slice(5)}</span>
+        <div style="flex:1"><div class="progress-bar"><div class="progress-fill" style="width:${p}%;background:${p>=80?'var(--success)':p>=50?'var(--primary)':'var(--danger)'}"></div></div></div>
+        <span style="font-size:0.8rem;font-weight:700;width:50px;text-align:right;color:${p>=80?'var(--success)':'var(--primary)'}">${p}%</span>
+      </div>`;
+    }).join('')}</div>
+    
+    <h3 style="font-size:1rem;margin:1rem 0 0.8rem">🏆 직원 성과</h3>
+    <div class="card"><table>
+      <thead><tr><th>직원</th><th>사업장</th><th>완료</th><th>달성률</th></tr></thead>
+      <tbody>${d.staffPerf.map(s=>`<tr>
+        <td><strong>${s.name}</strong></td><td style="color:var(--text2)">${s.business}</td>
+        <td>${s.done}/${s.total}</td>
+        <td style="font-weight:700;color:${s.rate>=80?'var(--success)':s.rate>=50?'var(--primary)':'var(--danger)'}">${s.rate}%</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  `;
+}
+
+// 직원용 (내 업무)
+async function loadMyTasks(){
+  await apiFetch('/api/tasks/generate',{method:'POST',body:{date:currentDate}});
+  const tasks=await apiFetch('/api/tasks?date='+currentDate+'&staff_id='+user.staff_id).then(r=>r.json());
+  const done=tasks.filter(t=>t.status==='done').length;
+  const pct=tasks.length?Math.round(100*done/tasks.length):0;
+  
+  document.getElementById('content').innerHTML=`
+    <div class="stat-grid" style="grid-template-columns:1fr 1fr">
+      <div class="stat"><div class="stat-label">📋 오늘 업무</div><div class="stat-value">${tasks.length}</div></div>
+      <div class="stat"><div class="stat-label">✅ 완료</div><div class="stat-value" style="color:var(--success)">${done}</div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:var(--success)"></div></div>
+      </div>
+    </div>
+    ${tasks.map(t=>`<div class="task-card ${t.status==='done'?'done':''}">
+      <div class="task-check ${t.status==='done'?'checked':''}" onclick="toggleTask(${t.id},'${t.status}')">
+        ${t.status==='done'?'<i class="fas fa-check" style="color:#fff;font-size:0.7rem"></i>':''}
+      </div>
+      <div class="task-info">
+        <div class="task-title" style="${t.status==='done'?'text-decoration:line-through':''}">${t.title}</div>
+        <div class="task-meta">${t.description||''}</div>
+      </div>
+    </div>`).join('')}
+  `;
+}
+
+async function loadTeam(){
+  const tasks=await apiFetch('/api/tasks?date='+currentDate).then(r=>r.json());
+  const myBiz=tasks.find(t=>t.staff_biz)?.staff_biz;
+  const teamTasks=myBiz?tasks.filter(t=>t.business===myBiz):tasks;
+  
+  document.getElementById('content').innerHTML=`
+    <h3 style="font-size:1rem;margin-bottom:0.8rem">👥 ${myBiz||'전체'} 팀 업무</h3>
+    ${teamTasks.map(t=>`<div class="task-card ${t.status==='done'?'done':''}">
+      <div style="font-size:1rem">${t.status==='done'?'✅':'⬜'}</div>
+      <div class="task-info">
+        <div class="task-title">${t.title}</div>
+        <div class="task-meta">${t.staff_name||'미배정'}</div>
+      </div>
+    </div>`).join('')}
+  `;
+}
+
+// ====== ACCOUNTS (관리자용) ======
+async function loadAccounts(){
+  const accts=await apiFetch('/api/accounts').then(r=>r.json());
+  document.getElementById('content').innerHTML=`
+    <h3 style="margin-bottom:1rem">🔑 계정 관리</h3>
+    <p style="color:var(--text2);font-size:0.85rem;margin-bottom:1rem">직원 아이디를 클릭하면 수정할 수 있어요</p>
+    <div class="card"><table>
+      <thead><tr><th>이름</th><th>아이디</th><th>비밀번호</th><th>사업장</th><th></th></tr></thead>
+      <tbody>${accts.map(a=>`<tr>
+        <td><strong>${a.name}</strong></td>
+        <td><input value="${a.username}" id="au-${a.id}" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);width:90px;font-size:0.85rem"></td>
+        <td><input value="" placeholder="변경시 입력" id="ap-${a.id}" type="password" style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);width:90px;font-size:0.85rem"></td>
+        <td style="color:var(--text2);font-size:0.8rem">${a.business||'-'}</td>
+        <td><button class="btn-sm" style="background:var(--primary);color:#000" onclick="saveAccount(${a.id})">저장</button></td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+}
+
+async function saveAccount(id){
+  const username=document.getElementById('au-'+id).value;
+  const password=document.getElementById('ap-'+id).value;
+  const body={username};
+  if(password)body.password=password;
+  const r=await apiFetch('/api/accounts/'+id,{method:'PUT',body});
+  const d=await r.json();
+  if(d.error)return alert(d.error);
+  alert('저장!');loadAccounts();
+}
+
+// ====== MY STAFF (매니저: 본인 사업장 직원 관리) ======
+async function loadMyStaff(){
+  const list = await apiFetch('/api/staff').then(r=>r.json());
+  const myBiz = list[0]?.business || '';
+  document.getElementById('content').innerHTML = `
+    <h3 style="margin-bottom:0.5rem">👤 직원 관리 ${myBiz?`<span style="color:var(--text2);font-size:0.85rem">· ${myBiz}</span>`:''}</h3>
+    <p style="color:var(--text2);font-size:0.8rem;margin-bottom:1rem">이름·연락처·근무일·근무시간·포지션을 수정할 수 있어요. 사업장/직급/급여는 사장님만 변경 가능합니다.</p>
+    <div class="card">
+      ${list.length===0?'<p style="color:var(--text2)">등록된 직원이 없습니다.</p>':list.map(s=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.7rem 0.3rem;border-bottom:1px solid var(--border)">
+          <div>
+            <div><strong>${s.name}</strong>${s.name_mn?` <span style="color:var(--text2);font-size:0.85rem">(${s.name_mn})</span>`:''}</div>
+            <div style="font-size:0.8rem;color:var(--text2)">${s.role||''} · ${s.position||'-'} · ${s.phone||'전화 미등록'}</div>
+            <div style="font-size:0.75rem;color:var(--text2)">${s.work_days||'-'} · ${s.work_start||'09:00'}–${s.work_end||'18:00'}</div>
+          </div>
+          <button class="btn-sm" style="background:var(--primary);color:#000" onclick="openEditMyStaff(${s.id})">수정</button>
+        </div>`).join('')}
+    </div>`;
+}
+
+let myStaffCache=[];
+async function openEditMyStaff(id){
+  myStaffCache=await apiFetch('/api/staff').then(r=>r.json());
+  const s=myStaffCache.find(x=>x.id===id);
+  if(!s)return;
+  const days=['월','화','수','목','금','토','일'];
+  const currentDays=(s.work_days||'').split(',').map(d=>d.trim());
+  document.getElementById('modal-body').innerHTML=`
+    <h3>✏️ 직원 수정</h3>
+    <p style="color:var(--text2);font-size:0.8rem;margin-bottom:0.8rem">${s.business} · ${s.role||'-'} · ${(s.salary||0).toLocaleString()}원 (사장님 권한)</p>
+    <label>이름</label><input id="ems-name" value="${s.name||''}">
+    <label>몽골어 이름</label><input id="ems-name-mn" value="${s.name_mn||''}">
+    <label>전화번호</label><input id="ems-phone" value="${s.phone||''}" placeholder="010-0000-0000">
+    <label>포지션</label><input id="ems-pos" value="${s.position||''}" placeholder="트레이너, 프론트...">
+    <label>근무 요일</label>
+    <div style="display:flex;gap:0.3rem;flex-wrap:wrap;margin:0.3rem 0">
+      ${days.map(d=>`<label style="display:flex;align-items:center;gap:0.3rem;padding:0.4rem 0.6rem;background:${currentDays.includes(d)?'var(--primary)':'var(--card2)'};border-radius:8px;cursor:pointer;font-size:0.85rem;color:${currentDays.includes(d)?'#000':'var(--text2)'}">
+        <input type="checkbox" class="ems-day" value="${d}" ${currentDays.includes(d)?'checked':''} style="display:none" onchange="this.parentElement.style.background=this.checked?'var(--primary)':'var(--card2)';this.parentElement.style.color=this.checked?'#000':'var(--text2)'">
+        ${d}
+      </label>`).join('')}
+    </div>
+    <label>근무 시작</label><input type="time" id="ems-start" value="${s.work_start||'09:00'}">
+    <label>근무 종료</label><input type="time" id="ems-end" value="${s.work_end||'18:00'}">
+    <div style="display:flex;gap:0.5rem;margin-top:1rem">
+      <button class="btn btn-primary" onclick="submitEditMyStaff(${s.id})">저장</button>
+      <button class="btn btn-sm" onclick="closeModal()">취소</button>
+    </div>`;
+  document.getElementById('modal').classList.add('open');
+}
+
+async function submitEditMyStaff(id){
+  const checkedDays=[...document.querySelectorAll('.ems-day:checked')].map(c=>c.value).join(',');
+  const r=await apiFetch('/api/staff/'+id,{method:'PUT',body:{
+    name:document.getElementById('ems-name').value,
+    name_mn:document.getElementById('ems-name-mn').value,
+    phone:document.getElementById('ems-phone').value,
+    position:document.getElementById('ems-pos').value,
+    work_days:checkedDays,
+    work_start:document.getElementById('ems-start').value,
+    work_end:document.getElementById('ems-end').value
+  }});
+  const d=await r.json();
+  if(d.error)return alert(d.error);
+  myStaffCache=[];closeModal();loadMyStaff();
+}
+
+// ====== MY ACCOUNT (직원/매니저용) ======
+async function loadMyAccount(){
+  const me=await apiFetch('/api/my-account').then(r=>r.json());
+  const s=me.staff||{};
+  document.getElementById('content').innerHTML=`
+    <h3 style="margin-bottom:1rem">🔑 내 계정</h3>
+    <div class="card" style="margin-bottom:1rem">
+      <h4 style="margin-bottom:0.8rem">👤 내 정보</h4>
+      <p style="color:var(--text2);font-size:0.8rem;margin-bottom:0.8rem">아이디 <strong>${me.user?.username||''}</strong> · ${s.business||'-'} · ${s.position||me.user?.role||'-'}</p>
+      <label style="font-size:0.8rem;color:var(--text2)">이름</label>
+      <input id="mi-name" value="${s.name||me.user?.name||''}" style="width:100%;padding:0.6rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:0.5rem">
+      <label style="font-size:0.8rem;color:var(--text2)">몽골어 이름</label>
+      <input id="mi-name-mn" value="${s.name_mn||''}" style="width:100%;padding:0.6rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:0.5rem">
+      <label style="font-size:0.8rem;color:var(--text2)">전화번호</label>
+      <input id="mi-phone" value="${s.phone||''}" placeholder="010-0000-0000" style="width:100%;padding:0.6rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:1rem">
+      <button class="btn btn-primary" onclick="saveMyInfo()">정보 저장</button>
+    </div>
+    <div class="card">
+      <h4 style="margin-bottom:0.8rem">🔒 비밀번호 변경</h4>
+      <label style="font-size:0.8rem;color:var(--text2)">현재 비밀번호</label>
+      <input type="password" id="ma-old" style="width:100%;padding:0.6rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:0.5rem">
+      <label style="font-size:0.8rem;color:var(--text2)">새 비밀번호</label>
+      <input type="password" id="ma-new" style="width:100%;padding:0.6rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:0.5rem">
+      <label style="font-size:0.8rem;color:var(--text2)">새 비밀번호 확인</label>
+      <input type="password" id="ma-confirm" style="width:100%;padding:0.6rem;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:1rem">
+      <button class="btn btn-primary" onclick="changeMyPassword()">비밀번호 변경</button>
+    </div>`;
+}
+
+async function saveMyInfo(){
+  const r=await apiFetch('/api/my-account',{method:'PUT',body:{
+    name:document.getElementById('mi-name').value,
+    name_mn:document.getElementById('mi-name-mn').value,
+    phone:document.getElementById('mi-phone').value
+  }});
+  const d=await r.json();
+  if(d.error)return alert(d.error);
+  alert('저장되었습니다');
+  user.name=document.getElementById('mi-name').value;
+  document.getElementById('h-user').textContent=user.name;
+}
+
+async function changeMyPassword(){
+  const old=document.getElementById('ma-old').value;
+  const np=document.getElementById('ma-new').value;
+  const nc=document.getElementById('ma-confirm').value;
+  if(!old||!np)return alert('비밀번호를 입력해주세요');
+  if(np!==nc)return alert('새 비밀번호가 일치하지 않습니다');
+  const r=await apiFetch('/api/my-account',{method:'PUT',body:{password:old,new_password:np}});
+  const d=await r.json();
+  if(d.error)return alert(d.error);
+  alert('비밀번호가 변경되었습니다!');
+  document.getElementById('ma-old').value='';
+  document.getElementById('ma-new').value='';
+  document.getElementById('ma-confirm').value='';
+}
+
+// Modals
+function closeModal(){document.getElementById('modal').classList.remove('open');}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
+
+function openAddTask(){
+  document.getElementById('modal-body').innerHTML=`
+    <h3>➕ 특별 업무 추가</h3>
+    <label>사업장</label>
+    <select id="at-biz"><option value="피트니스">🏋️ 피트니스</option><option value="샵">🏪 샵</option><option value="센터">🎾 센터</option><option value="테니스">🎾 테니스</option></select>
+    <label>업무 제목</label><input id="at-title" placeholder="할 일 입력">
+    <label>상세 설명</label><textarea id="at-desc" rows="2"></textarea>
+    <label>담당자 (비워두면 매니저)</label><input id="at-staff" placeholder="직원 ID">
+    <div style="display:flex;gap:0.5rem;margin-top:1rem">
+      <button class="btn btn-primary" onclick="submitTask()">추가</button>
+      <button class="btn btn-sm" onclick="closeModal()">취소</button>
+    </div>`;
+  document.getElementById('modal').classList.add('open');
+}
+
+async function submitTask(){
+  await apiFetch('/api/tasks',{method:'POST',body:{
+    task_date:currentDate,
+    title:document.getElementById('at-title').value,
+    description:document.getElementById('at-desc').value,
+    business:document.getElementById('at-biz').value,
+    staff_id:document.getElementById('at-staff').value||null
+  }});
+  closeModal();
+  switchTab(currentTab);
+}
+
+function openAddStaff(){
+  document.getElementById('modal-body').innerHTML=`
+    <h3>👤 직원 추가</h3>
+    <label>이름</label><input id="as-name">
+    <label>사업장</label>
+    <select id="as-biz"><option value="피트니스">피트니스</option><option value="샵">샵</option><option value="센터">센터</option><option value="테니스">테니스</option></select>
+    <label>직급</label>
+    <select id="as-role"><option value="직원">직원</option><option value="매니저">매니저</option><option value="코치">코치</option></select>
+    <label>포지션</label><input id="as-pos" placeholder="트레이너, 프론트, 코트관리...">
+    <label>월급여</label><input id="as-salary" type="number" placeholder="3000000">
+    <label>근무일</label><input id="as-days" value="월,화,수,목,금,토">
+    <div style="display:flex;gap:0.5rem;margin-top:1rem">
+      <button class="btn btn-primary" onclick="submitStaff()">추가</button>
+      <button class="btn btn-sm" onclick="closeModal()">취소</button>
+    </div>`;
+  document.getElementById('modal').classList.add('open');
+}
+
+async function submitStaff(){
+  await apiFetch('/api/staff',{method:'POST',body:{
+    name:document.getElementById('as-name').value,
+    role:document.getElementById('as-role').value,
+    position:document.getElementById('as-pos').value,
+    salary:parseInt(document.getElementById('as-salary').value)||0,
+    business:document.getElementById('as-biz').value,
+    work_days:document.getElementById('as-days').value
+  }});
+  closeModal();loadStaff();
+}
+
+let allStaffCache=[];
+async function openEditStaff(id){
+  if(!allStaffCache.length) allStaffCache=await apiFetch('/api/staff').then(r=>r.json());
+  const s=allStaffCache.find(x=>x.id===id);
+  if(!s)return;
+  const days=['월','화','수','목','금','토','일'];
+  const currentDays=(s.work_days||'').split(',').map(d=>d.trim());
+  
+  document.getElementById('modal-body').innerHTML=`
+    <h3>✏️ 직원 수정</h3>
+    <label>이름</label><input id="es-name" value="${s.name}">
+    <label>사업장</label>
+    <select id="es-biz">
+      ${['피트니스','샵','센터','테니스'].map(b=>`<option value="${b}" ${s.business===b?'selected':''}>${b}</option>`).join('')}
+    </select>
+    <label>직급</label>
+    <select id="es-role">
+      ${['직원','매니저','총매니저','코치','대표','트레이너'].map(r=>`<option value="${r}" ${s.role===r?'selected':''}>${r}</option>`).join('')}
+    </select>
+    <label>포지션</label><input id="es-pos" value="${s.position||''}">
+    <label>월급여</label><input id="es-salary" type="number" value="${s.salary||0}">
+    <label>전화번호</label><input id="es-phone" value="${s.phone||''}" placeholder="010-0000-0000">
+    
+    <label>근무 요일</label>
+    <div style="display:flex;gap:0.3rem;flex-wrap:wrap;margin:0.3rem 0">
+      ${days.map(d=>`<label style="display:flex;align-items:center;gap:0.3rem;padding:0.4rem 0.6rem;background:${currentDays.includes(d)?'var(--primary)':'var(--card2)'};border-radius:8px;cursor:pointer;font-size:0.85rem;color:${currentDays.includes(d)?'#000':'var(--text2)'}">
+        <input type="checkbox" class="es-day" value="${d}" ${currentDays.includes(d)?'checked':''} style="display:none" onchange="this.parentElement.style.background=this.checked?'var(--primary)':'var(--card2)';this.parentElement.style.color=this.checked?'#000':'var(--text2)'">
+        ${d}
+      </label>`).join('')}
+    </div>
+    
+    <label>근무 시작</label><input type="time" id="es-start" value="${s.work_start||'09:00'}">
+    <label>근무 종료</label><input type="time" id="es-end" value="${s.work_end||'18:00'}">
+    
+    <div style="display:flex;gap:0.5rem;margin-top:1rem">
+      <button class="btn btn-primary" onclick="submitEditStaff(${s.id})">저장</button>
+      <button class="btn btn-sm" style="color:var(--danger)" onclick="deleteStaff(${s.id})">삭제</button>
+      <button class="btn btn-sm" onclick="closeModal()">취소</button>
+    </div>`;
+  document.getElementById('modal').classList.add('open');
+}
+
+async function submitEditStaff(id){
+  const checkedDays=[...document.querySelectorAll('.es-day:checked')].map(c=>c.value).join(',');
+  await apiFetch('/api/staff/'+id,{method:'PUT',body:{
+    name:document.getElementById('es-name').value,
+    role:document.getElementById('es-role').value,
+    position:document.getElementById('es-pos').value,
+    salary:parseInt(document.getElementById('es-salary').value)||0,
+    business:document.getElementById('es-biz').value,
+    phone:document.getElementById('es-phone').value,
+    work_days:checkedDays,
+    work_start:document.getElementById('es-start').value,
+    work_end:document.getElementById('es-end').value
+  }});
+  allStaffCache=[];
+  closeModal();loadStaff();
+}
+
+async function deleteStaff(id){
+  if(!confirm('이 직원을 삭제할까요?'))return;
+  await apiFetch('/api/staff/'+id,{method:'DELETE'});
+  allStaffCache=[];
+  closeModal();loadStaff();
+}
+
+function openAddTemplate(){
+  document.getElementById('modal-body').innerHTML=`
+    <h3>📋 업무 템플릿 추가</h3>
+    <label>사업장</label>
+    <select id="tt-biz"><option value="피트니스">피트니스</option><option value="샵">샵</option><option value="센터">센터</option><option value="테니스">테니스</option></select>
+    <label>포지션 (비워두면 전체)</label><input id="tt-pos" placeholder="매니저, 트레이너...">
+    <label>업무 제목</label><input id="tt-title">
+    <label>시간대</label>
+    <select id="tt-time"><option value="오전">오전</option><option value="오후">오후</option><option value="저녁">저녁</option><option value="종일">종일</option><option value="수시">수시</option></select>
+    <label>우선순위</label>
+    <select id="tt-pri"><option value="normal">보통</option><option value="high">높음</option></select>
+    <div style="display:flex;gap:0.5rem;margin-top:1rem">
+      <button class="btn btn-primary" onclick="submitTemplate()">추가</button>
+      <button class="btn btn-sm" onclick="closeModal()">취소</button>
+    </div>`;
+  document.getElementById('modal').classList.add('open');
+}
+
+async function submitTemplate(){
+  await apiFetch('/api/templates',{method:'POST',body:{
+    business:document.getElementById('tt-biz').value,
+    position:document.getElementById('tt-pos').value||null,
+    title:document.getElementById('tt-title').value,
+    time_slot:document.getElementById('tt-time').value,
+    priority:document.getElementById('tt-pri').value
+  }});
+  closeModal();loadTemplates();
+}
+
+// Init
+if(token&&user)initApp();
+
+// === 뒤로가기 가로채기: 실수로 앱 종료 방지 ===
+(function setupBackGuard(){
+  // 더미 history 추가 (뒤로가기 시 popstate가 발생하지만 페이지는 유지됨)
+  try { history.pushState({ guard: 1 }, '', location.href); } catch(e){}
+
+  let lastBack = 0;
+  window.addEventListener('popstate', function(){
+    // 1) 업무보고 패널이 열려 있으면 → 메인으로 복귀 (rpHide 호출)
+    const rp = document.getElementById('panel-reports');
+    if (rp && rp.style.display !== 'none') {
+      try { rpHide(); } catch(e){}
+      history.pushState({ guard: 1 }, '', location.href);
+      return;
+    }
+    // 2) 모달이 열려 있으면 → 모달만 닫음
+    const modal = document.getElementById('modal');
+    if (modal && modal.classList.contains('open')) {
+      try { closeModal(); } catch(e){}
+      history.pushState({ guard: 1 }, '', location.href);
+      return;
+    }
+    // 3) 메인 화면 — 홈 탭(대시보드/내 업무)이 아니면 홈 탭으로 복귀
+    const homeTab = (user && user.role === 'admin') ? 'dashboard' : 'my-tasks';
+    if (typeof currentTab !== 'undefined' && currentTab !== homeTab) {
+      try { switchTab(homeTab); } catch(e){}
+      history.pushState({ guard: 1 }, '', location.href);
+      return;
+    }
+    // 4) 이미 홈 탭 — 2초 안에 두 번 누르면 종료, 아니면 안내
+    const now = Date.now();
+    if (now - lastBack < 2000) {
+      history.back();
+      return;
+    }
+    lastBack = now;
+    history.pushState({ guard: 1 }, '', location.href);
+    let toast = document.getElementById('back-toast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'back-toast';
+      toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:9999;pointer-events:none;transition:opacity .3s;';
+      document.body.appendChild(toast);
+    }
+    toast.textContent = '한 번 더 누르면 종료됩니다 / Дахин дарвал гарна';
+    toast.style.opacity = '1';
+    setTimeout(()=>{ if(toast) toast.style.opacity = '0'; }, 1800);
+  });
+})();
+
+// === 업무보고 (work reports) ===
+function rpShow() {
+  document.getElementById('app-login').style.display = 'none';
+  document.getElementById('app-main').style.display = 'none';
+  document.getElementById('panel-reports').style.display = 'block';
+  rpInit();
+}
+function rpHide() {
+  document.getElementById('panel-reports').style.display = 'none';
+  // 로그인된 admin 상태였으면 main으로 돌아가고, 아니면 login으로
+  if (token && user) document.getElementById('app-main').style.display = 'block';
+  else document.getElementById('app-login').style.display = 'flex';
+}
+
+function rpInit() {
+  fetch(API + '/api/reports/staff-list').then(r=>r.json()).then(list => {
+    const sel = document.getElementById('rp-staff-select');
+    sel.innerHTML = '<option value="">— 선택 / сонгох —</option>' + list.map(s =>
+      `<option value="${s.id}">${s.name||''}${s.name_mn?' / '+s.name_mn:''}</option>`).join('');
+  });
+}
+
+document.getElementById('rp-login-btn').onclick = function() {
+  const sid = +document.getElementById('rp-staff-select').value;
+  const pin = document.getElementById('rp-pin').value;
+  const msg = document.getElementById('rp-login-msg');
+  msg.textContent = '';
+  if (!sid || !pin) { msg.textContent = '이름과 PIN을 입력하세요'; return; }
+  fetch(API + '/api/reports/login', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ staff_id: sid, pin }), credentials:'include'
+  }).then(r=>r.json()).then(data => {
+    if (data.ok) {
+      document.getElementById('reports-login').style.display = 'none';
+      document.getElementById('reports-app').style.display = 'block';
+      rpRenderApp(data.staff);
+    } else {
+      if (data.reason === 'locked') msg.textContent = '잠겼습니다. 잠시 후 다시 시도하세요';
+      else if (data.reason === 'wrong') msg.textContent = `PIN 오류 (${data.remaining}회 남음)`;
+      else msg.textContent = '로그인 실패';
+    }
+  });
+};
+
+function rpRenderApp(staff) {
+  const today = new Date().toLocaleDateString('ko-KR', {month:'long', day:'numeric', weekday:'short'});
+  document.getElementById('reports-app').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div>
+        <div style="font-weight:600">${staff.name||''}${staff.name_mn?' · '+staff.name_mn:''}</div>
+        <div style="font-size:12px;color:var(--text2)">${today}</div>
+      </div>
+      <button class="mini" id="rp-logout">гарах (로그아웃)</button>
+    </div>
+    <div class="tabs" style="margin-bottom:12px">
+      <button class="tab active" data-rptab="daily">📝 Өдрийн / 일일</button>
+      <button class="tab" data-rptab="weekly">📅 Долоо хоногийн / 주간</button>
+      <button class="tab" data-rptab="history">📚 Түүх / 이력</button>
+      <button class="tab" data-rptab="myinfo">👤 Миний мэдээлэл / 내 정보</button>
+    </div>
+    <div class="rp-panel" id="rp-daily">
+      <div id="rp-attendance" style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h4 style="margin:0;font-size:14px">⏰ Ирц / 근태</h4>
+          <span id="rp-att-status" style="font-size:11px;color:#9a3412"></span>
+        </div>
+        <div id="rp-att-row" style="display:flex;gap:8px"></div>
+      </div>
+      <div id="rp-mychecklist" style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h4 style="margin:0;font-size:14px">✅ Жагсаалт / 내 체크리스트</h4>
+          <span id="rp-mc-progress" style="font-size:12px;color:#15803d;font-weight:600"></span>
+        </div>
+        <div id="rp-mc-list" style="display:flex;flex-direction:column;gap:4px"></div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <input type="text" id="rp-mc-input" placeholder="нэмэх / 항목 추가..." onkeydown="if(event.key==='Enter')rpMyChecklistAdd()" style="flex:1;padding:7px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px">
+          <button type="button" onclick="rpMyChecklistAdd()" style="padding:7px 12px;background:#16a34a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">+ нэмэх</button>
+        </div>
+      </div>
+      <div class="field"><label>📝 Өнөөдөр хийсэн зүйл (오늘 한 일)</label>
+        <textarea id="rp-today" rows="4" placeholder="..."></textarea></div>
+      <div class="field"><label>📅 Маргааш хийх зүйл (내일 할 일)</label>
+        <textarea id="rp-tomorrow" rows="3" placeholder="..."></textarea></div>
+      <div class="field"><label>⚠️ Асуудал / Санал (이슈/건의)</label>
+        <textarea id="rp-issue" rows="2" placeholder=""></textarea></div>
+      <div class="field" id="rp-assignments-wrap" style="display:none">
+        <label>📌 Сайн дарагын даалгавар / 사장님 지시</label>
+        <div id="rp-assignments-list" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+      <button class="primary" id="rp-submit-daily" style="width:100%;margin-top:8px">📤 илгээх (제출)</button>
+      <div id="rp-daily-msg" style="text-align:center;font-size:13px;margin-top:8px;min-height:20px"></div>
+    </div>
+    <div class="rp-panel" id="rp-weekly" style="display:none"></div>
+    <div class="rp-panel" id="rp-history" style="display:none"><div id="rp-history-list"></div></div>
+    <div class="rp-panel" id="rp-myinfo" style="display:none"></div>
+  `;
+
+  // 지시 로드 (사장님이 내려준 업무)
+  rpLoadAssignments();
+  rpLoadMyChecklist();
+  rpLoadAttendance();
+
+  document.querySelectorAll('[data-rptab]').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('[data-rptab]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.rp-panel').forEach(p => p.style.display='none');
+      document.getElementById('rp-' + btn.dataset.rptab).style.display = 'block';
+      if (btn.dataset.rptab === 'history') rpLoadHistory();
+      else if (btn.dataset.rptab === 'weekly') rpInitWeekly();
+      else if (btn.dataset.rptab === 'myinfo') rpInitMyInfo();
+    };
+  });
+
+  document.getElementById('rp-logout').onclick = () => {
+    fetch(API + '/api/reports/logout', { method:'POST', credentials:'include' }).then(()=>{
+      document.getElementById('reports-login').style.display = 'block';
+      document.getElementById('reports-app').style.display = 'none';
+      document.getElementById('rp-pin').value = '';
+    });
+  };
+
+  var __cAdd = document.getElementById('rp-checklist-add');
+  if (__cAdd) __cAdd.onclick = function() { rpAddChecklistItem(); };
+  document.getElementById('rp-submit-daily').onclick = () => {
+    const fields = {
+      today: document.getElementById('rp-today').value.trim(),
+      tomorrow: document.getElementById('rp-tomorrow').value.trim(),
+      issue: document.getElementById('rp-issue').value.trim(),
+      checklist: Array.from(document.querySelectorAll('#rp-checklist-items .rp-cl-item')).map(el => ({
+        text: el.querySelector('input[type=text]').value.trim(),
+        done: el.querySelector('input[type=checkbox]').checked
+      })).filter(it => it.text)
+    };
+    const msg = document.getElementById('rp-daily-msg');
+    msg.style.color = 'var(--text)';
+    msg.textContent = '⏳ илгээж байна... (전송 중)';
+    fetch(API + '/api/reports/submit', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ report_type: 'daily', fields }), credentials:'include'
+    }).then(r=>r.json()).then(data => {
+      if (data.ok) {
+        msg.style.color = '#10b981';
+        msg.textContent = `✅ ${data.action==='created'?'илгээгдлээ':'шинэчлэгдлээ'} (${data.action==='created'?'제출 완료':'수정 완료'})`;
+        document.getElementById('rp-today').value = '';
+        document.getElementById('rp-tomorrow').value = '';
+        document.getElementById('rp-issue').value = '';
+        const __cl = document.getElementById('rp-checklist-items');
+        if (__cl) __cl.innerHTML = '';
+      } else {
+        msg.style.color = '#b91c1c';
+        msg.textContent = '❌ ' + (data.error || 'fail');
+      }
+    });
+  };
+
+  // 오늘 보고 미리 채우기
+  fetch(API + '/api/reports/my-reports', { credentials:'include' }).then(r=>r.json()).then(rows => {
+    const today = new Date().toISOString().slice(0,10);
+    const t = rows.find(r => r.report_type==='daily' && r.report_date===today);
+    if (t) {
+      fetch(API + '/api/reports/my-reports/' + t.id, { credentials:'include' }).then(r=>r.json()).then(d => {
+        document.getElementById('rp-today').value = d.field_today || '';
+        document.getElementById('rp-tomorrow').value = d.field_tomorrow || '';
+        document.getElementById('rp-issue').value = d.field_issue || '';
+        try {
+          const list = JSON.parse(d.field_checklist || '[]');
+          list.forEach(it => rpAddChecklistItem(it.text, it.done));
+        } catch(e) {}
+      });
+    }
+  });
+}
+
+function rpLoadAttendance() {
+  const row = document.getElementById('rp-att-row');
+  const status = document.getElementById('rp-att-status');
+  if (!row) return;
+  row.innerHTML = '<div style="color:#9a3412;font-size:12px">Уншиж байна...</div>';
+  fetch(API + '/api/reports/attendance/today', { credentials:'include' })
+    .then(r=>r.json()).then(d => {
+      const fmt = (iso) => {
+        if (!iso) return '';
+        const dt = new Date(iso);
+        const hh = String(dt.getHours()).padStart(2,'0');
+        const mm = String(dt.getMinutes()).padStart(2,'0');
+        return hh + ':' + mm;
+      };
+      const inT = fmt(d.check_in), outT = fmt(d.check_out);
+      let leftBtn, rightBtn;
+      if (!d.check_in) {
+        leftBtn = '<button type="button" onclick="rpAttCheckIn()" style="flex:1;padding:12px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600">▶ Ирэх / 출근</button>';
+      } else {
+        leftBtn = '<div style="flex:1;padding:12px;background:#dcfce7;color:#166534;border-radius:8px;text-align:center;font-size:14px;font-weight:600">✓ '+inT+' Ирсэн</div>';
+      }
+      if (!d.check_out) {
+        const disabled = !d.check_in;
+        rightBtn = '<button type="button" onclick="rpAttCheckOut()" '+(disabled?'disabled':'')+' style="flex:1;padding:12px;background:'+(disabled?'#cbd5e1':'#dc2626')+';color:#fff;border:none;border-radius:8px;cursor:'+(disabled?'not-allowed':'pointer')+';font-size:15px;font-weight:600">◼ Явах / 퇴근</button>';
+      } else {
+        rightBtn = '<div style="flex:1;padding:12px;background:#fee2e2;color:#991b1b;border-radius:8px;text-align:center;font-size:14px;font-weight:600">✓ '+outT+' Явсан</div>';
+      }
+      row.innerHTML = leftBtn + rightBtn;
+      // duration display
+      if (d.check_in && d.check_out) {
+        const ms = new Date(d.check_out) - new Date(d.check_in);
+        const h = Math.floor(ms/3600000), m = Math.floor((ms%3600000)/60000);
+        if (status) status.textContent = h + 'ц ' + m + 'м';
+      } else if (status) {
+        status.textContent = '';
+      }
+    }).catch(()=>{ row.innerHTML = '<div style="color:#b91c1c;font-size:12px">불러오기 실패</div>'; });
+}
+
+function rpAttCheckIn() {
+  fetch(API + '/api/reports/attendance/check-in', { method:'POST', credentials:'include' })
+    .then(r=>r.json()).then(d => {
+      if (d.ok) rpLoadAttendance();
+      else alert('Алдаа: ' + (d.error || 'unknown'));
+    });
+}
+
+function rpAttCheckOut() {
+  if (!confirm('Явах уу? (퇴근하시겠습니까?)')) return;
+  fetch(API + '/api/reports/attendance/check-out', { method:'POST', credentials:'include' })
+    .then(r=>r.json()).then(d => {
+      if (d.ok) rpLoadAttendance();
+      else alert('Алдаа: ' + (d.error || 'unknown'));
+    });
+}
+
+function rpLoadMyChecklist() {
+  const listEl = document.getElementById('rp-mc-list');
+  const progEl = document.getElementById('rp-mc-progress');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="color:#9b9b98;font-size:12px">Уншиж байна...</div>';
+  fetch(API + '/api/reports/my-checklist', { credentials:'include' })
+    .then(r=>r.json()).then(d => {
+      const items = d.items || [];
+      if (!items.length) {
+        listEl.innerHTML = '<div style="color:#6b6b6a;font-size:12px;padding:6px 0">Жагсаалт хоосон байна. Доор шинэ зүйл нэмнэ үү.</div>';
+        if (progEl) progEl.textContent = '';
+        return;
+      }
+      const done = items.filter(it=>it.done).length;
+      if (progEl) progEl.textContent = done + ' / ' + items.length;
+      listEl.innerHTML = items.map(it => {
+        const txtStyle = it.done ? 'text-decoration:line-through;color:#86efac' : 'color:#1e293b';
+        return '<div style="display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid #dcfce7">' +
+          '<input type="checkbox" ' + (it.done?'checked':'') + ' onchange="rpMyChecklistToggle('+it.id+', this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:#16a34a">' +
+          '<div style="flex:1;font-size:13px;'+txtStyle+'">'+rpaEsc(it.text)+'</div>' +
+          '<button type="button" onclick="rpMyChecklistDelete('+it.id+')" title="устгах" style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:13px;padding:2px 5px">🗑</button>' +
+          '</div>';
+      }).join('');
+    }).catch(()=>{ listEl.innerHTML = '<div style="color:#b91c1c;font-size:12px">불러오기 실패</div>'; });
+}
+
+function rpMyChecklistAdd() {
+  const inp = document.getElementById('rp-mc-input');
+  const text = (inp.value||'').trim();
+  if (!text) return;
+  inp.disabled = true;
+  fetch(API + '/api/reports/my-checklist', {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+    body: JSON.stringify({ text })
+  }).then(r=>r.json()).then(d => {
+    inp.disabled = false;
+    if (d.ok) { inp.value = ''; rpLoadMyChecklist(); inp.focus(); }
+    else alert('Алдаа: ' + (d.error||'unknown'));
+  }).catch(()=>{ inp.disabled = false; alert('сүлжээний алдаа'); });
+}
+
+function rpMyChecklistToggle(id, done) {
+  fetch(API + '/api/reports/my-checklist/' + id + '/check', {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+    body: JSON.stringify({ done: !!done })
+  }).then(()=>rpLoadMyChecklist());
+}
+
+function rpMyChecklistDelete(id) {
+  if (!confirm('Бүр мөсөн устгах уу? (영구 삭제)')) return;
+  fetch(API + '/api/reports/my-checklist/' + id, {
+    method:'DELETE', credentials:'include'
+  }).then(()=>rpLoadMyChecklist());
+}
+
+function rpLoadAssignments() {
+  const wrap = document.getElementById('rp-assignments-wrap');
+  const list = document.getElementById('rp-assignments-list');
+  if (!wrap || !list) return;
+  fetch(API+'/api/reports/my-assignments', { credentials:'include' })
+    .then(r => r.ok ? r.json() : [])
+    .then(rows => {
+      if (!rows.length) { wrap.style.display = 'none'; return; }
+      wrap.style.display = '';
+      list.innerHTML = rows.map(a => {
+        const safeTitle = String(a.title||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+        const safeDesc = String(a.description||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+        const tag = a.recurrence==='once' ? '<span style="font-size:10px;color:#b45309;margin-left:6px">1회성</span>' : '<span style="font-size:10px;color:#1e40af;margin-left:6px">매일</span>';
+        return '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px">'+
+          '<input type="checkbox" '+(a.done?'checked':'')+' onchange="rpToggleAssignment('+a.id+', this.checked)" style="width:18px;height:18px;flex-shrink:0;margin-top:2px">'+
+          '<div style="flex:1"><div style="font-weight:600">'+safeTitle+tag+'</div>'+
+          (safeDesc ? '<div style="font-size:12px;color:#6b6b6a;margin-top:2px">'+safeDesc+'</div>' : '')+
+          '</div></div>';
+      }).join('');
+    });
+}
+
+function rpToggleAssignment(id, done) {
+  fetch(API+'/api/reports/assignment-check', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ assignment_id: id, done: done }), credentials:'include'
+  });
+}
+
+function rpAddChecklistItem(text, done) {
+  text = text || '';
+  done = !!done;
+  const wrap = document.getElementById('rp-checklist-items');
+  if (!wrap) return;
+  const div = document.createElement('div');
+  div.className = 'rp-cl-item';
+  div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;background:#fafaf9;border:1px solid #e5e5e4;border-radius:6px';
+  const safeText = text.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  div.innerHTML = '<input type="checkbox" '+(done?'checked':'')+' style="width:18px;height:18px;flex-shrink:0">' +
+    '<input type="text" value="'+safeText+'" placeholder="항목 입력" style="flex:1;border:none;background:transparent;font-size:14px;padding:2px 0">' +
+    '<button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:16px;padding:0 4px">×</button>';
+  wrap.appendChild(div);
+}
+
+function rpLoadHistory() {
+  const el = document.getElementById('rp-history-list');
+  el.textContent = 'Уншиж байна...';
+  fetch(API + '/api/reports/my-reports', { credentials:'include' }).then(r=>r.json()).then(rows => {
+    if (!rows.length) { el.innerHTML = '<p style="color:var(--text2)">아직 제출한 보고가 없습니다</p>'; return; }
+    el.innerHTML = rows.map(r => `
+      <div class="card" style="cursor:pointer" onclick="rpToggleHistory(${r.id}, this)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><b>${r.report_type==='daily'?'📝 일일':'📅 주간'}</b> ${r.report_date}<div class="sub">${r.submitted_at}${r.updated_at?' · 수정 '+r.updated_at:''}</div></div>
+          <div class="rp-chev" style="font-size:12px;color:var(--text2)">▼</div>
+        </div>
+        <div class="rp-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid #eee"></div>
+      </div>`).join('');
+  });
+}
+
+function rpRenderHistoryDetail(d) {
+  const pair = (label, mn, ko) => {
+    if (!mn && !ko) return '';
+    return `<div style="margin-top:8px">
+      <div style="font-size:12px;color:var(--text2);font-weight:600">${label}</div>
+      ${ko ? `<div style="white-space:pre-wrap;font-size:14px;margin-top:2px">${rpaEsc(ko)}</div>` : ''}
+      ${mn ? `<div style="white-space:pre-wrap;font-size:13px;color:var(--text2);margin-top:2px;font-style:italic">${rpaEsc(mn)}</div>` : ''}
+    </div>`;
+  };
+  let html = '';
+  if (d.report_type === 'daily') {
+    html += pair('📝 오늘 한 일 / Өнөөдөр хийсэн', d.field_today, d.field_today_ko);
+    html += pair('📅 내일 할 일 / Маргааш', d.field_tomorrow, d.field_tomorrow_ko);
+    html += pair('⚠️ 이슈 / Асуудал', d.field_issue, d.field_issue_ko);
+    if (d.field_checklist && d.field_checklist !== '[]') {
+      try {
+        const items = JSON.parse(d.field_checklist);
+        if (items.length) {
+          html += `<div style="margin-top:8px"><div style="font-size:12px;color:var(--text2);font-weight:600">📋 체크리스트</div>` +
+            items.map(it => `<div style="font-size:13px;margin-top:2px">${it.done?'✅':'⬜'} ${rpaEsc(it.text||it.label||'')}</div>`).join('') + '</div>';
+        }
+      } catch(e) {}
+    }
+  } else {
+    html += pair('🌟 이번 주 성과 / Хийсэн', d.field_done, d.field_done_ko);
+    html += pair('📅 다음 주 계획 / Төлөвлөгөө', d.field_plan, d.field_plan_ko);
+    html += pair('💡 건의 / Санал', d.field_suggestion, d.field_suggestion_ko);
+  }
+  if (d.translation_status && d.translation_status !== 'done') {
+    html += `<div style="margin-top:10px;font-size:11px;color:var(--text2)">번역 상태: ${rpaEsc(d.translation_status)}</div>`;
+  }
+  return html || '<div style="color:var(--text2);font-size:13px">내용 없음</div>';
+}
+
+function rpToggleHistory(id, card) {
+  const detail = card.querySelector('.rp-detail');
+  const chev = card.querySelector('.rp-chev');
+  if (detail.style.display === 'block') {
+    detail.style.display = 'none';
+    if (chev) chev.textContent = '▼';
+    return;
+  }
+  if (chev) chev.textContent = '▲';
+  if (detail.dataset.loaded === '1') { detail.style.display = 'block'; return; }
+  detail.style.display = 'block';
+  detail.innerHTML = '<div style="color:var(--text2);font-size:13px">Уншиж байна...</div>';
+  fetch(API + '/api/reports/my-reports/' + id, { credentials:'include' })
+    .then(r=>r.json()).then(d => {
+      if (d.error) { detail.innerHTML = '<div style="color:#b91c1c;font-size:13px">불러오기 실패</div>'; return; }
+      detail.innerHTML = rpRenderHistoryDetail(d);
+      detail.dataset.loaded = '1';
+    }).catch(()=>{ detail.innerHTML = '<div style="color:#b91c1c;font-size:13px">네트워크 오류</div>'; });
+}
+
+function rpInitMyInfo() {
+  const wrap = document.getElementById('rp-myinfo');
+  if (!wrap) return;
+  wrap.innerHTML = '<div style="color:var(--text2);font-size:13px">Уншиж байна...</div>';
+  fetch(API + '/api/reports/me', { credentials:'include' }).then(r=>r.json()).then(s => {
+    wrap.innerHTML = `
+      <div class="field"><label>이름 / Нэр (한글)</label>
+        <input id="mi-rp-name" value="${(s.name||'').replace(/"/g,'&quot;')}" placeholder="홍길동"></div>
+      <div class="field"><label>몽골어 이름 / Монгол нэр</label>
+        <input id="mi-rp-name-mn" value="${(s.name_mn||'').replace(/"/g,'&quot;')}" placeholder="..."></div>
+      <div class="field"><label>전화번호 / Утас</label>
+        <input id="mi-rp-phone" value="${(s.phone||'').replace(/"/g,'&quot;')}" placeholder="010-0000-0000"></div>
+      <div style="font-size:12px;color:var(--text2);margin:4px 0 12px">${s.business||'-'} · ${s.position||s.role||'-'}</div>
+
+      <button class="primary" id="mi-rp-save" style="width:100%">💾 хадгалах (저장)</button>
+      <div id="mi-rp-msg" style="text-align:center;font-size:13px;margin-top:8px;min-height:20px"></div>
+
+      <hr style="margin:18px 0;border-color:var(--border)">
+      <h4 style="margin-bottom:8px">🔒 PIN солих / PIN 변경</h4>
+      <div class="field"><label>одоогийн PIN (현재 PIN)</label>
+        <input type="password" id="mi-rp-cur-pin" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="● ● ● ●" style="text-align:center;font-size:18px;letter-spacing:6px"></div>
+      <div class="field"><label>шинэ PIN (새 PIN, 4자리)</label>
+        <input type="password" id="mi-rp-new-pin" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="● ● ● ●" style="text-align:center;font-size:18px;letter-spacing:6px"></div>
+      <div class="field"><label>шинэ PIN дахин (새 PIN 확인)</label>
+        <input type="password" id="mi-rp-new-pin2" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="● ● ● ●" style="text-align:center;font-size:18px;letter-spacing:6px"></div>
+      <button class="primary" id="mi-rp-pin-save" style="width:100%">🔑 PIN солих (PIN 변경)</button>
+      <div id="mi-rp-pin-msg" style="text-align:center;font-size:13px;margin-top:8px;min-height:20px"></div>
+    `;
+    document.getElementById('mi-rp-save').onclick = () => rpSaveMyInfo();
+    document.getElementById('mi-rp-pin-save').onclick = () => rpChangeMyPin();
+  });
+}
+
+function rpSaveMyInfo() {
+  const msg = document.getElementById('mi-rp-msg');
+  msg.style.color = 'var(--text)';
+  msg.textContent = '⏳ хадгалаж байна...';
+  fetch(API + '/api/reports/me', {
+    method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include',
+    body: JSON.stringify({
+      name: document.getElementById('mi-rp-name').value.trim(),
+      name_mn: document.getElementById('mi-rp-name-mn').value.trim(),
+      phone: document.getElementById('mi-rp-phone').value.trim()
+    })
+  }).then(r=>r.json()).then(d => {
+    if (d.ok) { msg.style.color = '#10b981'; msg.textContent = '✅ хадгалагдлаа (저장됨)'; }
+    else { msg.style.color = '#b91c1c'; msg.textContent = '❌ ' + (d.error || 'fail'); }
+  });
+}
+
+function rpChangeMyPin() {
+  const cur = document.getElementById('mi-rp-cur-pin').value;
+  const np = document.getElementById('mi-rp-new-pin').value;
+  const np2 = document.getElementById('mi-rp-new-pin2').value;
+  const msg = document.getElementById('mi-rp-pin-msg');
+  msg.style.color = '#b91c1c';
+  if (!/^\d{4}$/.test(cur)) { msg.textContent = '현재 PIN 4자리'; return; }
+  if (!/^\d{4}$/.test(np))  { msg.textContent = '새 PIN 4자리 숫자'; return; }
+  if (np !== np2) { msg.textContent = '새 PIN 일치 안함'; return; }
+  msg.style.color = 'var(--text)';
+  msg.textContent = '⏳ ...';
+  fetch(API + '/api/reports/me', {
+    method:'PUT', headers:{'Content-Type':'application/json'}, credentials:'include',
+    body: JSON.stringify({ current_pin: cur, new_pin: np })
+  }).then(r=>r.json()).then(d => {
+    if (d.ok) {
+      msg.style.color = '#10b981'; msg.textContent = '✅ PIN солигдлоо (PIN 변경됨)';
+      document.getElementById('mi-rp-cur-pin').value = '';
+      document.getElementById('mi-rp-new-pin').value = '';
+      document.getElementById('mi-rp-new-pin2').value = '';
+    } else { msg.style.color = '#b91c1c'; msg.textContent = '❌ ' + (d.error || 'fail'); }
+  });
+}
+
+function rpInitWeekly() {
+  const now = new Date();
+  const day = now.getDay(); // 0=일, 5=금, 6=토, 1=월
+  const hour = now.getHours();
+  // 금요일 09:00 ~ 다음주 월요일 12:00
+  const allowed = (day === 5 && hour >= 9) || day === 6 || day === 0 || (day === 1 && hour < 12);
+  const el = document.getElementById('rp-weekly');
+  if (!allowed) {
+    el.innerHTML = '<div style="background:#fffbeb;border-left:3px solid #f59e0b;padding:10px 12px;border-radius:4px;font-size:13px;color:#92400e">📅 주간보고는 <b>금요일 09:00 ~ 다음주 월요일 12:00</b> 사이에만 작성 가능합니다.</div>';
+    return;
+  }
+  el.innerHTML = `
+    <div class="field"><label>🌟 Энэ долоо хоногт хийсэн зүйл (이번 주 성과)</label><textarea id="rp-w-done" rows="4"></textarea></div>
+    <div class="field"><label>📅 Дараа долоо хоногийн төлөвлөгөө (다음 주 계획)</label><textarea id="rp-w-plan" rows="4"></textarea></div>
+    <div class="field"><label>💡 Санал (건의사항)</label><textarea id="rp-w-suggestion" rows="2"></textarea></div>
+    <button class="primary" id="rp-submit-weekly" style="width:100%;margin-top:8px">📤 илгээх (제출)</button>
+    <div id="rp-weekly-msg" style="text-align:center;font-size:13px;margin-top:8px;min-height:20px"></div>
+  `;
+  // 기존 주간 보고 미리 채우기
+  fetch(API + '/api/reports/my-reports', { credentials:'include' }).then(r=>r.json()).then(rows => {
+    const w = rows.find(r => r.report_type==='weekly');
+    if (w) {
+      fetch(API + '/api/reports/my-reports/' + w.id, { credentials:'include' }).then(r=>r.json()).then(d => {
+        const cd = document.getElementById('rp-w-done'); if (cd) cd.value = d.field_done || '';
+        const cp = document.getElementById('rp-w-plan'); if (cp) cp.value = d.field_plan || '';
+        const cs = document.getElementById('rp-w-suggestion'); if (cs) cs.value = d.field_suggestion || '';
+      });
+    }
+  });
+  document.getElementById('rp-submit-weekly').onclick = () => {
+    const fields = {
+      done: document.getElementById('rp-w-done').value.trim(),
+      plan: document.getElementById('rp-w-plan').value.trim(),
+      suggestion: document.getElementById('rp-w-suggestion').value.trim()
+    };
+    const msg = document.getElementById('rp-weekly-msg');
+    msg.style.color = 'var(--text)';
+    msg.textContent = '⏳ илгээж байна... (전송 중)';
+    fetch(API + '/api/reports/submit', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ report_type: 'weekly', fields }), credentials:'include'
+    }).then(r=>r.json()).then(d => {
+      if (d.ok) {
+        msg.style.color = '#10b981';
+        msg.textContent = `✅ ${d.action==='created'?'илгээгдлээ':'шинэчлэгдлээ'} (${d.action==='created'?'제출 완료':'수정 완료'})`;
+        document.getElementById('rp-w-done').value = '';
+        document.getElementById('rp-w-plan').value = '';
+        document.getElementById('rp-w-suggestion').value = '';
+      } else {
+        msg.style.color = '#b91c1c';
+        msg.textContent = '❌ ' + (d.error || 'fail');
+      }
+    });
+  };
+}
+
+// === M4: 관리자(사장님) 업무보고 관리 ===
+function rpaChecklistHtml(jsonStr) {
+  try {
+    const list = JSON.parse(jsonStr || '[]');
+    if (!list.length) return '';
+    const items = list.map(function(it) {
+      const icon = it.done ? '✅' : '☐';
+      const style = it.done ? '' : 'color:#9b9b98';
+      return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0"><span style="font-size:18px">'+icon+'</span><span style="'+style+'">'+rpaEsc(it.text||'')+'</span></div>';
+    }).join('');
+    return '<div class="card"><b>📋 체크리스트</b><div style="margin-top:6px">'+items+'</div></div>';
+  } catch(e) { return ''; }
+}
+
+function rpaEsc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function loadRpAdmin(){
+  document.getElementById('content').innerHTML = `
+    <div class="nav-tabs" style="margin-bottom:0.8rem">
+      <div class="nav-tab active" id="rpa-subtab-today" onclick="rpaTab('today')">📅 오늘</div>
+      <div class="nav-tab" id="rpa-subtab-staff" onclick="rpaTab('staff')">👥 직원/PIN</div>
+      <div class="nav-tab" id="rpa-subtab-weekly" onclick="rpaTab('weekly')">📅 주간</div>
+      <div class="nav-tab" id="rpa-subtab-assignments" onclick="rpaTab('assignments')">📌 지시</div>
+      <div class="nav-tab" id="rpa-subtab-history" onclick="rpaTab('history')">📁 이력</div>
+      <div class="nav-tab" id="rpa-subtab-settings" onclick="rpaTab('settings')">⚙️ 설정</div>
+    </div>
+    <div id="rpa-today" style="display:block">
+      <div id="rpa-today-summary"></div>
+      <h4 style="margin:0.8rem 0 0.4rem">✅ 제출 완료</h4>
+      <div id="rpa-today-submitted"></div>
+      <h4 style="margin:0.8rem 0 0.4rem">⏳ 미제출</h4>
+      <div id="rpa-today-missing"></div>
+    </div>
+    <div id="rpa-staff" style="display:none">
+      <div id="rpa-staff-list"></div>
+    </div>
+    <div id="rpa-weekly" style="display:none"></div>
+    <div id="rpa-assignments" style="display:none"></div>
+    <div id="rpa-history" style="display:none"></div>
+    <div id="rpa-settings" style="display:none"></div>
+  `;
+  rpaTab('today');
+}
+
+function rpaTab(name){
+  ['today','staff','weekly','settings','assignments','history'].forEach(n => {
+    const t = document.getElementById('rpa-subtab-'+n);
+    if (t) t.classList.toggle('active', name===n);
+    const p = document.getElementById('rpa-'+n);
+    if (p) p.style.display = name===n ? 'block' : 'none';
+  });
+  if(name==='today') rpaLoadToday();
+  else if(name==='staff') rpaLoadStaff();
+  else if(name==='weekly') rpaLoadWeekly();
+  else if(name==='settings') rpaLoadSettings();
+  else if(name==='assignments') rpaLoadAssignments();
+  else if(name==='history') rpaLoadHistory();
+}
+
+function rpaLoadHistory() {
+  const token = localStorage.getItem('staff_token') || localStorage.getItem('token');
+  const c = document.getElementById('rpa-history');
+  c.innerHTML = '<h3>📁 직원별 보고 이력</h3>' +
+    '<div id="rpa-h-status" style="display:none"></div>' +
+    '<div id="rpa-h-form"><div class="field" style="max-width:400px"><label>직원 선택</label>' +
+    '<select id="rpa-h-staff" onchange="rpaLoadStaffReports()" style="font-size:16px;padding:10px"><option value="">— 로딩 중 —</option></select></div>' +
+    '<div id="rpa-h-results"></div></div>';
+  const showError = function(msg) {
+    document.getElementById('rpa-h-form').style.display = 'none';
+    const s = document.getElementById('rpa-h-status');
+    s.style.display = 'block';
+    s.innerHTML = '<div style="background:#fef2f2;border:1px solid #fecaca;padding:16px;border-radius:8px;text-align:center">'+
+      '<p style="color:#b91c1c;margin-bottom:12px">⚠ ' + msg + '</p>'+
+      '<button onclick="rpaAutoFix()" style="padding:10px 20px;background:#1f1f1f;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;margin-right:8px">⚡ 자동 재로그인</button>'+
+      '<button onclick="localStorage.clear(); document.cookie=\'staff_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/\'; location.reload();" style="padding:10px 20px;background:#fff;color:#1f1f1f;border:1px solid #d6d6d3;border-radius:6px;cursor:pointer;font-size:14px">🔄 처음부터</button>'+
+      '</div>';
+  };
+  if (!token) { showError('로그인이 필요합니다'); return; }
+  fetch(API+'/api/reports/admin/staff', { headers: { Authorization: 'Bearer ' + token } })
+    .then(r => {
+      if (r.status === 401) { showError('세션이 만료되었습니다'); throw new Error('401'); }
+      if (!r.ok) { showError('연결 오류 (HTTP ' + r.status + ')'); throw new Error(r.status); }
+      return r.json();
+    }).then(rows => {
+      const active = (rows||[]).filter(s => s.is_active);
+      const sel = document.getElementById('rpa-h-staff');
+      sel.innerHTML = '<option value="">— 직원 선택 —</option>' +
+        active.map(s => '<option value="' + s.id + '">' + rpaEsc(s.name||'') + (s.name_mn ? ' / ' + rpaEsc(s.name_mn) : '') + '</option>').join('');
+    }).catch(()=>{});
+}
+
+function rpaAutoFix() {
+  // 자동 admin 재로그인 — 옛 토큰 청소 + 새 토큰 발급
+  const s = document.getElementById('rpa-h-status');
+  s.innerHTML = '<div style="text-align:center;padding:20px">⏳ 재로그인 중...</div>';
+  // 옛 데이터 청소
+  localStorage.removeItem('staff_token');
+  localStorage.removeItem('staff_user');
+  document.cookie = 'staff_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  // 새 admin 로그인
+  fetch('/api/login', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({username: 'admin', password: '1234'}),
+    credentials: 'include'
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.token) {
+      localStorage.setItem('staff_token', d.token);
+      localStorage.setItem('staff_user', JSON.stringify(d.user));
+      s.innerHTML = '<div style="background:#ecfdf5;border:1px solid #a7f3d0;padding:16px;border-radius:8px;text-align:center;color:#047857">✅ 재로그인 성공! 페이지를 새로고침합니다...</div>';
+      setTimeout(()=>location.reload(), 1500);
+    } else {
+      s.innerHTML = '<div style="background:#fef2f2;padding:16px;border-radius:8px;text-align:center;color:#b91c1c">자동 재로그인 실패: ' + (d.error||'알수없는오류') + '</div>';
+    }
+  })
+  .catch(e => {
+    s.innerHTML = '<div style="background:#fef2f2;padding:16px;border-radius:8px;text-align:center;color:#b91c1c">네트워크 오류: ' + e.message + '</div>';
+  });
+}
+
+function rpaLoadStaffReports() {
+  const token = localStorage.getItem('staff_token') || localStorage.getItem('token');
+  const sid = document.getElementById('rpa-h-staff').value;
+  const out = document.getElementById('rpa-h-results');
+  if (!sid) { out.innerHTML = ''; return; }
+  out.innerHTML = '로딩...';
+  fetch(API+'/api/reports/admin/staff/' + sid + '/reports', { headers: { Authorization: 'Bearer ' + token } })
+    .then(r => r.json()).then(d => {
+      if (!d.reports || !d.reports.length) {
+        out.innerHTML = '<p style="color:#9b9b98">아직 제출한 보고가 없습니다.</p>';
+        return;
+      }
+      const cnt = { daily: d.reports.filter(r => r.report_type==='daily').length, weekly: d.reports.filter(r => r.report_type==='weekly').length };
+      out.innerHTML = '<div style="font-size:13px;color:#6b6b6a;margin-bottom:8px">총 ' + d.reports.length + '건 (일일 ' + cnt.daily + ' · 주간 ' + cnt.weekly + ')</div>' +
+        d.reports.map(r => {
+          const typeLabel = r.report_type==='daily' ? '📝 일일' : '📅 주간';
+          const tsLabel = r.submitted_at + (r.updated_at ? ' · 수정 ' + r.updated_at : '');
+          const partial = r.translation_status==='partial' ? '<span style="color:#b45309;font-size:11px;margin-left:6px">번역 일부 실패</span>' : '';
+          return '<div class="card" onclick="rpaShowDetail(' + r.id + ')" style="cursor:pointer">' +
+            '<b>' + typeLabel + '</b> ' + r.report_date + partial +
+            '<div class="sub">' + tsLabel + '</div>' +
+            '</div>';
+        }).join('');
+    });
+}
+
+function rpaLoadAssignments() {
+  const token = localStorage.getItem('staff_token') || localStorage.getItem('token');
+  const c = document.getElementById('rpa-assignments');
+  c.innerHTML = '<h3>📌 업무지시 / 체크리스트</h3>' +
+    '<button class="primary" onclick="rpaShowNewAssignment()" style="margin-bottom:12px">+ 새 지시 만들기</button>' +
+    '<div id="rpa-assignments-list">로딩...</div>';
+  fetch(API+'/api/reports/admin/assignments', { headers:{Authorization:'Bearer '+token} })
+    .then(r=>r.json()).then(rows => {
+      const list = document.getElementById('rpa-assignments-list');
+      if (!rows.length) { list.innerHTML = '<p style="color:#9b9b98">아직 만든 지시가 없습니다. 위 [+ 새 지시 만들기] 버튼을 눌러보세요.</p>'; return; }
+      list.innerHTML = rows.map(a => {
+        const scopeLabel = a.scope==='all' ? '전체 직원' : (a.scope==='business' ? '['+a.scope_value+'] 사업장' : '직원 ID '+a.scope_value);
+        const recLabel = a.recurrence==='daily' ? '매일' : ('1회 · '+(a.target_date||''));
+        const activeBadge = a.is_active ? '' : '<span style="color:#b91c1c;font-size:11px;margin-left:6px">중지됨</span>';
+        return '<div class="card" style="border-left:3px solid '+(a.is_active?'#1e40af':'#9b9b98')+'">'+
+          '<div style="font-weight:600">'+rpaEsc(a.title)+activeBadge+'</div>'+
+          (a.description ? '<div style="font-size:12px;color:#6b6b6a;margin-top:2px">'+rpaEsc(a.description)+'</div>' : '')+
+          '<div style="font-size:11px;color:#6b6b6a;margin-top:6px">📍 '+scopeLabel+' · 🔁 '+recLabel+' · 오늘 완료 '+a.done_today+'명</div>'+
+          '<div style="display:flex;gap:6px;margin-top:8px">'+
+            '<button onclick="rpaShowCompletions('+a.id+')" style="font-size:12px;padding:4px 10px">완료 현황</button>'+
+            '<button onclick="rpaToggleAssignmentActive('+a.id+', '+(a.is_active?0:1)+')" style="font-size:12px;padding:4px 10px">'+(a.is_active?'중지':'재개')+'</button>'+
+            '<button onclick="rpaDeleteAssignment('+a.id+')" style="font-size:12px;padding:4px 10px;color:#b91c1c">삭제</button>'+
+          '</div></div>';
+      }).join('');
+    });
+}
+
+function rpaShowNewAssignment() {
+  const token = localStorage.getItem('staff_token') || localStorage.getItem('token');
+  // 직원/사업장 옵션 가져오기
+  fetch(API+'/api/reports/admin/staff', { headers:{Authorization:'Bearer '+token} })
+    .then(r=>r.json()).then(staff => {
+      const businesses = [...new Set(staff.map(s=>s.business).filter(Boolean))];
+      const today = new Date().toISOString().slice(0,10);
+      const html =
+        '<h3>+ 새 업무지시</h3>' +
+        '<div class="field"><label>제목</label><input type="text" id="na-title" placeholder="예: 9시 출근 확인"></div>' +
+        '<div class="field"><label>설명 (선택)</label><textarea id="na-desc" rows="2"></textarea></div>' +
+        '<div class="field"><label>대상</label><select id="na-scope" onchange="rpaScopeChanged()"><option value="all">전체 직원</option><option value="business">사업장별</option><option value="staff">개별 직원</option></select></div>' +
+        '<div class="field" id="na-business-wrap" style="display:none"><label>사업장 선택</label><select id="na-business">'+businesses.map(b=>'<option value="'+rpaEsc(b)+'">'+rpaEsc(b)+'</option>').join('')+'</select></div>' +
+        '<div class="field" id="na-staff-wrap" style="display:none"><label>직원 선택</label><select id="na-staff">'+staff.filter(s=>s.is_active).map(s=>'<option value="'+s.id+'">'+rpaEsc(s.name||'')+(s.business?' ('+rpaEsc(s.business)+')':'')+'</option>').join('')+'</select></div>' +
+        '<div class="field"><label>주기</label><select id="na-rec" onchange="rpaRecChanged()"><option value="daily">매일 반복</option><option value="once">1회성 (특정 날짜)</option></select></div>' +
+        '<div class="field" id="na-date-wrap" style="display:none"><label>날짜</label><input type="date" id="na-date" value="'+today+'"></div>' +
+        '<button class="primary" onclick="rpaCreateAssignment()">만들기</button>' +
+        '<button onclick="document.getElementById(\'na-modal\').remove()" style="margin-left:8px">취소</button>' +
+        '<div id="na-msg" style="margin-top:8px;font-size:13px"></div>';
+      const m = document.createElement('div');
+      m.id = 'na-modal';
+      m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;padding:16px;overflow:auto;display:flex;align-items:flex-start;justify-content:center';
+      m.innerHTML = '<div style="background:#fff;max-width:500px;width:100%;margin-top:30px;padding:20px;border-radius:12px">'+html+'</div>';
+      document.body.appendChild(m);
+    });
+}
+
+function rpaScopeChanged() {
+  const v = document.getElementById('na-scope').value;
+  document.getElementById('na-business-wrap').style.display = v==='business' ? 'block' : 'none';
+  document.getElementById('na-staff-wrap').style.display = v==='staff' ? 'block' : 'none';
+}
+
+function rpaRecChanged() {
+  const v = document.getElementById('na-rec').value;
+  document.getElementById('na-date-wrap').style.display = v==='once' ? 'block' : 'none';
+}
+
+function rpaCreateAssignment() {
+  const token = localStorage.getItem('staff_token') || localStorage.getItem('token');
+  const scope = document.getElementById('na-scope').value;
+  const body = {
+    title: document.getElementById('na-title').value.trim(),
+    description: document.getElementById('na-desc').value.trim(),
+    scope: scope,
+    recurrence: document.getElementById('na-rec').value
+  };
+  if (!body.title) { document.getElementById('na-msg').textContent = '제목을 입력하세요'; return; }
+  if (scope === 'business') body.scope_value = document.getElementById('na-business').value;
+  if (scope === 'staff') body.scope_value = document.getElementById('na-staff').value;
+  if (body.recurrence === 'once') body.target_date = document.getElementById('na-date').value;
+  fetch(API+'/api/reports/admin/assignments', {
+    method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer '+token},
+    body: JSON.stringify(body)
+  }).then(r=>r.json()).then(d=>{
+    if (d.ok) { document.getElementById('na-modal').remove(); rpaLoadAssignments(); }
+    else document.getElementById('na-msg').textContent = '실패: '+(d.error||'unknown');
+  });
+}
+
+function rpaToggleAssignmentActive(id, makeActive) {
+  const token = localStorage.getItem('staff_token') || localStorage.getItem('token');
+  fetch(API+'/api/reports/admin/assignments/'+id, {
+    method:'PUT', headers:{'Content-Type':'application/json', Authorization:'Bearer '+token},
+    body: JSON.stringify({ is_active: !!makeActive })
+  }).then(()=>rpaLoadAssignments());
+}
+
+function rpaDeleteAssignment(id) {
+  if (!confirm('이 지시를 삭제하시겠습니까? (소프트 삭제 — 직원에게 더 이상 안 보임)')) return;
+  const token = localStorage.getItem('staff_token') || localStorage.getItem('token');
+  fetch(API+'/api/reports/admin/assignments/'+id, {
+    method:'DELETE', headers:{Authorization:'Bearer '+token}
+  }).then(()=>rpaLoadAssignments());
+}
+
+function rpaShowCompletions(id) {
+  const token = localStorage.getItem('staff_token') || localStorage.getItem('token');
+  fetch(API+'/api/reports/admin/assignments/'+id+'/completions', { headers:{Authorization:'Bearer '+token} })
+    .then(r=>r.json()).then(d => {
+      const doneCnt = d.completions.filter(c=>c.done).length;
+      const totalCnt = d.completions.length;
+      const html =
+        '<h3>'+rpaEsc(d.assignment.title)+'</h3>' +
+        '<div style="font-size:13px;color:#6b6b6a;margin-bottom:12px">'+d.date+' 기준 · 완료 '+doneCnt+'/'+totalCnt+'명</div>' +
+        d.completions.map(c=>{
+          const icon = c.done ? '✅' : '☐';
+          const time = c.done_at ? ' <span style="font-size:11px;color:#6b6b6a">'+(c.done_at.slice(11,16))+'</span>' : '';
+          const style = c.done ? '' : 'color:#9b9b98';
+          return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f3f4f6"><span style="font-size:18px">'+icon+'</span><span style="'+style+';flex:1">'+rpaEsc(c.name)+'</span>'+time+'</div>';
+        }).join('') +
+        '<button class="primary" onclick="document.getElementById(\'comp-modal\').remove()" style="margin-top:12px">닫기</button>';
+      const m = document.createElement('div');
+      m.id = 'comp-modal';
+      m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;padding:16px;overflow:auto;display:flex;align-items:flex-start;justify-content:center';
+      m.onclick = (e)=>{if(e.target===m)m.remove();};
+      m.innerHTML = '<div style="background:#fff;max-width:500px;width:100%;margin-top:30px;padding:20px;border-radius:12px">'+html+'</div>';
+      document.body.appendChild(m);
+    });
+}
+
+async function rpaLoadToday(){
+  const sumEl = document.getElementById('rpa-today-summary');
+  const subEl = document.getElementById('rpa-today-submitted');
+  const misEl = document.getElementById('rpa-today-missing');
+  sumEl.innerHTML = '<div class="card">불러오는 중...</div>';
+  subEl.innerHTML = ''; misEl.innerHTML = '';
+  const res = await apiFetch('/api/reports/admin/today');
+  if(!res.ok){ sumEl.innerHTML = '<div class="card" style="color:var(--danger)">불러오기 실패 ('+res.status+')</div>'; return; }
+  const d = await res.json();
+  sumEl.innerHTML = `<div class="card"><b>${rpaEsc(d.date)}</b> · 제출 ${d.submitted.length} / 예상 ${d.expected_count}명</div>`;
+  subEl.innerHTML = d.submitted.length ? d.submitted.map(s => {
+    const preview = (s.field_today_ko || s.field_today || '').slice(0,80);
+    const ellipsis = ((s.field_today_ko||s.field_today||'').length>80)?'...':'';
+    const time = (s.submitted_at||'').slice(11,16);
+    const partialBadge = s.translation_status==='partial' ? '<span style="color:#b45309;font-size:11px;margin-left:6px">번역 일부 실패</span>' : '';
+    return `<div class="card" onclick="rpaShowDetail(${s.id})" style="cursor:pointer">
+      <b>${rpaEsc(s.name)}</b>${s.name_mn?' · '+rpaEsc(s.name_mn):''} <span style="color:var(--text2);font-size:12px;margin-left:6px">${rpaEsc(time)}</span>${partialBadge}
+      <div style="font-size:13px;margin-top:4px;color:var(--text2)">${rpaEsc(preview)}${ellipsis}</div>
+    </div>`;
+  }).join('') : '<p style="color:var(--text2)">제출한 직원이 아직 없습니다</p>';
+  misEl.innerHTML = d.missing.length ? d.missing.map(m =>
+    `<span style="display:inline-block;padding:4px 10px;margin:2px;background:#fef2f2;color:#b91c1c;border-radius:999px;font-size:12px">${rpaEsc(m.name)}</span>`
+  ).join(' ') : '<p style="color:#047857">모두 제출 완료 ✓</p>';
+}
+
+async function rpaShowDetail(id){
+  const res = await apiFetch('/api/reports/admin/report/'+id);
+  if(!res.ok){ alert('불러오기 실패: '+res.status); return; }
+  const d = await res.json();
+  const fld = (label, ko, orig) => `
+    <div class="card">
+      <b>${label}</b>
+      <div style="margin-top:4px">${ko ? rpaEsc(ko) : '<i style="color:var(--text2)">(번역 대기 또는 없음)</i>'}</div>
+      ${orig ? `<details style="margin-top:6px"><summary style="font-size:11px;color:var(--text2);cursor:pointer">원문 (몽골어/원본)</summary><div style="color:var(--text2);font-size:13px;margin-top:4px">${rpaEsc(orig)}</div></details>` : ''}
+    </div>`;
+  let html;
+  if(d.report_type==='weekly'){
+    html = `
+      <h3 style="margin:0 0 0.8rem">${rpaEsc(d.name)}${d.name_mn?' · '+rpaEsc(d.name_mn):''} — ${rpaEsc(d.report_date)} (주간)</h3>
+      ${fld('✅ 한 일', d.field_done_ko, d.field_done)}
+      ${fld('📅 다음 계획', d.field_plan_ko, d.field_plan)}
+      ${fld('💡 제안', d.field_suggestion_ko, d.field_suggestion)}
+      <button class="btn btn-primary" onclick="document.getElementById('rpa-modal').remove()" style="margin-top:0.6rem">닫기</button>
+    `;
+  } else {
+    html = `
+      <h3 style="margin:0 0 0.8rem">${rpaEsc(d.name)}${d.name_mn?' · '+rpaEsc(d.name_mn):''} — ${rpaEsc(d.report_date)}</h3>
+      ${fld('📝 오늘 한 일', d.field_today_ko, d.field_today)}
+      ${fld('📅 내일 할 일', d.field_tomorrow_ko, d.field_tomorrow)}
+      ${fld('⚠️ 이슈', d.field_issue_ko, d.field_issue)}
+      ${rpaChecklistHtml(d.field_checklist)}
+      <button class="btn btn-primary" onclick="document.getElementById('rpa-modal').remove()" style="margin-top:0.6rem">닫기</button>
+    `;
+  }
+  const m = document.createElement('div');
+  m.id = 'rpa-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;padding:16px;overflow:auto;display:flex;align-items:flex-start;justify-content:center';
+  m.innerHTML = `<div style="background:var(--card,#fff);max-width:600px;width:100%;margin-top:30px;padding:20px;border-radius:12px;color:var(--text)">${html}</div>`;
+  m.onclick = (e) => { if (e.target===m) m.remove(); };
+  document.body.appendChild(m);
+}
+
+async function rpaLoadStaff(){
+  const el = document.getElementById('rpa-staff-list');
+  el.innerHTML = '<div class="card">불러오는 중...</div>';
+  const res = await apiFetch('/api/reports/admin/staff');
+  if(!res.ok){ el.innerHTML = '<div class="card" style="color:var(--danger)">불러오기 실패 ('+res.status+')</div>'; return; }
+  const rows = await res.json();
+  el.innerHTML = rows.map(s => {
+    const active = s.is_active ? '<span style="color:#047857;font-size:11px;margin-left:6px">활성</span>' : '<span style="color:#b91c1c;font-size:11px;margin-left:6px">비활성</span>';
+    const pin = s.has_pin ? '<span style="color:#047857;font-size:11px;margin-left:6px">PIN ✓</span>' : '<span style="color:#b45309;font-size:11px;margin-left:6px">PIN 없음</span>';
+    const locked = s.pin_locked_until ? '<span style="color:#b91c1c;font-size:11px;margin-left:6px">🔒 잠김</span>' : '';
+    const unlockBtn = s.pin_locked_until ? `<button class="btn-sm" onclick="rpaUnlock(${s.id})" style="font-size:12px;padding:4px 10px">잠금 해제</button>` : '';
+    return `<div class="card">
+      <b>${rpaEsc(s.name)}</b>${s.name_mn?' · '+rpaEsc(s.name_mn):''}${active}${pin}${locked}
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-sm" onclick="rpaReissue(${s.id})" style="font-size:12px;padding:4px 10px">PIN 재발급</button>
+        ${unlockBtn}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function rpaReissue(id){
+  if(!confirm('PIN을 재발급하시겠습니까?\n새 PIN은 한 번만 표시됩니다.')) return;
+  const res = await apiFetch('/api/reports/admin/staff/'+id+'/reissue-pin', { method:'POST' });
+  if(!res.ok){ alert('실패: '+res.status); return; }
+  const d = await res.json();
+  if(d.ok){
+    alert('새 PIN: ' + d.pin + '\n\n반드시 직원에게 안전하게 전달하세요.\n이 메시지를 닫으면 다시 볼 수 없습니다.');
+  }
+  rpaLoadStaff();
+}
+
+async function rpaUnlock(id){
+  const res = await apiFetch('/api/reports/admin/staff/'+id+'/unlock', { method:'POST' });
+  if(!res.ok){ alert('실패: '+res.status); return; }
+  rpaLoadStaff();
+}
+
+// === M5: 주간 종합 ===
+function rpaIsoWeek() {
+  const d = new Date();
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = (t.getUTCDay()+6)%7;
+  t.setUTCDate(t.getUTCDate()-dayNum+3);
+  const ft = new Date(Date.UTC(t.getUTCFullYear(),0,4));
+  const week = 1 + Math.round(((t-ft)/86400000-3+((ft.getUTCDay()+6)%7))/7);
+  return `${t.getUTCFullYear()}-W${String(week).padStart(2,'0')}`;
+}
+
+async function rpaLoadWeekly(){
+  const wid = rpaIsoWeek();
+  const el = document.getElementById('rpa-weekly');
+  el.innerHTML = '<div class="card">불러오는 중...</div>';
+  const res = await apiFetch('/api/reports/admin/weekly/'+wid);
+  if(!res.ok){ el.innerHTML = '<div class="card" style="color:var(--danger)">불러오기 실패 ('+res.status+')</div>'; return; }
+  const rows = await res.json();
+  el.innerHTML = `<div class="card"><b>주간 ${rpaEsc(wid)}</b> · 제출 ${rows.length}명</div>` +
+    (rows.length ? rows.map(r => `<div class="card">
+      <b>${rpaEsc(r.name)}</b>${r.name_mn?' · '+rpaEsc(r.name_mn):''}
+      <div style="margin-top:6px"><b>🌟 이번 주 성과</b><br>${r.field_done_ko ? rpaEsc(r.field_done_ko) : (r.field_done ? rpaEsc(r.field_done) : '<i style="color:var(--text2)">없음</i>')}</div>
+      <div style="margin-top:6px"><b>📅 다음 주 계획</b><br>${r.field_plan_ko ? rpaEsc(r.field_plan_ko) : (r.field_plan ? rpaEsc(r.field_plan) : '<i style="color:var(--text2)">없음</i>')}</div>
+      <div style="margin-top:6px"><b>💡 건의사항</b><br>${r.field_suggestion_ko ? rpaEsc(r.field_suggestion_ko) : (r.field_suggestion ? rpaEsc(r.field_suggestion) : '<i style="color:var(--text2)">없음</i>')}</div>
+    </div>`).join('') : '<p style="color:var(--text2)">이 주간 보고가 아직 없습니다.</p>');
+}
+
+// === M5: 설정 ===
+async function rpaLoadSettings(){
+  const el = document.getElementById('rpa-settings');
+  el.innerHTML = '<div class="card">불러오는 중...</div>';
+  const res = await apiFetch('/api/reports/admin/settings');
+  if(!res.ok){ el.innerHTML = '<div class="card" style="color:var(--danger)">불러오기 실패 ('+res.status+')</div>'; return; }
+  const s = await res.json();
+  el.innerHTML = `<div class="card">
+    <div class="field"><label>텔레그램 Chat ID</label>
+      <input type="text" id="rpa-set-chat-id" value="${rpaEsc(s.telegram_chat_id||'')}" placeholder="예: 8171404664"></div>
+    <div class="field"><label>저녁 종합 요약 시각</label>
+      <input type="time" id="rpa-set-time" value="${rpaEsc(s.daily_summary_time||'21:00')}"></div>
+    <div class="field"><label>요약 모드</label>
+      <select id="rpa-set-mode">
+        <option value="simple" ${s.summary_mode==='simple'?'selected':''}>간단 (이름 + 한 줄)</option>
+        <option value="detail" ${s.summary_mode==='detail'?'selected':''}>상세 (본문 전체)</option>
+        <option value="names_only" ${s.summary_mode==='names_only'?'selected':''}>이름만</option>
+      </select></div>
+    <div class="field"><label><input type="checkbox" id="rpa-set-realtime" ${s.realtime_alert==='1'?'checked':''}> 실시간 알림</label></div>
+    <div class="field"><label><input type="checkbox" id="rpa-set-weekly" ${s.weekly_summary==='1'?'checked':''}> 주간 요약 (금요일)</label></div>
+    <div class="field"><label><input type="checkbox" id="rpa-set-missing" ${s.include_missing==='1'?'checked':''}> 미제출자 명단 포함</label></div>
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-primary" id="rpa-set-save">저장</button>
+      <button class="btn" id="rpa-set-test">💬 테스트 메시지</button>
+      <span id="rpa-set-msg" style="font-size:13px"></span>
+    </div>
+  </div>`;
+  document.getElementById('rpa-set-save').onclick = async () => {
+    const body = {
+      telegram_chat_id: document.getElementById('rpa-set-chat-id').value.trim(),
+      daily_summary_time: document.getElementById('rpa-set-time').value,
+      summary_mode: document.getElementById('rpa-set-mode').value,
+      realtime_alert: document.getElementById('rpa-set-realtime').checked?'1':'0',
+      weekly_summary: document.getElementById('rpa-set-weekly').checked?'1':'0',
+      include_missing: document.getElementById('rpa-set-missing').checked?'1':'0'
+    };
+    const r = await apiFetch('/api/reports/admin/settings', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const d = await r.json();
+    document.getElementById('rpa-set-msg').textContent = d.ok?'✅ 저장됨':'❌ 실패';
+  };
+  document.getElementById('rpa-set-test').onclick = async () => {
+    const msg = document.getElementById('rpa-set-msg');
+    msg.textContent = '⏳ 전송 중...';
+    const r = await apiFetch('/api/reports/admin/settings/test-telegram', { method:'POST' });
+    const d = await r.json();
+    msg.textContent = d.ok?'✅ 도착 확인':('❌ '+(d.error||'fail'));
+  };
+}
+</script>
+<script>if ("serviceWorker" in navigator) { window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js?v=2").then(reg => { reg.update(); if (reg.waiting) reg.waiting.postMessage({type:"SKIP_WAITING"}); }).catch(()=>{}); }); }</script>
+</body>
+</html>

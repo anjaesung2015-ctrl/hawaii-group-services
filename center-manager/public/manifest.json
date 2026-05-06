@@ -1,0 +1,17 @@
+{
+  "name": "하와이 센터",
+  "short_name": "센터",
+  "start_url": "/center/",
+  "scope": "/center/",
+  "display": "standalone",
+  "background_color": "#0c0f1a",
+  "theme_color": "#22c55e",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

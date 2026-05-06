@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "crm-manager": {
+      "version": "1.0.0",
+      "installedAt": 1772851383991
+    },
+    "afrexai-payroll-audit": {
+      "version": "1.0.0",
+      "installedAt": 1772851455243
+    },
+    "roster": {
+      "version": "1.0.4",
+      "installedAt": 1772852282711
+    }
+  }
+}

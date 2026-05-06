@@ -1,0 +1,13 @@
+{
+  "name": "team-chat",
+  "version": "1.0.0",
+  "description": "Hawaii Group 사내 채팅 - 자동 번역 (한국어↔몽골어)",
+  "main": "server.js",
+  "dependencies": {
+    "express": "^4.21.0",
+    "better-sqlite3": "^11.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "cookie-parser": "^1.4.6",
+    "ws": "^8.16.0"
+  }
+}

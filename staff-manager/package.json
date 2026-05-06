@@ -1,0 +1,1 @@
+{"name":"staff-manager","version":"1.0.0","main":"server.js","dependencies":{"bcryptjs":"^3.0.3","better-sqlite3":"^11.0.0","cookie-parser":"^1.4.6","dotenv":"^17.4.2","express":"^4.22.1","jsonwebtoken":"^9.0.0","node-cron":"^4.2.1"}}

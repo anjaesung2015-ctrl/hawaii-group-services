@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💪 피트니스 고객 관리</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#6366f1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="피트니스 CRM">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+  :root { --primary: #6366f1; --primary-dark: #4f46e5; --bg: #0f172a; --card: #1e293b; --card2: #334155; --text: #e2e8f0; --text2: #94a3b8; --success: #22c55e; --warning: #f59e0b; --danger: #ef4444; }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; }
+  .sidebar { width: 240px; background: var(--card); min-height: 100vh; position: fixed; left: 0; top: 0; padding: 1rem 0; z-index: 50; transition: transform 0.3s; }
+  .sidebar.hidden-mobile { transform: translateX(-100%); }
+  .main { margin-left: 240px; padding: 1.5rem; min-height: 100vh; }
+  .nav-item { display: flex; align-items: center; padding: 0.75rem 1.5rem; color: var(--text2); cursor: pointer; transition: all 0.2s; border-left: 3px solid transparent; }
+  .nav-item:hover, .nav-item.active { background: rgba(99,102,241,0.1); color: var(--text); border-left-color: var(--primary); }
+  .nav-item i { width: 24px; margin-right: 12px; text-align: center; }
+  .card { background: var(--card); border-radius: 12px; padding: 1.25rem; }
+  .stat-card { background: var(--card); border-radius: 12px; padding: 1.25rem; }
+  .stat-card .number { font-size: 1.75rem; font-weight: 700; }
+  .stat-card .label { color: var(--text2); font-size: 0.85rem; margin-top: 0.25rem; }
+  .btn { padding: 0.5rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-size: 0.875rem; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-warning { background: var(--warning); color: white; }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+  input, select, textarea { background: var(--card2); border: 1px solid rgba(255,255,255,0.1); color: var(--text); padding: 0.5rem 0.75rem; border-radius: 8px; width: 100%; font-size: 0.9rem; }
+  input:focus, select:focus { outline: none; border-color: var(--primary); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; padding: 0.75rem; color: var(--text2); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; border-bottom: 1px solid var(--card2); }
+  td { padding: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem; }
+  tr:hover { background: rgba(255,255,255,0.02); }
+  .badge { padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+  .badge-active { background: rgba(34,197,94,0.15); color: var(--success); }
+  .badge-expired { background: rgba(239,68,68,0.15); color: var(--danger); }
+  .badge-frozen { background: rgba(59,130,246,0.15); color: #3b82f6; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .modal { background: var(--card); border-radius: 16px; padding: 1.5rem; width: 90%; max-width: 500px; max-height: 85vh; overflow-y: auto; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .logo { padding: 1rem 1.5rem; font-size: 1.2rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; }
+  .search-bar { background: var(--card2); border-radius: 10px; padding: 0.6rem 1rem; display: flex; align-items: center; gap: 8px; }
+  .search-bar input { background: transparent; border: none; padding: 0; }
+  .hamburger { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 60; background: var(--card); border: none; color: var(--text); padding: 0.5rem; border-radius: 8px; cursor: pointer; font-size: 1.2rem; }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.show { transform: translateX(0); }
+    .main { margin-left: 0; padding: 1rem; padding-top: 3.5rem; }
+    .hamburger { display: block; }
+    .stat-grid { grid-template-columns: 1fr 1fr !important; }
+  }
+  .form-group { margin-bottom: 1rem; }
+  .form-group label { display: block; margin-bottom: 0.35rem; font-size: 0.85rem; color: var(--text2); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+  .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+  .page-header h2 { font-size: 1.4rem; font-weight: 700; }
+  .tab-bar { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .tab { padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text2); background: var(--card2); }
+  .tab.active { background: var(--primary); color: white; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem">
+  <div class="card" style="width:100%;max-width:400px;text-align:center">
+    <div style="font-size:3rem;margin-bottom:0.5rem">💪</div>
+    <h2 style="margin:0 0 0.25rem;font-size:1.5rem">피트니스 CRM</h2>
+    <p style="color:var(--text2);margin:0 0 1.5rem;font-size:0.9rem">고객 관리 시스템에 로그인하세요</p>
+    <div class="form-group"><label style="text-align:left">아이디</label><input id="login-user" placeholder="아이디 입력" autocomplete="username"></div>
+    <div class="form-group"><label style="text-align:left">비밀번호</label><input id="login-pass" type="password" placeholder="비밀번호 입력" autocomplete="current-password"></div>
+    <div id="login-error" style="color:var(--danger);font-size:0.85rem;margin-bottom:0.5rem;display:none"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:0.75rem;font-size:1rem" onclick="doLogin()">로그인</button>
+    <button id="login-lang-toggle" class="btn btn-sm" style="background:var(--card2);width:100%;justify-content:center;margin-top:0.75rem;padding:0.6rem" onclick="switchLang()">🇲🇳 Монгол</button>
+    <p style="color:var(--text2);font-size:0.75rem;margin-top:0.75rem">© 2026 피트니스 고객 관리 시스템</p>
+  </div>
+</div>
+
+<!-- APP (hidden until login) -->
+<div id="app-container" style="display:none">
+<button class="hamburger" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+
+<nav class="sidebar" id="sidebar">
+  <div class="logo">💪 피트니스 CRM</div>
+  <a href="/center/portal" class="nav-item" style="background:rgba(99,102,241,0.1);margin-bottom:8px;text-decoration:none;color:var(--text2)"><i class="fas fa-th-large"></i> ← 포털</a>
+  <div class="nav-item active" onclick="showSection('dashboard')"><i class="fas fa-chart-pie"></i> 대시보드</div>
+  <div class="nav-item" onclick="showSection('members')"><i class="fas fa-users"></i> 회원 관리</div>
+  <div class="nav-item" onclick="showSection('attendance')"><i class="fas fa-clipboard-check"></i> 출석 체크</div>
+  <div class="nav-item" onclick="showSection('pt')"><i class="fas fa-dumbbell"></i> PT 관리</div>
+  <div class="nav-item" onclick="showSection('payments')"><i class="fas fa-credit-card"></i> 결제 관리</div>
+  <div class="nav-item" onclick="showSection('trainers')"><i class="fas fa-user-tie"></i> 트레이너</div>
+  <div class="nav-item" onclick="showSection('pricing')" style="border-top:1px solid rgba(255,255,255,0.05);margin-top:0.5rem;padding-top:1rem"><i class="fas fa-tags"></i> 가격 설정</div>
+  <div class="nav-item" onclick="showSection('barcode')"><i class="fas fa-barcode"></i> 바코드 출석</div>
+  <div class="nav-item" onclick="showSection('attmgmt')" style="border-top:1px solid rgba(255,255,255,0.05);margin-top:0.5rem;padding-top:1rem"><i class="fas fa-calendar-check"></i> 출석 관리</div>
+  <div style="position:absolute;bottom:0;left:0;right:0;padding:1rem 1.5rem;border-top:1px solid rgba(255,255,255,0.05)">
+    <div style="font-size:0.85rem;color:var(--text2);margin-bottom:0.5rem" id="user-info"></div>
+    <button id="lang-toggle" class="btn btn-sm" style="background:var(--card2);width:100%;justify-content:center;margin-bottom:0.5rem" onclick="switchLang()">🇲🇳 Монгол</button>
+    <button class="btn btn-sm" style="background:var(--card2);width:100%;justify-content:center" onclick="logout()"><i class="fas fa-sign-out-alt"></i> 로그아웃</button>
+  </div>
+</nav>
+
+<div class="main">
+  <!-- DASHBOARD -->
+  <div class="section active" id="sec-dashboard">
+    <div class="page-header"><h2>📊 대시보드</h2><span id="today-date" style="color:var(--text2)"></span></div>
+    <div class="stat-grid" id="stats-grid"></div>
+    <!-- 일매출 -->
+    <div class="card" style="margin-bottom:1rem" id="daily-revenue-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <h3 style="margin:0;font-size:1rem">💰 일별 매출</h3>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <input type="month" id="daily-rev-month" style="width:auto;padding:0.3rem 0.5rem;font-size:0.8rem" onchange="loadDailyRevenue()">
+          <span id="daily-rev-avg" style="font-size:0.8rem;color:var(--text2)"></span>
+        </div>
+      </div>
+      <div id="daily-revenue-chart" style="display:flex;align-items:flex-end;gap:3px;height:120px;margin-bottom:0.8rem;overflow-x:auto;padding:0 2px"></div>
+      <div id="daily-revenue-table" style="max-height:300px;overflow-y:auto"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="card">
+        <h3 style="margin:0 0 1rem;font-size:1rem">🕐 최근 출석</h3>
+        <div id="recent-attendance"></div>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 1rem;font-size:1rem">⚠️ 만료 임박 회원</h3>
+        <div id="expiring-members"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEMBERS -->
+  <div class="section" id="sec-members">
+    <div class="page-header">
+      <h2>👥 회원 관리</h2>
+      <button class="btn btn-primary" onclick="openMemberModal()"><i class="fas fa-plus"></i> 회원 등록</button>
+    </div>
+    <div style="display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap">
+      <div class="search-bar" style="flex:1;min-width:200px">
+        <i class="fas fa-search" style="color:var(--text2)"></i>
+        <input type="text" id="member-search" placeholder="이름 또는 전화번호 검색..." oninput="searchMembers()">
+      </div>
+      <select id="member-status-filter" onchange="searchMembers()" style="width:auto;min-width:120px">
+        <option value="">전체</option>
+        <option value="active">활성</option>
+        <option value="expired">만료</option>
+        <option value="frozen">정지</option>
+        <option value="inactive">비활성</option>
+      </select>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>이름</th><th>회원권</th><th>결제금액</th><th>상태</th><th>관리</th></tr></thead>
+        <tbody id="members-table"></tbody>
+      </table>
+      <div id="members-pagination" style="display:flex;justify-content:center;gap:0.5rem;margin-top:1rem"></div>
+    </div>
+  </div>
+
+  <!-- ATTENDANCE -->
+  <div class="section" id="sec-attendance">
+    <div class="page-header"><h2>✅ 출석 체크</h2></div>
+    <div class="card" style="margin-bottom:1rem">
+      <h3 style="margin:0 0 1rem;font-size:1rem">빠른 출석 체크</h3>
+      <div style="display:flex;gap:1rem">
+        <input type="text" id="checkin-search" placeholder="회원 이름 또는 번호 입력..." style="flex:1">
+        <button class="btn btn-success" onclick="quickCheckin()"><i class="fas fa-check"></i> 출석</button>
+      </div>
+      <div id="checkin-results" style="margin-top:0.5rem"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 1rem;font-size:1rem">오늘 출석 현황</h3>
+      <table>
+        <thead><tr><th>회원</th><th>입장 시간</th><th>퇴장 시간</th><th></th></tr></thead>
+        <tbody id="attendance-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PT -->
+  <div class="section" id="sec-pt">
+    <div class="page-header">
+      <h2>🏋️ PT 관리</h2>
+      <button class="btn btn-primary" onclick="openPTModal()"><i class="fas fa-plus"></i> PT 예약</button>
+    </div>
+    <div style="display:flex;gap:1rem;margin-bottom:1rem">
+      <input type="date" id="pt-date-filter" onchange="loadPTSessions()" style="width:auto">
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>시간</th><th>회원</th><th>트레이너</th><th>상태</th><th>관리</th></tr></thead>
+        <tbody id="pt-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PAYMENTS -->
+  <div class="section" id="sec-payments">
+    <div class="page-header">
+      <h2>💳 결제 관리</h2>
+      <button class="btn btn-primary" onclick="openPaymentModal()"><i class="fas fa-plus"></i> 결제 기록</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>날짜</th><th>회원</th><th>유형</th><th>금액</th><th>결제방법</th></tr></thead>
+        <tbody id="payments-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TRAINERS -->
+  <div class="section" id="sec-trainers">
+    <div class="page-header">
+      <h2>👨‍🏫 트레이너 관리</h2>
+      <button class="btn btn-primary" onclick="openTrainerModal()"><i class="fas fa-plus"></i> 트레이너 등록</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead><tr><th>이름</th><th>전화번호</th><th>전문분야</th></tr></thead>
+        <tbody id="trainers-table"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+  <!-- PRICING -->
+  <div class="section" id="sec-pricing"></div>
+
+  <!-- BARCODE SCAN -->
+  <!-- 출석 관리 -->
+  <div class="section" id="sec-attmgmt">
+    <div class="page-header">
+      <h2>출석 관리</h2>
+      <div style="display:flex;gap:0.5rem">
+        <select id="att-status-filter" onchange="loadAttMgmt()" style="width:auto;min-width:100px;font-size:0.85rem">
+          <option value="">전체</option>
+          <option value="expired">만료(재결제!)</option>
+          <option value="urgent">3일내</option>
+          <option value="soon">7일내</option>
+          <option value="normal">정상</option>
+        </select>
+        <input type="text" id="att-search" placeholder="이름 검색..." oninput="loadAttMgmt()" style="width:150px;font-size:0.85rem">
+      </div>
+    </div>
+    <!-- Summary cards -->
+    <div id="att-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:0.75rem;margin-bottom:1rem"></div>
+    <!-- Member list -->
+    <div class="card" style="overflow-x:auto">
+      <table style="font-size:0.85rem">
+        <thead>
+          <tr>
+            <th style="width:30px">No</th>
+            <th>이름</th>
+            <th>회원권</th>
+            <th>시작</th>
+            <th>종료</th>
+            <th>남은일</th>
+            <th>출석</th>
+            <th>진행</th>
+            <th>상태</th>
+          </tr>
+        </thead>
+        <tbody id="att-table"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section" id="sec-barcode">
+    <div class="page-header"><h2>📊 바코드 출석</h2></div>
+    <div class="card" style="text-align:center;padding:2rem">
+      <div style="font-size:4rem;margin-bottom:1rem">📷</div>
+      <h3 style="margin:0 0 0.5rem" id="barcode-title">바코드를 스캔하세요</h3>
+      <p style="color:var(--text2);margin:0 0 1.5rem" id="barcode-subtitle">스캐너로 회원카드를 찍으면 자동으로 출석 처리됩니다</p>
+      <input type="text" id="barcode-input" placeholder="바코드 스캔 대기중..." 
+        style="font-size:1.5rem;text-align:center;padding:1rem;max-width:400px;margin:0 auto"
+        autocomplete="off" autofocus>
+      <div id="barcode-result" style="margin-top:1.5rem;min-height:120px"></div>
+      <div id="barcode-history" style="margin-top:2rem;text-align:left"></div>
+    </div>
+  </div>
+
+<!-- MODALS -->
+<div id="modal-container"></div>
+</div> <!-- end app-container -->
+
+<script>
+const API = window.location.pathname.replace(/\/+$/, '');
+let authToken = localStorage.getItem('fitness_token');
+let currentUser = JSON.parse(localStorage.getItem('fitness_user') || 'null');
+let currentLang = localStorage.getItem('fitness_lang') || 'ko';
+
+// ====== i18n ======
+const i18n = {
+  ko: {
+    // Login
+    appTitle: '피트니스 CRM', loginSubtitle: '고객 관리 시스템에 로그인하세요',
+    username: '아이디', password: '비밀번호', usernamePh: '아이디 입력', passwordPh: '비밀번호 입력',
+    login: '로그인', copyright: '© 2026 피트니스 고객 관리 시스템',
+    loginError: '아이디와 비밀번호를 입력해주세요', loginFail: '서버 연결에 실패했습니다',
+    // Nav
+    dashboard: '대시보드', memberMgmt: '회원 관리', attendanceCheck: '출석 체크',
+    ptMgmt: 'PT 관리', paymentMgmt: '결제 관리', trainerMgmt: '트레이너',
+    logout: '로그아웃',
+    // Dashboard
+    activeMembers: '활성 회원', todayAttendance: '오늘 출석', expiringSoon: '만료 임박',
+    monthRevenue: '이번 달 매출', todayPT: '오늘 PT', newMembers: '신규 가입',
+    recentAttendance: '🕐 최근 출석', expiringMembers: '⚠️ 만료 임박 회원',
+    noAttendance: '오늘 출석 기록이 없습니다', noExpiring: '만료 임박 회원이 없습니다 ✨',
+    // Members
+    addMember: '회원 등록', searchPh: '이름 또는 전화번호 검색...', all: '전체',
+    active: '활성', expired: '만료', frozen: '정지', inactive: '비활성',
+    name: '이름', phone: '전화번호', status: '상태', regDate: '등록일', manage: '관리',
+    noMembers: '회원이 없습니다', editMember: '회원 수정', newMember: '새 회원 등록',
+    email: '이메일', gender: '성별', select: '선택', male: '남', female: '여',
+    birthDate: '생년월일', address: '주소', emergencyName: '비상연락처 이름',
+    emergencyPhone: '비상연락처 번호', memo: '메모', cancel: '취소', register: '등록', edit: '수정',
+    nameRequired: '이름을 입력해주세요',
+    // Member detail
+    membership: '🎫 회원권', noMembership: '등록된 회원권 없음', addMembership: '회원권 등록',
+    checkin: '출석', close: '닫기',
+    freeze: '정지', unfreeze: '정지 해제', refund: '환불', editMembership: '수정',
+    freezeReason: '정지 사유', freezeReasonPh: '예: 출장, 휴가, 부상 등',
+    freezeConfirm: '회원권을 정지하시겠습니까?', unfreezeConfirm: '회원권을 재개하시겠습니까?',
+    refundAmount: '환불 금액', refundReason: '환불 사유', refundReasonPh: '예: 회원 요청, 이사 등',
+    refundAuto: '자동 계산 (남은 일수 기준)', refundConfirm: '환불을 진행하시겠습니까?',
+    remainingDays: '남은 일수', daysLeft: '일 남음', frozenOn: '정지일',
+    // Membership
+    membershipReg: '🎫 회원권 등록', membershipType: '회원권 종류', startDate: '시작일',
+    payAmount: '결제금액', payMethod: '결제방법',
+    cash: '현금', card: '카드', transfer: '계좌이체', qpay: '큐페이',
+    membershipDone: '회원권이 등록되었습니다!',
+    // Attendance
+    quickCheckin: '빠른 출석 체크', checkinPh: '회원 이름 또는 번호 입력...',
+    todayStatus: '오늘 출석 현황', member: '회원', enterTime: '입장 시간', exitTime: '퇴장 시간',
+    inUse: '이용 중', exit: '퇴장', memberNotFound: '회원을 찾을 수 없습니다',
+    noActiveMembership: '\n⚠️ 활성 회원권이 없습니다!',
+    noTodayAttendance: '오늘 출석 기록이 없습니다',
+    // PT
+    ptBooking: 'PT 예약', trainer: '트레이너', date: '날짜',
+    startTime: '시작 시간', endTime: '종료 시간',
+    scheduled: '예약', completed: '완료', cancelled: '취소', noShow: '노쇼',
+    complete: '완료', noPT: 'PT 예약이 없습니다', book: '예약',
+    // Payments
+    payRecord: '결제 기록', payDate: '날짜', type: '유형', amount: '금액',
+    membershipPay: '회원권', pt: 'PT', product: '상품', other: '기타',
+    description: '설명', save: '저장', noPayments: '결제 기록이 없습니다',
+    // Trainers
+    addTrainer: '트레이너 등록', specialty: '전문분야', specialtyPh: '예: 웨이트, 필라테스, 요가...',
+    noTrainers: '등록된 트레이너가 없습니다',
+    // Barcode
+    priceSetting:'가격 설정',membershipTypes:'회원권 종류',typeName:'회원권명',durationDays:'기간(일)',price:'가격',addType:'회원권 추가',editType:'회원권 수정',barcodeScan:'바코드 출석', scanBarcode: '바코드를 스캔하세요',
+    scanSubtitle: '스캐너로 회원카드를 찍으면 자동으로 출석 처리됩니다',
+    scanWaiting: '바코드 스캔 대기중...', checkinSuccess: '출석 완료!',
+    checkoutSuccess: '퇴장 완료!', alreadyCheckin: '이미 출석 완료', unknownBarcode: '등록되지 않은 바코드',
+    registerBarcode: '바코드 등록', scanHistory: '오늘 스캔 기록',
+    barcodeId: '바코드 ID',
+    // Lang
+    langBtn: '🇲🇳 Монгол',
+  },
+  mn: {
+    // Login
+    appTitle: 'Фитнесс CRM', loginSubtitle: 'Хэрэглэгчийн удирдлагын системд нэвтрэх',
+    username: 'Нэвтрэх нэр', password: 'Нууц үг', usernamePh: 'Нэвтрэх нэр оруулах', passwordPh: 'Нууц үг оруулах',
+    login: 'Нэвтрэх', copyright: '© 2026 Фитнесс хэрэглэгчийн удирдлагын систем',
+    loginError: 'Нэвтрэх нэр, нууц үгээ оруулна уу', loginFail: 'Серверт холбогдож чадсангүй',
+    // Nav
+    dashboard: 'Хянах самбар', memberMgmt: 'Гишүүд', attendanceCheck: 'Ирц бүртгэл',
+    ptMgmt: 'PT удирдлага', paymentMgmt: 'Төлбөр', trainerMgmt: 'Дасгалжуулагч',
+    logout: 'Гарах',
+    // Dashboard
+    activeMembers: 'Идэвхтэй гишүүд', todayAttendance: 'Өнөөдрийн ирц', expiringSoon: 'Хугацаа дуусах гэж буй',
+    monthRevenue: 'Энэ сарын орлого', todayPT: 'Өнөөдрийн PT', newMembers: 'Шинэ гишүүд',
+    recentAttendance: '🕐 Сүүлийн ирц', expiringMembers: '⚠️ Хугацаа дуусах гишүүд',
+    noAttendance: 'Өнөөдөр ирцийн бүртгэл байхгүй', noExpiring: 'Хугацаа дуусах гишүүн байхгүй ✨',
+    // Members
+    addMember: 'Гишүүн бүртгэх', searchPh: 'Нэр эсвэл утасны дугаараар хайх...', all: 'Бүгд',
+    active: 'Идэвхтэй', expired: 'Хугацаа дууссан', frozen: 'Түр зогсоосон', inactive: 'Идэвхгүй',
+    name: 'Нэр', phone: 'Утас', status: 'Төлөв', regDate: 'Бүртгүүлсэн', manage: 'Удирдах',
+    noMembers: 'Гишүүн байхгүй', editMember: 'Гишүүн засах', newMember: 'Шинэ гишүүн бүртгэх',
+    email: 'Имэйл', gender: 'Хүйс', select: 'Сонгох', male: 'Эрэгтэй', female: 'Эмэгтэй',
+    birthDate: 'Төрсөн огноо', address: 'Хаяг', emergencyName: 'Яаралтай холбоо барих нэр',
+    emergencyPhone: 'Яаралтай холбоо барих утас', memo: 'Тэмдэглэл', cancel: 'Цуцлах', register: 'Бүртгэх', edit: 'Засах',
+    nameRequired: 'Нэр оруулна уу',
+    // Member detail
+    membership: '🎫 Гишүүнчлэл', noMembership: 'Бүртгэлтэй гишүүнчлэл байхгүй', addMembership: 'Гишүүнчлэл бүртгэх',
+    checkin: 'Ирц', close: 'Хаах',
+    freeze: 'Түр зогсоох', unfreeze: 'Сэргээх', refund: 'Буцаан олгох', editMembership: 'Засах',
+    freezeReason: 'Зогсоосон шалтгаан', freezeReasonPh: 'Жишээ: Томилолт, Амралт, Гэмтэл гэх мэт',
+    freezeConfirm: 'Гишүүнчлэлийг түр зогсоох уу?', unfreezeConfirm: 'Гишүүнчлэлийг сэргээх үү?',
+    refundAmount: 'Буцаан олгох дүн', refundReason: 'Буцаан олгох шалтгаан', refundReasonPh: 'Жишээ: Гишүүний хүсэлт, Нүүсэн гэх мэт',
+    refundAuto: 'Автомат тооцоо (үлдсэн хоногоор)', refundConfirm: 'Буцаан олголт хийх үү?',
+    remainingDays: 'Үлдсэн хоног', daysLeft: 'хоног үлдсэн', frozenOn: 'Зогсоосон огноо',
+    // Membership
+    membershipReg: '🎫 Гишүүнчлэл бүртгэх', membershipType: 'Гишүүнчлэлийн төрөл', startDate: 'Эхлэх огноо',
+    payAmount: 'Төлбөрийн дүн', payMethod: 'Төлбөрийн арга',
+    cash: 'Бэлэн мөнгө', card: 'Карт', transfer: 'Шилжүүлэг', qpay: 'QPay',
+    membershipDone: 'Гишүүнчлэл бүртгэгдлээ!',
+    // Attendance
+    quickCheckin: 'Шуурхай ирц бүртгэл', checkinPh: 'Гишүүний нэр эсвэл дугаар оруулах...',
+    todayStatus: 'Өнөөдрийн ирцийн мэдээлэл', member: 'Гишүүн', enterTime: 'Ирсэн цаг', exitTime: 'Гарсан цаг',
+    inUse: 'Хэрэглэж байна', exit: 'Гарах', memberNotFound: 'Гишүүн олдсонгүй',
+    noActiveMembership: '\n⚠️ Идэвхтэй гишүүнчлэл байхгүй!',
+    noTodayAttendance: 'Өнөөдөр ирцийн бүртгэл байхгүй',
+    // PT
+    ptBooking: 'PT захиалга', trainer: 'Дасгалжуулагч', date: 'Огноо',
+    startTime: 'Эхлэх цаг', endTime: 'Дуусах цаг',
+    scheduled: 'Захиалсан', completed: 'Дууссан', cancelled: 'Цуцалсан', noShow: 'Ирээгүй',
+    complete: 'Дуусгах', noPT: 'PT захиалга байхгүй', book: 'Захиалах',
+    // Payments
+    payRecord: 'Төлбөр бүртгэх', payDate: 'Огноо', type: 'Төрөл', amount: 'Дүн',
+    membershipPay: 'Гишүүнчлэл', pt: 'PT', product: 'Бараа', other: 'Бусад',
+    description: 'Тайлбар', save: 'Хадгалах', noPayments: 'Төлбөрийн бүртгэл байхгүй',
+    // Trainers
+    addTrainer: 'Дасгалжуулагч бүртгэх', specialty: 'Мэргэжил', specialtyPh: 'Жишээ: Хүч, Пилатес, Йога...',
+    noTrainers: 'Бүртгэлтэй дасгалжуулагч байхгүй',
+    // Barcode
+    priceSetting:'Үнэ тохиргоо',membershipTypes:'Гишүүнчлэлийн төрөл',typeName:'Нэр',durationDays:'Хугацаа(хоног)',price:'Үнэ',addType:'Төрөл нэмэх',editType:'Төрөл засах',barcodeScan:'Баркод ирц', scanBarcode: 'Баркод уншуулна уу',
+    scanSubtitle: 'Гишүүний картыг сканнердаж ирц бүртгэнэ',
+    scanWaiting: 'Баркод хүлээж байна...', checkinSuccess: 'Ирц бүртгэгдлээ!',
+    checkoutSuccess: 'Гарлаа!', alreadyCheckin: 'Аль хэдийн бүртгэгдсэн', unknownBarcode: 'Бүртгэлгүй баркод',
+    registerBarcode: 'Баркод бүртгэх', scanHistory: 'Өнөөдрийн скан түүх',
+    barcodeId: 'Баркод ID',
+    // Lang
+    langBtn: '🇰🇷 한국어',
+  }
+};
+
+function t(key) { return i18n[currentLang]?.[key] || i18n.ko[key] || key; }
+
+function switchLang() {
+  currentLang = currentLang === 'ko' ? 'mn' : 'ko';
+  localStorage.setItem('fitness_lang', currentLang);
+  applyLang();
+}
+
+function applyLang() {
+  try {
+    // Login screen
+    const loginTitle = document.querySelector('#login-screen h2');
+    if (loginTitle) loginTitle.textContent = t('appTitle');
+    const loginSub = document.querySelector('#login-screen .card > p');
+    if (loginSub) loginSub.textContent = t('loginSubtitle');
+    const labels = document.querySelectorAll('#login-screen .form-group label');
+    if (labels[0]) labels[0].textContent = t('username');
+    if (labels[1]) labels[1].textContent = t('password');
+    document.getElementById('login-user').placeholder = t('usernamePh');
+    document.getElementById('login-pass').placeholder = t('passwordPh');
+    const loginBtn = document.querySelector('#login-screen .btn-primary');
+    if (loginBtn) loginBtn.textContent = t('login');
+    const loginLangBtn = document.getElementById('login-lang-toggle');
+    if (loginLangBtn) loginLangBtn.textContent = t('langBtn');
+    const copyrightEl = document.querySelector('#login-screen .card > p:last-of-type');
+    if (copyrightEl && copyrightEl !== loginSub) copyrightEl.textContent = t('copyright');
+
+    // Sidebar
+    const navItems = document.querySelectorAll('.nav-item');
+    const navLabels = ['dashboard', 'memberMgmt', 'attendanceCheck', 'ptMgmt', 'paymentMgmt', 'trainerMgmt'];
+    navItems.forEach((el, i) => {
+      if (navLabels[i]) {
+        const icon = el.querySelector('i');
+        if (icon) el.innerHTML = icon.outerHTML + ' ' + t(navLabels[i]);
+      }
+    });
+    
+    // Logo
+    const logo = document.querySelector('.logo');
+    if (logo) logo.textContent = '💪 ' + t('appTitle');
+
+    // Logout button
+    const logoutBtn = document.querySelector('[onclick="logout()"]');
+    if (logoutBtn) logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> ' + t('logout');
+
+    // Lang toggle buttons
+    const langToggle = document.getElementById('lang-toggle');
+    if (langToggle) langToggle.textContent = t('langBtn');
+
+    // Refresh current section if logged in
+    if (authToken && currentUser) {
+      const activeSection = document.querySelector('.section.active');
+      if (activeSection) {
+        const id = activeSection.id.replace('sec-', '');
+        showSection(id);
+      }
+    }
+  } catch(e) { console.log('applyLang error:', e); }
+}
+
+// ====== AUTH ======
+function checkAuth() {
+  if (authToken && currentUser) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-container').style.display = 'block';
+    loadDashboard();
+  }
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-user').value;
+  const password = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  
+  if (!username || !password) { errEl.textContent = t('loginError'); errEl.style.display = 'block'; return; }
+  
+  try {
+    const res = await fetch(API + '/api/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ username, password }) });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.style.display = 'block'; return; }
+    
+    authToken = data.token;
+    currentUser = data.user;
+    localStorage.setItem('fitness_token', authToken);
+    localStorage.setItem('fitness_user', JSON.stringify(currentUser));
+    checkAuth();
+  } catch (e) {
+    errEl.textContent = t('loginFail'); errEl.style.display = 'block';
+  }
+}
+
+function logout() {
+  authToken = null; currentUser = null;
+  localStorage.removeItem('fitness_token');
+  localStorage.removeItem('fitness_user');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-container').style.display = 'none';
+}
+
+// Add token to all fetch requests
+const originalFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+  if (authToken && url.toString().includes('/api/') && !url.toString().includes('/api/login')) {
+    options.headers = { ...options.headers, 'Authorization': 'Bearer ' + authToken };
+  }
+  return originalFetch(url, options).then(res => {
+    if (res.status === 401 && !url.toString().includes('/api/login')) { logout(); }
+    return res;
+  });
+};
+
+// Enter key on login
+document.getElementById('login-pass')?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('login-user')?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-pass').focus(); });
+
+// ====== NAV ======
+let _curSec='dashboard';
+function showSection(name,noPush) {
+  if(!noPush&&name!==_curSec)history.pushState({sec:name},'','#'+name);_curSec=name;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  const navIdx = ['dashboard','members','attendance','pt','payments','trainers','pricing','barcode','attmgmt'].indexOf(name);
+  if (navIdx >= 0 && document.querySelectorAll('.nav-item:not(a)')[navIdx]) document.querySelectorAll('.nav-item:not(a)')[navIdx].classList.add('active');
+  if (name === 'dashboard') loadDashboard();
+  else if (name === 'members') searchMembers();
+  else if (name === 'attendance') loadAttendance();
+  else if (name === 'pt') { document.getElementById('pt-date-filter').value = today(); loadPTSessions(); }
+  else if (name === 'payments') loadPayments();
+  else if (name === 'trainers') loadTrainers();
+  else if (name === 'pricing') loadPricing();
+  else if (name === 'barcode') initBarcodeMode();
+  else if (name === 'attmgmt') loadAttMgmt();
+  if (window.innerWidth < 768) document.getElementById('sidebar').classList.remove('show');
+}
+
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('show'); }
+function today() { return todayUB(); }
+function formatDate(d) { if (!d) return '-'; return d.replace('T', ' ').substring(0, 16); }
+function formatMoney(n) { return '₮' + Number(n || 0).toLocaleString(); }
+
+// ====== DASHBOARD ======
+async function loadDashboard() {
+  const loc = currentLang === 'mn' ? 'mn-MN' : 'ko-KR';
+  document.querySelector('#sec-dashboard .page-header h2').textContent = '📊 ' + t('dashboard');
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString(loc, { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+  const data = await fetch(API + '/api/dashboard').then(r => r.json());
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="number" style="color:var(--primary)">${data.totalMembers}</div><div class="label">${t('activeMembers')}</div></div>
+    <div class="stat-card"><div class="number" style="color:var(--success)">${data.todayAttendance}</div><div class="label">${t('todayAttendance')}</div></div>
+    <div class="stat-card"><div class="number" style="color:var(--warning)">${data.expiringSoon}</div><div class="label">${t('expiringSoon')}</div></div>
+    <div class="stat-card"><div class="number" style="color:#22d3ee">${formatMoney(data.monthRevenue)}</div><div class="label">${t('monthRevenue')}</div></div>
+    <div class="stat-card"><div class="number" style="color:#a78bfa">${data.todaySessions}</div><div class="label">${t('todayPT')}</div></div>
+    <div class="stat-card"><div class="number" style="color:#fb923c">${data.newMembersMonth}</div><div class="label">${t('newMembers')}</div></div>
+  `;
+  document.querySelector('#sec-dashboard .card:first-of-type h3').textContent = t('recentAttendance');
+  document.querySelector('#sec-dashboard .card:last-of-type h3').textContent = t('expiringMembers');
+  document.getElementById('recent-attendance').innerHTML = data.recentAttendance.length
+    ? data.recentAttendance.map(a => `<div style="padding:0.4rem 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between"><span>${a.name}</span><span style="color:var(--text2);font-size:0.85rem">${formatDate(a.check_in)}</span></div>`).join('')
+    : `<p style="color:var(--text2)">${t('noAttendance')}</p>`;
+  document.getElementById('expiring-members').innerHTML = data.expiringMembers.length
+    ? data.expiringMembers.map(m => `<div style="padding:0.4rem 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between"><span>${m.name} <span style="color:var(--text2);font-size:0.8rem">${m.membership_type}</span></span><span style="color:var(--warning);font-size:0.85rem">${m.end_date}</span></div>`).join('')
+    : `<p style="color:var(--text2)">${t('noExpiring')}</p>`;
+  
+  // 일매출 로드
+  loadDailyRevenue();
+}
+
+// ====== DAILY REVENUE ======
+async function loadDailyRevenue() {
+  const monthInput = document.getElementById('daily-rev-month');
+  if (!monthInput.value) monthInput.value = new Date().toISOString().slice(0,7);
+  const month = monthInput.value;
+  
+  const data = await fetch(`${API}/api/stats/daily-revenue?month=${month}`).then(r=>r.json());
+  const days = data.daily || [];
+  const maxIncome = Math.max(...days.map(d=>d.income), 1);
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Bar chart
+  document.getElementById('daily-revenue-chart').innerHTML = days.map(d => {
+    const h = Math.max(4, (d.income / maxIncome) * 110);
+    const day = parseInt(d.date.split('-')[2]);
+    const isToday = d.date === today;
+    const isBest = data.bestDay && d.date === data.bestDay.date;
+    return `<div style="flex:1;min-width:18px;display:flex;flex-direction:column;align-items:center;gap:2px" title="${d.date}: ${formatMoney(d.income)}">
+      ${isBest?'<span style="font-size:0.6rem">⭐</span>':''}
+      <div style="width:100%;background:${isToday?'linear-gradient(180deg,#a78bfa,#6366f1)':d.income>data.avgDaily?'linear-gradient(180deg,#22c55e,#16a34a)':'linear-gradient(180deg,#64748b,#475569)'};border-radius:4px 4px 0 0;height:${h}px;transition:height .3s"></div>
+      <span style="font-size:0.65rem;color:${isToday?'#a78bfa':'var(--text2)'};font-weight:${isToday?'700':'400'}">${day}</span>
+    </div>`;
+  }).join('');
+  
+  // Summary
+  document.getElementById('daily-rev-avg').innerHTML = `
+    합계 <strong style="color:var(--success)">${formatMoney(data.net)}</strong> · 
+    일평균 <strong>${formatMoney(data.avgDaily)}</strong>
+  `;
+  
+  // Table
+  document.getElementById('daily-revenue-table').innerHTML = `
+    <table style="font-size:0.82rem">
+      <thead><tr style="position:sticky;top:0;background:var(--card)">
+        <th style="padding:4px 8px">날짜</th>
+        <th style="padding:4px 8px;text-align:right">매출</th>
+        <th style="padding:4px 8px;text-align:right">건수</th>
+      </tr></thead>
+      <tbody>${days.slice().reverse().map(d => {
+        const day = parseInt(d.date.split('-')[2]);
+        const isToday = d.date === today;
+        const isBest = data.bestDay && d.date === data.bestDay.date;
+        const aboveAvg = d.income >= data.avgDaily;
+        return `<tr style="${isToday?'background:rgba(99,102,241,0.1)':''}">
+          <td style="padding:4px 8px;font-weight:${isToday?'700':'400'}">${day}일 ${isToday?'📌':''}${isBest?'⭐':''}</td>
+          <td style="padding:4px 8px;text-align:right;font-weight:700;color:${aboveAvg?'var(--success)':'var(--text2)'}">${formatMoney(d.income)}${d.expense?` <span style="color:var(--danger);font-size:0.75rem">-${formatMoney(d.expense)}</span>`:''}</td>
+          <td style="padding:4px 8px;text-align:right;color:var(--text2)">${d.cnt}건</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+}
+
+// ====== MEMBERS ======
+let currentPage = 1;
+async function searchMembers(page = 1) {
+  currentPage = page;
+  document.querySelector('#sec-members .page-header h2').textContent = '👥 ' + t('memberMgmt');
+  document.querySelector('#sec-members .btn-primary').innerHTML = '<i class="fas fa-plus"></i> ' + t('addMember');
+  document.getElementById('member-search').placeholder = t('searchPh');
+  const statusMap = {active: t('active'), inactive: t('inactive'), expired: t('expired'), frozen: t('frozen')};
+  const search = document.getElementById('member-search').value;
+  const status = document.getElementById('member-status-filter').value;
+  const data = await fetch(`${API}/api/members?search=${encodeURIComponent(search)}&status=${status}&page=${page}`).then(r => r.json());
+  document.getElementById('members-table').innerHTML = data.members.map(m => {
+    const ms = m.current_membership;
+    const lp = m.last_payment;
+    const daysLeft = ms && ms.status==='active' ? Math.max(0, Math.ceil((new Date(ms.end_date) - new Date()) / (1000*60*60*24))) : 0;
+    const months = ms ? Math.round((ms.duration_days||30)/30) : 0;
+    return `<tr onclick="viewMember(${m.id})" style="cursor:pointer">
+      <td><strong>${m.name}</strong><div style="font-size:0.72rem;color:var(--text2)">${m.phone || ''}</div></td>
+      <td>${ms ? `<div style="font-size:0.85rem"><strong>${ms.type_name}</strong></div>
+        <div style="font-size:0.72rem;color:var(--text2)">${ms.start_date} ~ ${ms.end_date}</div>
+        ${ms.status==='active'?`<div style="font-size:0.72rem;color:${daysLeft<=7?'var(--danger)':daysLeft<=30?'var(--warning)':'var(--success)'}">⏳ ${daysLeft}일 남음</div>`
+        :`<span class="badge badge-${ms.status}" style="font-size:0.65rem">${ms.status==='frozen'?'❄️ 정지':ms.status==='expired'?'⏰ 만료':'취소'}</span>`}`
+        : '<span style="font-size:0.82rem;color:var(--text2)">미등록</span>'}</td>
+      <td>${ms?.price_paid ? `<div style="font-weight:700;color:var(--success)">${formatMoney(ms.price_paid)}</div><div style="font-size:0.72rem;color:var(--text2)">${ms.payment_method==='cash'?'현금':ms.payment_method==='card'?'카드':ms.payment_method==='transfer'?'이체':'큐페이'}</div>` : (lp ? `<div style="font-size:0.82rem">${formatMoney(lp.amount)}</div><div style="font-size:0.72rem;color:var(--text2)">${lp.payment_date?.substring(0,10)}</div>` : '-')}</td>
+      <td><span class="badge badge-${m.status}">${statusMap[m.status] || m.status}</span></td>
+      <td>
+        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();viewMember(${m.id})"><i class="fas fa-eye"></i></button>
+        <button class="btn btn-sm btn-warning" onclick="event.stopPropagation();editMember(${m.id})"><i class="fas fa-edit"></i></button>
+      </td>
+    </tr>`}).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--text2)">${t('noMembers')}</td></tr>`;
+
+  let pag = '';
+  for (let i = 1; i <= data.totalPages; i++) {
+    pag += `<button class="btn btn-sm ${i===page?'btn-primary':''}" onclick="searchMembers(${i})" style="${i!==page?'background:var(--card2)':''}">${i}</button>`;
+  }
+  document.getElementById('members-pagination').innerHTML = pag;
+}
+
+let regMsTypes=[];
+async function openMemberModal(member = null) {
+  const isEdit = !!member;
+  if(!regMsTypes.length) regMsTypes = await fetch(API+'/api/membership-types').then(r=>r.json());
+  let curMs = null;
+  if(isEdit) { curMs = member.memberships?.find(m=>m.status==='active'||m.status==='frozen') || member.memberships?.[0] || null; }
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">${isEdit ? t('editMember') : t('newMember')}</h3>
+        <div class="form-row">
+          <div class="form-group"><label>${t('name')} *</label><input id="m-name" value="${member?.name||''}"></div>
+          <div class="form-group"><label>${t('phone')}</label><input id="m-phone" value="${member?.phone||''}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>${t('gender')}</label><select id="m-gender"><option value="">${t('select')}</option><option value="M" ${member?.gender==='M'?'selected':''}>${t('male')}</option><option value="F" ${member?.gender==='F'?'selected':''}>${t('female')}</option></select></div>
+          <div class="form-group"><label>${t('birthDate')}</label><input type="date" id="m-birth" value="${member?.birth_date||''}"></div>
+        </div>
+        ${!isEdit ? `
+        <div style="margin:1rem 0 0.5rem;padding:0.8rem;background:rgba(34,197,94,0.08);border-radius:12px;border:1px solid rgba(34,197,94,0.2)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+            <strong style="font-size:0.95rem;color:var(--success)">🎫 프로그램 등록</strong>
+            <button class="btn btn-sm" style="background:var(--card2);font-size:0.72rem" onclick="closeModal();showSection('pricing')">⚙️ 프로그램 관리</button>
+          </div>
+          <div class="form-group"><label>프로그램 선택</label><select id="m-mstype" onchange="regTypeChange()" style="font-size:1rem;padding:0.6rem">
+            <option value="">— 선택안함 —</option>
+            ${regMsTypes.map(t=>`<option value="${t.id}" data-price="${t.price}" data-days="${t.duration_days}">${t.name} — ${Math.round(t.duration_days/30)}개월 — ${formatMoney(t.price)}</option>`).join('')}
+          </select></div>
+          <div class="form-row" style="margin-top:0.5rem">
+            <div class="form-group"><label>💰 결제금액 (₮)</label><input type="number" id="m-msprice" style="font-size:1.1rem;font-weight:700" placeholder="금액 입력"></div>
+            <div class="form-group"><label>📅 시작일</label><input type="date" id="m-msstart" value="${today()}"></div>
+          </div>
+          <div class="form-group"><label>💳 결제방법</label><select id="m-msmethod"><option value="cash">💵 현금</option><option value="card">💳 카드</option><option value="transfer">🏦 계좌이체</option><option value="qpay">📱 큐페이</option></select></div>
+          <div id="reg-ms-summary" style="margin-top:0.3rem;padding:0.4rem;background:var(--bg);border-radius:8px;font-size:0.82rem;text-align:center"></div>
+        </div>` : ''}
+        <details style="margin-top:0.5rem"><summary style="cursor:pointer;font-size:0.85rem;color:var(--text2)">📋 추가 정보 (선택)</summary>
+          <div style="margin-top:0.5rem">
+            <div class="form-row">
+              <div class="form-group"><label>${t('email')}</label><input id="m-email" value="${member?.email||''}"></div>
+              <div class="form-group"><label>${t('address')}</label><input id="m-address" value="${member?.address||''}"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>${t('emergencyName')}</label><input id="m-ec" value="${member?.emergency_contact||''}"></div>
+              <div class="form-group"><label>${t('emergencyPhone')}</label><input id="m-ep" value="${member?.emergency_phone||''}"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>${t('barcodeId')}</label><input id="m-barcode" value="${member?.barcode_id||''}" placeholder="바코드 스캔 또는 입력"></div>
+              <div class="form-group"><label>${t('memo')}</label><textarea id="m-notes" rows="1">${member?.notes||''}</textarea></div>
+            </div>
+          </div>
+        </details>
+        ${isEdit ? `
+        <div style="margin:1rem 0 0.5rem;padding:0.8rem;background:rgba(99,102,241,0.08);border-radius:12px;border:1px solid rgba(99,102,241,0.2)">
+          <strong style="font-size:0.95rem;color:var(--primary)">🎫 현재 회원권</strong>
+          ${curMs ? `<div style="margin-top:0.5rem;padding:0.5rem;background:var(--bg);border-radius:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <strong>${curMs.type_name}</strong>
+                <span class="badge badge-${curMs.status}" style="margin-left:0.3rem">${curMs.status==='active'?'활성':curMs.status==='frozen'?'정지':'만료'}</span>
+              </div>
+              <strong style="color:var(--success)">${formatMoney(curMs.price_paid||0)}</strong>
+            </div>
+            <div style="font-size:0.8rem;color:var(--text2);margin-top:0.2rem">${curMs.start_date} ~ ${curMs.end_date} | ${curMs.payment_method==='cash'?'현금':curMs.payment_method==='card'?'카드':curMs.payment_method==='transfer'?'이체':'큐페이'}</div>
+          </div>` : `<div style="margin-top:0.5rem;color:var(--text2);font-size:0.85rem">등록된 회원권 없음</div>`}
+          <div style="margin-top:0.5rem;border-top:1px solid rgba(255,255,255,0.05);padding-top:0.5rem">
+            <div style="font-size:0.82rem;color:var(--text2);margin-bottom:0.3rem">📌 새 회원권 등록 (선택)</div>
+            <div class="form-group"><select id="m-mstype" onchange="regTypeChange()" style="font-size:0.95rem;padding:0.5rem">
+              <option value="">— 변경 안함 —</option>
+              ${regMsTypes.map(t=>`<option value="${t.id}" data-price="${t.price}" data-days="${t.duration_days}">${t.name} — ${Math.round(t.duration_days/30)}개월 — ${formatMoney(t.price)}</option>`).join('')}
+            </select></div>
+            <div class="form-row" style="margin-top:0.5rem">
+              <div class="form-group"><label>💰 결제금액 (₮)</label><input type="number" id="m-msprice" style="font-size:1rem;font-weight:700" placeholder="금액 입력"></div>
+              <div class="form-group"><label>📅 시작일</label><input type="date" id="m-msstart" value="${today()}"></div>
+            </div>
+            <div class="form-group"><label>💳 결제방법</label><select id="m-msmethod"><option value="cash">💵 현금</option><option value="card">💳 카드</option><option value="transfer">🏦 계좌이체</option><option value="qpay">📱 큐페이</option></select></div>
+            <div id="reg-ms-summary" style="margin-top:0.3rem;padding:0.4rem;background:var(--bg);border-radius:8px;font-size:0.82rem;text-align:center"></div>
+          </div>
+        </div>
+        <div class="form-group"><label>${t('status')}</label><select id="m-status"><option value="active" ${member.status==='active'?'selected':''}>${t('active')}</option><option value="inactive" ${member.status==='inactive'?'selected':''}>${t('inactive')}</option><option value="frozen" ${member.status==='frozen'?'selected':''}>${t('frozen')}</option><option value="expired" ${member.status==='expired'?'selected':''}>${t('expired')}</option></select></div>` : ''}
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+          <button class="btn btn-primary" onclick="${isEdit ? `updateMember(${member.id})` : 'saveMember()'}">${isEdit ? t('edit') : t('register')}</button>
+        </div>
+      </div>
+    </div>`;
+}
+function regTypeChange(){
+  const sel=document.getElementById('m-mstype');
+  const opt=sel?.options[sel.selectedIndex];
+  const detail=document.getElementById('reg-ms-detail');
+  const summary=document.getElementById('reg-ms-summary');
+  if(sel.value && opt?.dataset?.price){
+    detail.style.display='block';
+    document.getElementById('m-msprice').value=opt.dataset.price;
+    const days=Number(opt.dataset.days)||30;
+    const months=Math.round(days/30);
+    const end=new Date(document.getElementById('m-msstart')?.value||new Date());
+    end.setDate(end.getDate()+days);
+    summary.innerHTML=`📋 <strong>${months}개월</strong> (${days}일) | 종료: <strong>${end.toISOString().split('T')[0]}</strong> | 💰 <strong style="color:var(--success)">${formatMoney(Number(opt.dataset.price))}</strong>`;
+  } else {
+    detail.style.display='none';
+  }
+}
+
+async function saveMember() {
+  const body = { name: g('m-name'), phone: g('m-phone'), email: document.getElementById('m-email')?.value||'', gender: g('m-gender'), birth_date: g('m-birth'), address: document.getElementById('m-address')?.value||'', emergency_contact: document.getElementById('m-ec')?.value||'', emergency_phone: document.getElementById('m-ep')?.value||'', notes: document.getElementById('m-notes')?.value||'', barcode_id: document.getElementById('m-barcode')?.value||null };
+  if (!body.name) return alert(t('nameRequired'));
+  const res = await fetch(API + '/api/members', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const d = await res.json();
+  // 회원권도 선택했으면 같이 등록
+  const msType = g('m-mstype');
+  if(msType && d.id) {
+    const msBody = { type_id: Number(msType), start_date: g('m-msstart')||today(), price_paid: Number(g('m-msprice'))||0, payment_method: g('m-msmethod')||'cash' };
+    await fetch(API + '/api/memberships', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ member_id: d.id, ...msBody }) });
+  }
+  closeModal(); searchMembers();
+}
+
+async function updateMember(id) {
+  const body = { name: g('m-name'), phone: g('m-phone'), email: document.getElementById('m-email')?.value||'', gender: g('m-gender'), birth_date: g('m-birth'), address: document.getElementById('m-address')?.value||'', emergency_contact: document.getElementById('m-ec')?.value||'', emergency_phone: document.getElementById('m-ep')?.value||'', notes: document.getElementById('m-notes')?.value||'', status: document.getElementById('m-status')?.value };
+  await fetch(API + '/api/members/' + id, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  // 새 회원권 선택했으면 등록
+  const msType = document.getElementById('m-mstype')?.value;
+  if(msType) {
+    const msBody = { member_id: id, type_id: Number(msType), start_date: g('m-msstart')||today(), price_paid: Number(g('m-msprice'))||0, payment_method: g('m-msmethod')||'cash' };
+    await fetch(API + '/api/memberships', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(msBody) });
+  }
+  closeModal(); searchMembers();
+}
+
+async function editMember(id) {
+  const m = await fetch(API + '/api/members/' + id).then(r => r.json());
+  openMemberModal(m);
+}
+
+async function viewMember(id) {
+  const m = await fetch(API + '/api/members/' + id).then(r => r.json());
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="max-width:600px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+          <h3 style="margin:0">${m.name}</h3>
+          <span class="badge badge-${m.status}">${{active:'활성',inactive:'비활성',expired:'만료',frozen:'정지'}[m.status]}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:1rem;font-size:0.9rem">
+          <div>📞 ${m.phone||'-'}</div><div>📧 ${m.email||'-'}</div>
+          <div>🎂 ${m.birth_date||'-'}</div><div>👤 ${m.gender==='M'?'남':m.gender==='F'?'여':'-'}</div>
+        </div>
+        <h4 style="margin:1rem 0 0.5rem;font-size:0.95rem">${t('membership')}</h4>
+        ${m.memberships?.length ? m.memberships.map(ms => {
+          const statusLabels = {active: t('active'), expired: t('expired'), frozen: t('frozen'), cancelled: t('inactive')};
+          const daysLeft = ms.status === 'active' ? Math.max(0, Math.ceil((new Date(ms.end_date) - new Date()) / (1000*60*60*24))) : (ms.remaining_days || 0);
+          return `<div style="padding:0.6rem 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.85rem">
+              <span><strong>${ms.type_name}</strong> | ${ms.start_date} ~ ${ms.end_date}</span>
+              <span class="badge badge-${ms.status}">${statusLabels[ms.status] || ms.status}</span>
+            </div>
+            ${ms.status === 'active' ? `<div style="font-size:0.8rem;color:var(--text2);margin-top:0.25rem">⏳ ${daysLeft} ${t('daysLeft')} | ${formatMoney(ms.price_paid)}</div>` : ''}
+            ${ms.status === 'frozen' ? `<div style="font-size:0.8rem;color:#3b82f6;margin-top:0.25rem">❄️ ${t('frozenOn')}: ${ms.freeze_date || '-'} | ${ms.remaining_days || 0} ${t('daysLeft')}${ms.freeze_reason ? ' | ' + ms.freeze_reason : ''}</div>` : ''}
+            <div style="margin-top:0.4rem;display:flex;gap:0.3rem;flex-wrap:wrap">
+              ${ms.status === 'active' ? `
+                <button class="btn btn-sm" style="background:#3b82f6;color:white;font-size:0.75rem" onclick="closeModal();freezeMembership(${ms.id})"><i class="fas fa-pause"></i> ${t('freeze')}</button>
+                <button class="btn btn-sm btn-warning" style="font-size:0.75rem" onclick="closeModal();editMembershipModal(${ms.id},${m.id},'${m.name}')"><i class="fas fa-edit"></i> ${t('editMembership')}</button>
+                <button class="btn btn-sm btn-danger" style="font-size:0.75rem" onclick="closeModal();refundMembership(${ms.id},'${ms.type_name}',${ms.price_paid || 0})"><i class="fas fa-undo"></i> ${t('refund')}</button>
+              ` : ''}
+              ${ms.status === 'frozen' ? `
+                <button class="btn btn-sm btn-success" style="font-size:0.75rem" onclick="closeModal();unfreezeMembership(${ms.id})"><i class="fas fa-play"></i> ${t('unfreeze')}</button>
+                <button class="btn btn-sm btn-danger" style="font-size:0.75rem" onclick="closeModal();refundMembership(${ms.id},'${ms.type_name}',${ms.price_paid || 0})"><i class="fas fa-undo"></i> ${t('refund')}</button>
+              ` : ''}
+            </div>
+          </div>`}).join('') : `<p style="color:var(--text2);font-size:0.85rem">${t('noMembership')}</p>`}
+        <div style="margin-top:1rem;display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="closeModal();openMembershipModal(${m.id},'${m.name}')"><i class="fas fa-plus"></i> ${t('addMembership')}</button>
+          <button class="btn btn-success btn-sm" onclick="closeModal();doCheckin(${m.id})"><i class="fas fa-check"></i> ${t('checkin')}</button>
+          <button class="btn btn-sm" style="background:var(--card2)" onclick="closeModal()">${t('close')}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function openMembershipModal(memberId, memberName) {
+  const types = await fetch(API + '/api/membership-types').then(r => r.json());
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">🎫 회원권 등록 - ${memberName}</h3>
+        <div class="form-group"><label>회원권 종류</label><select id="ms-type">${types.map(t => `<option value="${t.id}" data-price="${t.price}">${t.name} (${formatMoney(t.price)})</option>`).join('')}</select></div>
+        <div class="form-row">
+          <div class="form-group"><label>시작일</label><input type="date" id="ms-start" value="${today()}"></div>
+          <div class="form-group"><label>결제금액</label><input type="number" id="ms-price"></div>
+        </div>
+        <div class="form-group"><label>결제방법</label><select id="ms-method"><option value="cash">현금</option><option value="card">카드</option><option value="transfer">계좌이체</option><option value="qpay">큐페이</option></select></div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">취소</button>
+          <button class="btn btn-primary" onclick="saveMembership(${memberId})">등록</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('ms-type').addEventListener('change', function() {
+    document.getElementById('ms-price').value = this.selectedOptions[0].dataset.price;
+  });
+  document.getElementById('ms-price').value = types[0]?.price || '';
+}
+
+async function saveMembership(memberId) {
+  const body = { member_id: memberId, type_id: Number(g('ms-type')), start_date: g('ms-start'), price_paid: Number(g('ms-price')), payment_method: g('ms-method') };
+  await fetch(API + '/api/memberships', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  closeModal(); alert('회원권이 등록되었습니다!');
+}
+
+// ====== MEMBERSHIP ACTIONS ======
+async function freezeMembership(msId) {
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">❄️ ${t('freeze')}</h3>
+        <p style="color:var(--text2);font-size:0.9rem;margin-bottom:1rem">${t('freezeConfirm')}</p>
+        <div class="form-group"><label>${t('freezeReason')}</label><input id="freeze-reason" placeholder="${t('freezeReasonPh')}"></div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+          <button class="btn" style="background:#3b82f6;color:white" onclick="doFreeze(${msId})">${t('freeze')}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function doFreeze(msId) {
+  const reason = g('freeze-reason');
+  const res = await fetch(API + '/api/memberships/' + msId + '/freeze', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ reason }) }).then(r => r.json());
+  closeModal();
+  alert(res.message || res.error);
+}
+
+async function unfreezeMembership(msId) {
+  if (!confirm(t('unfreezeConfirm'))) return;
+  const res = await fetch(API + '/api/memberships/' + msId + '/unfreeze', { method: 'POST', headers: {'Content-Type':'application/json'} }).then(r => r.json());
+  alert(res.message || res.error);
+}
+
+async function refundMembership(msId, typeName, pricePaid) {
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">💰 ${t('refund')} - ${typeName}</h3>
+        <p style="color:var(--text2);font-size:0.85rem;margin-bottom:1rem">${t('refundAuto')}</p>
+        <div class="form-group"><label>${t('refundAmount')} (${t('refundAuto')})</label><input type="number" id="refund-amount" placeholder="${t('refundAuto')}"></div>
+        <div class="form-group"><label>${t('refundReason')}</label><input id="refund-reason" placeholder="${t('refundReasonPh')}"></div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+          <button class="btn btn-danger" onclick="doRefund(${msId})">${t('refund')}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function doRefund(msId) {
+  const refund_amount = Number(g('refund-amount')) || undefined;
+  const reason = g('refund-reason');
+  const res = await fetch(API + '/api/memberships/' + msId + '/refund', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ refund_amount, reason }) }).then(r => r.json());
+  closeModal();
+  if (res.refund_amount !== undefined) {
+    alert(`${res.message}\n${t('refundAmount')}: ${formatMoney(res.refund_amount)}\n${t('remainingDays')}: ${res.remaining_days}`);
+  } else {
+    alert(res.error || res.message);
+  }
+}
+
+async function editMembershipModal(msId, memberId, memberName) {
+  const m = await fetch(API + '/api/members/' + memberId).then(r => r.json());
+  const ms = m.memberships.find(x => x.id === msId);
+  if (!ms) return;
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">✏️ ${t('editMembership')} - ${memberName}</h3>
+        <div class="form-group"><label>${t('membershipType')}</label><input value="${ms.type_name}" disabled></div>
+        <div class="form-row">
+          <div class="form-group"><label>${t('startDate')}</label><input type="date" id="ems-start" value="${ms.start_date}"></div>
+          <div class="form-group"><label>종료일 / Дуусах огноо</label><input type="date" id="ems-end" value="${ms.end_date}"></div>
+        </div>
+        <div class="form-group"><label>${t('payAmount')}</label><input type="number" id="ems-price" value="${ms.price_paid || ''}"></div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+          <button class="btn btn-primary" onclick="doEditMembership(${msId})">${t('save')}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function doEditMembership(msId) {
+  const body = { start_date: g('ems-start'), end_date: g('ems-end'), price_paid: Number(g('ems-price')) || undefined };
+  const res = await fetch(API + '/api/memberships/' + msId, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
+  closeModal();
+  alert(res.message || res.error);
+}
+
+// ====== ATTENDANCE ======
+async function loadAttendance() {
+  document.querySelector('#sec-attendance .page-header h2').textContent = '✅ ' + t('attendanceCheck');
+  document.getElementById('checkin-search').placeholder = t('checkinPh');
+  const data = await fetch(API + '/api/dashboard').then(r => r.json());
+  document.getElementById('attendance-table').innerHTML = data.recentAttendance.map(a => `
+    <tr>
+      <td>${a.name}</td>
+      <td>${formatDate(a.check_in)}</td>
+      <td>${a.check_out ? formatDate(a.check_out) : `<span style="color:var(--success)">${t('inUse')}</span>`}</td>
+      <td>${!a.check_out ? `<button class="btn btn-sm btn-warning" onclick="doCheckout(${a.id})">${t('exit')}</button>` : ''}</td>
+    </tr>
+  `).join('') || `<tr><td colspan="4" style="text-align:center;color:var(--text2)">${t('noTodayAttendance')}</td></tr>`;
+}
+
+async function quickCheckin() {
+  const query = document.getElementById('checkin-search').value;
+  if (!query) return;
+  const data = await fetch(`${API}/api/members?search=${encodeURIComponent(query)}&status=active`).then(r => r.json());
+  if (data.members.length === 0) { document.getElementById('checkin-results').innerHTML = '<p style="color:var(--danger)">회원을 찾을 수 없습니다</p>'; return; }
+  if (data.members.length === 1) { doCheckin(data.members[0].id); return; }
+  document.getElementById('checkin-results').innerHTML = data.members.slice(0, 5).map(m => `<button class="btn btn-sm btn-success" style="margin:0.25rem" onclick="doCheckin(${m.id})">${m.name} (${m.phone||''})</button>`).join('');
+}
+
+async function doCheckin(memberId) {
+  const res = await fetch(API + '/api/attendance/checkin', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ member_id: memberId }) }).then(r => r.json());
+  alert(res.message + (res.has_active_membership ? '' : '\n⚠️ 활성 회원권이 없습니다!'));
+  document.getElementById('checkin-search').value = '';
+  document.getElementById('checkin-results').innerHTML = '';
+  loadAttendance();
+}
+
+// ====== PT ======
+async function loadPTSessions() {
+  const date = document.getElementById('pt-date-filter').value;
+  const data = await fetch(`${API}/api/pt-sessions?date=${date}`).then(r => r.json());
+  document.getElementById('pt-table').innerHTML = data.map(s => `
+    <tr>
+      <td>${s.start_time} - ${s.end_time}</td>
+      <td>${s.member_name}</td>
+      <td>${s.trainer_name}</td>
+      <td><span class="badge badge-${s.status==='completed'?'active':s.status==='cancelled'?'expired':'frozen'}">${{scheduled:'예약',completed:'완료',cancelled:'취소',no_show:'노쇼'}[s.status]}</span></td>
+      <td>
+        ${s.status==='scheduled' ? `<button class="btn btn-sm btn-success" onclick="updatePTStatus(${s.id},'completed')">완료</button> <button class="btn btn-sm btn-danger" onclick="updatePTStatus(${s.id},'no_show')">노쇼</button>` : ''}
+      </td>
+    </tr>
+  `).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--text2)">${t('noPT')}</td></tr>`;
+}
+
+async function openPTModal() {
+  const members = await fetch(API + '/api/members?status=active&limit=500').then(r => r.json());
+  const trainers = await fetch(API + '/api/trainers').then(r => r.json());
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">🏋️ PT 예약</h3>
+        <div class="form-group"><label>회원</label><select id="pt-member">${members.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}</select></div>
+        <div class="form-group"><label>트레이너</label><select id="pt-trainer">${trainers.map(t => `<option value="${t.id}">${t.name} (${t.specialty||''})</option>`).join('')}</select></div>
+        <div class="form-group"><label>날짜</label><input type="date" id="pt-date" value="${today()}"></div>
+        <div class="form-row">
+          <div class="form-group"><label>시작 시간</label><input type="time" id="pt-start" value="10:00"></div>
+          <div class="form-group"><label>종료 시간</label><input type="time" id="pt-end" value="11:00"></div>
+        </div>
+        <div class="form-group"><label>메모</label><textarea id="pt-notes" rows="2"></textarea></div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">취소</button>
+          <button class="btn btn-primary" onclick="savePT()">예약</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function savePT() {
+  const body = { member_id: Number(g('pt-member')), trainer_id: Number(g('pt-trainer')), session_date: g('pt-date'), start_time: g('pt-start'), end_time: g('pt-end'), notes: g('pt-notes') };
+  await fetch(API + '/api/pt-sessions', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  closeModal(); loadPTSessions();
+}
+
+async function updatePTStatus(id, status) {
+  await fetch(`${API}/api/pt-sessions/${id}/status`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ status }) });
+  loadPTSessions();
+}
+
+// ====== PAYMENTS ======
+async function loadPayments() {
+  const data = await fetch(API + '/api/payments').then(r => r.json());
+  document.getElementById('payments-table').innerHTML = data.map(p => `
+    <tr>
+      <td>${formatDate(p.payment_date)}</td>
+      <td>${p.member_name}</td>
+      <td>${p.payment_type}</td>
+      <td style="font-weight:600">${formatMoney(p.amount)}</td>
+      <td>${p.payment_method}</td>
+    </tr>
+  `).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--text2)">${t('noPayments')}</td></tr>`;
+}
+
+async function openPaymentModal() {
+  const members = await fetch(API + '/api/members?limit=500').then(r => r.json());
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">💳 결제 기록</h3>
+        <div class="form-group"><label>회원</label><select id="pay-member">${members.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}</select></div>
+        <div class="form-row">
+          <div class="form-group"><label>금액</label><input type="number" id="pay-amount"></div>
+          <div class="form-group"><label>유형</label><select id="pay-type"><option>회원권</option><option>PT</option><option>상품</option><option>기타</option></select></div>
+        </div>
+        <div class="form-group"><label>결제방법</label><select id="pay-method"><option value="cash">현금</option><option value="card">카드</option><option value="transfer">계좌이체</option><option value="qpay">큐페이</option></select></div>
+        <div class="form-group"><label>설명</label><input id="pay-desc"></div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">취소</button>
+          <button class="btn btn-primary" onclick="savePayment()">저장</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function savePayment() {
+  const body = { member_id: Number(g('pay-member')), amount: Number(g('pay-amount')), payment_type: g('pay-type'), payment_method: g('pay-method'), description: g('pay-desc') };
+  await fetch(API + '/api/payments', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  closeModal(); loadPayments();
+}
+
+// ====== TRAINERS ======
+async function loadTrainers() {
+  const data = await fetch(API + '/api/trainers').then(r => r.json());
+  document.getElementById('trainers-table').innerHTML = data.map(t => `
+    <tr><td><strong>${t.name}</strong></td><td>${t.phone||'-'}</td><td>${t.specialty||'-'}</td></tr>
+  `).join('') || `<tr><td colspan="3" style="text-align:center;color:var(--text2)">${t('noTrainers')}</td></tr>`;
+}
+
+function openTrainerModal() {
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">👨‍🏫 트레이너 등록</h3>
+        <div class="form-group"><label>이름</label><input id="tr-name"></div>
+        <div class="form-group"><label>전화번호</label><input id="tr-phone"></div>
+        <div class="form-group"><label>전문분야</label><input id="tr-spec" placeholder="예: 웨이트, 필라테스, 요가..."></div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">취소</button>
+          <button class="btn btn-primary" onclick="saveTrainer()">등록</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveTrainer() {
+  const body = { name: g('tr-name'), phone: g('tr-phone'), specialty: g('tr-spec') };
+  await fetch(API + '/api/trainers', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  closeModal(); loadTrainers();
+}
+
+// ====== PRICING ======
+async function loadPricing() {
+  const types = await fetch(API + '/api/membership-types', { headers: { 'Authorization': 'Bearer ' + authToken } }).then(r => r.json());
+  document.getElementById('sec-pricing').innerHTML = `
+    <div class="page-header">
+      <h2>💲 ${t('priceSetting')}</h2>
+      <button class="btn btn-primary" onclick="openTypeModal()"><i class="fas fa-plus"></i> ${t('addType')}</button>
+    </div>
+    <div class="card" style="overflow-x:auto">
+      <h3 style="margin:0 0 1rem;font-size:1rem">${t('membershipTypes')}</h3>
+      <table>
+        <thead><tr><th>${t('typeName')}</th><th>${t('durationDays')}</th><th>${t('price')}</th><th></th></tr></thead>
+        <tbody>${types.map(tp => `<tr>
+          <td><strong>${tp.name}</strong></td>
+          <td>${tp.duration_days}일</td>
+          <td style="color:var(--primary);font-weight:700;font-size:1.1rem">${formatMoney(tp.price)}</td>
+          <td>
+            <button class="btn btn-sm btn-info" onclick="openTypeModal(${tp.id},'${tp.name.replace(/'/g,"\\'")}',${tp.duration_days},${tp.price})"><i class="fas fa-edit"></i> ${t('editType')}</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteType(${tp.id})"><i class="fas fa-trash"></i></button>
+          </td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+}
+
+function openTypeModal(id, name, days, price) {
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">${id ? '✏️ ' + t('editType') : '➕ ' + t('addType')}</h3>
+        <div class="form-group"><label>${t('typeName')}</label><input id="tp-name" value="${name || ''}"></div>
+        <div class="form-row">
+          <div class="form-group"><label>${t('durationDays')}</label><input type="number" id="tp-days" value="${days || 30}"></div>
+          <div class="form-group"><label>${t('price')} (₮)</label><input type="number" id="tp-price" value="${price || ''}"></div>
+        </div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+          <button class="btn btn-primary" onclick="saveType(${id || 'null'})">${t('save')}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveType(id) {
+  const body = { name: g('tp-name'), duration_days: Number(g('tp-days')), price: Number(g('tp-price')) };
+  if (!body.name) return alert(t('typeName'));
+  const url = id ? '/api/membership-types/' + id : '/api/membership-types';
+  const res = await fetch(API + url, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken }, body: JSON.stringify(body) }).then(r => r.json());
+  closeModal();
+  alert('✅ ' + (res.message || ''));
+  loadPricing();
+}
+
+async function deleteType(id) {
+  if (!confirm(t('deleteConfirm') || '삭제하시겠습니까?')) return;
+  await fetch(API + '/api/membership-types/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + authToken } });
+  loadPricing();
+}
+
+// ====== BARCODE SCAN ======
+let barcodeHistory = [];
+
+function initBarcodeMode() {
+  document.querySelector('#sec-barcode .page-header h2').textContent = '📊 ' + t('barcodeScan');
+  document.getElementById('barcode-title').textContent = t('scanBarcode');
+  document.getElementById('barcode-subtitle').textContent = t('scanSubtitle');
+  const input = document.getElementById('barcode-input');
+  input.placeholder = t('scanWaiting');
+  input.value = '';
+  input.focus();
+  document.getElementById('barcode-result').innerHTML = '';
+  renderBarcodeHistory();
+
+  // Auto-focus back to input when clicking anywhere in barcode section
+  document.getElementById('sec-barcode').onclick = () => input.focus();
+}
+
+// Listen for barcode scan (rapid input + Enter)
+document.getElementById('barcode-input')?.addEventListener('keydown', async function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const barcode = this.value.trim();
+    if (!barcode) return;
+    this.value = '';
+    await processBarcodeScam(barcode);
+  }
+});
+
+async function processBarcodeScam(barcode) {
+  const resultDiv = document.getElementById('barcode-result');
+  resultDiv.innerHTML = '<div style="font-size:1.2rem;color:var(--text2)">⏳ 처리 중...</div>';
+
+  try {
+    const res = await fetch(API + '/api/attendance/barcode', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ barcode })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      // 등록 안 된 바코드
+      resultDiv.innerHTML = `
+        <div style="background:rgba(239,68,68,0.1);border:2px solid var(--danger);border-radius:16px;padding:1.5rem;display:inline-block;min-width:300px">
+          <div style="font-size:2.5rem">❌</div>
+          <div style="font-size:1.3rem;font-weight:700;color:var(--danger);margin:0.5rem 0">${t('unknownBarcode')}</div>
+          <div style="color:var(--text2);font-size:0.9rem">${t('barcodeId')}: ${barcode}</div>
+        </div>`;
+      playSound('error');
+      return;
+    }
+
+    const isCheckin = data.action === 'checkin';
+    const isAlready = data.action === 'already';
+    const color = isCheckin ? 'var(--success)' : isAlready ? '#3b82f6' : 'var(--warning)';
+    const bgColor = isCheckin ? 'rgba(34,197,94,0.1)' : isAlready ? 'rgba(59,130,246,0.1)' : 'rgba(245,158,11,0.1)';
+    const borderColor = isCheckin ? 'var(--success)' : isAlready ? '#3b82f6' : 'var(--warning)';
+    const icon = isCheckin ? '✅' : isAlready ? 'ℹ️' : '👋';
+    const statusText = isCheckin ? t('checkinSuccess') : isAlready ? t('alreadyCheckin') : t('checkoutSuccess');
+
+    resultDiv.innerHTML = `
+      <div style="background:${bgColor};border:2px solid ${borderColor};border-radius:16px;padding:1.5rem;display:inline-block;min-width:300px;animation:fadeIn 0.3s">
+        <div style="font-size:2.5rem">${icon}</div>
+        <div style="font-size:1.5rem;font-weight:700;color:${color};margin:0.5rem 0">${data.member_name}</div>
+        <div style="font-size:1.1rem;color:${color}">${statusText}</div>
+        ${isCheckin && data.membership_type ? `<div style="color:var(--text2);font-size:0.85rem;margin-top:0.5rem">🎫 ${data.membership_type} | ⏳ ${data.remaining_days}${t('daysLeft')}</div>` : ''}
+        ${!data.has_active_membership ? `<div style="color:var(--danger);font-size:0.9rem;margin-top:0.5rem;font-weight:600">⚠️ ${t('noActiveMembership')}</div>` : ''}
+      </div>`;
+
+    // Add to history
+    barcodeHistory.unshift({
+      time: new Date().toLocaleTimeString(),
+      name: data.member_name,
+      action: data.action,
+      barcode: barcode
+    });
+    renderBarcodeHistory();
+    playSound(isCheckin ? 'checkin' : 'checkout');
+
+    // 3초 후 결과 페이드아웃
+    setTimeout(() => {
+      resultDiv.style.opacity = '0.5';
+      setTimeout(() => { resultDiv.style.opacity = '1'; }, 500);
+    }, 3000);
+
+  } catch(e) {
+    resultDiv.innerHTML = `<div style="color:var(--danger);font-size:1.2rem">❌ ${t('loginFail')}</div>`;
+  }
+
+  // Re-focus input
+  document.getElementById('barcode-input').focus();
+}
+
+function renderBarcodeHistory() {
+  const div = document.getElementById('barcode-history');
+  if (!barcodeHistory.length) { div.innerHTML = ''; return; }
+  div.innerHTML = `
+    <h3 style="font-size:1rem;margin:0 0 0.5rem">${t('scanHistory')}</h3>
+    <table><thead><tr><th>시간</th><th>${t('member')}</th><th>${t('status')}</th></tr></thead>
+    <tbody>${barcodeHistory.slice(0, 20).map(h => `
+      <tr>
+        <td>${h.time}</td>
+        <td><strong>${h.name}</strong></td>
+        <td>${h.action === 'checkin' ? `<span class="badge badge-active">${t('checkinSuccess')}</span>` : `<span class="badge badge-frozen">${t('checkoutSuccess')}</span>`}</td>
+      </tr>`).join('')}
+    </tbody></table>`;
+}
+
+function playSound(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    gain.gain.value = 0.3;
+    if (type === 'checkin') { osc.frequency.value = 800; }
+    else if (type === 'checkout') { osc.frequency.value = 600; }
+    else { osc.frequency.value = 300; }
+    osc.start();
+    setTimeout(() => {
+      if (type === 'checkin') { osc.frequency.value = 1000; }
+      setTimeout(() => osc.stop(), 150);
+    }, 150);
+  } catch(e) {}
+}
+
+// ====== HELPERS ======
+function todayUB(){const d=new Date(Date.now()+8*3600000);return d.toISOString().split('T')[0]}
+function g(id) { return document.getElementById(id)?.value || ''; }
+function closeModal() { document.getElementById('modal-container').innerHTML = ''; }
+
+// === 출석 관리 ===
+async function loadAttMgmt() {
+  const filter = document.getElementById('att-status-filter')?.value || '';
+  const search = (document.getElementById('att-search')?.value || '').toLowerCase();
+  
+  const data = await fetch(API + '/api/attendance-mgmt', { headers: authHeaders() }).then(r => r.json());
+  if (!Array.isArray(data)) return;
+
+  let members = data.map(m => {
+    const pct = m.total_days > 0 ? Math.round((m.days_used / m.total_days) * 100) : 0;
+    let status, statusClass;
+    if (!m.end_date) { status = '미등록'; statusClass = 'gray'; }
+    else if (m.days_left < 0) { status = '만료'; statusClass = 'expired'; }
+    else if (m.days_left <= 3) { status = '긴급'; statusClass = 'urgent'; }
+    else if (m.days_left <= 7) { status = '임박'; statusClass = 'soon'; }
+    else { status = '정상'; statusClass = 'normal'; }
+    return { ...m, pct, status, statusClass };
+  });
+
+  // Filter
+  if (filter) members = members.filter(m => m.statusClass === filter);
+  if (search) members = members.filter(m => m.name.toLowerCase().includes(search));
+
+  // Summary
+  const expired = data.filter(m => m.days_left != null && m.days_left < 0).length;
+  const urgent = data.filter(m => m.days_left != null && m.days_left >= 0 && m.days_left <= 3).length;
+  const soon = data.filter(m => m.days_left != null && m.days_left > 3 && m.days_left <= 7).length;
+  const normal = data.filter(m => m.days_left != null && m.days_left > 7).length;
+  
+  document.getElementById('att-summary').innerHTML = `
+    <div class="stat-card" style="border-left:3px solid #ef4444;cursor:pointer" onclick="document.getElementById('att-status-filter').value='expired';loadAttMgmt()">
+      <div class="number" style="color:#ef4444">${expired}</div><div class="label">만료</div>
+    </div>
+    <div class="stat-card" style="border-left:3px solid #f97316;cursor:pointer" onclick="document.getElementById('att-status-filter').value='urgent';loadAttMgmt()">
+      <div class="number" style="color:#f97316">${urgent}</div><div class="label">3일내</div>
+    </div>
+    <div class="stat-card" style="border-left:3px solid #eab308;cursor:pointer" onclick="document.getElementById('att-status-filter').value='soon';loadAttMgmt()">
+      <div class="number" style="color:#eab308">${soon}</div><div class="label">7일내</div>
+    </div>
+    <div class="stat-card" style="border-left:3px solid #22c55e;cursor:pointer" onclick="document.getElementById('att-status-filter').value='normal';loadAttMgmt()">
+      <div class="number" style="color:#22c55e">${normal}</div><div class="label">정상</div>
+    </div>
+    <div class="stat-card" style="border-left:3px solid #6366f1;cursor:pointer" onclick="document.getElementById('att-status-filter').value='';loadAttMgmt()">
+      <div class="number" style="color:#6366f1">${data.length}</div><div class="label">전체</div>
+    </div>
+  `;
+
+  // Table
+  const colors = { expired: '#ef4444', urgent: '#f97316', soon: '#eab308', normal: '#22c55e', gray: '#64748b' };
+  const labels = { expired: '만료', urgent: '긴급', soon: '임박', normal: '정상', gray: '미등록' };
+  
+  document.getElementById('att-table').innerHTML = members.map((m, i) => {
+    const c = colors[m.statusClass] || '#64748b';
+    const barW = Math.min(m.pct, 100);
+    const barColor = m.pct >= 90 ? '#ef4444' : m.pct >= 70 ? '#eab308' : '#22c55e';
+    const rowBg = m.statusClass === 'expired' ? 'rgba(239,68,68,0.08)' : 
+                  m.statusClass === 'urgent' ? 'rgba(249,115,22,0.08)' :
+                  m.statusClass === 'soon' ? 'rgba(234,179,8,0.06)' : '';
+    return `<tr style="background:${rowBg}">
+      <td style="color:var(--text2);font-size:0.75rem">${i+1}</td>
+      <td><strong>${m.name}</strong><br><span style="font-size:0.7rem;color:var(--text2)">${m.phone||''}</span></td>
+      <td style="font-size:0.8rem;color:#818cf8">${m.type_name||'-'}</td>
+      <td style="font-size:0.75rem">${m.start_date?m.start_date.slice(5):'-'}</td>
+      <td style="font-size:0.75rem;color:${c};font-weight:600">${m.end_date?m.end_date.slice(5):'-'}</td>
+      <td style="font-weight:700;font-size:1rem;color:${c}">${m.days_left!=null?m.days_left:'-'}</td>
+      <td style="font-weight:600;color:${m.visits>0?'#22c55e':'var(--text2)'}">${m.visits||0}회</td>
+      <td style="min-width:80px">
+        <div style="background:rgba(255,255,255,0.1);border-radius:4px;height:16px;overflow:hidden;position:relative">
+          <div style="width:${barW}%;background:${barColor};height:100%;border-radius:4px;transition:width 0.3s"></div>
+          <span style="position:absolute;top:0;left:50%;transform:translateX(-50%);font-size:0.65rem;line-height:16px;color:#fff">${m.pct}%</span>
+        </div>
+      </td>
+      <td><span style="color:${c};font-weight:600;font-size:0.8rem;padding:2px 8px;border-radius:12px;background:${c}15">${labels[m.statusClass]||'-'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+  caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+}
+
+// Init
+applyLang();
+checkAuth();
+if (currentUser) {
+  const ui = document.getElementById('user-info');
+  if (ui) ui.textContent = '👤 ' + currentUser.name + ' (' + currentUser.role + ')';
+}
+history.replaceState({sec:'dashboard'},'','#dashboard');
+window.addEventListener('popstate',e=>{if(e.state&&e.state.sec){showSection(e.state.sec,true);}else{history.pushState({sec:_curSec},'','#'+_curSec);}});
+if(location.hash){const h=location.hash.slice(1);if(h)setTimeout(()=>showSection(h,true),100);}
+</script>
+</body>
+</html>

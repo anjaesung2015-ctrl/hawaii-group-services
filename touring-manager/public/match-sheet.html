@@ -1,0 +1,431 @@
+<!DOCTYPE html><html lang="ko"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🎾 경기 체크지</title>
+<style>
+@media print{
+  .no-print{display:none!important}
+  body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sheet{box-shadow:none!important;margin:0!important;padding:0.5cm!important;page-break-after:always}
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,sans-serif;background:#1a1a2e;color:#000;padding:0.5rem}
+.no-print{text-align:center;margin-bottom:1rem}
+.btn{padding:0.6rem 1.5rem;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:0.9rem;margin:0.3rem}
+.btn-print{background:#f59e0b;color:#000}
+.btn-back{background:#334155;color:#e2e8f0}
+.tabs{display:flex;gap:0.3rem;justify-content:center;flex-wrap:wrap;margin-bottom:0.8rem}
+.tab{padding:0.5rem 1rem;border-radius:8px;cursor:pointer;font-size:0.82rem;background:#1a1a2e;color:#94a3b8;border:1px solid #334155}
+.tab.active{background:#f59e0b;color:#000;font-weight:700;border-color:#f59e0b}
+.sheet{display:none;background:#fff;max-width:210mm;margin:0 auto;padding:0.8cm;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,0.3)}
+.sheet.active{display:block}
+.sheet h1{font-size:14pt;text-align:center;border-bottom:2.5px solid #000;padding-bottom:4px;margin-bottom:6px}
+.sheet h2{font-size:10pt;margin:8px 0 4px;padding:2px 6px;background:#f0f0f0;border-left:3px solid #000}
+.sheet h3{font-size:9pt;margin:6px 0 3px;color:#333}
+table{width:100%;border-collapse:collapse;font-size:8.5pt;margin-bottom:6px}
+th,td{border:1px solid #555;padding:3px 4px}
+th{background:#e8e8e8;font-weight:700;font-size:8pt}
+.info-line{display:flex;gap:8px;font-size:9pt;margin-bottom:3px;flex-wrap:wrap}
+.info-line span{display:inline-flex;align-items:center;gap:3px}
+.info-line .blank{border-bottom:1px solid #000;min-width:80px;display:inline-block}
+.cb{width:12px;height:12px;border:1.5px solid #000;display:inline-block;vertical-align:middle;margin:0 2px}
+.cb-r{border-radius:50%}
+.tally{width:100%;height:22px;border-bottom:1px dotted #999}
+.court-svg{width:100%;max-width:320px;margin:4px auto;display:block}
+.notes-box{border:1px solid #999;min-height:30px;padding:3px;margin-bottom:4px}
+.sm{font-size:7.5pt;color:#666}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.score-box{display:inline-block;width:28px;height:22px;border:1.5px solid #000;text-align:center;margin:0 1px;vertical-align:middle}
+.big-score{width:40px;height:30px;font-size:14pt;font-weight:700}
+.set-row{display:flex;align-items:center;gap:4px;margin:2px 0;font-size:9pt}
+.check-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:2px;font-size:8.5pt}
+.check-item{display:flex;align-items:center;gap:3px}
+</style>
+</head><body>
+
+<div class="no-print">
+  <a href="./" class="btn btn-back">← 투어링팀</a>
+  <button class="btn btn-print" onclick="window.print()">🖨️ 인쇄하기</button>
+</div>
+
+<div class="tabs no-print">
+  <div class="tab active" onclick="showSheet('full')">📋 풀 체크지</div>
+  <div class="tab" onclick="showSheet('quick')">⚡ 퀵 스코어</div>
+  <div class="tab" onclick="showSheet('serve')">🎯 서브 분석</div>
+  <div class="tab" onclick="showSheet('mental')">🧠 멘탈 체크</div>
+  <div class="tab" onclick="showSheet('scout')">🔍 스카우팅</div>
+</div>
+
+<!-- ========== 1. 풀 경기 체크지 ========== -->
+<div class="sheet active" id="sheet-full">
+  <h1>🎾 경기 체크지 (Match Stats Sheet)</h1>
+  
+  <div class="info-line">
+    <span>대회: <span class="blank" style="min-width:150px"></span></span>
+    <span>날짜: <span class="blank"></span></span>
+    <span>라운드: <span class="blank" style="min-width:50px"></span></span>
+    <span>코트: □하드 □클레이 □잔디 □카펫</span>
+  </div>
+  <div class="info-line">
+    <span>선수: <span class="blank" style="min-width:120px"></span></span>
+    <span>상대: <span class="blank" style="min-width:120px"></span> (🏳 <span class="blank" style="min-width:40px"></span>)</span>
+    <span>ITF#: <span class="blank" style="min-width:50px"></span></span>
+  </div>
+  <div class="info-line">
+    <span>날씨: □맑음 □흐림 □비 □바람</span>
+    <span>기온: <span class="blank" style="min-width:40px"></span>°C</span>
+    <span>시작: <span class="blank" style="min-width:50px"></span></span>
+    <span>종료: <span class="blank" style="min-width:50px"></span></span>
+  </div>
+
+  <h2>📊 스코어 & 서브</h2>
+  <table>
+    <tr>
+      <th style="width:15%"></th>
+      <th style="width:12%">1세트</th><th style="width:12%">2세트</th><th style="width:12%">3세트</th>
+      <th style="width:8%">최종</th>
+      <th style="width:10%">1st%</th><th style="width:8%">에이스</th><th style="width:8%">DF</th>
+      <th style="width:15%">서브 스피드</th>
+    </tr>
+    <tr style="height:28px">
+      <td style="font-weight:700">우리 선수</td>
+      <td></td><td></td><td></td><td style="font-weight:700;font-size:11pt"></td>
+      <td></td><td></td><td></td><td><span class="sm">Max___ Avg___</span></td>
+    </tr>
+    <tr style="height:28px">
+      <td style="font-weight:700">상대</td>
+      <td></td><td></td><td></td><td style="font-weight:700;font-size:11pt"></td>
+      <td></td><td></td><td></td><td><span class="sm">Max___ Avg___</span></td>
+    </tr>
+  </table>
+
+  <h2>✏️ 포인트별 체크 (정 자로 세기)</h2>
+  <div class="row2">
+    <table>
+      <tr><th colspan="3" style="background:#d4edda">우리 선수</th></tr>
+      <tr><th>항목</th><th>체크</th><th>합계</th></tr>
+      <tr><td>포핸드 위너</td><td class="tally"></td><td style="width:35px"></td></tr>
+      <tr><td>백핸드 위너</td><td class="tally"></td><td></td></tr>
+      <tr><td>서브 위너/에이스</td><td class="tally"></td><td></td></tr>
+      <tr><td>네트 득점</td><td class="tally"></td><td></td></tr>
+      <tr><td>포핸드 에러(UE)</td><td class="tally"></td><td></td></tr>
+      <tr><td>백핸드 에러(UE)</td><td class="tally"></td><td></td></tr>
+      <tr><td>서브 에러(DF)</td><td class="tally"></td><td></td></tr>
+      <tr><td>네트 실수</td><td class="tally"></td><td></td></tr>
+      <tr><td style="font-weight:700">총 위너</td><td style="background:#f0f0f0"></td><td></td></tr>
+      <tr><td style="font-weight:700">총 UE</td><td style="background:#f0f0f0"></td><td></td></tr>
+    </table>
+    <table>
+      <tr><th colspan="3" style="background:#f8d7da">상대</th></tr>
+      <tr><th>항목</th><th>체크</th><th>합계</th></tr>
+      <tr><td>포핸드 위너</td><td class="tally"></td><td style="width:35px"></td></tr>
+      <tr><td>백핸드 위너</td><td class="tally"></td><td></td></tr>
+      <tr><td>서브 위너/에이스</td><td class="tally"></td><td></td></tr>
+      <tr><td>네트 득점</td><td class="tally"></td><td></td></tr>
+      <tr><td>포핸드 에러(UE)</td><td class="tally"></td><td></td></tr>
+      <tr><td>백핸드 에러(UE)</td><td class="tally"></td><td></td></tr>
+      <tr><td>서브 에러(DF)</td><td class="tally"></td><td></td></tr>
+      <tr><td>네트 실수</td><td class="tally"></td><td></td></tr>
+      <tr><td style="font-weight:700">총 위너</td><td style="background:#f0f0f0"></td><td></td></tr>
+      <tr><td style="font-weight:700">총 UE</td><td style="background:#f0f0f0"></td><td></td></tr>
+    </table>
+  </div>
+
+  <h2>🔄 브레이크 포인트</h2>
+  <table>
+    <tr><th></th><th>BP 기회</th><th>BP 성공</th><th>BP 세이브(상대서브)</th><th>서브게임 키프</th></tr>
+    <tr style="height:24px"><td style="font-weight:700">우리</td><td></td><td></td><td></td><td>___/___</td></tr>
+    <tr style="height:24px"><td style="font-weight:700">상대</td><td></td><td></td><td></td><td>___/___</td></tr>
+  </table>
+
+  <h2>⭐ 코치 평가 (○ 표시: 1~5)</h2>
+  <table>
+    <tr><th>항목</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>메모</th></tr>
+    <tr><td>🎾 포핸드</td><td></td><td></td><td></td><td></td><td></td><td style="width:30%"></td></tr>
+    <tr><td>🏸 백핸드</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>🎯 서브</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>🛡️ 리턴</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>🏃 움직임</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>🧠 멘탈</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>💪 체력</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>🎯 전략 실행</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>📊 일관성</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>⚡ 공격성</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h2>📝 코치 분석</h2>
+  <table>
+    <tr><td style="font-weight:700;width:20%;background:#f0f0f0">잘한 점</td><td style="height:35px"></td></tr>
+    <tr><td style="font-weight:700;background:#f0f0f0">개선할 점</td><td style="height:35px"></td></tr>
+    <tr><td style="font-weight:700;background:#f0f0f0">전술 분석</td><td style="height:35px"></td></tr>
+    <tr><td style="font-weight:700;background:#f0f0f0">핵심 순간</td><td style="height:35px"></td></tr>
+    <tr><td style="font-weight:700;background:#f0f0f0">다음 경기 전략</td><td style="height:35px"></td></tr>
+  </table>
+</div>
+
+<!-- ========== 2. 퀵 스코어 (게임별) ========== -->
+<div class="sheet" id="sheet-quick">
+  <h1>⚡ 게임별 포인트 기록지</h1>
+  
+  <div class="info-line">
+    <span>대회: <span class="blank" style="min-width:150px"></span></span>
+    <span>선수: <span class="blank" style="min-width:100px"></span> vs <span class="blank" style="min-width:100px"></span></span>
+    <span>날짜: <span class="blank"></span></span>
+  </div>
+
+  <h2>1세트</h2>
+  <table>
+    <tr><th>게임</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th><th>TB</th></tr>
+    <tr style="height:22px"><td style="font-weight:700;font-size:7pt">서브</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:26px"><td style="font-weight:700">선수</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:26px"><td style="font-weight:700">상대</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+  <div class="sm">서브 줄: ● = 우리 서브, ○ = 상대 서브 | 각 칸에 포인트: 15, 30, 40, AD, W(위너), E(에러), A(에이스)</div>
+
+  <h2>2세트</h2>
+  <table>
+    <tr><th>게임</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th><th>TB</th></tr>
+    <tr style="height:22px"><td style="font-weight:700;font-size:7pt">서브</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:26px"><td style="font-weight:700">선수</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:26px"><td style="font-weight:700">상대</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h2>3세트</h2>
+  <table>
+    <tr><th>게임</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th><th>TB</th></tr>
+    <tr style="height:22px"><td style="font-weight:700;font-size:7pt">서브</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:26px"><td style="font-weight:700">선수</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:26px"><td style="font-weight:700">상대</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h2>📊 포인트 빠른 체크 (정 자)</h2>
+  <div class="row2">
+    <div>
+      <strong style="font-size:8.5pt">우리 선수</strong>
+      <table>
+        <tr><td>FH 위너</td><td class="tally"></td></tr>
+        <tr><td>BH 위너</td><td class="tally"></td></tr>
+        <tr><td>에이스</td><td class="tally"></td></tr>
+        <tr><td>FH UE</td><td class="tally"></td></tr>
+        <tr><td>BH UE</td><td class="tally"></td></tr>
+        <tr><td>DF</td><td class="tally"></td></tr>
+      </table>
+    </div>
+    <div>
+      <strong style="font-size:8.5pt">상대</strong>
+      <table>
+        <tr><td>FH 위너</td><td class="tally"></td></tr>
+        <tr><td>BH 위너</td><td class="tally"></td></tr>
+        <tr><td>에이스</td><td class="tally"></td></tr>
+        <tr><td>FH UE</td><td class="tally"></td></tr>
+        <tr><td>BH UE</td><td class="tally"></td></tr>
+        <tr><td>DF</td><td class="tally"></td></tr>
+      </table>
+    </div>
+  </div>
+  
+  <h2>📝 세트별 메모</h2>
+  <table>
+    <tr><td style="font-weight:700;width:15%">1세트</td><td style="height:30px"></td></tr>
+    <tr><td style="font-weight:700">2세트</td><td style="height:30px"></td></tr>
+    <tr><td style="font-weight:700">3세트</td><td style="height:30px"></td></tr>
+  </table>
+</div>
+
+<!-- ========== 3. 서브 분석 체크지 ========== -->
+<div class="sheet" id="sheet-serve">
+  <h1>🎯 서브 분석 체크지</h1>
+  
+  <div class="info-line">
+    <span>선수: <span class="blank" style="min-width:120px"></span></span>
+    <span>날짜: <span class="blank"></span></span>
+    <span>대회/상대: <span class="blank" style="min-width:120px"></span></span>
+  </div>
+
+  <h2>듀스 사이드 (Deuce Court)</h2>
+  <svg class="court-svg" viewBox="0 0 320 160" style="max-width:280px">
+    <rect x="0" y="0" width="320" height="160" fill="#2d8c3c" rx="2"/>
+    <rect x="10" y="10" width="300" height="140" fill="none" stroke="#fff" stroke-width="2"/>
+    <line x1="160" y1="10" x2="160" y2="150" stroke="#fff" stroke-width="2"/>
+    <rect x="80" y="10" width="160" height="140" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+    <line x1="160" y1="80" x2="80" y2="80" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+    <line x1="160" y1="80" x2="240" y2="80" stroke="rgba(255,255,255,0.5)" stroke-width="1"/>
+    <text x="40" y="45" fill="#fff" font-size="10" text-anchor="middle">와이드</text>
+    <text x="40" y="85" fill="#fff" font-size="10" text-anchor="middle">바디</text>
+    <text x="40" y="125" fill="#fff" font-size="10" text-anchor="middle">T</text>
+    <text x="280" y="45" fill="#fff" font-size="10" text-anchor="middle">와이드</text>
+    <text x="280" y="85" fill="#fff" font-size="10" text-anchor="middle">바디</text>
+    <text x="280" y="125" fill="#fff" font-size="10" text-anchor="middle">T</text>
+  </svg>
+
+  <table>
+    <tr><th>듀스</th><th>와이드</th><th>바디</th><th>T</th><th>합계</th><th>In%</th></tr>
+    <tr style="height:26px"><td style="font-weight:700">1st 서브</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:26px"><td style="font-weight:700">2nd 서브</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:26px"><td style="font-weight:700">에이스</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:26px"><td style="font-weight:700">폴트</td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h2>애드 사이드 (Ad Court)</h2>
+  <table>
+    <tr><th>애드</th><th>와이드</th><th>바디</th><th>T</th><th>합계</th><th>In%</th></tr>
+    <tr style="height:26px"><td style="font-weight:700">1st 서브</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:26px"><td style="font-weight:700">2nd 서브</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:26px"><td style="font-weight:700">에이스</td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:26px"><td style="font-weight:700">폴트</td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h2>📊 서브 체크리스트 (게임별 ✓/✗)</h2>
+  <table>
+    <tr><th>게임#</th><th>1st In</th><th>방향</th><th>결과</th><th>2nd</th><th>방향</th><th>결과</th><th>스피드</th></tr>
+    <tr style="height:20px"><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:20px"><td>2</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:20px"><td>3</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:20px"><td>4</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:20px"><td>5</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:20px"><td>6</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:20px"><td>7</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:20px"><td>8</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:20px"><td>9</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:20px"><td>10</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+  <div class="sm">방향: W=와이드, B=바디, T=T | 결과: ✓=In, A=에이스, W=위너, F=폴트, R=리턴됨</div>
+
+  <h2>📝 서브 분석 메모</h2>
+  <table>
+    <tr><td style="font-weight:700;width:25%">가장 효과적 서브</td><td style="height:28px"></td></tr>
+    <tr><td style="font-weight:700">프레셔에서 서브</td><td style="height:28px"></td></tr>
+    <tr><td style="font-weight:700">개선 포인트</td><td style="height:28px"></td></tr>
+  </table>
+</div>
+
+<!-- ========== 4. 멘탈 체크 ========== -->
+<div class="sheet" id="sheet-mental">
+  <h1>🧠 경기 멘탈 체크지</h1>
+  
+  <div class="info-line">
+    <span>선수: <span class="blank" style="min-width:120px"></span></span>
+    <span>상대: <span class="blank" style="min-width:120px"></span></span>
+    <span>날짜: <span class="blank"></span></span>
+  </div>
+
+  <h2>😤 게임별 멘탈 추적</h2>
+  <table>
+    <tr><th>세트-게임</th><th>스코어</th><th>감정<br><span class="sm">1침착~5분노</span></th><th>에너지<br><span class="sm">1고갈~5충만</span></th><th>집중<br><span class="sm">1산만~5몰입</span></th><th>바디랭귀지<br><span class="sm">+긍정/-부정</span></th><th>트리거/메모</th></tr>
+    <tr style="height:22px"><td>1-1</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>1-2</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>1-3</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>1-4</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>1-5</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>1-6</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>1-7</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="background:#f0f0f0"><td colspan="7" style="text-align:center;font-weight:700;font-size:8pt">── 2세트 ──</td></tr>
+    <tr style="height:22px"><td>2-1</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>2-2</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>2-3</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>2-4</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>2-5</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>2-6</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>2-7</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="background:#f0f0f0"><td colspan="7" style="text-align:center;font-weight:700;font-size:8pt">── 3세트 ──</td></tr>
+    <tr style="height:22px"><td>3-1</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>3-2</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>3-3</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>3-4</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>3-5</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>3-6</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr style="height:22px"><td>3-7</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h2>🔑 체크리스트 (✓ 체크)</h2>
+  <div class="check-grid">
+    <div class="check-item"><span class="cb"></span> 서브 루틴 실행</div>
+    <div class="check-item"><span class="cb"></span> 리턴 루틴 실행</div>
+    <div class="check-item"><span class="cb"></span> 포인트 사이 호흡</div>
+    <div class="check-item"><span class="cb"></span> 체인지오버 활용</div>
+    <div class="check-item"><span class="cb"></span> 긍정적 셀프토크</div>
+    <div class="check-item"><span class="cb"></span> 아이컨택 유지</div>
+    <div class="check-item"><span class="cb"></span> 실수 후 빠른 리셋</div>
+    <div class="check-item"><span class="cb"></span> 빅포인트 집중</div>
+  </div>
+
+  <h2>📝 멘탈 분석</h2>
+  <table>
+    <tr><td style="font-weight:700;width:25%;background:#f0f0f0">가장 좋았던 순간</td><td style="height:28px"></td></tr>
+    <tr><td style="font-weight:700;background:#f0f0f0">가장 힘들었던 순간</td><td style="height:28px"></td></tr>
+    <tr><td style="font-weight:700;background:#f0f0f0">모멘텀 전환점</td><td style="height:28px"></td></tr>
+    <tr><td style="font-weight:700;background:#f0f0f0">다음 멘탈 목표</td><td style="height:28px"></td></tr>
+  </table>
+</div>
+
+<!-- ========== 5. 스카우팅 리포트 ========== -->
+<div class="sheet" id="sheet-scout">
+  <h1>🔍 상대 스카우팅 리포트</h1>
+  
+  <div class="info-line">
+    <span>상대: <span class="blank" style="min-width:120px"></span></span>
+    <span>국적: <span class="blank" style="min-width:50px"></span></span>
+    <span>ITF#: <span class="blank" style="min-width:50px"></span></span>
+    <span>손잡이: □우 □좌 □양손BH</span>
+  </div>
+  <div class="info-line">
+    <span>관찰 대회: <span class="blank" style="min-width:150px"></span></span>
+    <span>날짜: <span class="blank"></span></span>
+  </div>
+
+  <h2>🎾 샷 분석 (✓ 체크)</h2>
+  <table>
+    <tr><th style="width:20%">샷</th><th>강점</th><th>약점</th><th>패턴/습관</th></tr>
+    <tr style="height:30px"><td style="font-weight:700">포핸드</td><td></td><td></td><td></td></tr>
+    <tr style="height:30px"><td style="font-weight:700">백핸드</td><td></td><td></td><td></td></tr>
+    <tr style="height:30px"><td style="font-weight:700">1st 서브</td><td></td><td></td><td></td></tr>
+    <tr style="height:30px"><td style="font-weight:700">2nd 서브</td><td></td><td></td><td></td></tr>
+    <tr style="height:30px"><td style="font-weight:700">리턴</td><td></td><td></td><td></td></tr>
+    <tr style="height:30px"><td style="font-weight:700">발리/네트</td><td></td><td></td><td></td></tr>
+    <tr style="height:30px"><td style="font-weight:700">드롭샷</td><td></td><td></td><td></td></tr>
+    <tr style="height:30px"><td style="font-weight:700">로브</td><td></td><td></td><td></td></tr>
+  </table>
+
+  <h2>🏃 움직임 & 체력</h2>
+  <div class="check-grid">
+    <div class="check-item"><span class="cb"></span> 좋은 풋워크</div>
+    <div class="check-item"><span class="cb"></span> 코트커버 넓음</div>
+    <div class="check-item"><span class="cb"></span> 빠른 방향전환</div>
+    <div class="check-item"><span class="cb"></span> 네트 러시 빈번</div>
+    <div class="check-item"><span class="cb"></span> 3세트 체력 좋음</div>
+    <div class="check-item"><span class="cb"></span> 수비형 플레이어</div>
+    <div class="check-item"><span class="cb"></span> 공격형 플레이어</div>
+    <div class="check-item"><span class="cb"></span> 카운터펀처</div>
+  </div>
+
+  <h2>🧠 멘탈 관찰</h2>
+  <div class="check-grid">
+    <div class="check-item"><span class="cb"></span> 프레셔에 강함</div>
+    <div class="check-item"><span class="cb"></span> 뒤질 때 무너짐</div>
+    <div class="check-item"><span class="cb"></span> 감정 기복 큼</div>
+    <div class="check-item"><span class="cb"></span> 루틴 잘 실행</div>
+    <div class="check-item"><span class="cb"></span> 심판에 항의</div>
+    <div class="check-item"><span class="cb"></span> 빅포인트 강함</div>
+    <div class="check-item"><span class="cb"></span> 느린 시작</div>
+    <div class="check-item"><span class="cb"></span> 체인지오버 길게</div>
+  </div>
+
+  <h2>🎯 전략 제안</h2>
+  <table>
+    <tr><td style="font-weight:700;width:25%;background:#f0f0f0">공략 포인트</td><td style="height:35px"></td></tr>
+    <tr><td style="font-weight:700;background:#f0f0f0">서브 전략</td><td style="height:28px"></td></tr>
+    <tr><td style="font-weight:700;background:#f0f0f0">리턴 전략</td><td style="height:28px"></td></tr>
+    <tr><td style="font-weight:700;background:#f0f0f0">랠리 전략</td><td style="height:28px"></td></tr>
+    <tr><td style="font-weight:700;background:#f0f0f0">빅포인트 전략</td><td style="height:28px"></td></tr>
+  </table>
+</div>
+
+<script>
+function showSheet(id){
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('sheet-'+id)?.classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body></html>

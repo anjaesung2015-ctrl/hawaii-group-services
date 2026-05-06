@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎾 Hawaii Coach 관리</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif; margin: 0; background: #f5f5f4; color: #1f1f1f; padding: 16px; }
+  .container { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+  .subtitle { font-size: 13px; color: #6b6b6a; margin-bottom: 16px; }
+  .top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .top-row .right-links { display: flex; gap: 8px; align-items: center; }
+  .top-row .right-links a { font-size: 12px; color: #1e40af; text-decoration: none; padding: 6px 10px; border: 1px solid #bfdbfe; border-radius: 6px; background: #eff6ff; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab { flex: 1; min-width: 80px; padding: 10px 12px; background: #fff; border: 1px solid #e5e5e4; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; }
+  .tab:hover { background: #fafaf9; }
+  .tab.active { background: #1f1f1f; color: #fff; border-color: #1f1f1f; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 16px; }
+  .stat { background: #fff; border: 1px solid #e5e5e4; border-radius: 8px; padding: 12px; }
+  .stat-label { font-size: 12px; color: #6b6b6a; margin-bottom: 4px; }
+  .stat-value { font-size: 22px; font-weight: 600; }
+  .stat-value.warn { color: #b87a0c; }
+  .stat-value.danger { color: #b91c1c; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+  input[type="text"], input[type="tel"], input[type="number"], input[type="date"], input[type="time"], input[type="password"], select, textarea {
+    padding: 8px 10px; border: 1px solid #d6d6d3; border-radius: 6px; font-size: 14px; font-family: inherit; background: #fff;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: #1f1f1f; }
+  button { padding: 8px 14px; background: #fff; border: 1px solid #d6d6d3; border-radius: 6px; cursor: pointer; font-size: 14px; font-family: inherit; font-weight: 500; }
+  button:hover { background: #fafaf9; }
+  button.primary { background: #1f1f1f; color: #fff; border-color: #1f1f1f; }
+  button.primary:hover { background: #333; }
+  button.mini { padding: 4px 10px; font-size: 12px; font-weight: 400; }
+  button.danger { color: #b91c1c; }
+  button.success { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+  button.warn { background: #fffbeb; color: #b45309; border-color: #fcd34d; }
+  button.fail { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+  button.info { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+  .card { background: #fff; border: 1px solid #e5e5e4; border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; }
+  .card-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .name { font-weight: 600; font-size: 15px; }
+  .sub { font-size: 12px; color: #6b6b6a; margin-top: 2px; }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 500; margin-left: 6px; }
+  .badge-active { background: #ecfdf5; color: #047857; }
+  .badge-warn { background: #fffbeb; color: #b45309; }
+  .badge-danger { background: #fef2f2; color: #b91c1c; }
+  .badge-level { background: #eff6ff; color: #1e40af; }
+  .actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .empty { text-align: center; padding: 40px 20px; color: #9b9b98; font-size: 14px; }
+  .footer-bar { margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e5e4; display: flex; gap: 8px; flex-wrap: wrap; }
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; padding: 16px; }
+  .modal-bg.show { display: flex; }
+  .modal { background: #fff; border-radius: 12px; padding: 20px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
+  .modal h3 { font-size: 17px; font-weight: 600; margin: 0 0 14px; }
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+  .field label { font-size: 12px; color: #6b6b6a; font-weight: 500; }
+  .field input, .field select, .field textarea { width: 100%; }
+  .field-row { display: flex; gap: 8px; }
+  .field-row .field { flex: 1; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  .panel { display: none; }
+  .panel.show { display: block; }
+  .checkbox-list { max-height: 180px; overflow-y: auto; padding: 8px; border: 1px solid #e5e5e4; border-radius: 6px; }
+  .checkbox-list label { display: block; padding: 4px 0; font-size: 13px; cursor: pointer; }
+  .right { text-align: right; }
+  .save-indicator { font-size: 11px; color: #9b9b98; margin-left: auto; }
+  .level-tab { display: inline-block; padding: 6px 14px; margin: 0 4px 8px 0; background: #fff; border: 1px solid #e5e5e4; border-radius: 999px; cursor: pointer; font-size: 13px; }
+  .level-tab.active { background: #1f1f1f; color: #fff; border-color: #1f1f1f; }
+  .pillar { background: #fff; border: 1px solid #e5e5e4; border-radius: 8px; padding: 14px 16px; margin-bottom: 10px; }
+  .pillar-title { font-weight: 600; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .pillar-icon { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+  .icon-tech { background: #eff6ff; color: #1e40af; }
+  .icon-tact { background: #f3e8ff; color: #6b21a8; }
+  .icon-phys { background: #fee2e2; color: #b91c1c; }
+  .icon-ment { background: #d1fae5; color: #047857; }
+  .pillar ul { margin: 4px 0 0; padding-left: 20px; font-size: 13px; line-height: 1.7; color: #444; }
+  .schedule-grid { display: grid; grid-template-columns: 80px 1fr 1fr; gap: 0; border: 1px solid #e5e5e4; border-radius: 6px; overflow: hidden; font-size: 12px; }
+  .schedule-grid > div { padding: 8px 10px; border-bottom: 1px solid #e5e5e4; border-right: 1px solid #e5e5e4; }
+  .schedule-grid > div:nth-child(3n) { border-right: none; }
+  .schedule-grid .head { background: #f9fafb; font-weight: 600; }
+  .funda-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; margin-top: 8px; }
+  .funda-item { padding: 8px 10px; background: #f9fafb; border: 1px solid #e5e5e4; border-radius: 6px; font-size: 12px; cursor: pointer; transition: all 0.15s; user-select: none; }
+  .funda-item.checked { background: #ecfdf5; border-color: #a7f3d0; color: #047857; font-weight: 500; }
+  .progress-bar { height: 6px; background: #f3f4f6; border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .progress-fill { height: 100%; background: #047857; transition: width 0.3s; }
+  .info-box { background: #eff6ff; border-left: 3px solid #1e40af; padding: 10px 12px; border-radius: 4px; font-size: 13px; color: #1e3a8a; margin-bottom: 12px; }
+  #login { position: fixed; inset: 0; background: #f5f5f4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 20px; z-index: 200; }
+  #login .logo { font-size: 56px; }
+  #login h2 { font-size: 22px; font-weight: 600; margin: 0; }
+  #login input { width: 100%; max-width: 320px; }
+  #login button { width: 100%; max-width: 320px; }
+  #login .err { color: #b91c1c; font-size: 12px; }
+  .hide { display: none !important; }
+</style>
+</head>
+<body>
+<div id="login">
+  <div class="logo">🎾</div>
+  <h2>Hawaii Coach 관리</h2>
+  <input type="password" id="pw" placeholder="비밀번호" autocomplete="current-password">
+  <button class="primary" onclick="doLogin()">로그인</button>
+  <div class="err" id="login-err"></div>
+</div>
+
+<div class="container hide" id="app">
+  <div class="top-row">
+    <div>
+      <h1>🎾 Hawaii Coach 관리</h1>
+      <div class="subtitle">데스크탑 관리 화면 — 수강생/결제/출석/메모/커리큘럼 통합</div>
+    </div>
+    <div class="right-links">
+      <a href="/coach/" target="_blank">📱 모바일 앱</a>
+      <button class="mini" onclick="doLogout()">로그아웃</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="students">수강생</button>
+    <button class="tab" data-tab="curriculum">커리큘럼</button>
+    <button class="tab" data-tab="schedule">일정</button>
+    <button class="tab" data-tab="attendance">출석</button>
+    <button class="tab" data-tab="payment">결제</button>
+    <button class="tab" data-tab="library">⚙️ 라이브러리</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-label">전체 수강생</div><div class="stat-value" id="stat-total">0명</div></div>
+    <div class="stat"><div class="stat-label">활성 회원</div><div class="stat-value" id="stat-active">0명</div></div>
+    <div class="stat"><div class="stat-label">만료 임박</div><div class="stat-value warn" id="stat-expiring">0명</div></div>
+    <div class="stat"><div class="stat-label">이번달 매출</div><div class="stat-value" id="stat-revenue">0원</div></div>
+  </div>
+
+  <div class="panel show" id="panel-students">
+    <div class="toolbar">
+      <input type="text" id="search-input" placeholder="이름 또는 전화번호 검색" style="flex: 1; min-width: 180px;">
+      <select id="filter-status" style="width: 130px;">
+        <option value="all">전체 상태</option>
+        <option value="active">활성</option>
+        <option value="expiring">만료 임박</option>
+        <option value="expired">만료</option>
+      </select>
+      <select id="filter-level" style="width: 130px;">
+        <option value="all">전체 레벨</option>
+      </select>
+      <button class="primary" id="btn-add">+ 신규 등록</button>
+    </div>
+    <div id="student-list"></div>
+  </div>
+
+  <div class="panel" id="panel-curriculum">
+    <div class="info-box">
+      <b>아카데미 시스템 — 4대 기둥 × 5단계 발달</b><br>
+      에밀리오 산체스(스페인) · IMG(미국) · RPS(미국) 등 세계 톱 아카데미 공통 프레임워크.
+    </div>
+    <div id="level-tabs" style="margin-bottom: 16px;"></div>
+    <div id="curriculum-content"></div>
+  </div>
+
+  <div class="panel" id="panel-schedule">
+    <div class="toolbar">
+      <input type="date" id="schedule-date" style="width: 160px;">
+      <button class="primary" id="btn-add-schedule">+ 레슨 추가</button>
+    </div>
+    <div id="schedule-list"></div>
+  </div>
+
+  <div class="panel" id="panel-attendance">
+    <div class="toolbar">
+      <input type="date" id="att-date" style="width: 160px;">
+      <span style="font-size: 13px; color: #6b6b6a;">해당 날짜 레슨 수강생의 출석을 체크하세요</span>
+    </div>
+    <div id="attendance-list"></div>
+  </div>
+
+  <div class="panel" id="panel-library">
+    <div class="toolbar">
+      <h3 style="margin:0;font-size:18px">⚙️ 라이브러리 관리</h3>
+      <div style="font-size:12px;color:#9b9b98;margin-top:4px">드릴 · 템플릿 · 페이즈 프로그램 직접 추가/수정/삭제</div>
+    </div>
+    <div id="library-content" style="margin-top:12px">로딩 중...</div>
+  </div>
+
+  <div class="panel" id="panel-payment">
+    <div class="toolbar">
+      <select id="pay-month" style="width: 160px;"></select>
+      <span class="save-indicator" id="pay-summary"></span>
+    </div>
+    <div id="payment-list"></div>
+  </div>
+
+  <div class="footer-bar">
+    <button id="btn-export">📊 엑셀(CSV) 내보내기</button>
+    <button id="btn-backup">💾 전체 백업 (JSON)</button>
+    <span class="save-indicator" id="save-status"></span>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-bg">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<script>
+// === Auth + API ===
+var T = null, BASE = '/coach/api';
+function gc(n){return(document.cookie.match(new RegExp(n+'=([^;]+)'))||[])[1]||null}
+function sc(n,v){document.cookie=n+'='+v+';path=/;max-age=2592000;SameSite=Lax'}
+function F(p,o){o=o||{};var h={'Content-Type':'application/json'};if(T)h['Authorization']='Bearer '+T;o.headers=h;if(o.body&&typeof o.body==='object')o.body=JSON.stringify(o.body);return fetch(BASE+p,o).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'오류');return d})})}
+
+function doLogin(){
+  var p = document.getElementById('pw').value;
+  F('/login',{method:'POST',body:{password:p}}).then(function(d){
+    T = d.token; sc('coach_token', T);
+    try{ localStorage.setItem('coach_t', T) }catch(e){}
+    init();
+  }).catch(function(e){ document.getElementById('login-err').textContent = e.message });
+}
+function doLogout(){ sc('coach_token',''); try{localStorage.removeItem('coach_t')}catch(e){} location.reload(); }
+window.doLogin = doLogin; window.doLogout = doLogout;
+document.getElementById('pw').onkeydown = function(e){ if(e.key==='Enter') doLogin(); };
+
+function init(){
+  T = T || (function(){try{return localStorage.getItem('coach_t')}catch(e){}})() || gc('coach_token');
+  if (!T) { document.getElementById('login').classList.remove('hide'); document.getElementById('app').classList.add('hide'); return; }
+  document.getElementById('login').classList.add('hide');
+  document.getElementById('app').classList.remove('hide');
+  document.getElementById('schedule-date').value = todayStr();
+  document.getElementById('att-date').value = todayStr();
+  refresh();
+}
+
+// === Curriculum 데이터 ===
+const CURRICULUM = {
+  '입문 (Initiation)': { age: '5~8세 / 처음 시작', hours: '주 2~4시간', desc: '공과 친해지고 라켓을 다루는 기초. 즐거움이 최우선.',
+    technical: ['그립 잡기 (이스턴)','바운스볼 컨트롤','포핸드 셀프피드','라켓 면 인식','미니 테니스'],
+    tactical: ['공이 있는 곳으로 이동','코트 라인 인식','간단한 랠리 시도'],
+    physical: ['균형 감각','기본 이동 (스플릿스텝)','손-눈 협응','재미있는 움직임 게임'],
+    mental: ['집중 시간 늘리기','규칙 지키기','공을 끝까지 보기'],
+    fundamentals: ['풋워크 기초','공 인식','그립','스윙 궤적'],
+    schedule: [['오전','워밍업 게임 + 미니테니스 (30분)','셀프 피드 스트로크 (30분)'],['오후','코치 핸드피드 (40분)','재미있는 게임 마무리 (20분)']]
+  },
+  '초급 (Beginner)': { age: '8~12세 / 6개월~1년차', hours: '주 4~8시간', desc: '기본 스트로크의 형태를 잡는 단계. 코치 피드로 일관성 확보.',
+    technical: ['포핸드 풀스윙','백핸드 (양손/한손)','발리 기초','서브 동작 (3단계 분리)','오버헤드 기초'],
+    tactical: ['크로스코트 vs 다운더라인','공의 깊이 인식','랠리 카운트 늘리기','서브 위치 선정'],
+    physical: ['민첩성 사다리 훈련','코어 안정성','하체 기초 근력','회복 호흡법'],
+    mental: ['실수 후 회복','루틴 만들기','목표 설정 (작은 단위)'],
+    fundamentals: ['풋워크','일관성','그립','스윙 궤적','컨택 포인트'],
+    schedule: [['오전','풋워크 워밍업 (15분) + 코치 피드 스트로크 (75분)',''],['오후','랠리 연습 (45분) + 발리/서브 (30분) + 미니 매치 (15분)','']]
+  },
+  '중급 (Intermediate)': { age: '12~15세 / 1~3년차', hours: '주 8~15시간', desc: '베이스라인 랠리 가능, 매치 플레이 시작. 전술 도입.',
+    technical: ['톱스핀 포핸드 강화','슬라이스 백핸드','발리 컨트롤','1차/2차 서브 분리','리턴 자세'],
+    tactical: ['서브-리턴 패턴','7-3 룰 (인사이드아웃)','네트 어프로치 타이밍','상대 약점 공략'],
+    physical: ['스피드·민첩성·체력 (SAQ)','플라이오메트릭 기초','근력 트레이닝 도입','경기 회복'],
+    mental: ['포인트 사이 루틴','경기 기록·복기','압박 상황 호흡'],
+    fundamentals: ['풋워크','일관성','정확도','존 플레이','서브','발리'],
+    schedule: [['오전','워밍업 + 스트로크 (75분) + 비디오 분석 (30분)','체력 운동 (60분)'],['오후','포인트 플레이 (90분) + 매치 시뮬레이션 (60분)','']]
+  },
+  '상급 (Advanced)': { age: '14~18세 / 3년차 이상', hours: '주 15~25시간', desc: '대회 출전 정기화. 4대 기둥 통합 훈련. 코치 1인당 2명 이내.',
+    technical: ['모든 그립 마스터','서브 4종 (플랫/슬라이스/킥/와이드)','드롭샷·로브','리턴 공격형/안전형','하프발리'],
+    tactical: ['게임 스타일 정립','5가지 게임 상황별 패턴','클레이/하드 적응','스카우팅 리포트 활용'],
+    physical: ['주기화 트레이닝','폭발력·순발력','상해 예방 프로토콜','영양·수면 관리'],
+    mental: ['스포츠 심리학 세션','시각화 훈련','대회 멘탈 루틴','슬럼프 극복'],
+    fundamentals: ['풋워크','일관성','정확도','존 플레이','서브','발리','전술','터치','공격','리커버리'],
+    schedule: [['오전','기술·전술 통합 (100분) + 매치 플레이 (60분)','근력·컨디셔닝 (75분)'],['오후','스파링 (90분) + 비디오 분석 (30분)','회복·스트레칭']]
+  },
+  '선수반 (Elite/Pro)': { age: '16세 이상 / 프로·대학 진학 목표', hours: '주 25~35시간', desc: '프로 투어 또는 NCAA 진학을 위한 최고 단계. 개별 매니저 배정.',
+    technical: ['포인트 단위 무기 개발','오픈/세미오픈 자유 활용','전 구질·전 코트 대응','서브 200km/h+ 목표','리턴 공격성 극대화'],
+    tactical: ['5세트 매치 매니지먼트','상대별 게임 플랜','ITF/UTR 일정 설계','심판 어필·시간 관리'],
+    physical: ['프로급 주기화','스포츠과학팀','5세트 지구력','시즌별 컨디션 피크'],
+    mental: ['전담 스포츠 심리학자','미디어 대응','독립적 의사결정','대회 출장 자기관리'],
+    fundamentals: ['10대 펀더멘털 + 무기화 + 약점 보완 + 매치 IQ'],
+    schedule: [['오전','집중 기술 (90분) + 스파링 (90분)','근력·파워 (75분)'],['오후','매치 플레이 (120분) + 전술 미팅 (45분)','회복·물리치료']]
+  }
+};
+
+// === 상태 ===
+var stats = {total:0, active:0, expiring:0, revenue:0};
+var students = [];
+var lessons = [];
+var attendanceMap = {}; // date+id → status
+var payments = [];
+var progressMap = {}; // studentId → {level::funda: true}
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function fmtMoney(n){ return (n||0).toLocaleString('ko-KR') + '원'; }
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function getStatus(s){
+  if (!s.end_date) return 'expired';
+  const days = Math.ceil((new Date(s.end_date) - new Date(todayStr())) / 86400000);
+  if (days < 0) return 'expired';
+  if (days <= 7) return 'expiring';
+  return 'active';
+}
+function statusBadge(s){
+  const st = getStatus(s);
+  if (st === 'active') return '<span class="badge badge-active">활성</span>';
+  if (st === 'expiring') return '<span class="badge badge-warn">만료임박</span>';
+  return '<span class="badge badge-danger">만료</span>';
+}
+function getProgress(studentId, level){
+  if (!level || !CURRICULUM[level]) return {done:0, total:0, percent:0};
+  const fundas = CURRICULUM[level].fundamentals;
+  const prog = progressMap[studentId] || {};
+  const done = fundas.filter(f => prog[level + '::' + f]).length;
+  return {done, total:fundas.length, percent: Math.round(done/fundas.length*100)};
+}
+
+function refresh(){
+  return Promise.all([F('/admin/stats'), F('/admin/students')]).then(function(res){
+    stats = res[0]; students = res[1];
+    progressMap = {};
+    return Promise.all(students.map(function(s){
+      return F('/admin/students/'+s.id+'/progress').then(function(rows){
+        progressMap[s.id] = {};
+        rows.forEach(function(r){ if (r.checked) progressMap[s.id][r.level + '::' + r.fundamental_key] = true; });
+      });
+    }));
+  }).then(function(){
+    document.getElementById('save-status').textContent = '동기화: ' + new Date().toLocaleTimeString('ko-KR',{hour:'2-digit', minute:'2-digit'});
+    render();
+  }).catch(function(e){
+    if (e.message.toLowerCase().includes('login')) { T = null; init(); return; }
+    document.getElementById('save-status').textContent = '오류: ' + e.message;
+  });
+}
+
+function render(){
+  document.getElementById('stat-total').textContent = stats.total + '명';
+  document.getElementById('stat-active').textContent = stats.active + '명';
+  document.getElementById('stat-expiring').textContent = stats.expiring + '명';
+  document.getElementById('stat-revenue').textContent = fmtMoney(stats.revenue);
+  renderLevelFilter();
+  renderStudents();
+  renderCurriculum();
+  renderSchedule();
+  renderAttendance();
+  renderPayments();
+}
+
+function renderLevelFilter(){
+  const sel = document.getElementById('filter-level');
+  const cur = sel.value || 'all';
+  sel.innerHTML = '<option value="all">전체 레벨</option>' + Object.keys(CURRICULUM).map(l => '<option value="'+l+'" '+(l===cur?'selected':'')+'>'+l+'</option>').join('');
+}
+
+function renderStudents(){
+  const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
+  const f = document.getElementById('filter-status').value;
+  const lv = document.getElementById('filter-level').value;
+  const list = students.filter(function(s){
+    if (q && !((s.name||'').toLowerCase().includes(q) || (s.phone||'').includes(q))) return false;
+    if (f !== 'all' && getStatus(s) !== f) return false;
+    if (lv !== 'all' && s.level !== lv) return false;
+    return true;
+  });
+  list.sort(function(a,b){
+    const order = {expiring:0, active:1, expired:2};
+    return order[getStatus(a)] - order[getStatus(b)];
+  });
+  const el = document.getElementById('student-list');
+  if (list.length === 0) {
+    el.innerHTML = '<div class="empty">조건에 맞는 수강생이 없습니다.<br>[+ 신규 등록] 버튼으로 추가하세요.</div>';
+    return;
+  }
+  el.innerHTML = list.map(function(s){
+    const remaining = (s.total_sessions||0) - (s.used_sessions||0);
+    const endInfo = s.end_date ? '~ ' + s.end_date : '만료일 미설정';
+    const memoCount = (s.memos || []).length;
+    const prog = getProgress(s.id, s.level);
+    const progBar = prog.total > 0 ? `
+      <div style="margin-top: 8px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:#6b6b6a;">
+          <span>커리큘럼 진행도</span><span>${prog.done}/${prog.total} (${prog.percent}%)</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${prog.percent}%"></div></div>
+      </div>` : '';
+    return `<div class="card">
+      <div class="card-row">
+        <div>
+          <div class="name">${escapeHtml(s.name)} ${statusBadge(s)} ${s.level?`<span class="badge badge-level">${escapeHtml(s.level.split(' ')[0])}</span>`:''}</div>
+          <div class="sub">${escapeHtml(s.phone||'-')} · ${escapeHtml(s.level||'레벨 미정')}</div>
+        </div>
+        <div class="right">
+          <div style="font-size: 13px; font-weight: 500;">잔여 ${remaining}/${s.total_sessions||0}회</div>
+          <div class="sub">${endInfo}</div>
+        </div>
+      </div>
+      ${progBar}
+      <div class="actions">
+        <button class="mini" onclick="editStudent('${s.id}')">수정</button>
+        <button class="mini info" onclick="renewStudent('${s.id}')">재등록</button>
+        <button class="mini" onclick="viewProgress('${s.id}')">진행체크</button>
+        <button class="mini" onclick="addPayment('${s.id}')">결제</button>
+        <button class="mini" onclick="viewMemo('${s.id}')">메모(${memoCount})</button>
+        <button class="mini danger" onclick="deleteStudent('${s.id}')">삭제</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderCurriculum(){
+  const tabsEl = document.getElementById('level-tabs');
+  const levels = Object.keys(CURRICULUM);
+  if (!window._curLevel) window._curLevel = levels[0];
+  tabsEl.innerHTML = levels.map(l => '<span class="level-tab '+(l===window._curLevel?'active':'')+'" onclick="selectLevel(\''+l+'\')">'+l+'</span>').join('');
+  const lv = window._curLevel;
+  const c = CURRICULUM[lv];
+  const scheduleHtml = `<div class="schedule-grid">
+    <div class="head">시간</div><div class="head">코트 훈련</div><div class="head">추가 운동</div>
+    ${c.schedule.map(row => '<div>'+row[0]+'</div><div>'+row[1]+'</div><div>'+(row[2]||'-')+'</div>').join('')}
+  </div>`;
+  document.getElementById('curriculum-content').innerHTML = `
+    <div class="card" style="padding:16px 18px;">
+      <div style="font-weight:600;font-size:16px;">${lv}</div>
+      <div class="sub" style="margin-top:4px;">${c.age} · ${c.hours}</div>
+      <div style="font-size:13px;color:#444;margin-top:8px;">${c.desc}</div>
+    </div>
+    <div class="pillar"><div class="pillar-title"><div class="pillar-icon icon-tech">기</div>기술 (Technical)</div><ul>${c.technical.map(x=>'<li>'+x+'</li>').join('')}</ul></div>
+    <div class="pillar"><div class="pillar-title"><div class="pillar-icon icon-tact">전</div>전술 (Tactical)</div><ul>${c.tactical.map(x=>'<li>'+x+'</li>').join('')}</ul></div>
+    <div class="pillar"><div class="pillar-title"><div class="pillar-icon icon-phys">체</div>체력 (Physical)</div><ul>${c.physical.map(x=>'<li>'+x+'</li>').join('')}</ul></div>
+    <div class="pillar"><div class="pillar-title"><div class="pillar-icon icon-ment">멘</div>멘탈 (Mental)</div><ul>${c.mental.map(x=>'<li>'+x+'</li>').join('')}</ul></div>
+    <div class="pillar"><div class="pillar-title">📅 일일 훈련 구성 예시</div>${scheduleHtml}</div>
+    <div class="pillar"><div class="pillar-title">✅ 핵심 펀더멘털 (체크 항목)</div>
+      <div style="font-size:12px;color:#6b6b6a;">수강생 카드의 [진행체크] 버튼에서 각 항목을 체크할 수 있습니다.</div>
+      <div class="funda-grid">${c.fundamentals.map(f => '<div class="funda-item">'+f+'</div>').join('')}</div>
+    </div>`;
+}
+window.selectLevel = function(l){ window._curLevel = l; renderCurriculum(); };
+
+window.viewProgress = function(id){
+  const s = students.find(function(x){return x.id==id});
+  if (!s.level || !CURRICULUM[s.level]) { alert('먼저 [수정] 버튼으로 레벨을 지정해 주세요.'); return; }
+  const c = CURRICULUM[s.level];
+  const prog = progressMap[id] || {};
+  const items = c.fundamentals.map(function(f){
+    const checked = prog[s.level + '::' + f] ? 'checked' : '';
+    return '<div class="funda-item '+checked+'" onclick="toggleProgressUI('+id+',\''+s.level.replace(/\'/g,"&apos;")+'\',\''+f.replace(/\'/g,"&apos;")+'\')">'+f+'</div>';
+  }).join('');
+  const p = getProgress(id, s.level);
+  showModal(`<h3>${escapeHtml(s.name)} — ${escapeHtml(s.level)}</h3>
+    <div class="info-box">진행도: <b>${p.done} / ${p.total}</b> (${p.percent}%)
+      <div class="progress-bar" style="margin-top:6px;"><div class="progress-fill" style="width:${p.percent}%"></div></div></div>
+    <div style="font-size:13px;color:#444;margin-bottom:8px;">항목을 클릭해서 습득 여부를 체크하세요.</div>
+    <div class="funda-grid">${items}</div>
+    <div class="modal-actions"><button class="primary" onclick="closeModal()">완료</button></div>`);
+};
+
+window.toggleProgressUI = function(id, level, funda){
+  F('/admin/students/'+id+'/progress/toggle',{method:'POST',body:{level:level, fundamental_key:funda}}).then(function(){
+    refresh().then(function(){ viewProgress(id); });
+  });
+};
+
+function renderSchedule(){
+  const d = document.getElementById('schedule-date').value || todayStr();
+  F('/admin/lessons?date='+d).then(function(rows){
+    lessons = rows;
+    const list = rows;
+    const el = document.getElementById('schedule-list');
+    if (list.length === 0) { el.innerHTML = '<div class="empty">'+d+'에 예정된 레슨이 없습니다.</div>'; return; }
+    el.innerHTML = list.map(function(sc){
+      const names = (sc.student_ids||[]).map(function(id){
+        const st = students.find(function(s){return s.id==id});
+        return st ? escapeHtml(st.name) : '';
+      }).filter(Boolean).join(', ');
+      const isRecurring = sc.recurring_parent ? '<span class="badge badge-level">🔁 반복</span>' : '';
+      const blocksHtml = (sc.blocks && sc.blocks.length) ? `
+        <div style="margin-top:8px;padding:8px;background:#f9fafb;border-radius:6px;">
+          <div style="font-size:11px;color:#6b6b6a;font-weight:600;margin-bottom:4px;">📋 블록 ${sc.blocks.length}개</div>
+          ${sc.blocks.map(b => '<div style="font-size:12px;padding:2px 0;"><b>'+escapeHtml(b.time||'')+'</b> · '+escapeHtml(b.name||'')+(b.detail?' <span style="color:#9b9b98;">— '+escapeHtml(b.detail)+'</span>':'')+'</div>').join('')}
+        </div>` : '';
+      const drillCount = (sc.drill_ids||[]).length;
+      const drillBadge = drillCount > 0 ? `<span class="badge badge-level">🎯 드릴 ${drillCount}</span>` : '';
+      return `<div class="card"><div class="card-row">
+        <div style="flex:1;min-width:0;">
+          <div class="name">${escapeHtml(sc.time||'시간미정')} · ${escapeHtml(sc.court||'코트미정')} ${isRecurring} ${drillBadge}</div>
+          <div class="sub">${names || '수강생 없음'} (${(sc.student_ids||[]).length}명) ${sc.focus?' · 포커스: '+escapeHtml(sc.focus):''}</div>
+          ${blocksHtml}
+        </div>
+        <div class="actions">
+          <button class="mini" onclick="editSchedule('${sc.id}')">수정</button>
+          <button class="mini danger" onclick="deleteSchedule('${sc.id}')">삭제</button>
+        </div>
+      </div></div>`;
+    }).join('');
+  });
+}
+
+function renderAttendance(){
+  const d = document.getElementById('att-date').value || todayStr();
+  Promise.all([F('/admin/lessons?date='+d), F('/admin/attendance?date='+d)]).then(function(res){
+    const todays = res[0], att = res[1];
+    attendanceMap = {};
+    att.forEach(function(a){ attendanceMap[a.date + '::' + a.athlete_id] = a.status; });
+    const studentIds = [...new Set(todays.flatMap(s => s.student_ids||[]))];
+    const el = document.getElementById('attendance-list');
+    if (studentIds.length === 0) { el.innerHTML = '<div class="empty">'+d+'에 예정된 수강생이 없습니다.<br>일정 탭에서 먼저 레슨을 추가하세요.</div>'; return; }
+    el.innerHTML = studentIds.map(function(id){
+      const s = students.find(function(x){return x.id==id});
+      if (!s) return '';
+      const status = attendanceMap[d + '::' + id];
+      return `<div class="card"><div class="card-row">
+        <div>
+          <div class="name">${escapeHtml(s.name)}</div>
+          <div class="sub">${escapeHtml(s.level||'-')} · 잔여 ${(s.total_sessions||0)-(s.used_sessions||0)}회</div>
+        </div>
+        <div class="actions">
+          <button class="mini ${status==='present'?'success':''}" onclick="markAttend('${id}','${d}','present')">출석</button>
+          <button class="mini ${status==='late'?'warn':''}" onclick="markAttend('${id}','${d}','late')">지각</button>
+          <button class="mini ${status==='absent'?'fail':''}" onclick="markAttend('${id}','${d}','absent')">결석</button>
+        </div>
+      </div></div>`;
+    }).join('');
+  });
+}
+
+window.markAttend = function(athleteId, date, status){
+  F('/admin/attendance',{method:'POST',body:{athlete_id:+athleteId, date:date, status:status}}).then(function(){
+    refresh();
+  });
+};
+
+function renderPaymentMonths(months){
+  const sel = document.getElementById('pay-month');
+  const cur = sel.value || todayStr().slice(0,7);
+  const set = new Set([cur, ...months]);
+  const sorted = [...set].sort().reverse();
+  sel.innerHTML = sorted.map(m => '<option value="'+m+'" '+(m===cur?'selected':'')+'>'+m+'</option>').join('');
+}
+
+function renderPayments(){
+  const m = (document.getElementById('pay-month').value || todayStr().slice(0,7));
+  F('/admin/payments?month='+m).then(function(list){
+    payments = list;
+    const monthSet = new Set(list.map(p => (p.date||'').slice(0,7)));
+    renderPaymentMonths([...monthSet]);
+    const total = list.reduce(function(a,b){ return a + (b.amount||0); }, 0);
+    document.getElementById('pay-summary').textContent = m + ' 합계: ' + fmtMoney(total) + ' (' + list.length + '건)';
+    const el = document.getElementById('payment-list');
+    if (list.length === 0) { el.innerHTML = '<div class="empty">결제 기록이 없습니다.</div>'; return; }
+    el.innerHTML = list.map(function(p){
+      const s = students.find(function(x){return x.id===p.athlete_id}) || {name:'(삭제됨)'};
+      return `<div class="card"><div class="card-row">
+        <div><div class="name">${escapeHtml(s.name)}</div><div class="sub">${escapeHtml(p.date)} · ${escapeHtml(p.note||'-')}</div></div>
+        <div class="right">
+          <div style="font-weight:600;">${fmtMoney(p.amount)}</div>
+          <button class="mini danger" onclick="deletePayment('${p.id}')" style="margin-top:4px;">삭제</button>
+        </div>
+      </div></div>`;
+    }).join('');
+  });
+}
+
+// === 모달 ===
+function showModal(html){ document.getElementById('modal-bg').classList.add('show'); document.getElementById('modal-content').innerHTML = html; }
+function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); }
+window.closeModal = closeModal;
+document.getElementById('modal-bg').onclick = function(e){ if (e.target.id === 'modal-bg') closeModal(); };
+
+// === 학생 CRUD ===
+window.editStudent = function(id){
+  const s = id ? students.find(function(x){return x.id==id}) : {};
+  const isNew = !id;
+  const levelOpts = Object.keys(CURRICULUM).map(l => '<option value="'+l+'" '+(s.level===l?'selected':'')+'>'+l+'</option>').join('');
+  showModal(`<h3>${isNew?'신규 등록':'정보 수정'}</h3>
+    <div class="field"><label>이름 *</label><input type="text" id="f-name" value="${escapeHtml(s.name||'')}"></div>
+    <div class="field"><label>전화번호</label><input type="tel" id="f-phone" value="${escapeHtml(s.phone||'')}" placeholder="010-0000-0000"></div>
+    <div class="field"><label>아카데미 레벨</label><select id="f-level"><option value="">선택 안 함</option>${levelOpts}</select></div>
+    <div class="field-row">
+      <div class="field"><label>등록일</label><input type="date" id="f-start" value="${s.start_date||todayStr()}"></div>
+      <div class="field"><label>만료일</label><input type="date" id="f-end" value="${s.end_date||''}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>총 횟수</label><input type="number" id="f-total" value="${s.total_sessions||0}" min="0"></div>
+      <div class="field"><label>사용 횟수</label><input type="number" id="f-used" value="${s.used_sessions||0}" min="0"></div>
+    </div>
+    <div class="field"><label>특이사항</label><textarea id="f-note" rows="2">${escapeHtml(s.note||'')}</textarea></div>
+    <div class="modal-actions">
+      <button onclick="closeModal()">취소</button>
+      <button class="primary" onclick="saveStudent('${id||''}')">저장</button>
+    </div>`);
+  setTimeout(function(){ document.getElementById('f-name').focus(); }, 50);
+};
+
+window.saveStudent = function(id){
+  const data = {
+    name: document.getElementById('f-name').value.trim(),
+    phone: document.getElementById('f-phone').value.trim(),
+    level: document.getElementById('f-level').value,
+    start_date: document.getElementById('f-start').value,
+    end_date: document.getElementById('f-end').value,
+    total_sessions: parseInt(document.getElementById('f-total').value)||0,
+    used_sessions: parseInt(document.getElementById('f-used').value)||0,
+    note: document.getElementById('f-note').value.trim()
+  };
+  if (!data.name) { alert('이름을 입력하세요'); return; }
+  const p = id ? F('/admin/students/'+id,{method:'PUT',body:data}) : F('/admin/students',{method:'POST',body:data});
+  p.then(function(){ closeModal(); refresh(); }).catch(function(e){ alert(e.message); });
+};
+
+window.renewStudent = function(id){
+  const s = students.find(function(x){return x.id==id});
+  const remaining = (s.total_sessions||0) - (s.used_sessions||0);
+  showModal(`<h3>${escapeHtml(s.name)}님 재등록</h3>
+    <div style="font-size:13px;color:#6b6b6a;background:#f9fafb;padding:10px;border-radius:6px;margin-bottom:14px;">
+      현재 잔여: <b>${remaining}회</b><br>현재 레벨: <b>${escapeHtml(s.level||'미지정')}</b>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>추가 횟수</label><input type="number" id="r-add" value="10" min="1"></div>
+      <div class="field"><label>새 만료일</label><input type="date" id="r-end"></div>
+    </div>
+    <div class="field"><label>결제 금액 (선택)</label><input type="number" id="r-amount" value="0" min="0"></div>
+    <div class="field"><label>레벨 변경 (승급 시)</label>
+      <select id="r-level"><option value="">변경 없음</option>${Object.keys(CURRICULUM).map(l=>'<option value="'+l+'">'+l+'</option>').join('')}</select>
+    </div>
+    <div class="field"><label>메모</label><input type="text" id="r-note" value="재등록"></div>
+    <div class="modal-actions"><button onclick="closeModal()">취소</button><button class="primary" onclick="confirmRenew('${id}')">재등록 완료</button></div>`);
+  const future = new Date(); future.setDate(future.getDate() + 60);
+  document.getElementById('r-end').value = future.toISOString().slice(0,10);
+};
+
+window.confirmRenew = function(id){
+  const s = students.find(function(x){return x.id==id});
+  const add = parseInt(document.getElementById('r-add').value)||0;
+  const newEnd = document.getElementById('r-end').value;
+  const amount = parseInt(document.getElementById('r-amount').value)||0;
+  const newLevel = document.getElementById('r-level').value;
+  const note = document.getElementById('r-note').value || '재등록';
+  const updated = {
+    name: s.name, phone: s.phone||'', level: newLevel || s.level || '',
+    age: s.age, start_date: s.start_date,
+    end_date: newEnd || s.end_date,
+    total_sessions: (s.total_sessions||0) + add,
+    used_sessions: s.used_sessions||0, note: s.note||''
+  };
+  F('/admin/students/'+id,{method:'PUT',body:updated}).then(function(){
+    if (amount > 0) return F('/admin/payments',{method:'POST',body:{athlete_id:+id, date:todayStr(), amount:amount, note:note}});
+  }).then(function(){ closeModal(); refresh(); }).catch(function(e){ alert(e.message); });
+};
+
+window.deleteStudent = function(id){
+  const s = students.find(function(x){return x.id==id});
+  if (!confirm(s.name + '님을 정말 삭제하시겠습니까?\n관련 데이터는 보존되지만 목록에서 사라집니다.')) return;
+  F('/admin/students/'+id,{method:'DELETE'}).then(refresh);
+};
+
+window.addPayment = function(id){
+  const s = students.find(function(x){return x.id==id});
+  showModal(`<h3>${escapeHtml(s.name)}님 결제 기록</h3>
+    <div class="field"><label>날짜</label><input type="date" id="p-date" value="${todayStr()}"></div>
+    <div class="field"><label>금액</label><input type="number" id="p-amount" value="0" min="0"></div>
+    <div class="field"><label>메모</label><input type="text" id="p-note" placeholder="예: 10회권 결제"></div>
+    <div class="modal-actions"><button onclick="closeModal()">취소</button><button class="primary" onclick="savePayment('${id}')">저장</button></div>`);
+};
+
+window.savePayment = function(id){
+  F('/admin/payments',{method:'POST',body:{
+    athlete_id:+id,
+    date:document.getElementById('p-date').value,
+    amount:parseInt(document.getElementById('p-amount').value)||0,
+    note:document.getElementById('p-note').value
+  }}).then(function(){ closeModal(); refresh(); });
+};
+
+window.deletePayment = function(id){
+  if (!confirm('결제 기록을 삭제하시겠습니까?')) return;
+  F('/admin/payments/'+id,{method:'DELETE'}).then(refresh);
+};
+
+window.viewMemo = function(id){
+  F('/admin/students/'+id+'/memos').then(function(memos){
+    const s = students.find(function(x){return x.id==id});
+    const list = memos.map(function(m){
+      return '<div style="padding:10px;background:#f9fafb;border-radius:6px;margin-bottom:6px;">'+
+        '<div style="font-size:11px;color:#9b9b98;">'+escapeHtml(m.date)+'</div>'+
+        '<div style="font-size:13px;margin-top:2px;white-space:pre-wrap;">'+escapeHtml(m.text)+'</div>'+
+        '<button class="mini danger" onclick="deleteMemo('+m.id+','+id+')" style="margin-top:4px;">삭제</button>'+
+      '</div>';
+    }).join('');
+    showModal(`<h3>${escapeHtml(s.name)}님 메모</h3>
+      <div style="max-height:200px;overflow-y:auto;margin-bottom:12px;">${list || '<div class="empty" style="padding:20px;">메모 없음</div>'}</div>
+      <div class="field"><label>새 메모</label><textarea id="m-text" rows="3" placeholder="예: 백핸드 슬라이스 연습 필요"></textarea></div>
+      <div class="modal-actions"><button onclick="closeModal()">닫기</button><button class="primary" onclick="addMemo(${id})">메모 추가</button></div>`);
+  });
+};
+
+window.addMemo = function(id){
+  const text = document.getElementById('m-text').value.trim();
+  if (!text) return;
+  F('/admin/students/'+id+'/memos',{method:'POST',body:{date:todayStr(), text:text}}).then(function(){
+    refresh().then(function(){ viewMemo(id); });
+  });
+};
+
+window.deleteMemo = function(memoId, studentId){
+  F('/admin/memos/'+memoId,{method:'DELETE'}).then(function(){
+    refresh().then(function(){ viewMemo(studentId); });
+  });
+};
+
+// === 일정 (프리셋 + 드릴 + 반복) ===
+var scState = null; // {date, time, court, focus, student_ids, blocks, drill_ids, group_preset_id, drill_objs}
+
+window.editSchedule = function(id){
+  const sc = id ? lessons.find(function(x){return x.id==id}) : null;
+  scState = {
+    date: sc ? sc.date : (document.getElementById('schedule-date').value || todayStr()),
+    time: sc ? sc.time : '10:00',
+    court: sc ? sc.court : '',
+    focus: sc ? sc.focus : '',
+    student_ids: sc ? (sc.student_ids||[]).slice() : [],
+    blocks: sc ? JSON.parse(JSON.stringify(sc.blocks||[])) : [],
+    drill_ids: sc ? (sc.drill_ids||[]).slice() : [],
+    group_preset_id: sc ? sc.group_preset_id : null,
+    drill_objs: []
+  };
+  // 첨부된 드릴 정보 미리 가져오기
+  const drillFetch = scState.drill_ids.length ? F('/admin/drills').then(function(all){
+    scState.drill_objs = all.filter(function(d){ return scState.drill_ids.indexOf(d.id) >= 0; });
+  }) : Promise.resolve();
+  Promise.all([F('/admin/groups'), drillFetch]).then(function(res){
+    const groups = res[0];
+    renderScheduleModal(id, groups);
+  });
+};
+
+function renderScheduleModal(id, groups){
+  const s = scState;
+  const opts = students.map(function(st){
+    const checked = s.student_ids.indexOf(st.id) >= 0 ? 'checked' : '';
+    return '<label><input type="checkbox" value="'+st.id+'" '+checked+'> '+escapeHtml(st.name)+(st.level?' ('+escapeHtml(st.level.split(' ')[0])+')':'')+'</label>';
+  }).join('');
+  const groupOpts = '<option value="">-- 프리셋 선택 --</option>' + groups.map(function(g){
+    return '<option value="'+g.id+'" '+(s.group_preset_id==g.id?'selected':'')+'>'+escapeHtml(g.name)+' ('+g.duration+'분)</option>';
+  }).join('');
+  const blocksHtml = s.blocks.map(function(b, idx){
+    return `<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+      <input type="text" data-bk-time="${idx}" value="${escapeHtml(b.time||'')}" placeholder="시간" style="width:80px;font-size:12px;padding:6px;">
+      <input type="text" data-bk-name="${idx}" value="${escapeHtml(b.name||'')}" placeholder="블록 이름" style="flex:1;font-size:13px;padding:6px;font-weight:500;">
+      <button class="mini danger" onclick="removeBlock(${idx})" style="padding:4px 8px;">🗑️</button>
+    </div>
+    <input type="text" data-bk-detail="${idx}" value="${escapeHtml(b.detail||'')}" placeholder="상세 (선택)" style="font-size:11px;padding:6px;margin-bottom:8px;">`;
+  }).join('');
+  const drillsHtml = s.drill_objs.map(function(d){
+    return `<div style="padding:6px 8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+      <span><b>[${escapeHtml(d.category)}]</b> ${escapeHtml(d.name)} <span style="color:#6b6b6a;">${d.duration?d.duration+'분':''}</span></span>
+      <button class="mini danger" onclick="removeDrill(${d.id})" style="padding:2px 6px;">×</button>
+    </div>`;
+  }).join('');
+  showModal(`<h3>${id?'레슨 수정':'레슨 일정 추가'}</h3>
+
+    <div class="field-row">
+      <div class="field"><label>날짜</label><input type="date" id="sc-date" value="${s.date}"></div>
+      <div class="field"><label>시간</label><input type="time" id="sc-time" value="${s.time}"></div>
+    </div>
+    <div class="field"><label>코트</label><input type="text" id="sc-court" value="${escapeHtml(s.court)}" placeholder="예: 1번 코트"></div>
+    <div class="field"><label>오늘의 포커스</label><input type="text" id="sc-focus" value="${escapeHtml(s.focus)}" placeholder="예: 톱스핀 포핸드"></div>
+
+    <div class="field">
+      <label>👥 그룹 프리셋 (선택 시 블록 자동 채움)</label>
+      <div style="display:flex;gap:6px;">
+        <select id="sc-preset" style="flex:1;">${groupOpts}</select>
+        <button class="info" onclick="applyPreset()">적용</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>📋 블록 (시간 단위 구성)</label>
+      <div id="sc-blocks">${blocksHtml || '<div style="font-size:12px;color:#9b9b98;padding:8px 0;">블록 없음 — 프리셋 적용 또는 + 추가</div>'}</div>
+      <button class="mini" onclick="addBlock()" style="margin-top:6px;border-style:dashed;">+ 블록 추가</button>
+    </div>
+
+    <div class="field">
+      <label>🎯 첨부 드릴 (${s.drill_objs.length}개)</label>
+      <div id="sc-drills">${drillsHtml || '<div style="font-size:12px;color:#9b9b98;">첨부된 드릴 없음</div>'}</div>
+      <button class="mini info" onclick="openDrillPicker()" style="margin-top:6px;">+ 드릴 추가</button>
+    </div>
+
+    <div class="field"><label>참여 수강생</label>
+      <div class="checkbox-list" id="sc-students">${opts || '<div style="font-size:12px;color:#9b9b98;">먼저 수강생을 등록하세요</div>'}</div>
+    </div>
+
+    ${id ? '' : `
+    <div class="field" style="background:#fef3c7;padding:10px;border-radius:6px;border:1px solid #fbbf24;">
+      <label style="color:#92400e;"><input type="checkbox" id="sc-recur" onchange="toggleRecur()"> 🔁 반복 일정 (매주 같은 요일)</label>
+      <div id="sc-recur-opts" style="display:none;margin-top:8px;">
+        <input type="number" id="sc-weeks" value="8" min="2" max="52" style="width:80px;"> 주 동안 반복
+      </div>
+    </div>`}
+
+    <div class="modal-actions">
+      <button onclick="closeModal()">취소</button>
+      <button class="primary" onclick="saveSchedule('${id||''}')">저장</button>
+    </div>`);
+}
+
+window.toggleRecur = function(){
+  const opts = document.getElementById('sc-recur-opts');
+  opts.style.display = document.getElementById('sc-recur').checked ? 'block' : 'none';
+};
+
+function syncScState(){
+  scState.date = document.getElementById('sc-date').value;
+  scState.time = document.getElementById('sc-time').value;
+  scState.court = document.getElementById('sc-court').value;
+  scState.focus = document.getElementById('sc-focus').value;
+  scState.student_ids = [...document.querySelectorAll('#sc-students input:checked')].map(i=>+i.value);
+  // blocks
+  scState.blocks = scState.blocks.map(function(_, idx){
+    return {
+      time: document.querySelector('[data-bk-time="'+idx+'"]').value,
+      name: document.querySelector('[data-bk-name="'+idx+'"]').value,
+      detail: document.querySelector('[data-bk-detail="'+idx+'"]').value
+    };
+  });
+}
+
+window.addBlock = function(){
+  syncScState();
+  scState.blocks.push({time:'30분', name:'', detail:''});
+  F('/admin/groups').then(function(g){ renderScheduleModal(scState._editId, g); });
+};
+window.removeBlock = function(idx){
+  syncScState();
+  scState.blocks.splice(idx, 1);
+  F('/admin/groups').then(function(g){ renderScheduleModal(scState._editId, g); });
+};
+window.removeDrill = function(drillId){
+  syncScState();
+  scState.drill_ids = scState.drill_ids.filter(function(x){ return x !== drillId; });
+  scState.drill_objs = scState.drill_objs.filter(function(d){ return d.id !== drillId; });
+  F('/admin/groups').then(function(g){ renderScheduleModal(scState._editId, g); });
+};
+
+window.applyPreset = function(){
+  const pid = document.getElementById('sc-preset').value;
+  if (!pid) { alert('프리셋을 선택하세요'); return; }
+  syncScState();
+  F('/admin/groups').then(function(groups){
+    const grp = groups.find(function(g){ return g.id == pid; });
+    if (!grp) return;
+    scState.blocks = JSON.parse(JSON.stringify(grp.blocks || []));
+    scState.group_preset_id = +pid;
+    renderScheduleModal(scState._editId, groups);
+  });
+};
+
+window.openDrillPicker = function(){
+  syncScState();
+  F('/admin/drills').then(function(all){
+    const cats = [...new Set(all.map(d => d.category))];
+    showModal(`<h3>🎯 드릴 추가</h3>
+      <input type="text" id="dp-search" placeholder="이름 검색..." style="margin-bottom:8px;">
+      <select id="dp-cat" style="margin-bottom:10px;width:100%;">
+        <option value="">전체 카테고리</option>
+        ${cats.map(c => '<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>').join('')}
+      </select>
+      <div id="dp-list" style="max-height:300px;overflow-y:auto;border:1px solid #e5e5e4;border-radius:6px;padding:6px;"></div>
+      <div class="modal-actions">
+        <button onclick="closeDrillPicker()">완료</button>
+      </div>`);
+    function renderList(){
+      const q = document.getElementById('dp-search').value.toLowerCase();
+      const cat = document.getElementById('dp-cat').value;
+      const filtered = all.filter(function(d){
+        if (cat && d.category !== cat) return false;
+        if (q && !(d.name.toLowerCase().includes(q) || (d.detail||'').toLowerCase().includes(q))) return false;
+        return true;
+      });
+      document.getElementById('dp-list').innerHTML = filtered.slice(0, 50).map(function(d){
+        const added = scState.drill_ids.indexOf(d.id) >= 0;
+        return `<div style="padding:6px 8px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+          <div><b>[${escapeHtml(d.category)}]</b> ${escapeHtml(d.name)} <span style="color:#6b6b6a;">${d.duration?d.duration+'분':''}</span></div>
+          <button class="mini ${added?'success':'info'}" onclick="toggleDrill(${d.id})">${added?'✓':'+'}</button>
+        </div>`;
+      }).join('') + (filtered.length === 0 ? '<div class="empty" style="padding:20px;">결과 없음</div>' : '');
+    }
+    document.getElementById('dp-search').oninput = renderList;
+    document.getElementById('dp-cat').onchange = renderList;
+    window._allDrills = all;
+    window.toggleDrill = function(drillId){
+      const idx = scState.drill_ids.indexOf(drillId);
+      if (idx >= 0) {
+        scState.drill_ids.splice(idx, 1);
+        scState.drill_objs = scState.drill_objs.filter(function(d){ return d.id !== drillId; });
+      } else {
+        scState.drill_ids.push(drillId);
+        const d = all.find(function(x){ return x.id === drillId; });
+        if (d) scState.drill_objs.push(d);
+      }
+      renderList();
+    };
+    renderList();
+  });
+};
+
+window.closeDrillPicker = function(){
+  // 일정 모달로 복귀
+  F('/admin/groups').then(function(g){ renderScheduleModal(scState._editId, g); });
+};
+
+window.saveSchedule = function(id){
+  syncScState();
+  const data = {
+    date: scState.date, time: scState.time, court: scState.court, focus: scState.focus,
+    student_ids: scState.student_ids,
+    blocks: scState.blocks,
+    drill_ids: scState.drill_ids,
+    group_preset_id: scState.group_preset_id
+  };
+  const recurEl = document.getElementById('sc-recur');
+  if (!id && recurEl && recurEl.checked) {
+    const weeks = parseInt(document.getElementById('sc-weeks').value)||8;
+    F('/admin/lessons/recurring',{method:'POST',body:{...data, start_date:data.date, weeks:weeks}})
+      .then(function(r){ alert(r.count + '주차 반복 일정 생성됨'); closeModal(); refresh(); });
+    return;
+  }
+  const p = id ? F('/admin/lessons/'+id,{method:'PUT',body:data}) : F('/admin/lessons',{method:'POST',body:data});
+  p.then(function(){ closeModal(); refresh(); });
+};
+
+window.deleteSchedule = function(id){
+  const sc = lessons.find(function(x){ return x.id==id; });
+  // 반복 일정의 부모인지 확인
+  const isParent = sc && lessons.some(function(x){ return x.recurring_parent==id; });
+  if (isParent) {
+    if (confirm('이 일정은 반복 시리즈의 시작입니다. 모든 반복 일정을 함께 삭제할까요?\n\n[확인] 전체 삭제 / [취소] 이번 일정만')) {
+      F('/admin/lessons/'+id+'?cascade=1',{method:'DELETE'}).then(refresh);
+    } else {
+      F('/admin/lessons/'+id,{method:'DELETE'}).then(refresh);
+    }
+    return;
+  }
+  if (!confirm('일정을 삭제하시겠습니까?')) return;
+  F('/admin/lessons/'+id,{method:'DELETE'}).then(refresh);
+};
+
+// === 탭 ===
+document.querySelectorAll('.tab').forEach(function(btn){
+  btn.onclick = function(){
+    document.querySelectorAll('.tab').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('show'); });
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('show'); if(btn.dataset.tab==='library')loadLibrary();
+  };
+});
+
+document.getElementById('btn-add').onclick = function(){ editStudent(null); };
+document.getElementById('search-input').oninput = renderStudents;
+document.getElementById('filter-status').onchange = renderStudents;
+document.getElementById('filter-level').onchange = renderStudents;
+document.getElementById('schedule-date').onchange = renderSchedule;
+document.getElementById('att-date').onchange = renderAttendance;
+document.getElementById('btn-add-schedule').onclick = function(){ editSchedule(null); };
+document.getElementById('pay-month').onchange = renderPayments;
+
+// CSV / 백업
+document.getElementById('btn-export').onclick = function(){
+  const rows = [['이름','전화번호','레벨','등록일','만료일','총횟수','사용','잔여','상태','진행도(%)','특이사항']];
+  students.forEach(function(s){
+    const p = getProgress(s.id, s.level);
+    rows.push([s.name, s.phone||'', s.level||'', s.start_date||'', s.end_date||'',
+      s.total_sessions||0, s.used_sessions||0, (s.total_sessions||0)-(s.used_sessions||0),
+      ({active:'활성', expiring:'만료임박', expired:'만료'})[getStatus(s)], p.percent, s.note||'']);
+  });
+  const csv = '﻿' + rows.map(r => r.map(c => '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  downloadFile(csv, '수강생명단_' + todayStr() + '.csv', 'text/csv');
+};
+
+document.getElementById('btn-backup').onclick = function(){
+  F('/admin/backup').then(function(d){
+    downloadFile(JSON.stringify(d, null, 2), 'HawaiiCoach_백업_' + todayStr() + '.json', 'application/json');
+  });
+};
+
+function downloadFile(content, filename, type){
+  const blob = new Blob([content], {type});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+init();
+
+// ============ ⚙️ 라이브러리 관리 ============
+var libState = { drills:[], templates:[], phases:[], currentTplExercises:null };
+
+function loadLibrary(){
+  var el = document.getElementById('library-content');
+  el.innerHTML = '로딩 중...';
+  Promise.all([F('/drills'), F('/templates'), F('/phase-programs')]).then(function(res){
+    libState.drills = res[0]; libState.templates = res[1]; libState.phases = res[2];
+    renderLibrary();
+  }).catch(function(e){ el.innerHTML = '<div style="color:#ef4444">로드 실패: '+e.message+'</div>'; });
+}
+
+function renderLibrary(){
+  var h = '';
+  h += renderLibSection('🎯 드릴 라이브러리', libState.drills.length+'개', 'drill', libState.drills.map(function(d){
+    return { id:d.id, line1:'['+d.category+'] '+d.name, line2:(d.detail||'').slice(0,80), badge:d.level };
+  }));
+  h += renderLibSection('📋 훈련 템플릿', libState.templates.length+'개', 'template', libState.templates.map(function(t){
+    return { id:t.id, line1:t.name, line2:(t.description||'').slice(0,80), badge:t.methodology };
+  }));
+  h += renderLibSection('🗓️ 페이즈 프로그램', libState.phases.length+'개', 'phase', libState.phases.map(function(p){
+    return { id:p.id, line1:'['+p.phase+' / '+p.day_of_week+'일차] '+p.title, line2:(p.blocks||[]).map(function(b){return b.name}).join(' · ').slice(0,80), badge:p.phase };
+  }));
+  document.getElementById('library-content').innerHTML = h;
+}
+
+function pickDrill(onSelect){
+  F('/drills').then(function(all){
+    var cats = [];
+    all.forEach(function(d){ if (cats.indexOf(d.category)<0) cats.push(d.category); });
+    cats.sort();
+    showModal('<h3>🎯 드릴에서 선택 ('+all.length+'개)</h3>'+
+      '<input type="text" id="pd-search" placeholder="이름/상세 검색..." style="margin-bottom:8px;">'+
+      '<select id="pd-cat" style="margin-bottom:10px;width:100%;">'+
+        '<option value="">전체 카테고리</option>'+
+        cats.map(function(c){return '<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>'}).join('')+
+      '</select>'+
+      '<div id="pd-list" style="max-height:340px;overflow-y:auto;border:1px solid #e5e5e4;border-radius:6px;padding:6px;"></div>'+
+      '<div class="modal-actions"><button onclick="closeModal()">취소</button></div>');
+    function renderList(){
+      var q = document.getElementById('pd-search').value.toLowerCase();
+      var cat = document.getElementById('pd-cat').value;
+      var filtered = all.filter(function(d){
+        if (cat && d.category !== cat) return false;
+        if (q && !((d.name||'').toLowerCase().indexOf(q)>=0 || (d.detail||'').toLowerCase().indexOf(q)>=0)) return false;
+        return true;
+      });
+      document.getElementById('pd-list').innerHTML = filtered.slice(0, 100).map(function(d){
+        return '<div style="padding:8px;border-bottom:1px solid #f3f4f6;font-size:12px;cursor:pointer" onclick="window._pickedDrill('+d.id+')">'+
+          '<b>['+escapeHtml(d.category)+']</b> '+escapeHtml(d.name)+' <span style="color:#6b6b6a;">'+(d.duration?d.duration+'분':'')+'</span>'+
+          (d.detail?'<div style="font-size:11px;color:#9b9b98;margin-top:2px">'+escapeHtml(d.detail)+'</div>':'')+
+        '</div>';
+      }).join('') + (filtered.length === 0 ? '<div style="padding:20px;color:#9b9b98">결과 없음</div>' : (filtered.length>100?'<div style="padding:8px;color:#9b9b98;font-size:11px">처음 100개만 표시 — 검색하세요</div>':''));
+    }
+    document.getElementById('pd-search').oninput = renderList;
+    document.getElementById('pd-cat').onchange = renderList;
+    window._pickedDrill = function(id){
+      var drill = all.find(function(d){ return d.id === id; });
+      closeModal();
+      if (drill && onSelect) onSelect(drill);
+    };
+    renderList();
+  });
+}
+
+function renderLibSection(title, count, kind, items){
+  var h = '<div class="card" style="margin-bottom:14px;background:#1a1a2e;border-radius:12px;padding:12px">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
+  h += '<div style="font-size:15px;font-weight:700">'+title+' <span style="color:#9b9b98;font-size:11px;margin-left:6px">'+count+'</span></div>';
+  h += '<button class="mini info" onclick="addLibItem(\''+kind+'\')">+ 추가</button>';
+  h += '</div>';
+  h += '<div style="max-height:300px;overflow-y:auto">';
+  if (!items.length) {
+    h += '<div style="color:#9b9b98;font-size:12px;padding:8px">없음</div>';
+  } else {
+    items.forEach(function(it){
+      h += '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px;border-bottom:1px solid #2a2a3e;cursor:pointer" onclick="editLibItem(\''+kind+'\','+it.id+')">';
+      h += '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">'+escapeHtml(it.line1)+'</div>';
+      if (it.line2) h += '<div style="font-size:11px;color:#9b9b98;margin-top:2px">'+escapeHtml(it.line2)+'</div>';
+      h += '</div>';
+      if (it.badge) h += '<span class="badge" style="background:#2a2a3e;color:#9b9b98;font-size:10px;padding:2px 6px;border-radius:4px;flex-shrink:0">'+escapeHtml(it.badge)+'</span>';
+      h += '<button class="mini danger" style="flex-shrink:0;font-size:11px;padding:4px 8px" onclick="event.stopPropagation();delLibItem(\''+kind+'\','+it.id+')">🗑️</button>';
+      h += '</div>';
+    });
+  }
+  h += '</div></div>';
+  return h;
+}
+
+function escapeHtml(s){ return String(s||'').replace(/[&<>"]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]}); }
+
+function addLibItem(kind){
+  if (kind === 'drill') {
+    var category = prompt('카테고리 (예: technical, tactical, match, mental, movement, strength, conditioning, recovery, vision, 베이스라인 등):', 'technical');
+    if (!category) return;
+    var name = prompt('드릴 이름:', ''); if (!name) return;
+    var detail = prompt('상세 설명 (생략 가능):', '') || '';
+    var duration = prompt('시간 (분, 숫자만, 생략 가능):', '15');
+    var level = prompt('난이도 (easy / medium / hard):', 'medium') || 'medium';
+    F('/drills',{method:'POST',body:{category:category, name:name, detail:detail, duration:duration?+duration:null, level:level}}).then(loadLibrary);
+  } else if (kind === 'template') {
+    var name = prompt('템플릿 이름 (예: 📅 토요일 — 시합데이):', ''); if (!name) return;
+    var description = prompt('설명 (생략 가능):', '') || '';
+    var methodology = prompt('메소드 분류 (예: weekly, custom, nadal, img 등):', 'custom') || 'custom';
+    F('/templates',{method:'POST',body:{name:name, description:description, methodology:methodology}}).then(function(){
+      loadLibrary();
+      setTimeout(function(){ alert('템플릿 만들었어요. 운동을 추가하려면 그 템플릿을 클릭하세요.'); }, 200);
+    });
+  } else if (kind === 'phase') {
+    var phase = prompt('phase 코드 (예: itf_red, adult_beginner, custom 등):', 'custom'); if (!phase) return;
+    var day = prompt('몇 일차 (숫자):', '1'); if (!day) return;
+    var title = prompt('제목 (예: 🎾 1일 — 베이스라인 안정화):', ''); if (!title) return;
+    F('/phase-programs',{method:'POST',body:{phase:phase, day_of_week:+day, title:title, blocks:[]}}).then(function(r){
+      loadLibrary();
+      setTimeout(function(){
+        if (confirm('만들었어요. 지금 블록(운동)을 추가할까요? (드릴 라이브러리에서 선택 가능)')) {
+          editLibItem('phase', r.id);
+        }
+      }, 100);
+    });
+  }
+}
+
+function editLibItem(kind, id){
+  if (kind === 'drill') {
+    var d = libState.drills.find(function(x){return x.id===id}); if (!d) return;
+    var act = prompt('"'+d.name+'" 편집:\n1=이름  2=카테고리  3=상세  4=시간(분)  5=난이도  (빈 칸=취소)','');
+    if (!act) return; act = act.trim();
+    var v;
+    if (act==='1') { v = prompt('이름:', d.name); if (v) d.name = v; else return; }
+    else if (act==='2') { v = prompt('카테고리:', d.category); if (v) d.category = v; else return; }
+    else if (act==='3') { v = prompt('상세:', d.detail||''); if (v===null) return; d.detail = v; }
+    else if (act==='4') { v = prompt('시간 (분, 빈 칸=null):', d.duration||''); d.duration = v?+v:null; }
+    else if (act==='5') { v = prompt('난이도 (easy/medium/hard):', d.level||'medium'); if (v) d.level = v; else return; }
+    else return;
+    F('/drills/'+id,{method:'PUT',body:d}).then(loadLibrary);
+  } else if (kind === 'template') {
+    var t = libState.templates.find(function(x){return x.id===id}); if (!t) return;
+    var act = prompt('"'+t.name+'" 편집:\n1=이름  2=설명  3=메소드  4=운동 항목 보기/추가  (빈 칸=취소)','');
+    if (!act) return; act = act.trim();
+    var v;
+    if (act==='1') { v = prompt('이름:', t.name); if (v) t.name = v; else return;
+      F('/templates/'+id,{method:'PUT',body:t}).then(loadLibrary); }
+    else if (act==='2') { v = prompt('설명:', t.description||''); if (v===null) return; t.description = v;
+      F('/templates/'+id,{method:'PUT',body:t}).then(loadLibrary); }
+    else if (act==='3') { v = prompt('메소드:', t.methodology||'custom'); if (v) t.methodology = v; else return;
+      F('/templates/'+id,{method:'PUT',body:t}).then(loadLibrary); }
+    else if (act==='4') { editTemplateExercises(id); }
+  } else if (kind === 'phase') {
+    var p = libState.phases.find(function(x){return x.id===id}); if (!p) return;
+    var act = prompt('"'+p.title+'" 편집:\n1=제목  2=phase  3=일차  4=블록 다시 입력 (수동)\n5=드릴 라이브러리에서 블록 추가  (빈 칸=취소)','');
+    if (!act) return; act = act.trim();
+    var v;
+    if (act==='1') { v = prompt('제목:', p.title); if (v) p.title = v; else return; }
+    else if (act==='2') { v = prompt('phase:', p.phase); if (v) p.phase = v; else return; }
+    else if (act==='3') { v = prompt('일차 (숫자):', p.day_of_week); if (v) p.day_of_week = +v; else return; }
+    else if (act==='4') {
+      var blocks = [];
+      while (true) {
+        var btime = prompt('블록 시간 (예: 15분) / 빈 칸 = 끝:', '');
+        if (!btime) break;
+        var bname = prompt('블록 이름:', ''); if (!bname) break;
+        var bdetail = prompt('블록 상세 (생략 가능):', '') || '';
+        blocks.push({time:btime, name:bname, detail:bdetail});
+      }
+      p.blocks = blocks;
+    }
+    else if (act==='5') {
+      pickDrill(function(drill){
+        if (!Array.isArray(p.blocks)) p.blocks = [];
+        p.blocks.push({time:(drill.duration?drill.duration+'분':'15분'), name:drill.name, detail:drill.detail||''});
+        F('/phase-programs/'+id,{method:'PUT',body:p}).then(function(){ loadLibrary(); setTimeout(function(){ if(confirm('블록 더 추가할까요?')) editLibItem('phase', id); }, 100); });
+      });
+      return;
+    }
+    else return;
+    F('/phase-programs/'+id,{method:'PUT',body:p}).then(loadLibrary);
+  }
+}
+
+function editTemplateExercises(tid){
+  F('/templates/'+tid).then(function(t){
+    var lines = (t.exercises||[]).map(function(e,i){ return (i+1)+'. ['+e.category+'] '+e.name+(e.duration_min?' ('+e.duration_min+'분)':''); });
+    var msg = '🏃 '+t.name+'\n\n현재 운동:\n'+(lines.length?lines.join('\n'):'없음')+'\n\n1=운동 직접 추가\n2=운동 수정 (번호로)\n3=운동 삭제 (번호로)\n4=드릴 라이브러리에서 추가\n(빈 칸=취소)';
+    var act = prompt(msg, '');
+    if (!act) return; act = act.trim();
+    if (act==='1') {
+      var category = prompt('카테고리:', 'technical') || 'technical';
+      var name = prompt('운동 이름:', ''); if (!name) return;
+      var dur = prompt('시간 (분, 생략 가능):', '');
+      var sets = prompt('세트 (숫자, 생략 가능):', '');
+      var reps = prompt('반복 (숫자, 생략 가능):', '');
+      var notes = prompt('메모 (생략 가능):', '') || '';
+      F('/templates/'+tid+'/exercises',{method:'POST',body:{category:category, name:name, duration_min:dur?+dur:null, sets:sets?+sets:null, reps:reps?+reps:null, notes:notes}}).then(function(){ editTemplateExercises(tid); });
+    } else if (act==='2') {
+      var n = prompt('수정할 번호:', ''); if (!n) return;
+      var ex = (t.exercises||[])[+n-1]; if (!ex) { alert('번호 잘못'); return; }
+      var f = prompt('"'+ex.name+'" 어디 수정?\n1=이름  2=카테고리  3=시간(분)  4=세트  5=반복  6=메모', '');
+      if (!f) return; f = f.trim();
+      var v;
+      if (f==='1') { v = prompt('이름:', ex.name); if (v) ex.name = v; else return; }
+      else if (f==='2') { v = prompt('카테고리:', ex.category); if (v) ex.category = v; else return; }
+      else if (f==='3') { v = prompt('시간(분):', ex.duration_min||''); ex.duration_min = v?+v:null; }
+      else if (f==='4') { v = prompt('세트:', ex.sets||''); ex.sets = v?+v:null; }
+      else if (f==='5') { v = prompt('반복:', ex.reps||''); ex.reps = v?+v:null; }
+      else if (f==='6') { v = prompt('메모:', ex.notes||''); if (v===null) return; ex.notes = v; }
+      else return;
+      F('/template-exercises/'+ex.id,{method:'PUT',body:ex}).then(function(){ editTemplateExercises(tid); });
+    } else if (act==='3') {
+      var n = prompt('삭제할 번호:', ''); if (!n) return;
+      var ex = (t.exercises||[])[+n-1]; if (!ex) { alert('번호 잘못'); return; }
+      if (confirm('"'+ex.name+'" 삭제?')) {
+        F('/template-exercises/'+ex.id,{method:'DELETE'}).then(function(){ editTemplateExercises(tid); });
+      }
+    } else if (act==='4') {
+      pickDrill(function(drill){
+        F('/templates/'+tid+'/exercises',{method:'POST',body:{
+          category:drill.category, name:drill.name,
+          duration_min:drill.duration||null, sets:drill.sets||null, reps:drill.reps||null,
+          notes:drill.detail||''
+        }}).then(function(){ editTemplateExercises(tid); });
+      });
+    }
+  });
+}
+
+function delLibItem(kind, id){
+  var item;
+  if (kind==='drill') item = libState.drills.find(function(x){return x.id===id});
+  else if (kind==='template') item = libState.templates.find(function(x){return x.id===id});
+  else if (kind==='phase') item = libState.phases.find(function(x){return x.id===id});
+  if (!item) return;
+  var name = item.name || item.title || ('id '+id);
+  if (!confirm('"'+name+'" 삭제할까요?')) return;
+  var url = kind==='drill' ? '/drills/' : (kind==='template' ? '/templates/' : '/phase-programs/');
+  F(url+id,{method:'DELETE'}).then(loadLibrary);
+}
+
+
+</script>
+</body>
+</html>

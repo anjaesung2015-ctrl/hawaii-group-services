@@ -1,0 +1,596 @@
+<!DOCTYPE html><html lang="ko"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>💪 개인 트레이너</title>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#ef4444"><meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a1a;--card:#141428;--card2:#1e1e3a;--primary:#ef4444;--success:#22c55e;--danger:#ef4444;--warning:#f59e0b;--info:#3b82f6;--text:#f0f0f0;--text2:#8888aa;--purple:#a855f7;--pink:#ec4899}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
+.login-box{background:var(--card);padding:2rem;border-radius:16px;width:100%;max-width:360px;text-align:center}
+.login-box input{width:100%;padding:0.8rem;margin:0.4rem 0;border-radius:10px;border:1px solid var(--card2);background:var(--bg);color:var(--text);font-size:1rem}
+.app-wrap{display:none}
+.header{background:linear-gradient(135deg,#1a0a0a,#3b1111);padding:1rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100}
+.nav{display:flex;overflow-x:auto;background:var(--card);border-bottom:1px solid rgba(255,255,255,0.05);padding:0 0.5rem}
+.nav-item{padding:0.7rem 0.6rem;font-size:0.78rem;white-space:nowrap;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent}
+.nav-item.active{color:var(--primary);border-color:var(--primary)}
+.content{padding:1rem;max-width:600px;margin:0 auto}
+.section{display:none}.section.active{display:block}
+.card{background:var(--card);border-radius:12px;padding:1rem;margin-bottom:0.8rem}
+.btn{border:none;padding:0.5rem 1rem;border-radius:8px;cursor:pointer;font-size:0.85rem;color:white;display:inline-flex;align-items:center;gap:0.3rem}
+.btn:hover{opacity:0.85}
+.btn-primary{background:var(--primary)}.btn-success{background:var(--success)}.btn-sm{padding:0.3rem 0.6rem;font-size:0.75rem}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:0.5rem;margin-bottom:1rem}
+.stat-card{background:var(--card);border-radius:12px;padding:0.6rem;text-align:center}
+.stat-card .num{font-size:1.5rem;font-weight:700}
+.stat-card .label{font-size:0.68rem;color:var(--text2)}
+.form-group{margin-bottom:0.6rem}
+.form-group label{display:block;font-size:0.8rem;color:var(--text2);margin-bottom:0.2rem}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:0.5rem;border-radius:8px;border:1px solid var(--card2);background:var(--bg);color:var(--text);font-size:0.9rem}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:0.5rem}
+.form-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal{background:var(--card);border-radius:16px;padding:1.5rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+#login-error{color:var(--danger);font-size:0.85rem;margin-top:0.5rem;display:none}
+#modal-container{position:fixed;z-index:200}
+.exercise-card{background:var(--bg);border-radius:10px;padding:0.7rem;margin-bottom:0.4rem;border-left:3px solid var(--card2)}
+.exercise-card.warmup{border-color:var(--warning)}.exercise-card.strength{border-color:var(--primary)}
+.exercise-card.core{border-color:var(--purple)}.exercise-card.cardio{border-color:var(--info)}
+.exercise-card.power{border-color:var(--pink)}.exercise-card.cooldown{border-color:var(--success)}
+.exercise-card.agility{border-color:var(--warning)}.exercise-card.circuit{border-color:var(--primary)}
+.exercise-card.sport{border-color:var(--info)}.exercise-card.recovery{border-color:var(--success)}
+.exercise-card.flexibility{border-color:var(--purple)}.exercise-card.mental{border-color:var(--info)}
+.day-badge{padding:0.2rem 0.6rem;border-radius:8px;font-size:0.75rem;font-weight:700}
+.check-btn{width:28px;height:28px;border-radius:50%;border:2px solid var(--card2);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:transparent;font-size:0.8rem}
+.check-btn.done{background:var(--success);border-color:var(--success);color:white}
+@media(max-width:600px){.form-row,.form-row3{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,1fr)}}
+</style></head><body>
+
+<div class="login-wrap" id="login-wrap">
+  <div class="login-box">
+    <div style="font-size:3rem;margin-bottom:0.5rem">💪🏋️</div>
+    <h1 style="font-size:1.5rem">개인 트레이너</h1>
+    <p style="color:var(--text2);margin-bottom:1.5rem;font-size:0.85rem">테니스 선수를 위한 체력 프로그램</p>
+    <input id="login-user" placeholder="아이디" autofocus>
+    <input id="login-pass" placeholder="비밀번호" type="password">
+    <button class="btn btn-primary" style="width:100%;padding:0.8rem;margin-top:0.5rem;font-size:1rem" onclick="doLogin()">시작하기</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<div class="app-wrap" id="app-wrap">
+  <div class="header"><h1 style="font-size:1.1rem">💪 개인 트레이너</h1>
+    <button class="btn btn-sm" style="background:var(--card2)" onclick="logout()">로그아웃</button></div>
+  <div class="nav">
+    <a href="/center/portal" class="nav-item" style="background:rgba(34,197,94,0.1);margin-bottom:6px;text-decoration:none;color:var(--text2)"><i class="fas fa-th-large"></i> ← 포털</a>
+    <div class="nav-item active" onclick="showSec('home')"><i class="fas fa-home"></i> 홈</div>
+    <div class="nav-item" onclick="showSec('plan')"><i class="fas fa-dumbbell"></i> 운동</div>
+    <div class="nav-item" onclick="showSec('diet')"><i class="fas fa-utensils"></i> 식단</div>
+    <div class="nav-item" onclick="showSec('log')"><i class="fas fa-clipboard-check"></i> 기록</div>
+    <div class="nav-item" onclick="showSec('body')"><i class="fas fa-weight-scale"></i> 체형</div>
+    <div class="nav-item" onclick="showSec('habit')"><i class="fas fa-heart"></i> 습관</div>
+  </div>
+  <div class="content">
+    <div class="section active" id="sec-home"></div>
+    <div class="section" id="sec-plan"></div>
+    <div class="section" id="sec-diet"></div>
+    <div class="section" id="sec-log"></div>
+    <div class="section" id="sec-body"></div>
+    <div class="section" id="sec-habit"></div>
+  </div>
+</div>
+<div id="modal-container"></div>
+
+<script>
+const _p=window.location.pathname.replace(/\/+$/,'');const API=_p==='/'||_p===''?'':_p;
+let currentUser=null;
+
+// 운동 이미지 매핑
+const EX_IMG={
+'푸시업 (Push-up)':'https://cdn-icons-png.flaticon.com/128/2548/2548536.png',
+'덤벨 숄더 프레스':'https://cdn-icons-png.flaticon.com/128/2964/2964514.png',
+'덤벨 로우':'https://cdn-icons-png.flaticon.com/128/3048/3048224.png',
+'풀업 (또는 어시스트)':'https://cdn-icons-png.flaticon.com/128/2548/2548536.png',
+'덤벨 체스트 플라이':'https://cdn-icons-png.flaticon.com/128/2964/2964514.png',
+'바이셉 컬 + 해머 컬':'https://cdn-icons-png.flaticon.com/128/2964/2964514.png',
+'트라이셉스 딥스':'https://cdn-icons-png.flaticon.com/128/2548/2548536.png',
+'페이스 풀':'https://cdn-icons-png.flaticon.com/128/2964/2964514.png',
+'메디신볼 오버헤드 슬램':'https://cdn-icons-png.flaticon.com/128/5037/5037791.png',
+'메디신볼 회전 던지기':'https://cdn-icons-png.flaticon.com/128/5037/5037791.png',
+'스쿼트':'https://cdn-icons-png.flaticon.com/128/3043/3043202.png',
+'[서킷A] 고블릿 스쿼트':'https://cdn-icons-png.flaticon.com/128/3043/3043202.png',
+'런지 워크':'https://cdn-icons-png.flaticon.com/128/3043/3043202.png',
+'[서킷B] 불가리안 스플릿 스쿼트':'https://cdn-icons-png.flaticon.com/128/3043/3043202.png',
+'박스 점프':'https://cdn-icons-png.flaticon.com/128/3043/3043184.png',
+'카프 레이즈':'https://cdn-icons-png.flaticon.com/128/3043/3043202.png',
+'플랭크':'https://cdn-icons-png.flaticon.com/128/2548/2548555.png',
+'사이드 플랭크':'https://cdn-icons-png.flaticon.com/128/2548/2548555.png',
+'러시안 트위스트':'https://cdn-icons-png.flaticon.com/128/2548/2548555.png',
+'행잉 니레이즈':'https://cdn-icons-png.flaticon.com/128/2548/2548555.png',
+'우드찹 (케이블/밴드)':'https://cdn-icons-png.flaticon.com/128/2548/2548555.png',
+'[서킷B] 바이시클 크런치':'https://cdn-icons-png.flaticon.com/128/2548/2548555.png',
+'가벼운 코어 운동':'https://cdn-icons-png.flaticon.com/128/2548/2548555.png',
+'인터벌 러닝':'https://cdn-icons-png.flaticon.com/128/763/763789.png',
+'점프 로프':'https://cdn-icons-png.flaticon.com/128/2548/2548530.png',
+'래터럴 셔플':'https://cdn-icons-png.flaticon.com/128/3043/3043184.png',
+'래더 드릴':'https://cdn-icons-png.flaticon.com/128/3043/3043184.png',
+'[서킷A] 버피':'https://cdn-icons-png.flaticon.com/128/3043/3043184.png',
+'[서킷A] 마운틴 클라이머':'https://cdn-icons-png.flaticon.com/128/3043/3043184.png',
+'[서킷B] 케틀벨 스윙':'https://cdn-icons-png.flaticon.com/128/2964/2964514.png',
+'[보너스] 배틀로프':'https://cdn-icons-png.flaticon.com/128/2964/2964514.png',
+'다이나믹 스트레칭':'https://cdn-icons-png.flaticon.com/128/3043/3043232.png',
+'조깅 + 다이나믹 스트레칭':'https://cdn-icons-png.flaticon.com/128/763/763789.png',
+'가벼운 조깅':'https://cdn-icons-png.flaticon.com/128/763/763789.png',
+'점핑잭 + 다이나믹 스트레칭':'https://cdn-icons-png.flaticon.com/128/3043/3043184.png',
+'밴드 워밍업':'https://cdn-icons-png.flaticon.com/128/2964/2964514.png',
+'웜업 조깅 + 동적 스트레칭':'https://cdn-icons-png.flaticon.com/128/763/763789.png',
+'쿨다운 스트레칭':'https://cdn-icons-png.flaticon.com/128/3043/3043232.png',
+'쿨다운':'https://cdn-icons-png.flaticon.com/128/3043/3043232.png',
+'쿨다운 + 폼롤러':'https://cdn-icons-png.flaticon.com/128/3043/3043232.png',
+'폼롤러 하체':'https://cdn-icons-png.flaticon.com/128/3043/3043232.png',
+'폼롤러 전신':'https://cdn-icons-png.flaticon.com/128/3043/3043232.png',
+'요가 — 전사 자세 시퀀스':'https://cdn-icons-png.flaticon.com/128/3043/3043232.png',
+'힙 오프너 스트레칭':'https://cdn-icons-png.flaticon.com/128/3043/3043232.png',
+'어깨 유연성':'https://cdn-icons-png.flaticon.com/128/3043/3043232.png',
+'스트레칭 + 아이싱':'https://cdn-icons-png.flaticon.com/128/3043/3043232.png',
+'명상 / 호흡':'https://cdn-icons-png.flaticon.com/128/3043/3043209.png',
+'딥 브리딩 + 명상':'https://cdn-icons-png.flaticon.com/128/3043/3043209.png',
+'테니스 연습/시합':'https://cdn-icons-png.flaticon.com/128/857/857455.png',
+'가벼운 산책':'https://cdn-icons-png.flaticon.com/128/3062/3062114.png',
+};
+const EX_CAT_IMG={
+warmup:'https://cdn-icons-png.flaticon.com/128/3043/3043184.png',
+strength:'https://cdn-icons-png.flaticon.com/128/2964/2964514.png',
+core:'https://cdn-icons-png.flaticon.com/128/2548/2548555.png',
+cardio:'https://cdn-icons-png.flaticon.com/128/763/763789.png',
+power:'https://cdn-icons-png.flaticon.com/128/5037/5037791.png',
+cooldown:'https://cdn-icons-png.flaticon.com/128/3043/3043232.png',
+agility:'https://cdn-icons-png.flaticon.com/128/3043/3043184.png',
+circuit:'https://cdn-icons-png.flaticon.com/128/3043/3043184.png',
+sport:'https://cdn-icons-png.flaticon.com/128/857/857455.png',
+recovery:'https://cdn-icons-png.flaticon.com/128/3043/3043232.png',
+flexibility:'https://cdn-icons-png.flaticon.com/128/3043/3043232.png',
+mental:'https://cdn-icons-png.flaticon.com/128/3043/3043209.png',
+};
+function getExImg(name,cat){return EX_IMG[name]||EX_CAT_IMG[cat]||EX_CAT_IMG.strength;}
+function todayUB(){const d=new Date(Date.now()+8*3600000);return d.toISOString().split('T')[0]}
+function g(id){return document.getElementById(id)?.value||''}
+function closeModal(){document.getElementById('modal-container').innerHTML=''}
+async function apiFetch(url,opts={}){opts.headers={...opts.headers,'Content-Type':'application/json'};return fetch(API+url,opts)}
+async function doLogin(){const res=await apiFetch('/api/login',{method:'POST',body:JSON.stringify({username:g('login-user'),password:g('login-pass')})});const d=await res.json();if(!res.ok){document.getElementById('login-error').textContent=d.error;document.getElementById('login-error').style.display='block';return}currentUser=d.user;localStorage.setItem('fit_token',d.token);localStorage.setItem('fit_user',JSON.stringify(d.user));showApp()}
+function showApp(){document.getElementById('login-wrap').style.display='none';document.getElementById('app-wrap').style.display='block';loadHome()}
+function logout(){localStorage.removeItem('fit_token');localStorage.removeItem('fit_user');location.reload()}
+(function(){const t=localStorage.getItem('fit_token'),u=localStorage.getItem('fit_user');if(t&&u){currentUser=JSON.parse(u);showApp()}
+document.getElementById('login-pass')?.addEventListener('keypress',e=>{if(e.key==='Enter')doLogin()})})();
+let _curSec='home';
+function showSec(n,noPush){
+  if(!noPush&&n!==_curSec)history.pushState({sec:n},'','#'+n);_curSec=n;document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(s=>s.classList.remove('active'));document.getElementById('sec-'+n)?.classList.add('active');const idx=['home','plan','diet','log','body','habit'].indexOf(n);document.querySelectorAll('.nav-item:not(a)')[idx]?.classList.add('active');({home:loadHome,plan:loadPlan,diet:loadDiet,log:loadLog,body:loadBody,habit:loadHabit})[n]?.()}
+
+const typeEmoji={strength:'💪',cardio:'🏃',circuit:'🔥',sport:'🎾',rest:'😴',recovery:'🧘'};
+const typeColor={strength:'var(--primary)',cardio:'var(--info)',circuit:'var(--pink)',sport:'var(--success)',rest:'var(--text2)',recovery:'var(--purple)'};
+const dayColor={'월':'#ef4444','화':'#f59e0b','수':'#22c55e','목':'#3b82f6','금':'#a855f7','토':'#ec4899','일':'#6b7280'};
+
+async function loadHome(){
+  const d=await apiFetch('/api/dashboard').then(r=>r.json());
+  const plan=d.todayPlan;
+  document.getElementById('sec-home').innerHTML=`
+    <div style="text-align:center;padding:1rem 0">
+      <div style="font-size:2.5rem;margin-bottom:0.3rem">${plan?typeEmoji[plan.workout_type]||'💪':'😴'}</div>
+      <h2>오늘의 운동</h2>
+      <div style="color:var(--text2);font-size:0.85rem">${d.today} (${d.todayDay}요일)</div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="num" style="color:var(--primary)">${d.thisWeek}</div><div class="label">이번 주</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--warning)">${d.thisMonth}</div><div class="label">이번 달</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--success)">${d.streak}/7</div><div class="label">주간 출석</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--info)">${d.totalLogs}</div><div class="label">총 운동</div></div>
+    </div>
+    ${plan?`<div class="card" style="border-left:4px solid ${typeColor[plan.workout_type]||'var(--primary)'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+        <div>
+          <strong style="font-size:1.1rem">${plan.title}</strong>
+          ${d.todayCompleted?'<span style="margin-left:0.5rem;color:var(--success)">✅ 완료!</span>':''}
+          <div style="font-size:0.82rem;color:var(--text2)">${plan.description||''}</div>
+          <div style="font-size:0.78rem;color:var(--text2);margin-top:0.2rem">⏱ ${plan.duration_min}분 | 🔥 ~${plan.calories_est}kcal | ${plan.target_muscles||''}</div>
+        </div>
+      </div>
+      ${plan.exercises?.map(e=>`<div class="exercise-card ${e.category}">
+        <div style="display:flex;align-items:center;gap:0.6rem">
+          <img src="${getExImg(e.name,e.category)}" style="width:44px;height:44px;object-fit:contain;border-radius:8px;background:rgba(255,255,255,0.05);padding:4px;flex-shrink:0" onerror="this.style.display='none'">
+          <div style="flex:1">
+            <strong style="font-size:0.85rem">${e.name}</strong>
+            <div style="font-size:0.78rem;color:var(--text2)">${e.sets?e.sets+'세트':''}${e.reps?' × '+e.reps:''} ${e.rest_sec>0?'| 🔄 '+e.rest_sec+'초 휴식':''}</div>
+            ${e.notes?`<div style="font-size:0.75rem;color:var(--text2);font-style:italic">💡 ${e.notes}</div>`:''}
+          </div>
+          <div style="display:flex;gap:0.2rem;flex-shrink:0">
+            <button onclick="editExercise(${e.id},${plan.id})" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:0.75rem;padding:4px"><i class="fas fa-edit"></i></button>
+            <button onclick="deleteExercise(${e.id},${plan.id})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.75rem;padding:4px"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+      </div>`).join('')||''}
+      ${!d.todayCompleted?`<button class="btn btn-success" style="width:100%;margin-top:0.5rem;padding:0.7rem" onclick="completeWorkout(${plan.id})"><i class="fas fa-check"></i> 운동 완료!</button>`:''}
+    </div>`:`<div class="card" style="text-align:center;padding:2rem">
+      <div style="font-size:3rem;margin-bottom:0.5rem">😴</div>
+      <strong>오늘은 휴식일!</strong>
+      <div style="font-size:0.85rem;color:var(--text2);margin-top:0.3rem">몸과 마음의 회복. 가벼운 산책 추천!</div>
+    </div>`}
+    ${d.todayHabit?`<div class="card"><strong>오늘의 습관</strong>
+      <div style="display:flex;gap:0.8rem;margin-top:0.3rem;font-size:0.82rem;flex-wrap:wrap">
+        <span>💧 ${d.todayHabit.water_liters||0}L</span>
+        <span>😴 ${d.todayHabit.sleep_hours||0}시간</span>
+        <span>🚶 ${d.todayHabit.steps||0}보</span>
+        ${d.todayHabit.stretching?'<span>🧘 스트레칭 ✅</span>':''}
+      </div>
+    </div>`:''}`;
+}
+
+async function completeWorkout(planId){
+  const today=todayUB();
+  await apiFetch('/api/logs',{method:'POST',body:JSON.stringify({plan_id:planId,log_date:today,completed:1})});
+  loadHome();
+}
+
+// PLAN
+let planWeek=1;
+async function loadPlan(){
+  const plans=await apiFetch('/api/plans?week='+planWeek).then(r=>r.json());
+  document.getElementById('sec-plan').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <h2>🗓️ 운동 프로그램</h2>
+      <div style="display:flex;gap:0.3rem">
+        ${[1,2,3,4].map(w=>`<button class="btn btn-sm" style="background:${planWeek===w?'var(--primary)':'var(--card2)'}" onclick="planWeek=${w};loadPlan()">W${w}</button>`).join('')}
+      </div>
+    </div>
+    ${plans.map(p=>`<div class="card" style="cursor:pointer" onclick="viewPlan(${p.id})">
+      <div style="display:flex;align-items:center;gap:0.5rem">
+        <span class="day-badge" style="background:${dayColor[p.day_of_week]};color:white">${p.day_of_week}</span>
+        <div style="flex:1">
+          <strong>${p.title}</strong>
+          <div style="font-size:0.78rem;color:var(--text2)">⏱ ${p.duration_min}분 | 🔥 ~${p.calories_est}kcal | ${p.target_muscles||''}</div>
+        </div>
+        <span style="font-size:1.2rem">${typeEmoji[p.workout_type]||'💪'}</span>
+      </div>
+    </div>`).join('')}`;
+}
+
+async function viewPlan(id){
+  const p=await apiFetch('/api/plans/'+id).then(r=>r.json());
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:550px">
+    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.8rem">
+      <span class="day-badge" style="background:${dayColor[p.day_of_week]};color:white;font-size:1rem;padding:0.3rem 0.8rem">${p.day_of_week}</span>
+      <div><h3 style="margin:0">${p.title}</h3><div style="font-size:0.82rem;color:var(--text2)">${p.description||''}</div></div>
+    </div>
+    <div style="display:flex;gap:0.8rem;margin-bottom:0.8rem;font-size:0.82rem;color:var(--text2)">
+      <span>⏱ ${p.duration_min}분</span><span>🔥 ~${p.calories_est}kcal</span><span>💪 ${p.target_muscles||''}</span>
+      <span>📊 ${p.difficulty}</span>
+    </div>
+    ${p.exercises?.map((e,i)=>`<div class="exercise-card ${e.category}">
+      <div style="display:flex;align-items:flex-start;gap:0.6rem">
+        <img src="${getExImg(e.name,e.category)}" style="width:48px;height:48px;object-fit:contain;border-radius:8px;background:rgba(255,255,255,0.05);padding:4px;flex-shrink:0;margin-top:0.2rem" onerror="this.style.display='none'">
+        <div style="flex:1">
+          <div style="font-size:0.7rem;color:var(--text2)">#${i+1}</div>
+          <strong>${e.name}</strong>
+          <div style="font-size:0.82rem;margin-top:0.2rem">
+            ${e.sets?`<span style="color:var(--primary)">${e.sets}세트</span>`:''} 
+            ${e.reps?`<span>× ${e.reps}</span>`:''} 
+            ${e.weight_kg?`<span style="color:var(--warning)">${e.weight_kg}kg</span>`:''}
+            ${e.duration_sec?`<span>⏱ ${e.duration_sec>60?Math.round(e.duration_sec/60)+'분':e.duration_sec+'초'}</span>`:''}
+          </div>
+          ${e.rest_sec>0?`<div style="font-size:0.75rem;color:var(--text2)">🔄 휴식 ${e.rest_sec}초</div>`:''}
+          ${e.tempo?`<div style="font-size:0.75rem;color:var(--info)">템포: ${e.tempo}</div>`:''}
+          ${e.notes?`<div style="font-size:0.75rem;color:var(--text2);margin-top:0.2rem;font-style:italic">💡 ${e.notes}</div>`:''}
+        </div>
+        <div style="display:flex;gap:0.3rem;flex-shrink:0">
+          <button onclick="editExercise(${e.id},${p.id})" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:0.8rem"><i class="fas fa-edit"></i></button>
+          <button onclick="deleteExercise(${e.id},${p.id})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.8rem"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+    </div>`).join('')||''}
+    <button class="btn btn-primary" style="width:100%;margin-top:0.5rem" onclick="addExercise(${p.id})"><i class="fas fa-plus"></i> 운동 추가</button>
+    <button class="btn" style="background:var(--card2);width:100%;margin-top:0.3rem" onclick="closeModal()">닫기</button>
+  </div></div>`;
+}
+
+// ====== 운동 수정/삭제/추가 ======
+async function deleteExercise(exId, planId){
+  if(!confirm('이 운동을 삭제할까요?'))return;
+  await apiFetch('/api/exercises/'+exId,{method:'DELETE'});
+  loadHome(); loadPlan();
+}
+
+function editExercise(exId, planId){
+  // 현재 운동 데이터를 DOM에서 찾기 어려우니 API로 가져오기
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3>✏️ 운동 수정</h3>
+    <div class="form-group"><label>이름</label><input id="ee-name"></div>
+    <div class="form-group"><label>카테고리</label>
+      <select id="ee-cat"><option value="warmup">웜업</option><option value="strength">근력</option><option value="hiit">HIIT</option><option value="core">코어</option><option value="cardio">유산소</option><option value="circuit">서킷</option><option value="agility">민첩성</option><option value="power">파워</option><option value="sport">스포츠</option><option value="cooldown">쿨다운</option><option value="recovery">회복</option><option value="flexibility">유연성</option><option value="mental">정신</option></select></div>
+    <div style="display:flex;gap:0.5rem">
+      <div class="form-group" style="flex:1"><label>세트</label><input type="number" id="ee-sets"></div>
+      <div class="form-group" style="flex:1"><label>횟수</label><input id="ee-reps"></div>
+      <div class="form-group" style="flex:1"><label>휴식(초)</label><input type="number" id="ee-rest"></div>
+    </div>
+    <div class="form-group"><label>메모</label><input id="ee-notes"></div>
+    <div style="display:flex;gap:0.5rem;margin-top:1rem">
+      <button class="btn btn-primary" onclick="submitEditEx(${exId})">저장</button>
+      <button class="btn" style="background:var(--card2)" onclick="closeModal()">취소</button>
+    </div>
+  </div></div>`;
+  // TODO: API에서 단일 운동 조회 없으니 빈값으로 시작 — 유저가 수정
+}
+
+async function submitEditEx(id){
+  await apiFetch('/api/exercises/'+id,{method:'PUT',body:JSON.stringify({
+    name:g('ee-name'),category:g('ee-cat'),sets:parseInt(g('ee-sets'))||1,
+    reps:g('ee-reps'),rest_sec:parseInt(g('ee-rest'))||0,notes:g('ee-notes')
+  })});
+  closeModal();loadHome();loadPlan();
+}
+
+function addExercise(planId){
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3>➕ 운동 추가</h3>
+    <div class="form-group"><label>이름</label><input id="ee-name" placeholder="운동 이름"></div>
+    <div class="form-group"><label>카테고리</label>
+      <select id="ee-cat"><option value="warmup">웜업</option><option value="strength">근력</option><option value="hiit">HIIT</option><option value="core">코어</option><option value="cardio">유산소</option><option value="circuit">서킷</option><option value="cooldown">쿨다운</option></select></div>
+    <div style="display:flex;gap:0.5rem">
+      <div class="form-group" style="flex:1"><label>세트</label><input type="number" id="ee-sets" value="3"></div>
+      <div class="form-group" style="flex:1"><label>횟수</label><input id="ee-reps" placeholder="12회"></div>
+      <div class="form-group" style="flex:1"><label>휴식(초)</label><input type="number" id="ee-rest" value="30"></div>
+    </div>
+    <div class="form-group"><label>메모</label><input id="ee-notes"></div>
+    <div style="display:flex;gap:0.5rem;margin-top:1rem">
+      <button class="btn btn-primary" onclick="submitAddEx(${planId})">추가</button>
+      <button class="btn" style="background:var(--card2)" onclick="closeModal()">취소</button>
+    </div>
+  </div></div>`;
+}
+
+async function submitAddEx(planId){
+  await apiFetch('/api/exercises',{method:'POST',body:JSON.stringify({
+    plan_id:planId,name:g('ee-name'),category:g('ee-cat'),
+    sets:parseInt(g('ee-sets'))||1,reps:g('ee-reps'),
+    rest_sec:parseInt(g('ee-rest'))||0,notes:g('ee-notes')
+  })});
+  closeModal();loadHome();loadPlan();
+}
+
+// ====== 식단 ======
+async function loadDiet(){
+  const data=await apiFetch('/api/meals/today').then(r=>r.json());
+  const allMeals=await apiFetch('/api/meals').then(r=>r.json());
+  const plan=data.plan;
+  const mealIcons={아침:'🌅',간식:'🍎',점심:'☀️',저녁:'🌙'};
+  
+  document.getElementById('sec-diet').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <h2>🍽️ 오늘의 식단</h2>
+      <span style="color:var(--text2);font-size:0.85rem">${data.todayDay}요일</span>
+    </div>
+    
+    ${plan?`
+    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:1rem">
+      <div class="stat-card"><div class="num" style="color:var(--warning)">${plan.total_calories}</div><div class="label">kcal</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--danger)">${plan.total_protein}g</div><div class="label">단백질</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--primary)">${plan.total_carbs}g</div><div class="label">탄수</div></div>
+      <div class="stat-card"><div class="num" style="color:var(--success)">${plan.total_fat}g</div><div class="label">지방</div></div>
+    </div>
+    <div style="background:var(--card2);border-radius:10px;padding:0.6rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem">
+      <span style="font-size:1.2rem">💧</span>
+      <span style="font-size:0.85rem">물 ${plan.water_ml/1000}L 이상 마시기!</span>
+      <span style="font-size:0.75rem;color:var(--text2);margin-left:auto">${plan.notes||''}</span>
+    </div>
+    
+    ${plan.meals?.map(m=>`<div class="card" style="margin-bottom:0.5rem;border-left:3px solid ${m.type==='아침'?'var(--warning)':m.type==='점심'?'var(--primary)':m.type==='저녁'?'var(--purple)':'var(--success)'}">
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem">
+        <span style="font-size:1.2rem">${mealIcons[m.type]||'🍽️'}</span>
+        <strong>${m.type}</strong>
+        <span style="font-size:0.75rem;color:var(--text2)">${m.time||''}</span>
+        <span style="font-size:0.75rem;color:var(--warning);margin-left:auto;font-weight:700">${m.cal}kcal</span>
+        ${m.protein?`<span style="font-size:0.7rem;color:var(--danger)">P${m.protein}g</span>`:''}
+      </div>
+      <div style="font-size:0.85rem">${m.menu}</div>
+      ${m.tip?`<div style="font-size:0.75rem;color:var(--success);margin-top:0.2rem">💡 ${m.tip}</div>`:''}
+    </div>`).join('')}
+    `:`<div class="card" style="text-align:center;padding:2rem"><div style="font-size:3rem;margin-bottom:0.5rem">🍽️</div><p>오늘 식단이 없어요</p></div>`}
+    
+    <h3 style="margin:1.5rem 0 0.8rem">📅 주간 식단표</h3>
+    ${allMeals.map(mp=>`<div class="card" style="margin-bottom:0.5rem;cursor:pointer" onclick="showDayMeal('${mp.day_of_week}',this)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong>${mp.day_of_week}</strong>
+          <span style="font-size:0.8rem;color:var(--text2);margin-left:0.5rem">${mp.notes||''}</span>
+        </div>
+        <div style="text-align:right">
+          <span style="font-weight:700;color:var(--warning)">${mp.total_calories}kcal</span>
+          <div style="font-size:0.7rem;color:var(--text2)">P${mp.total_protein}g C${mp.total_carbs}g F${mp.total_fat}g</div>
+        </div>
+      </div>
+      <div class="day-detail" style="display:none;margin-top:0.5rem;border-top:1px solid rgba(255,255,255,0.05);padding-top:0.5rem">
+        ${mp.meals?.map(m=>`<div style="display:flex;align-items:center;gap:0.5rem;padding:0.2rem 0;font-size:0.82rem">
+          <span>${mealIcons[m.type]||'🍽️'}</span>
+          <span style="min-width:30px;font-weight:600">${m.type}</span>
+          <span style="flex:1">${m.menu}</span>
+          <span style="color:var(--warning);font-size:0.75rem">${m.cal}kcal</span>
+        </div>`).join('')||''}
+      </div>
+    </div>`).join('')}
+    
+    <div class="card" style="margin-top:1rem;background:rgba(239,68,68,0.1);border:1px solid var(--danger)">
+      <h3 style="color:var(--danger);font-size:0.95rem">🎯 다이어트 규칙</h3>
+      <div style="font-size:0.82rem;line-height:1.8;margin-top:0.5rem">
+        ✅ 하루 1500~1700kcal 이내<br>
+        ✅ 단백질 체중×1.5g = 최소 115g/일<br>
+        ✅ 물 3L 이상<br>
+        ✅ 저녁 8시 이후 금식<br>
+        ✅ 술, 과자, 라면 금지<br>
+        ✅ 밥은 반공기 (현미 추천)<br>
+        ❌ 야식 절대 금지<br>
+        ❌ 탄산음료, 주스 금지<br>
+        💪 주 6일 운동 + 일 500kcal 적자 = <strong>월 2kg 감량</strong>
+      </div>
+    </div>
+  `;
+}
+
+function showDayMeal(day,el){
+  const detail=el.querySelector('.day-detail');
+  if(detail)detail.style.display=detail.style.display==='none'?'block':'none';
+}
+
+// LOG
+async function loadLog(){
+  const logs=await apiFetch('/api/logs').then(r=>r.json());
+  document.getElementById('sec-log').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem"><h2>📋 운동 기록</h2>
+      <button class="btn btn-primary btn-sm" onclick="openLogModal()"><i class="fas fa-plus"></i></button></div>
+    ${logs.map(l=>`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong>${l.title||l.workout_type||'운동'}</strong>
+          <div style="font-size:0.82rem;color:var(--text2)">📅 ${l.log_date} ${l.duration_min?`| ⏱ ${l.duration_min}분`:''} ${l.calories_burned?`| 🔥 ${l.calories_burned}kcal`:''}</div>
+          <div style="font-size:0.78rem;margin-top:0.2rem">
+            에너지 ${'⚡'.repeat(l.energy_level||3)}${'☆'.repeat(5-(l.energy_level||3))} 
+            기분 ${'😊'.repeat(l.mood||3)}${'☆'.repeat(5-(l.mood||3))}
+          </div>
+          ${l.notes?`<div style="font-size:0.78rem;color:var(--text2);margin-top:0.2rem">${l.notes}</div>`:''}
+        </div>
+        <span style="font-size:1.5rem">${l.completed?'✅':'⬜'}</span>
+      </div>
+    </div>`).join('')||'<div class="card" style="text-align:center;padding:2rem;color:var(--text2)">운동 기록을 추가해주세요</div>'}`;
+}
+
+function openLogModal(){
+  const today=todayUB();
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3 style="margin:0 0 1rem">📋 운동 기록</h3>
+    <div class="form-row"><div class="form-group"><label>날짜</label><input type="date" id="wl-date" value="${today}"></div>
+      <div class="form-group"><label>운동 종류</label><select id="wl-type"><option value="strength">근력</option><option value="cardio">유산소</option><option value="circuit">서킷</option><option value="sport">테니스</option><option value="flexibility">유연성</option></select></div></div>
+    <div class="form-group"><label>제목</label><input id="wl-title" placeholder="오늘의 운동"></div>
+    <div class="form-row"><div class="form-group"><label>시간(분)</label><input type="number" id="wl-dur" placeholder="60"></div>
+      <div class="form-group"><label>칼로리</label><input type="number" id="wl-cal" placeholder="450"></div></div>
+    <div class="form-row"><div class="form-group"><label>에너지 (1~5)</label><select id="wl-eng"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select></div>
+      <div class="form-group"><label>기분 (1~5)</label><select id="wl-mood"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option><option value="4">4</option><option value="5">5</option></select></div></div>
+    <div class="form-group"><label>메모</label><textarea id="wl-note" rows="2"></textarea></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+      <button class="btn" style="background:var(--card2)" onclick="closeModal()">취소</button>
+      <button class="btn btn-success" onclick="saveLog()">저장</button></div>
+  </div></div>`;
+}
+
+async function saveLog(){
+  await apiFetch('/api/logs',{method:'POST',body:JSON.stringify({log_date:g('wl-date'),workout_type:g('wl-type'),title:g('wl-title'),duration_min:Number(g('wl-dur'))||null,calories_burned:Number(g('wl-cal'))||null,energy_level:Number(g('wl-eng')),mood:Number(g('wl-mood')),notes:g('wl-note'),completed:1})});
+  closeModal();loadLog();
+}
+
+// BODY
+async function loadBody(){
+  const logs=await apiFetch('/api/body').then(r=>r.json());
+  document.getElementById('sec-body').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem"><h2>⚖️ 체형 기록</h2>
+      <button class="btn btn-primary btn-sm" onclick="openBodyModal()"><i class="fas fa-plus"></i></button></div>
+    ${logs.length?`<div class="card"><strong>최근 체형</strong>
+      <div style="display:flex;flex-wrap:wrap;gap:0.8rem;margin-top:0.5rem;font-size:0.9rem">
+        ${logs[0].weight_kg?`<div>⚖️ <strong>${logs[0].weight_kg}</strong>kg</div>`:''}
+        ${logs[0].body_fat_pct?`<div>📊 체지방 <strong>${logs[0].body_fat_pct}</strong>%</div>`:''}
+        ${logs[0].muscle_mass?`<div>💪 근육량 <strong>${logs[0].muscle_mass}</strong>kg</div>`:''}
+      </div>
+      ${logs.length>1?`<div style="margin-top:0.5rem;font-size:0.82rem;color:var(--text2)">
+        ${logs[0].weight_kg&&logs[1].weight_kg?`체중 변화: <span style="color:${logs[0].weight_kg<=logs[1].weight_kg?'var(--success)':'var(--danger)'}">
+          ${logs[0].weight_kg>logs[1].weight_kg?'+':''}${(logs[0].weight_kg-logs[1].weight_kg).toFixed(1)}kg</span>`:''}</div>`:''}
+    </div>`:''}
+    ${logs.map(l=>`<div class="card" style="font-size:0.85rem">
+      <div style="display:flex;justify-content:space-between">
+        <span>📅 ${l.log_date}</span>
+        <div style="display:flex;gap:0.8rem">
+          ${l.weight_kg?`<span>⚖️ ${l.weight_kg}kg</span>`:''}
+          ${l.body_fat_pct?`<span>📊 ${l.body_fat_pct}%</span>`:''}
+          ${l.chest_cm?`<span>가슴 ${l.chest_cm}</span>`:''}
+          ${l.waist_cm?`<span>허리 ${l.waist_cm}</span>`:''}
+          ${l.arm_cm?`<span>팔 ${l.arm_cm}</span>`:''}
+        </div>
+      </div>
+    </div>`).join('')||'<div class="card" style="text-align:center;padding:2rem;color:var(--text2)">체형 기록을 추가해주세요</div>'}`;
+}
+
+function openBodyModal(){
+  const today=todayUB();
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3 style="margin:0 0 1rem">⚖️ 체형 기록</h3>
+    <div class="form-group"><label>날짜</label><input type="date" id="bd-date" value="${today}"></div>
+    <div class="form-row"><div class="form-group"><label>체중 (kg)</label><input type="number" step="0.1" id="bd-wt"></div>
+      <div class="form-group"><label>체지방률 (%)</label><input type="number" step="0.1" id="bd-fat"></div></div>
+    <div class="form-group"><label>근육량 (kg)</label><input type="number" step="0.1" id="bd-muscle"></div>
+    <div class="form-row"><div class="form-group"><label>가슴 (cm)</label><input type="number" step="0.1" id="bd-ch"></div>
+      <div class="form-group"><label>허리 (cm)</label><input type="number" step="0.1" id="bd-wa"></div></div>
+    <div class="form-row"><div class="form-group"><label>팔 (cm)</label><input type="number" step="0.1" id="bd-arm"></div>
+      <div class="form-group"><label>허벅지 (cm)</label><input type="number" step="0.1" id="bd-th"></div></div>
+    <div class="form-group"><label>메모</label><textarea id="bd-note" rows="2"></textarea></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+      <button class="btn" style="background:var(--card2)" onclick="closeModal()">취소</button>
+      <button class="btn btn-success" onclick="saveBody()">저장</button></div>
+  </div></div>`;
+}
+
+async function saveBody(){
+  await apiFetch('/api/body',{method:'POST',body:JSON.stringify({log_date:g('bd-date'),weight_kg:Number(g('bd-wt'))||null,body_fat_pct:Number(g('bd-fat'))||null,muscle_mass:Number(g('bd-muscle'))||null,chest_cm:Number(g('bd-ch'))||null,waist_cm:Number(g('bd-wa'))||null,arm_cm:Number(g('bd-arm'))||null,thigh_cm:Number(g('bd-th'))||null,notes:g('bd-note')})});
+  closeModal();loadBody();
+}
+
+// HABIT
+async function loadHabit(){
+  const habits=await apiFetch('/api/habits').then(r=>r.json());
+  const today=todayUB();
+  const todayH=habits.find(h=>h.log_date===today);
+  document.getElementById('sec-habit').innerHTML=`
+    <h2 style="margin-bottom:1rem">❤️ 일일 습관</h2>
+    <div class="card">
+      <h3 style="font-size:0.95rem;margin-bottom:0.5rem">오늘 (${today})</h3>
+      <div class="form-row">
+        <div class="form-group"><label>💧 물 (리터)</label><input type="number" step="0.1" id="hb-water" value="${todayH?.water_liters||''}"></div>
+        <div class="form-group"><label>😴 수면 (시간)</label><input type="number" step="0.5" id="hb-sleep" value="${todayH?.sleep_hours||''}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>🚶 걸음수</label><input type="number" id="hb-steps" value="${todayH?.steps||''}"></div>
+        <div class="form-group"><label>🥩 단백질 (g)</label><input type="number" id="hb-prot" value="${todayH?.protein_g||''}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>🍽️ 칼로리 섭취</label><input type="number" id="hb-cal" value="${todayH?.calories_intake||''}"></div>
+        <div class="form-group"><label>메모</label><input id="hb-note" value="${todayH?.notes||''}"></div>
+      </div>
+      <div style="display:flex;gap:1rem;margin:0.5rem 0">
+        <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;cursor:pointer">
+          <input type="checkbox" id="hb-str" ${todayH?.stretching?'checked':''}> 🧘 스트레칭
+        </label>
+        <label style="display:flex;align-items:center;gap:0.3rem;font-size:0.85rem;cursor:pointer">
+          <input type="checkbox" id="hb-med" ${todayH?.meditation?'checked':''}> 🧠 명상
+        </label>
+      </div>
+      <button class="btn btn-success" style="width:100%" onclick="saveHabit()"><i class="fas fa-save"></i> 저장</button>
+    </div>
+    ${habits.length?`<div class="card"><strong>최근 기록</strong>
+      ${habits.slice(0,7).map(h=>`<div style="display:flex;justify-content:space-between;padding:0.3rem 0;font-size:0.82rem;border-bottom:1px solid rgba(255,255,255,0.03)">
+        <span>${h.log_date}</span>
+        <div style="display:flex;gap:0.5rem">
+          <span>💧${h.water_liters||0}L</span>
+          <span>😴${h.sleep_hours||0}h</span>
+          <span>🚶${h.steps||0}</span>
+          ${h.stretching?'<span>🧘</span>':''}
+          ${h.meditation?'<span>🧠</span>':''}
+        </div>
+      </div>`).join('')}
+    </div>`:''}`;
+}
+
+async function saveHabit(){
+  const today=todayUB();
+  await apiFetch('/api/habits',{method:'POST',body:JSON.stringify({log_date:today,water_liters:Number(g('hb-water'))||0,sleep_hours:Number(g('hb-sleep'))||0,steps:Number(g('hb-steps'))||0,protein_g:Number(g('hb-prot'))||null,calories_intake:Number(g('hb-cal'))||null,stretching:document.getElementById('hb-str')?.checked,meditation:document.getElementById('hb-med')?.checked,notes:g('hb-note')})});
+  loadHabit();
+}
+
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+
+window.addEventListener('popstate',e=>{if(e.state&&e.state.sec)showSec(e.state.sec,true);else showSec('home',true);});
+if(location.hash){const h=location.hash.slice(1);if(h)setTimeout(()=>showSec(h,true),100);}
+</script></body></html>

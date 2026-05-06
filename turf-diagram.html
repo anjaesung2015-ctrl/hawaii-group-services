@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body { margin: 0; padding: 20px; background: #1a1a2e; font-family: 'Segoe UI', sans-serif; }
+.container { width: 800px; margin: 0 auto; }
+h1 { color: #fff; text-align: center; font-size: 28px; margin-bottom: 5px; }
+h2 { color: #aaa; text-align: center; font-size: 16px; margin-bottom: 30px; font-weight: normal; }
+
+/* Cross Section */
+.cross-section { 
+  background: #16213e; border-radius: 16px; padding: 30px; margin-bottom: 20px;
+  border: 1px solid #2a3a5c;
+}
+.cs-title { color: #4ecca3; font-size: 20px; font-weight: bold; margin-bottom: 20px; text-align: center; }
+
+.layer-diagram {
+  position: relative; width: 700px; height: 400px; margin: 0 auto;
+}
+
+.layer {
+  position: absolute; left: 50px; width: 400px; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: bold; font-size: 14px; color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.layer-yarn { top: 10px; height: 80px; background: linear-gradient(180deg, #2ecc71 0%, #27ae60 50%, #1e8449 100%); border-radius: 8px 8px 0 0; }
+.layer-infill { top: 50px; height: 40px; background: rgba(241,196,15,0.8); z-index: 1; font-size: 12px; color: #333; }
+.layer-backing { top: 90px; height: 30px; background: #7f8c8d; }
+.layer-coating { top: 120px; height: 25px; background: #2c3e50; }
+.layer-shockpad { top: 145px; height: 35px; background: #e74c3c; }
+.layer-concrete { top: 180px; height: 50px; background: #95a5a6; }
+.layer-gravel { top: 230px; height: 40px; background: #6c5b3e; }
+.layer-soil { top: 270px; height: 35px; background: #4a3728; border-radius: 0 0 8px 8px; }
+
+/* Labels */
+.label {
+  position: absolute; right: -240px; font-size: 13px; color: #ecf0f1;
+  display: flex; align-items: center; gap: 8px;
+}
+.label::before {
+  content: ''; width: 40px; height: 2px; background: #4ecca3; display: block;
+}
+.label-val { color: #4ecca3; font-weight: bold; }
+
+/* Dimension arrow */
+.dim-arrow {
+  position: absolute; left: -30px; width: 2px; background: #f39c12;
+}
+.dim-label {
+  position: absolute; left: -80px; font-size: 11px; color: #f39c12;
+  transform: rotate(-90deg); white-space: nowrap;
+}
+
+/* Spec cards */
+.specs { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+.spec-card {
+  background: #16213e; border-radius: 12px; padding: 20px;
+  border: 1px solid #2a3a5c;
+}
+.spec-title { color: #4ecca3; font-size: 16px; font-weight: bold; margin-bottom: 12px; }
+.spec-item { 
+  display: flex; justify-content: space-between; padding: 8px 0;
+  border-bottom: 1px solid #1a2744; font-size: 13px;
+}
+.spec-kr { color: #ddd; }
+.spec-en { color: #888; font-size: 11px; }
+.spec-val { color: #f39c12; font-weight: bold; }
+.spec-best { background: #1a3a2e; border-radius: 4px; padding: 2px 8px; color: #4ecca3; }
+
+/* Yarn types */
+.yarn-compare {
+  background: #16213e; border-radius: 12px; padding: 20px;
+  border: 1px solid #2a3a5c; margin-top: 15px;
+}
+.yarn-row { display: flex; gap: 20px; margin-top: 15px; }
+.yarn-box {
+  flex: 1; background: #1a2744; border-radius: 10px; padding: 15px; text-align: center;
+}
+.yarn-box.good { border: 2px solid #4ecca3; }
+.yarn-box.bad { border: 2px solid #e74c3c; }
+.yarn-icon { font-size: 40px; margin-bottom: 8px; }
+.yarn-name { color: #fff; font-weight: bold; font-size: 14px; }
+.yarn-name-en { color: #888; font-size: 11px; }
+.yarn-desc { color: #aaa; font-size: 12px; margin-top: 5px; }
+.badge-good { background: #4ecca3; color: #000; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; display: inline-block; margin-top: 8px; }
+.badge-bad { background: #e74c3c; color: #fff; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; display: inline-block; margin-top: 8px; }
+
+/* ITF */
+.itf-bar {
+  display: flex; margin-top: 15px; border-radius: 8px; overflow: hidden;
+}
+.itf-seg {
+  flex: 1; padding: 12px 8px; text-align: center; font-size: 12px; color: #fff;
+}
+.itf1 { background: #2980b9; }
+.itf2 { background: #27ae60; }
+.itf3 { background: #f1c40f; color: #333; }
+.itf4 { background: #e67e22; }
+.itf5 { background: #e74c3c; }
+.itf-best { border: 3px solid #fff; }
+
+/* Best spec summary */
+.best-spec {
+  background: linear-gradient(135deg, #0f3443, #34e89e20);
+  border: 2px solid #4ecca3; border-radius: 16px;
+  padding: 25px; margin-top: 20px; text-align: center;
+}
+.best-title { color: #4ecca3; font-size: 22px; font-weight: bold; margin-bottom: 15px; }
+.best-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.best-item { background: #16213e; border-radius: 10px; padding: 12px; }
+.best-label { color: #888; font-size: 11px; }
+.best-value { color: #fff; font-size: 18px; font-weight: bold; margin-top: 4px; }
+.best-eng { color: #4ecca3; font-size: 10px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🌿 인조잔디 테니스코트 구조 & 용어</h1>
+  <h2>Artificial Grass Tennis Court — Structure & Terminology</h2>
+
+  <!-- Cross Section -->
+  <div class="cross-section">
+    <div class="cs-title">📐 인조잔디 단면 구조도 (Cross Section)</div>
+    <div class="layer-diagram">
+      <div class="layer layer-yarn">🌱 원사 (Yarn) — PE 모노필라멘트</div>
+      <div class="layer layer-infill">🏖️ 충진재 (Infill) — 규사</div>
+      <div class="layer layer-backing">배킹 (Backing) — PP+네트</div>
+      <div class="layer layer-coating">코팅 (Coating) — SBR/PU</div>
+      <div class="layer layer-shockpad">충격패드 (Shock Pad) — 선택</div>
+      <div class="layer layer-concrete">콘크리트 (Concrete Base)</div>
+      <div class="layer layer-gravel">쇄석 (Gravel/Crushed Stone)</div>
+      <div class="layer layer-soil">흙 (Soil / Sub-grade)</div>
+
+      <!-- Labels -->
+      <div class="label" style="top:20px;">파일 높이 <span class="label-val">19mm</span> (Pile Height)</div>
+      <div class="label" style="top:55px;">규사 충진 <span class="label-val">~10톤</span> (Silica Sand)</div>
+      <div class="label" style="top:92px;">기포지 <span class="label-val">PP+Net</span> (Primary Backing)</div>
+      <div class="label" style="top:122px;">접착 코팅 <span class="label-val">SBR/PU</span> (Coating)</div>
+      <div class="label" style="top:150px;">쿠션 <span class="label-val">선택사항</span> (Optional)</div>
+      <div class="label" style="top:195px;">기초 <span class="label-val">10~12cm</span> (Base)</div>
+      <div class="label" style="top:237px;">다짐층 <span class="label-val">20~30cm</span> (Sub-base)</div>
+      <div class="label" style="top:275px;">지반 (Ground)</div>
+
+      <!-- Pile height arrow -->
+      <div class="dim-arrow" style="top:10px; height:80px;"></div>
+      <div class="dim-label" style="top:30px;">Pile Height 19mm</div>
+    </div>
+  </div>
+
+  <!-- Spec Cards -->
+  <div class="specs">
+    <div class="spec-card">
+      <div class="spec-title">🌱 원사 스펙 (Yarn Specs)</div>
+      <div class="spec-item"><span><span class="spec-kr">파일 높이</span><br><span class="spec-en">Pile Height</span></span><span class="spec-best">19mm ✓</span></div>
+      <div class="spec-item"><span><span class="spec-kr">원사 재질</span><br><span class="spec-en">Yarn Material</span></span><span class="spec-best">PE ✓</span></div>
+      <div class="spec-item"><span><span class="spec-kr">원사 타입</span><br><span class="spec-en">Yarn Type</span></span><span class="spec-best">모노필라멘트 ✓</span></div>
+      <div class="spec-item"><span><span class="spec-kr">굵기</span><br><span class="spec-en">Dtex</span></span><span class="spec-val">6,600~8,800</span></div>
+      <div class="spec-item"><span><span class="spec-kr">밀도</span><br><span class="spec-en">Density (tufts/㎡)</span></span><span class="spec-val">42,000~52,500</span></div>
+      <div class="spec-item"><span><span class="spec-kr">게이지</span><br><span class="spec-en">Gauge (줄 간격)</span></span><span class="spec-val">3/16" 또는 3/8"</span></div>
+    </div>
+
+    <div class="spec-card">
+      <div class="spec-title">🔧 시공 스펙 (Installation)</div>
+      <div class="spec-item"><span><span class="spec-kr">충진재</span><br><span class="spec-en">Infill</span></span><span class="spec-best">규사 (Silica Sand) ✓</span></div>
+      <div class="spec-item"><span><span class="spec-kr">배킹</span><br><span class="spec-en">Backing</span></span><span class="spec-val">PP + 네트</span></div>
+      <div class="spec-item"><span><span class="spec-kr">코팅</span><br><span class="spec-en">Coating</span></span><span class="spec-val">SBR 또는 PU</span></div>
+      <div class="spec-item"><span><span class="spec-kr">접합 테이프</span><br><span class="spec-en">Seaming Tape</span></span><span class="spec-val">PET 테이프+접착제</span></div>
+      <div class="spec-item"><span><span class="spec-kr">충격패드</span><br><span class="spec-en">Shock Pad</span></span><span class="spec-val">선택 (폼 타입)</span></div>
+      <div class="spec-item"><span><span class="spec-kr">라인</span><br><span class="spec-en">Line Marking</span></span><span class="spec-val">백색 잔디 내장</span></div>
+    </div>
+  </div>
+
+  <!-- Yarn Comparison -->
+  <div class="yarn-compare">
+    <div class="spec-title">🧵 원사 타입 비교 (Yarn Type)</div>
+    <div class="yarn-row">
+      <div class="yarn-box good">
+        <div class="yarn-icon">|||</div>
+        <div class="yarn-name">모노필라멘트</div>
+        <div class="yarn-name-en">Monofilament</div>
+        <div class="yarn-desc">한 올씩 독립<br>복원력 좋음<br>오래 서있음</div>
+        <div class="badge-good">✓ 테니스 추천</div>
+      </div>
+      <div class="yarn-box bad">
+        <div class="yarn-icon">⫘⫘⫘</div>
+        <div class="yarn-name">피브릴레이티드</div>
+        <div class="yarn-name-en">Fibrillated</div>
+        <div class="yarn-desc">그물처럼 갈라짐<br>빨리 눕힘<br>저가형</div>
+        <div class="badge-bad">✗ 비추</div>
+      </div>
+      <div class="yarn-box good">
+        <div class="yarn-icon">PE</div>
+        <div class="yarn-name">폴리에틸렌</div>
+        <div class="yarn-name-en">Polyethylene (PE)</div>
+        <div class="yarn-desc">부드러움<br>내구성 좋음<br>UV 저항</div>
+        <div class="badge-good">✓ 추천 재질</div>
+      </div>
+      <div class="yarn-box bad">
+        <div class="yarn-icon">PP</div>
+        <div class="yarn-name">폴리프로필렌</div>
+        <div class="yarn-name-en">Polypropylene (PP)</div>
+        <div class="yarn-desc">딱딱함<br>수명 짧음<br>저가</div>
+        <div class="badge-bad">✗ 비추</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ITF Category -->
+  <div class="cross-section" style="margin-top:15px;">
+    <div class="spec-title">🎾 ITF 코트 속도 카테고리 (Court Pace)</div>
+    <div class="itf-bar">
+      <div class="itf-seg itf1">Cat 1<br><small>매우느림</small><br><small>Slow</small></div>
+      <div class="itf-seg itf2">Cat 2<br><small>느림</small><br><small>클레이급</small></div>
+      <div class="itf-seg itf3 itf-best">⭐ Cat 3<br><small>중간</small><br><small>추천!</small></div>
+      <div class="itf-seg itf4 itf-best">⭐ Cat 4<br><small>중간빠름</small><br><small>추천!</small></div>
+      <div class="itf-seg itf5">Cat 5<br><small>빠름</small><br><small>잔디급</small></div>
+    </div>
+  </div>
+
+  <!-- Best Spec Summary -->
+  <div class="best-spec">
+    <div class="best-title">⭐ 재성님 코트 최적 스펙</div>
+    <div class="best-grid">
+      <div class="best-item">
+        <div class="best-label">파일 높이</div>
+        <div class="best-value">19mm</div>
+        <div class="best-eng">Pile Height</div>
+      </div>
+      <div class="best-item">
+        <div class="best-label">원사</div>
+        <div class="best-value">PE 모노</div>
+        <div class="best-eng">PE Monofilament</div>
+      </div>
+      <div class="best-item">
+        <div class="best-label">굵기</div>
+        <div class="best-value">6,600+</div>
+        <div class="best-eng">Dtex</div>
+      </div>
+      <div class="best-item">
+        <div class="best-label">밀도</div>
+        <div class="best-value">52,500</div>
+        <div class="best-eng">tufts/㎡</div>
+      </div>
+      <div class="best-item">
+        <div class="best-label">ITF</div>
+        <div class="best-value">Cat 3~4</div>
+        <div class="best-eng">Medium Pace</div>
+      </div>
+      <div class="best-item">
+        <div class="best-label">충진재</div>
+        <div class="best-value">규사</div>
+        <div class="best-eng">Silica Sand</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

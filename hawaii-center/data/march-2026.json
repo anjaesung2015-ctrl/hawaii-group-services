@@ -1,0 +1,42 @@
+{
+  "business": "Hawaii Sport Center",
+  "month": "2026-03",
+  "summary": {
+    "totalRevenue": 44291600,
+    "totalExpense": 21709366,
+    "netIncome": 22582234,
+    "daysRecorded": 18,
+    "dailyAverage": 2460644
+  },
+  "daily": [
+    {"date":"2026-03-01","revenue":3903100,"expense":0},
+    {"date":"2026-03-02","revenue":8430000,"expense":1240000},
+    {"date":"2026-03-03","revenue":1018500,"expense":0},
+    {"date":"2026-03-04","revenue":528000,"expense":297300},
+    {"date":"2026-03-05","revenue":1569500,"expense":4650560},
+    {"date":"2026-03-06","revenue":1366000,"expense":0},
+    {"date":"2026-03-07","revenue":2584500,"expense":0},
+    {"date":"2026-03-08","revenue":495000,"expense":0},
+    {"date":"2026-03-09","revenue":924500,"expense":0},
+    {"date":"2026-03-10","revenue":1217000,"expense":11937746},
+    {"date":"2026-03-11","revenue":1617000,"expense":0},
+    {"date":"2026-03-12","revenue":2872000,"expense":0},
+    {"date":"2026-03-13","revenue":1468500,"expense":2909120},
+    {"date":"2026-03-14","revenue":8503500,"expense":0},
+    {"date":"2026-03-15","revenue":5001500,"expense":674640},
+    {"date":"2026-03-16","revenue":1513000,"expense":0},
+    {"date":"2026-03-17","revenue":1280000,"expense":0},
+    {"date":"2026-03-18","revenue":950500,"expense":0}
+  ],
+  "detailedDays": {
+    "2026-03-12": {"rental":2530000,"restaurant":0,"mart":331000,"total":2861000},
+    "2026-03-13": {"rental":1045000,"restaurant":250000,"mart":173500,"total":1468500},
+    "2026-03-14": {"rental":3610000,"restaurant":3532500,"mart":1320000,"total":8462500},
+    "2026-03-18": {"rental":675000,"restaurant":8500,"mart":267000,"total":950500}
+  },
+  "miba": {
+    "totalRevenue": 9397800,
+    "totalExpense": 1418076,
+    "netIncome": 7979724
+  }
+}

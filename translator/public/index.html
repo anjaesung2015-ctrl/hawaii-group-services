@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🌐 Hawaii Translator</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+.header {
+  text-align: center;
+  padding: 14px;
+  background: linear-gradient(135deg, #1e3a5f, #0f172a);
+  border-bottom: 1px solid #334155;
+}
+.header h1 { font-size: 20px; font-weight: 700; }
+.header p { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+
+.lang-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #1e293b;
+}
+.lang-btn {
+  padding: 10px 20px;
+  border-radius: 20px;
+  border: 2px solid #334155;
+  background: transparent;
+  color: #e2e8f0;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  min-width: 110px;
+  text-align: center;
+  transition: all 0.3s;
+}
+.lang-btn.active { border-color: #3b82f6; background: #1e3a5f; }
+.swap-btn {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  border: 2px solid #3b82f6;
+  background: rgba(59,130,246,0.15);
+  color: #3b82f6;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+.swap-btn:active { background: #3b82f6; color: white; transform: rotate(180deg); }
+
+.content { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+
+.card {
+  background: #1e293b;
+  border-radius: 16px;
+  padding: 14px;
+  border: 1px solid #334155;
+}
+.card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.card-text {
+  font-size: 18px;
+  line-height: 1.5;
+  min-height: 50px;
+  word-break: break-word;
+}
+.card-text.placeholder { color: #475569; font-style: italic; font-size: 15px; }
+.card.result { border-color: #3b82f6; }
+.card.result .card-text { color: #93c5fd; }
+
+.mic-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0;
+  gap: 10px;
+}
+.mic-btn {
+  width: 88px; height: 88px;
+  border-radius: 50%;
+  border: 3px solid #3b82f6;
+  background: rgba(59,130,246,0.1);
+  color: #3b82f6;
+  font-size: 36px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+.mic-btn.recording {
+  border-color: #ef4444;
+  background: rgba(239,68,68,0.2);
+  color: #ef4444;
+  animation: pulse 1.5s infinite;
+}
+.mic-btn.processing {
+  border-color: #f59e0b;
+  background: rgba(245,158,11,0.2);
+  color: #f59e0b;
+  animation: spin 1s linear infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+  50% { box-shadow: 0 0 0 20px rgba(239,68,68,0); }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.mic-label { font-size: 13px; color: #94a3b8; }
+
+/* Silence timer bar */
+.silence-bar-wrap {
+  width: 120px;
+  height: 4px;
+  background: #334155;
+  border-radius: 2px;
+  overflow: hidden;
+  display: none;
+}
+.silence-bar-wrap.active { display: block; }
+.silence-bar {
+  height: 100%;
+  background: #ef4444;
+  width: 100%;
+  transition: width 0.1s linear;
+  border-radius: 2px;
+}
+
+.status {
+  text-align: center;
+  font-size: 12px;
+  color: #64748b;
+  padding: 2px;
+  min-height: 18px;
+}
+.status.error { color: #ef4444; }
+
+.history { padding: 0 16px 16px; }
+.history-title {
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.history-item {
+  background: #1e293b;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+  border: 1px solid #334155;
+  font-size: 14px;
+}
+.history-item .original { color: #94a3b8; margin-bottom: 4px; }
+.history-item .translated { color: #93c5fd; }
+.history-item .meta { font-size: 10px; color: #475569; margin-top: 4px; }
+
+.text-input-area { padding: 0 16px; }
+.text-input-row { display: flex; gap: 8px; }
+.text-input {
+  flex: 1;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 12px;
+  color: #e2e8f0;
+  font-size: 16px;
+  resize: none;
+  height: 44px;
+  font-family: inherit;
+}
+.text-input:focus { outline: none; border-color: #3b82f6; }
+.send-btn {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  border: none;
+  background: #3b82f6;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+}
+.send-btn:active { background: #2563eb; }
+
+.mode-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+.mode-btn {
+  padding: 6px 16px;
+  border-radius: 16px;
+  border: 1px solid #334155;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+}
+.mode-btn.active { border-color: #3b82f6; color: #3b82f6; background: rgba(59,130,246,0.1); }
+
+/* Language picker */
+.lang-modal {
+  display: none;
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7); z-index: 100;
+  align-items: center; justify-content: center;
+}
+.lang-modal-inner {
+  background: #1e293b;
+  border-radius: 16px;
+  padding: 20px;
+  width: 280px;
+}
+.lang-modal-title {
+  text-align: center;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+.lang-option {
+  padding: 12px;
+  border-radius: 10px;
+  margin: 4px 0;
+  cursor: pointer;
+  text-align: center;
+  font-size: 16px;
+  transition: background 0.2s;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🌐 Hawaii Translator</h1>
+  <p>한국어 ↔ 몽골어 · 영어 실시간 번역</p>
+</div>
+
+<div class="lang-selector">
+  <button class="lang-btn active" id="fromLang" onclick="showLangPicker('from')">🇰🇷 한국어</button>
+  <button class="swap-btn" onclick="swapLangs()">⇄</button>
+  <button class="lang-btn active" id="toLang" onclick="showLangPicker('to')">🇲🇳 몽골어</button>
+</div>
+
+<div class="mode-toggle">
+  <button class="mode-btn active" id="modeVoice" onclick="setMode('voice')">🎤 음성</button>
+  <button class="mode-btn" id="modeText" onclick="setMode('text')">⌨️ 텍스트</button>
+</div>
+
+<div class="content">
+  <div class="card" id="sourceCard">
+    <div class="card-label" id="sourceLabel">원문 (한국어)</div>
+    <div class="card-text placeholder" id="sourceText">탭하여 말하기 🎤</div>
+  </div>
+  <div class="card result" id="resultCard">
+    <div class="card-label" id="resultLabel">번역 (몽골어)</div>
+    <div class="card-text placeholder" id="resultText">번역이 여기에 표시됩니다</div>
+  </div>
+</div>
+
+<div class="status" id="status"></div>
+
+<div class="mic-area" id="voiceArea">
+  <button class="mic-btn" id="micBtn">🎤</button>
+  <div class="silence-bar-wrap" id="silenceWrap">
+    <div class="silence-bar" id="silenceBar"></div>
+  </div>
+  <div class="mic-label" id="micLabel">탭하여 말하기</div>
+</div>
+
+<div class="text-input-area" id="textArea" style="display:none">
+  <div class="text-input-row">
+    <textarea class="text-input" id="textInput" placeholder="번역할 텍스트 입력..." 
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendText()}"></textarea>
+    <button class="send-btn" onclick="sendText()">➤</button>
+  </div>
+</div>
+
+<div class="history" id="historyArea">
+  <div class="history-title">기록</div>
+  <div id="historyList"></div>
+</div>
+
+<div class="lang-modal" id="langModal">
+  <div class="lang-modal-inner">
+    <div class="lang-modal-title" id="langModalTitle">언어 선택</div>
+    <div id="langOptions"></div>
+  </div>
+</div>
+
+<script>
+const LANGS = [
+  { code: 'ko', name: '한국어', flag: '🇰🇷' },
+  { code: 'mn', name: '몽골어', flag: '🇲🇳' },
+  { code: 'en', name: 'English', flag: '🇺🇸' },
+  { code: 'ja', name: '日本語', flag: '🇯🇵' },
+  { code: 'ru', name: 'Русский', flag: '🇷🇺' },
+];
+
+let fromCode = 'ko', toCode = 'mn';
+let recording = false, mediaRecorder = null, audioChunks = [];
+let currentMode = 'voice';
+let history = [];
+
+// Silence detection
+let audioContext, analyser, silenceTimer, silenceStart;
+const SILENCE_THRESHOLD = 0.01;
+const SILENCE_DURATION = 2000; // 2s silence = auto stop
+
+function updateLangDisplay() {
+  const f = LANGS.find(l => l.code === fromCode);
+  const t = LANGS.find(l => l.code === toCode);
+  document.getElementById('fromLang').textContent = `${f.flag} ${f.name}`;
+  document.getElementById('toLang').textContent = `${t.flag} ${t.name}`;
+  document.getElementById('sourceLabel').textContent = `원문 (${f.name})`;
+  document.getElementById('resultLabel').textContent = `번역 (${t.name})`;
+}
+
+function swapLangs() {
+  [fromCode, toCode] = [toCode, fromCode];
+  updateLangDisplay();
+}
+
+let langPickerTarget = 'from';
+function showLangPicker(target) {
+  langPickerTarget = target;
+  document.getElementById('langModalTitle').textContent = target === 'from' ? '원본 언어' : '번역 언어';
+  const current = target === 'from' ? fromCode : toCode;
+  document.getElementById('langOptions').innerHTML = LANGS.map(l => `
+    <div class="lang-option" onclick="pickLang('${l.code}')" 
+      style="background:${current===l.code?'#3b82f6':'#334155'}">
+      ${l.flag} ${l.name}
+    </div>
+  `).join('');
+  document.getElementById('langModal').style.display = 'flex';
+}
+function pickLang(code) {
+  if (langPickerTarget === 'from') fromCode = code;
+  else toCode = code;
+  updateLangDisplay();
+  document.getElementById('langModal').style.display = 'none';
+}
+document.getElementById('langModal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeVoice').classList.toggle('active', mode === 'voice');
+  document.getElementById('modeText').classList.toggle('active', mode === 'text');
+  document.getElementById('voiceArea').style.display = mode === 'voice' ? 'flex' : 'none';
+  document.getElementById('textArea').style.display = mode === 'text' ? 'block' : 'none';
+}
+
+function setStatus(msg, isError) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status' + (isError ? ' error' : '');
+}
+
+function setSource(text) {
+  const el = document.getElementById('sourceText');
+  el.textContent = text;
+  el.classList.remove('placeholder');
+}
+
+function setResult(text) {
+  const el = document.getElementById('resultText');
+  el.textContent = text;
+  el.classList.remove('placeholder');
+}
+
+// --- Tap-to-toggle recording with silence detection ---
+const micBtn = document.getElementById('micBtn');
+micBtn.addEventListener('contextmenu', e => e.preventDefault());
+
+micBtn.addEventListener('click', e => {
+  e.preventDefault();
+  if (recording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+});
+
+// Prevent double-fire from touch+click
+micBtn.addEventListener('touchend', e => {
+  e.preventDefault();
+  micBtn.click();
+});
+
+async function startRecording() {
+  if (recording) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+    // Set up silence detection
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 512;
+    const source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
+    silenceStart = null;
+    startSilenceDetection();
+    
+    const formats = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4', 'audio/wav'];
+    let mimeType = '';
+    for (const fmt of formats) {
+      if (MediaRecorder.isTypeSupported(fmt)) { mimeType = fmt; break; }
+    }
+    mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+      stopSilenceDetection();
+      if (audioContext) { audioContext.close(); audioContext = null; }
+      processAudio();
+    };
+    mediaRecorder.start();
+    recording = true;
+    micBtn.classList.add('recording');
+    micBtn.textContent = '⏹';
+    document.getElementById('micLabel').textContent = '말하세요... (2초 침묵 시 자동 정지)';
+    document.getElementById('silenceWrap').classList.add('active');
+    setStatus('🔴 녹음 중...');
+  } catch (err) {
+    setStatus('마이크 접근 실패: ' + err.message, true);
+  }
+}
+
+function stopRecording() {
+  if (!recording) return;
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  recording = false;
+  micBtn.classList.remove('recording');
+  micBtn.textContent = '🎤';
+  document.getElementById('micLabel').textContent = '탭하여 말하기';
+  document.getElementById('silenceWrap').classList.remove('active');
+}
+
+function startSilenceDetection() {
+  const dataArray = new Float32Array(analyser.fftSize);
+  
+  function check() {
+    if (!recording) return;
+    analyser.getFloatTimeDomainData(dataArray);
+    
+    // Calculate RMS volume
+    let sum = 0;
+    for (let i = 0; i < dataArray.length; i++) sum += dataArray[i] * dataArray[i];
+    const rms = Math.sqrt(sum / dataArray.length);
+    
+    if (rms < SILENCE_THRESHOLD) {
+      if (!silenceStart) silenceStart = Date.now();
+      const elapsed = Date.now() - silenceStart;
+      const pct = Math.max(0, 100 - (elapsed / SILENCE_DURATION * 100));
+      document.getElementById('silenceBar').style.width = pct + '%';
+      
+      if (elapsed >= SILENCE_DURATION) {
+        // 2 seconds of silence — auto stop
+        stopRecording();
+        return;
+      }
+    } else {
+      silenceStart = null;
+      document.getElementById('silenceBar').style.width = '100%';
+    }
+    
+    silenceTimer = requestAnimationFrame(check);
+  }
+  check();
+}
+
+function stopSilenceDetection() {
+  if (silenceTimer) cancelAnimationFrame(silenceTimer);
+  silenceTimer = null;
+}
+
+async function processAudio() {
+  const btn = document.getElementById('micBtn');
+  btn.classList.add('processing');
+  btn.textContent = '⏳';
+  setStatus('🔄 번역 중...');
+
+  try {
+    const mimeType = mediaRecorder?.mimeType || 'audio/webm';
+    const extMap = {'audio/webm':'webm','audio/ogg':'ogg','audio/mp4':'m4a','audio/wav':'wav','audio/webm;codecs=opus':'webm','audio/ogg;codecs=opus':'ogg'};
+    const ext = extMap[mimeType] || 'webm';
+    const blob = new Blob(audioChunks, { type: mimeType });
+    const formData = new FormData();
+    formData.append('audio', blob, `recording.${ext}`);
+    formData.append('language', fromCode);
+
+    // STT
+    const sttRes = await fetch('api/stt', { method: 'POST', body: formData });
+    const sttData = await sttRes.json();
+    if (sttData.error) throw new Error(sttData.error);
+    
+    setSource(sttData.text);
+
+    // Translate immediately
+    const transRes = await fetch('api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: sttData.text, from: fromCode, to: toCode })
+    });
+    const transData = await transRes.json();
+    if (transData.error) throw new Error(transData.error);
+
+    setResult(transData.translated);
+    addHistory(sttData.text, transData.translated);
+    setStatus('✅ 완료 — 탭하여 다시 말하기');
+
+  } catch (err) {
+    setStatus('오류: ' + err.message, true);
+  } finally {
+    btn.classList.remove('processing');
+    btn.textContent = '🎤';
+    document.getElementById('micLabel').textContent = '탭하여 말하기';
+  }
+}
+
+async function sendText() {
+  const input = document.getElementById('textInput');
+  const text = input.value.trim();
+  if (!text) return;
+  
+  input.value = '';
+  setSource(text);
+  setStatus('🔄 번역 중...');
+  
+  try {
+    const transRes = await fetch('api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, from: fromCode, to: toCode })
+    });
+    const transData = await transRes.json();
+    if (transData.error) throw new Error(transData.error);
+
+    setResult(transData.translated);
+    addHistory(text, transData.translated);
+    setStatus('✅ 완료');
+  } catch (err) {
+    setStatus('번역 오류: ' + err.message, true);
+  }
+}
+
+function addHistory(original, translated) {
+  const time = new Date().toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' });
+  const f = LANGS.find(l => l.code === fromCode);
+  const t = LANGS.find(l => l.code === toCode);
+  
+  history.unshift({ original, translated, time, from: f, to: t });
+  if (history.length > 20) history.pop();
+  
+  const list = document.getElementById('historyList');
+  list.innerHTML = history.map(h => `
+    <div class="history-item">
+      <div class="original">${h.from.flag} ${h.original}</div>
+      <div class="translated">${h.to.flag} ${h.translated}</div>
+      <div class="meta">${h.time} · ${h.from.name} → ${h.to.name}</div>
+    </div>
+  `).join('');
+}
+
+updateLangDisplay();
+</script>
+</body>
+</html>

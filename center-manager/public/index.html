@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>센터 관리</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--card2:#334155;--primary:#10b981;--primary2:#059669;--success:#22c55e;--danger:#ef4444;--warning:#f59e0b;--info:#3b82f6;--text:#f1f5f9;--text2:#94a3b8;--sidebar-w:240px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+.sidebar{position:fixed;left:0;top:0;width:var(--sidebar-w);height:100vh;background:var(--card);padding:1rem;display:flex;flex-direction:column;z-index:100;transition:transform .3s}
+.logo{font-size:1.1rem;font-weight:800;padding:0.5rem;margin-bottom:1rem;color:var(--primary)}
+.nav-item{padding:0.7rem 0.8rem;border-radius:10px;cursor:pointer;font-size:0.88rem;margin:2px 0;transition:all .2s;display:flex;align-items:center;gap:0.6rem;color:var(--text2)}
+.nav-item:hover,.nav-item.active{background:rgba(16,185,129,0.15);color:var(--primary)}
+.main{margin-left:var(--sidebar-w);padding:1.5rem;min-height:100vh}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.5rem}
+.page-header h2{font-size:1.3rem;font-weight:700}
+.card{background:var(--card);border-radius:16px;padding:1.2rem;margin-bottom:1rem}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1rem;margin-bottom:1.5rem}
+.stat{background:var(--card);border-radius:16px;padding:1.2rem}
+.stat-value{font-size:1.6rem;font-weight:800;margin:0.3rem 0}
+.stat-label{color:var(--text2);font-size:0.82rem}
+.btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 1rem;border:none;border-radius:10px;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all .2s;color:white}
+.btn-primary{background:var(--primary)}.btn-primary:hover{background:var(--primary2)}
+.btn-success{background:var(--success)}.btn-danger{background:var(--danger)}.btn-info{background:var(--info)}.btn-warning{background:var(--warning);color:#000}
+.btn-sm{padding:0.35rem 0.7rem;font-size:0.8rem}
+input,select,textarea{width:100%;padding:0.6rem 0.8rem;border:1px solid var(--card2);border-radius:10px;background:var(--bg);color:var(--text);font-size:0.9rem;outline:none}
+input:focus,select:focus{border-color:var(--primary)}
+.form-group{margin-bottom:0.8rem}.form-group label{display:block;font-size:0.8rem;color:var(--text2);margin-bottom:0.3rem;font-weight:600}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:0.8rem}
+table{width:100%;border-collapse:collapse;font-size:0.85rem}
+th{text-align:left;padding:0.6rem;color:var(--text2);border-bottom:1px solid var(--card2);font-weight:600;font-size:0.78rem}
+td{padding:0.6rem;border-bottom:1px solid rgba(255,255,255,0.03)}
+.badge{padding:0.2rem 0.6rem;border-radius:20px;font-size:0.72rem;font-weight:600;display:inline-block}
+.badge-available{background:rgba(34,197,94,0.15);color:var(--success)}
+.badge-occupied{background:rgba(239,68,68,0.15);color:var(--danger)}
+.badge-maintenance{background:rgba(245,158,11,0.15);color:var(--warning)}
+.badge-good{background:rgba(34,197,94,0.15);color:var(--success)}
+.badge-fair{background:rgba(245,158,11,0.15);color:var(--warning)}
+.badge-poor{background:rgba(239,68,68,0.15);color:var(--danger)}
+.section{display:none}.section.active{display:block}
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal{background:var(--card);border-radius:20px;padding:1.5rem;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+.hamburger{display:none;position:fixed;top:1rem;left:1rem;z-index:101;background:var(--card);border:none;color:var(--text);font-size:1.3rem;padding:0.5rem 0.7rem;border-radius:10px;cursor:pointer}
+.facility-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem}
+.facility-card{border-radius:16px;padding:1.2rem;text-align:center;cursor:pointer;transition:all .2s;border:2px solid transparent}
+.facility-card:hover{transform:translateY(-2px)}
+.facility-card.available{background:rgba(34,197,94,0.08);border-color:rgba(34,197,94,0.3)}
+.facility-card.occupied{background:rgba(239,68,68,0.08);border-color:rgba(239,68,68,0.3)}
+.facility-card.maintenance{background:rgba(245,158,11,0.08);border-color:rgba(245,158,11,0.3)}
+.checklist-item{display:flex;align-items:center;gap:0.8rem;padding:0.6rem 0;border-bottom:1px solid rgba(255,255,255,0.03)}
+.checklist-item input[type=checkbox]{width:20px;height:20px;accent-color:var(--primary)}
+.checklist-item.checked{opacity:0.5;text-decoration:line-through}
+.time-slot{display:inline-block;padding:0.3rem 0.6rem;border-radius:8px;font-size:0.8rem;margin:0.2rem}
+.time-slot.booked{background:rgba(59,130,246,0.15);color:var(--info)}
+.time-slot.class{background:rgba(139,92,246,0.15);color:#8b5cf6}
+@media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.hamburger{display:block}.main{margin-left:0;padding:1rem}.form-row{grid-template-columns:1fr}.stat-grid{grid-template-columns:1fr 1fr}.facility-grid{grid-template-columns:1fr 1fr}}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
+#app-screen{display:none}
+.admin-only{display:none}
+body.role-admin .admin-only{display:flex}
+body.role-customer .staff-only{display:none}
+</style>
+</head>
+<body>
+<div id="login-screen">
+  <div class="card" style="width:100%;max-width:420px;text-align:center;padding:2rem">
+    <div style="font-size:3rem;margin-bottom:0.5rem">🏋️</div>
+    <h2 style="margin:0 0 0.3rem;color:var(--primary)">센터 관리</h2>
+    <p style="color:var(--text2);margin-bottom:1.5rem;font-size:0.85rem">시설 · 수업 · 장비 · 운영</p>
+    <div style="display:flex;gap:0.3rem;margin-bottom:1.5rem">
+      <button id="tab-login" class="btn btn-primary" style="flex:1;justify-content:center;font-size:0.82rem" onclick="showLoginTab('login')">🔐 로그인</button>
+      <button id="tab-register" class="btn" style="flex:1;justify-content:center;background:var(--card2);font-size:0.82rem" onclick="showLoginTab('register')">📝 회원가입</button>
+      <button id="tab-public" class="btn" style="flex:1;justify-content:center;background:var(--card2);font-size:0.82rem" onclick="showLoginTab('public')">👀 현황</button>
+    </div>
+    <div id="login-form">
+      <div class="form-group"><label>아이디</label><input id="login-user" placeholder="아이디"></div>
+      <div class="form-group"><label>비밀번호</label><input type="password" id="login-pass" placeholder="비밀번호"></div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:0.75rem;font-size:1rem" onclick="doLogin()">로그인</button>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="form-group"><label>아이디 *</label><input id="reg-user" placeholder="아이디 (3자 이상)"></div>
+      <div class="form-group"><label>비밀번호 *</label><input type="password" id="reg-pass" placeholder="비밀번호 (4자 이상)"></div>
+      <div class="form-row">
+        <div class="form-group"><label>이름 *</label><input id="reg-name" placeholder="이름"></div>
+        <div class="form-group"><label>전화번호 *</label><input id="reg-phone" placeholder="99001234"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>성별</label><select id="reg-gender"><option value="M">👨 남</option><option value="F">👩 여</option></select></div>
+        <div class="form-group"><label>생년월일</label><input type="date" id="reg-birth"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:0.75rem;font-size:1rem" onclick="doRegister()">🎾 회원가입</button>
+    </div>
+    <div id="public-view" style="display:none"></div>
+    <button id="login-lang-toggle" class="btn btn-sm" style="background:var(--card2);width:100%;justify-content:center;margin-top:0.75rem" onclick="switchLang()">🇲🇳 Монгол</button>
+    <p id="login-error" style="color:var(--danger);font-size:0.85rem;margin-top:0.5rem"></p>
+  </div>
+</div>
+
+<div id="app-screen">
+<button class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>
+<div class="sidebar">
+  <div class="logo">🏋️ 센터 관리</div>
+  <a href="/center/portal" class="nav-item" style="background:rgba(16,185,129,0.1);margin-bottom:8px;text-decoration:none;color:var(--text2)"><i class="fas fa-th-large"></i> ← 포털</a>
+  <div class="nav-item active" onclick="showSection('dashboard')"><i class="fas fa-home"></i> 현황판</div>
+  <div class="nav-item" onclick="showSection('members')"><i class="fas fa-id-card"></i> 회원 관리</div>
+  <div class="nav-item staff-only" onclick="showSection('approvals')"><i class="fas fa-bell"></i> 예약 승인 <span id="pending-badge" style="background:var(--warning);color:#000;border-radius:50%;padding:0 6px;font-size:0.7rem;margin-left:4px;display:none">0</span></div>
+  <div class="nav-item" onclick="showSection('facilities')"><i class="fas fa-building"></i> 시설 현황</div>
+  <div class="nav-item" onclick="showSection('bookings')"><i class="fas fa-calendar-alt"></i> 예약 관리</div>
+  <div class="nav-item" onclick="showSection('classes')"><i class="fas fa-chalkboard-teacher"></i> 수업 관리</div>
+  <div class="nav-item" onclick="showSection('equipment')"><i class="fas fa-dumbbell"></i> 장비 관리</div>
+  <div class="nav-item" onclick="showSection('checklist')"><i class="fas fa-tasks"></i> 일일 체크</div>
+  <div class="nav-item" onclick="showSection('notices')"><i class="fas fa-bullhorn"></i> 공지/메모</div>
+  <div class="nav-item admin-only" onclick="showSection('users')"><i class="fas fa-users-cog"></i> 사용자 관리</div>
+  <div style="flex:1"></div>
+  <button id="lang-toggle" class="btn btn-sm" style="background:var(--card2);width:100%;justify-content:center;margin-bottom:0.5rem" onclick="switchLang()">🇲🇳 Монгол</button>
+  <button class="btn btn-sm" style="background:var(--card2);width:100%;justify-content:center" onclick="logout()"><i class="fas fa-sign-out-alt"></i> 로그아웃</button>
+</div>
+
+<div class="main">
+  <div class="section active" id="sec-dashboard"></div>
+  <div class="section" id="sec-members"></div>
+  <div class="section" id="sec-facilities"></div>
+  <div class="section" id="sec-bookings"></div>
+  <div class="section" id="sec-classes"></div>
+  <div class="section" id="sec-equipment"></div>
+  <div class="section" id="sec-checklist"></div>
+  <div class="section" id="sec-notices"></div>
+  <div class="section" id="sec-users"></div>
+  <div class="section" id="sec-approvals"></div>
+  <div class="section" id="sec-cust-booking"></div>
+  <div class="section" id="sec-cust-mybookings"></div>
+  <div class="section" id="sec-cust-classes"></div>
+</div>
+</div>
+<div id="modal-container"></div>
+
+<script>
+const API=window.location.pathname.replace(/\/+$/,'');
+let authToken=localStorage.getItem('center_token'),currentUser=JSON.parse(localStorage.getItem('center_user')||'null');
+let facilities=[],currentLang=localStorage.getItem('center_lang')||'ko';
+
+const i18n={ko:{
+  appTitle:'센터 관리',subtitle:'시설 · 수업 · 장비 · 운영',login:'로그인',username:'아이디',password:'비밀번호',logout:'로그아웃',langBtn:'🇲🇳 Монгол',
+  dashboard:'현황판',facilityStatus:'시설 현황',bookingMgmt:'예약 관리',classMgmt:'수업 관리',equipmentMgmt:'장비 관리',dailyCheck:'일일 체크',noticeBoard:'공지/메모',
+  todayRevenue:'오늘 매출',monthRevenue:'이번 달 매출',todayBookings:'오늘 예약',todayClasses:'오늘 수업',
+  available:'사용 가능',occupied:'사용 중',maintenance:'점검 중',
+  facility:'시설',court:'코트',time:'시간',customer:'고객',phone:'전화',amount:'금액',payment:'결제',status:'상태',
+  editBooking:'예약 수정',addBooking:'예약 등록',date:'날짜',startTime:'시작',endTime:'종료',memo:'메모',save:'저장',cancel:'취소',delete:'삭제',
+  className:'수업명',instructor:'강사',schedule:'스케줄',students:'수강생',maxStudents:'정원',fee:'수강료',
+  equipment:'장비',category:'카테고리',qty:'수량',location:'위치',condition:'상태',
+  good:'양호',fair:'보통',poor:'불량',
+  purchaseDate:'구입일',purchasePrice:'구입가',lastMaint:'최근 점검',nextMaint:'다음 점검',
+  maintLog:'점검/수리 기록',addMaint:'점검 기록 추가',type:'유형',repair:'수리',inspection:'점검',replacement:'교체',cost:'비용',doneBy:'담당자',
+  openCheck:'오픈 체크리스트',closeCheck:'마감 체크리스트',checked:'완료',unchecked:'미완료',
+  title:'제목',content:'내용',priority:'중요도',normal:'일반',urgent:'긴급',addNotice:'공지 등록',userMgmt:'사용자 관리',addUser:'사용자 추가',editUser:'사용자 수정',role:'권한',roleAdmin:'관리자',roleStaff:'직원',roleCustomer:'고객',memberMgmt:'회원 관리',addMember:'회원 등록',editMember:'회원 수정',memberName:'이름',memberPhone:'전화번호',memberGender:'성별',male:'남',female:'여',memberBirth:'생년월일',membershipType:'회원권 종류',startDate:'시작일',endDate:'종료일',lockerNo:'락커 번호',totalMembers:'전체 회원',activeMembers:'활동 회원',expiredMembers:'만료 회원',expiringMembers:'곧 만료',searchMember:'회원 검색',allStatus:'전체',activeSt:'활동',inactiveSt:'비활동',expiredSt:'만료',courtStatus:'코트 현황',classInfo:'수업 안내',loginBtn:'로그인',publicView:'코트 현황',
+  cash:'현금',card:'카드',qpay:'QPay',transfer:'계좌이체',confirmed:'확인됨',cancelled:'취소됨',
+  editPrice:'금액 수정',timeView:'시간별',listView:'목록',close:'닫기',noBookings:'예약 없음',perHour:'/시간',count:'건',won:'₮',person:'명',
+},mn:{
+  appTitle:'Төвийн удирдлага',subtitle:'Байгууламж · Хичээл · Тоног төхөөрөмж',login:'Нэвтрэх',username:'Хэрэглэгч',password:'Нууц үг',logout:'Гарах',langBtn:'🇰🇷 한국어',
+  dashboard:'Хянах самбар',facilityStatus:'Байгууламжийн байдал',bookingMgmt:'Захиалга удирдлага',classMgmt:'Хичээл удирдлага',equipmentMgmt:'Тоног төхөөрөмж',dailyCheck:'Өдрийн чеклист',noticeBoard:'Мэдэгдэл',
+  todayRevenue:'Өнөөдрийн орлого',monthRevenue:'Сарын орлого',todayBookings:'Өнөөдрийн захиалга',todayClasses:'Өнөөдрийн хичээл',
+  available:'Сул',occupied:'Ашиглагдаж байна',maintenance:'Засвар',
+  facility:'Байгууламж',court:'Корт',time:'Цаг',customer:'Үйлчлүүлэгч',phone:'Утас',amount:'Дүн',payment:'Төлбөр',status:'Төлөв',
+  editBooking:'Захиалга засах',addBooking:'Захиалга бүртгэх',date:'Огноо',startTime:'Эхлэх',endTime:'Дуусах',memo:'Тэмдэглэл',save:'Хадгалах',cancel:'Цуцлах',delete:'Устгах',
+  className:'Хичээлийн нэр',instructor:'Багш',schedule:'Хуваарь',students:'Сурагчид',maxStudents:'Хүчин чадал',fee:'Төлбөр',
+  equipment:'Тоног төхөөрөмж',category:'Ангилал',qty:'Тоо',location:'Байршил',condition:'Нөхцөл',
+  good:'Сайн',fair:'Дунд',poor:'Муу',
+  purchaseDate:'Худалдан авсан',purchasePrice:'Худалдан авсан үнэ',lastMaint:'Сүүлийн засвар',nextMaint:'Дараагийн засвар',
+  maintLog:'Засварын бүртгэл',addMaint:'Засвар бүртгэх',type:'Төрөл',repair:'Засвар',inspection:'Шалгалт',replacement:'Солих',cost:'Зардал',doneBy:'Хариуцагч',
+  openCheck:'Нээлтийн чеклист',closeCheck:'Хаалтын чеклист',checked:'Дууссан',unchecked:'Хийгдээгүй',
+  title:'Гарчиг',content:'Агуулга',priority:'Ач холбогдол',normal:'Энгийн',urgent:'Яаралтай',addNotice:'Мэдэгдэл бүртгэх',userMgmt:'Хэрэглэгч удирдлага',addUser:'Хэрэглэгч нэмэх',editUser:'Хэрэглэгч засах',role:'Эрх',roleAdmin:'Админ',roleStaff:'Ажилтан',roleCustomer:'Хэрэглэгч',memberMgmt:'Гишүүд удирдлага',addMember:'Гишүүн бүртгэх',editMember:'Гишүүн засах',memberName:'Нэр',memberPhone:'Утас',memberGender:'Хүйс',male:'Эр',female:'Эм',memberBirth:'Төрсөн он',membershipType:'Гишүүнчлэлийн төрөл',startDate:'Эхлэх',endDate:'Дуусах',lockerNo:'Шүүгээ',totalMembers:'Нийт гишүүд',activeMembers:'Идэвхтэй',expiredMembers:'Дууссан',expiringMembers:'Дуусах гэж буй',searchMember:'Гишүүн хайх',allStatus:'Бүгд',activeSt:'Идэвхтэй',inactiveSt:'Идэвхгүй',expiredSt:'Дууссан',courtStatus:'Кортын байдал',classInfo:'Хичээлийн мэдээлэл',loginBtn:'Нэвтрэх',publicView:'Кортын байдал',
+  cash:'Бэлэн',card:'Карт',qpay:'QPay',transfer:'Шилжүүлэг',confirmed:'Баталсан',cancelled:'Цуцалсан',
+  editPrice:'Үнэ засах',timeView:'Цагаар',listView:'Жагсаалт',close:'Хаах',noBookings:'Захиалга байхгүй',perHour:'/цаг',count:'ш',won:'₮',person:'хүн',
+}};
+
+function t(k){return i18n[currentLang]?.[k]||i18n.ko[k]||k}
+function switchLang(){currentLang=currentLang==='ko'?'mn':'ko';localStorage.setItem('center_lang',currentLang);applyLang()}
+function applyLang(){try{
+  const h=document.querySelector('#login-screen h2');if(h)h.textContent=t('appTitle');
+  const s=document.querySelector('#login-screen .card>p');if(s)s.textContent=t('subtitle');
+  const ll=document.querySelectorAll('#login-screen .form-group label');if(ll[0])ll[0].textContent=t('username');if(ll[1])ll[1].textContent=t('password');
+  const lb=document.querySelector('#login-screen .btn-primary');if(lb)lb.textContent=t('login');
+  const llb=document.getElementById('login-lang-toggle');if(llb)llb.textContent=t('langBtn');
+  const nk=['dashboard','facilityStatus','bookingMgmt','classMgmt','equipmentMgmt','dailyCheck','noticeBoard'];
+  document.querySelectorAll('.nav-item').forEach((el,i)=>{if(nk[i]){const ic=el.querySelector('i');if(ic)el.innerHTML=ic.outerHTML+' '+t(nk[i])}});
+  const lo=document.querySelector('.logo');if(lo)lo.textContent='🏋️ '+t('appTitle');
+  const lg=document.getElementById('lang-toggle');if(lg)lg.textContent=t('langBtn');
+  const out=document.querySelector('[onclick="logout()"]');if(out)out.innerHTML='<i class="fas fa-sign-out-alt"></i> '+t('logout');
+  if(authToken&&currentUser){const as=document.querySelector('.section.active');if(as)showSection(as.id.replace('sec-',''))}
+}catch(e){}}
+function g(id){const el=document.getElementById(id);return el?.value?.trim?.()??el?.value??''}
+function todayUB(){const d=new Date(Date.now()+8*3600000);return d.toISOString().split('T')[0]}
+function formatMoney(n){return '₮'+Number(n||0).toLocaleString()}
+
+async function doLogin(){
+  const res=await fetch(API+'/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:g('login-user'),password:g('login-pass')})});
+  const d=await res.json();if(!res.ok){document.getElementById('login-error').textContent=d.error;return}
+  authToken=d.token;currentUser=d.user;localStorage.setItem('center_token',authToken);localStorage.setItem('center_user',JSON.stringify(currentUser));initApp();
+}
+function logout(){localStorage.removeItem('center_token');localStorage.removeItem('center_user');location.reload()}
+async function initApp(){
+  document.getElementById('login-screen').style.display='none';document.getElementById('app-screen').style.display='block';
+  document.body.className='role-'+currentUser.role;
+  facilities=await apiFetch('/api/facilities').then(r=>r.json());
+
+  // Customer: limited sidebar
+  if(currentUser.role==='customer'){
+    document.querySelectorAll('.nav-item').forEach(n=>n.style.display='none');
+    // Build customer nav
+    const sidebar=document.querySelector('.sidebar');
+    const navArea=sidebar.querySelector('.nav-item')?.parentElement;
+    const custNavs=[
+      {id:'cust-home',icon:'fa-home',label:'🏠 홈',sec:'dashboard'},
+      {id:'cust-book',icon:'fa-calendar-plus',label:'🎾 코트 예약',sec:'cust-booking'},
+      {id:'cust-my',icon:'fa-list',label:'📋 내 예약',sec:'cust-mybookings'},
+      {id:'cust-class',icon:'fa-chalkboard-teacher',label:'📚 수업 안내',sec:'cust-classes'},
+    ];
+    const insertBefore=sidebar.querySelector('[style*="flex:1"]');
+    custNavs.forEach(cn=>{
+      const div=document.createElement('div');
+      div.className='nav-item'+(cn.sec==='dashboard'?' active':'');
+      div.onclick=()=>showSection(cn.sec);
+      div.innerHTML=`<i class="fas ${cn.icon}"></i> ${cn.label}`;
+      sidebar.insertBefore(div,insertBefore);
+    });
+  }
+
+  showSection('dashboard');
+
+  // 관리자/직원: pending 배지 업데이트
+  if(currentUser.role!=='customer'){
+    apiFetch('/api/pending-bookings').then(r=>r.json()).then(p=>updatePendingBadge(p.length)).catch(()=>{});
+  }
+}
+
+function showLoginTab(tab){
+  ['login','register','public'].forEach(t=>{
+    const btn=document.getElementById('tab-'+t);
+    if(btn){btn.style.background=tab===t?'var(--primary)':'var(--card2)'}
+  });
+  document.getElementById('login-form').style.display=tab==='login'?'block':'none';
+  document.getElementById('register-form').style.display=tab==='register'?'block':'none';
+  document.getElementById('public-view').style.display=tab==='public'?'block':'none';
+  document.getElementById('login-error').textContent='';
+  if(tab==='public')loadPublicView();
+}
+
+async function doRegister(){
+  const body={username:g('reg-user'),password:g('reg-pass'),name:g('reg-name'),phone:g('reg-phone'),gender:g('reg-gender'),birth_date:g('reg-birth')};
+  const res=await fetch(API+'/api/public/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d=await res.json();
+  if(!res.ok){document.getElementById('login-error').textContent=d.error;return}
+  authToken=d.token;currentUser=d.user;localStorage.setItem('center_token',authToken);localStorage.setItem('center_user',JSON.stringify(currentUser));
+  alert('🎉 '+d.message);initApp();
+}
+
+async function loadPublicView(){
+  const [facs,bookings,classes,notices]=await Promise.all([
+    fetch(API+'/api/public/facilities').then(r=>r.json()),
+    fetch(API+'/api/public/bookings?date='+todayUB()).then(r=>r.json()),
+    fetch(API+'/api/public/classes').then(r=>r.json()),
+    fetch(API+'/api/public/notices').then(r=>r.json()),
+  ]);
+
+  const hours=[];for(let h=6;h<=23;h++){hours.push({h,m:0,t:String(h).padStart(2,'0')+':00'});hours.push({h,m:30,t:String(h).padStart(2,'0')+':30'})}
+
+  let html=`<div style="text-align:left;margin-top:1rem">
+    <h3 style="margin:0 0 1rem;font-size:1rem">🎾 ${t('courtStatus')} <span style="font-size:0.8rem;color:var(--text2)">${new Date().toLocaleDateString('ko')}</span></h3>
+    <div style="overflow-x:auto;border-radius:12px;background:var(--bg);padding:0.5rem">
+    <div style="display:grid;grid-template-columns:50px ${facs.map(()=>'1fr').join(' ')};gap:0;min-width:${50+facs.length*80}px;font-size:0.75rem">
+      <div style="padding:0.3rem;font-weight:700;color:var(--text2)"></div>
+      ${facs.map(f=>`<div style="padding:0.3rem;font-weight:700;text-align:center;color:var(--primary)">${f.name}</div>`).join('')}
+      ${hours.map(s=>{
+        const slotMin=s.h*60+s.m;
+        return `<div style="padding:0.2rem;color:var(--text2);font-size:0.7rem;${s.m===30?'opacity:0.5':''}">${s.t}</div>`+facs.map(f=>{
+          const booked=bookings.some(b=>{
+            if(b.facility_id!==f.id)return false;
+            const[sh,sm]=(b.start_time||'0:0').split(':').map(Number);
+            const[eh,em]=(b.end_time||'0:0').split(':').map(Number);
+            return slotMin>=sh*60+sm&&slotMin<eh*60+em;
+          });
+          return `<div style="padding:0.15rem;text-align:center"><span style="display:inline-block;width:90%;padding:0.1rem;border-radius:4px;font-size:0.7rem;${booked?'background:rgba(239,68,68,0.2);color:var(--danger)':'background:rgba(34,197,94,0.1);color:var(--success)'}">${booked?'■':'○'}</span></div>`;
+        }).join('');
+      }).join('')}
+    </div></div>
+    <div style="margin-top:0.5rem;font-size:0.75rem;color:var(--text2)">
+      <span style="color:var(--success)">○</span> ${t('available')} &nbsp; <span style="color:var(--danger)">■</span> ${t('occupied')}
+    </div>`;
+
+  if(classes.length){
+    html+=`<h3 style="margin:1rem 0 0.5rem;font-size:1rem">📚 ${t('classInfo')}</h3>`;
+    classes.forEach(c=>{
+      html+=`<div style="background:var(--bg);border-radius:10px;padding:0.6rem;margin-bottom:0.4rem">
+        <div style="font-weight:700">${c.name} <span style="font-weight:400;color:var(--text2);font-size:0.8rem">| ${c.instructor}</span></div>
+        <div style="font-size:0.8rem;color:var(--info)">📅 ${c.day_of_week} ⏰ ${c.start_time}~${c.end_time}</div>
+        <div style="font-size:0.8rem;color:var(--text2)">${c.current_students}/${c.max_students}${t('person')} | ${formatMoney(c.monthly_fee)}/월</div>
+      </div>`;
+    });
+  }
+
+  if(notices.length){
+    html+=`<h3 style="margin:1rem 0 0.5rem;font-size:1rem">📢 ${t('noticeBoard')}</h3>`;
+    notices.forEach(n=>{
+      html+=`<div style="background:var(--bg);border-radius:10px;padding:0.6rem;margin-bottom:0.4rem">
+        ${n.priority==='urgent'?'🔴':'📌'} <strong>${n.title}</strong>
+        ${n.content?`<div style="font-size:0.8rem;color:var(--text2);margin-top:0.2rem">${n.content}</div>`:''}
+      </div>`;
+    });
+  }
+
+  html+=`</div>`;
+  document.getElementById('public-view').innerHTML=html;
+}
+async function apiFetch(u,o={}){o.headers={...o.headers,'Authorization':'Bearer '+authToken,'Content-Type':'application/json'};return fetch(API+u,o)}
+let _curSec='dashboard';
+function showSection(n,noPush){
+  if(!noPush&&n!==_curSec)history.pushState({sec:n},'','#'+n);_curSec=n;
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('sec-'+n).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  const idx=['dashboard','members','facilities','bookings','classes','equipment','checklist','notices'].indexOf(n);
+  if(idx>=0)document.querySelectorAll('.nav-item:not(a)')[idx]?.classList.add('active');
+  document.querySelector('.sidebar').classList.remove('open');
+  if(n==='dashboard')loadDashboard();else if(n==='members')loadMembers();else if(n==='facilities')loadFacilities();
+  else if(n==='bookings')loadBookings();else if(n==='classes')loadClasses();
+  else if(n==='equipment')loadEquipment();else if(n==='checklist')loadChecklist();
+  else if(n==='notices')loadNotices();
+  else if(n==='approvals')loadApprovals();
+  else if(n==='users')loadUsers();
+  else if(n==='cust-booking')loadCustBooking();
+  else if(n==='cust-mybookings')loadCustMyBookings();
+  else if(n==='cust-classes')loadCustClasses();
+}
+function closeModal(){document.getElementById('modal-container').innerHTML=''}
+
+function timeOptions(startH,endH,defaultVal,includeEnd){
+  let opts='';
+  for(let h=startH;h<=endH;h++){
+    for(let m=0;m<60;m+=30){
+      if(h===endH&&m>0&&!includeEnd)break;
+      if(h===endH&&m===0&&!includeEnd&&h!==startH){}
+      const val=String(h===24?'24':h).padStart(2,'0')+':'+String(m).padStart(2,'0');
+      if(h===endH&&!includeEnd&&m>0)break;
+      const label=h===24&&m===0?'24:00(마감)':val;
+      opts+=`<option value="${val}" ${val===defaultVal?'selected':''}>${label}</option>`;
+    }
+  }
+  return opts;
+}
+
+let bkView='timeline';
+let bkMonth=new Date().toISOString().slice(0,7);
+function changeBkMonth(dir){
+  const d=new Date(bkMonth+'-01');d.setMonth(d.getMonth()+dir);
+  bkMonth=d.toISOString().slice(0,7);loadMonthView();
+}
+async function loadMonthView(){
+  const facId=document.getElementById('bk-fac')?.value||'';
+  const url='/api/bookings/month?month='+bkMonth+(facId?'&facility_id='+facId:'');
+  const d=await apiFetch(url).then(r=>r.json());
+  const label=document.getElementById('bk-month-label');
+  if(label)label.textContent=bkMonth.replace('-','년 ')+'월';
+
+  const cal=document.getElementById('month-calendar');
+  if(!cal)return;
+
+  // 달력 생성
+  const year=parseInt(bkMonth.split('-')[0]);
+  const mon=parseInt(bkMonth.split('-')[1])-1;
+  const firstDay=new Date(year,mon,1).getDay();
+  const lastDate=new Date(year,mon+1,0).getDate();
+  const today=todayUB();
+
+  let html=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem">
+      <div><span style="font-size:0.85rem;color:var(--text2)">총 예약</span> <strong style="color:var(--info)">${d.totalCount}건</strong></div>
+      <div><span style="font-size:0.85rem;color:var(--text2)">총 매출</span> <strong style="color:var(--primary)">${formatMoney(d.totalRevenue)}</strong></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-size:0.8rem">
+      ${['일','월','화','수','목','금','토'].map((w,i)=>`<div style="text-align:center;padding:0.4rem;font-weight:700;color:${i===0?'var(--danger)':i===6?'var(--info)':'var(--text2)'}">${w}</div>`).join('')}`;
+
+  // 빈칸
+  for(let i=0;i<firstDay;i++) html+=`<div style="padding:0.3rem;min-height:70px"></div>`;
+
+  for(let day=1;day<=lastDate;day++){
+    const dateStr=bkMonth+'-'+String(day).padStart(2,'0');
+    const info=d.byDate[dateStr];
+    const isToday=dateStr===today;
+    const dayOfWeek=(firstDay+day-1)%7;
+    const isSun=dayOfWeek===0;const isSat=dayOfWeek===6;
+
+    html+=`<div style="padding:0.3rem;min-height:70px;background:${isToday?'rgba(16,185,129,0.1)':'var(--bg)'};border-radius:8px;border:${isToday?'2px solid var(--primary)':'1px solid rgba(255,255,255,0.03)'};cursor:pointer;transition:background 0.15s" onclick="bkView='timeline';bkMonth='${bkMonth}';loadBookings();setTimeout(()=>{const el=document.getElementById('bk-date');if(el){el.value='${dateStr}';filterBookings()}},100)">
+      <div style="font-weight:${isToday?'700':'500'};color:${isToday?'var(--primary)':isSun?'var(--danger)':isSat?'var(--info)':'var(--text)'};font-size:0.85rem;margin-bottom:0.2rem">${day}</div>`;
+
+    if(info){
+      html+=`<div style="font-size:0.7rem;color:var(--info);font-weight:600">${info.count}건</div>`;
+      if(info.revenue>0) html+=`<div style="font-size:0.65rem;color:var(--primary);font-weight:600">${formatMoney(info.revenue)}</div>`;
+      // 최대 2개 예약 미리보기
+      info.bookings.slice(0,2).forEach(b=>{
+        const isBulk=b.courts&&b.courts>1;
+        html+=`<div style="font-size:0.6rem;background:${isBulk?'rgba(245,158,11,0.2)':'rgba(59,130,246,0.15)'};color:${isBulk?'var(--warning)':'var(--info)'};padding:0.1rem 0.2rem;border-radius:3px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.start_time.slice(0,5)} ${b.customer_name||''}${isBulk?' ('+b.courts+'코트)':''}</div>`;
+      });
+      if(info.bookings.length>2) html+=`<div style="font-size:0.6rem;color:var(--text2)">+${info.bookings.length-2}건</div>`;
+    }
+    html+=`</div>`;
+  }
+
+  html+=`</div>`;
+  cal.innerHTML=html;
+}
+
+// ====== DASHBOARD ======
+let dashMonth=new Date().toISOString().slice(0,7);
+function changeDashMonth(dir){
+  const d=new Date(dashMonth+'-01');d.setMonth(d.getMonth()+dir);
+  dashMonth=d.toISOString().slice(0,7);loadDashboard();
+}
+async function loadDashboard(){
+  const d=await apiFetch('/api/dashboard?month='+dashMonth).then(r=>r.json());
+  document.getElementById('sec-dashboard').innerHTML=`
+    <div class="page-header"><h2>🏠 ${t('dashboard')}</h2><span style="color:var(--text2)">${d.today} (${d.dow})</span></div>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">💰 ${t('todayRevenue')}</div><div class="stat-value" style="color:var(--primary)">${formatMoney(d.todayRevenue.total)}</div><div class="stat-label">${d.todayRevenue.cnt}${t('count')}</div></div>
+      <div class="stat"><div class="stat-label">📅 ${t('monthRevenue')}</div><div class="stat-value" style="color:var(--info)">${formatMoney(d.monthRevenue.total)}</div><div class="stat-label">${d.monthRevenue.cnt}${t('count')}</div></div>
+      <div class="stat"><div class="stat-label">📋 ${t('todayBookings')}</div><div class="stat-value">${d.todayBookings.length}</div></div>
+      ${currentUser.role!=='customer'&&d.pendingCount>0?`<div class="stat" style="border:2px solid var(--warning);cursor:pointer" onclick="showSection('approvals')"><div class="stat-label">🔔 승인 대기</div><div class="stat-value" style="color:var(--warning)">${d.pendingCount}</div><div class="stat-label">클릭하여 확인</div></div>`:`<div class="stat"><div class="stat-label">📚 ${t('todayClasses')}</div><div class="stat-value">${d.todayClasses.length}</div></div>`}
+    </div>
+    ${currentUser.role!=='customer'&&d.pendingCount>0?`<div class="stat"><div class="stat-label">📚 ${t('todayClasses')}</div><div class="stat-value" style="display:inline">${d.todayClasses.length}</div></div>`:''}
+
+    <div class="card" style="margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem">
+        <h3 style="margin:0;font-size:1rem">📊 월간 현황</h3>
+        <div style="display:flex;gap:0.3rem;align-items:center">
+          <button class="btn btn-sm" style="background:var(--card2)" onclick="changeDashMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+          <span id="dash-month" style="font-size:0.9rem;min-width:80px;text-align:center">${d.currentMonth}</span>
+          <button class="btn btn-sm" style="background:var(--card2)" onclick="changeDashMonth(1)"><i class="fas fa-chevron-right"></i></button>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-label">📋 총 예약</div><div class="stat-value">${d.monthTotal?.cnt||0}</div></div>
+        <div class="stat"><div class="stat-label">💰 총 매출</div><div class="stat-value" style="color:var(--primary)">${formatMoney(d.monthTotal?.revenue||0)}</div></div>
+      </div>
+      ${d.monthByFacility?.length?`<div style="margin-top:0.5rem">
+        ${d.monthByFacility.map(f=>{
+          const pct=d.monthTotal?.revenue>0?Math.round(f.revenue/d.monthTotal.revenue*100):0;
+          return `<div style="margin-bottom:0.4rem">
+            <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:0.2rem">
+              <span>🎾 ${f.name} (${f.cnt}건)</span><span style="color:var(--primary);font-weight:700">${formatMoney(f.revenue)}</span>
+            </div>
+            <div style="height:6px;background:var(--card2);border-radius:3px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:var(--primary);border-radius:3px"></div>
+            </div>
+          </div>`}).join('')}
+      </div>`:''}
+      ${d.monthDays?.length?`<div style="margin-top:0.8rem">
+        <div style="font-size:0.82rem;color:var(--text2);margin-bottom:0.3rem">📅 일별 예약/매출</div>
+        <div style="max-height:200px;overflow-y:auto">
+          <table style="font-size:0.8rem;width:100%"><thead><tr><th>날짜</th><th>예약</th><th>매출</th></tr></thead>
+          <tbody>${d.monthDays.map(dy=>`<tr>
+            <td>${dy.booking_date.slice(5)}</td>
+            <td>${dy.cnt}건</td>
+            <td style="color:var(--primary);font-weight:600">${formatMoney(dy.paid_revenue)}</td>
+          </tr>`).join('')}</tbody></table>
+        </div>
+      </div>`:'<div style="text-align:center;color:var(--text2);font-size:0.85rem;padding:1rem">이 달 예약이 없습니다</div>'}
+    </div>
+
+    <h3 style="margin:0 0 1rem;font-size:1rem">🏟️ ${t('facilityStatus')}</h3>
+    <div class="facility-grid" style="margin-bottom:1.5rem">
+      ${d.facilities.filter(f=>f.hourly_rate>0).map(f=>`<div class="facility-card ${f.status}" onclick="showSection('bookings')">
+        <div style="font-size:2rem;margin-bottom:0.3rem">🎾</div>
+        <div style="font-weight:700;font-size:1.1rem">${f.name}</div>
+        <span class="badge badge-${f.status}">${t(f.status)}</span>
+        ${f.hourly_rate?`<div style="font-size:0.8rem;color:var(--text2);margin-top:0.3rem">${formatMoney(f.hourly_rate)}${t('perHour')}</div>`:''}
+      </div>`).join('')}
+    </div>
+
+    ${d.todayClasses.length?`<div class="card"><h3 style="margin:0 0 0.8rem;font-size:1rem">📚 ${t('todayClasses')}</h3>
+    ${d.todayClasses.map(c=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.03);flex-wrap:wrap;gap:0.3rem">
+      <div><strong>${c.name}</strong> <span style="color:var(--text2);font-size:0.8rem">| ${c.instructor}</span></div>
+      <div style="display:flex;align-items:center;gap:0.5rem">
+        <span class="time-slot class">${c.start_time}~${c.end_time}</span>
+        <span style="font-size:0.8rem;color:var(--text2)">${c.current_students}/${c.max_students}${t('person')}</span>
+        <button class="btn btn-sm btn-info" onclick="openClassModal(${c.id})" title="${t('editType')}"><i class="fas fa-edit"></i></button>
+      </div>
+    </div>`).join('')}</div>`:''}
+
+    ${d.todayBookings.length?`<div class="card"><h3 style="margin:0 0 0.8rem;font-size:1rem">📋 ${t('todayBookings')}</h3>
+    <table><thead><tr><th>${t('time')}</th><th>${t('facility')}</th><th>${t('customer')}</th><th>${t('amount')}</th><th></th></tr></thead>
+    <tbody>${d.todayBookings.map(b=>`<tr>
+      <td><span class="time-slot booked">${b.start_time}~${b.end_time}</span></td>
+      <td>${b.facility_name}</td>
+      <td>${b.customer_name||'-'}</td>
+      <td>${formatMoney(b.amount)}</td>
+      ${currentUser.role!=='customer'?`<td style="white-space:nowrap">
+        <button class="btn btn-sm btn-info" onclick="openEditBookingModal(${b.id})"><i class="fas fa-edit"></i></button>
+        ${b.status!=='cancelled'?`<button class="btn btn-sm btn-danger" onclick="cancelBooking(${b.id});loadDashboard()"><i class="fas fa-times"></i></button>`:''}
+      </td>`:''}
+    </tr>`).join('')}</tbody></table></div>`:''}
+
+    <div class="card"><h3 style="margin:0 0 0.8rem;font-size:1rem">✅ ${t('openCheck')}</h3>
+    ${d.openChecks.map(c=>`<div class="checklist-item ${d.checkedToday.includes(c.id)?'checked':''}">
+      <input type="checkbox" ${d.checkedToday.includes(c.id)?'checked':''} onchange="toggleCheck(${c.id},this.checked)">
+      <span>${c.task}</span>
+    </div>`).join('')}
+    <div style="margin-top:1rem;color:var(--text2);font-size:0.85rem">${t('openCheck')}: ${d.openChecks.filter(c=>d.checkedToday.includes(c.id)).length}/${d.openChecks.length} ${t('checked')}</div></div>
+
+    ${d.needsMaintenance.length?`<div class="card"><h3 style="margin:0 0 0.8rem;font-size:1rem">⚠️ ${t('equipmentMgmt')}</h3>
+    ${d.needsMaintenance.map(e=>`<div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid rgba(255,255,255,0.03)">
+      <span>${e.name} <span class="badge badge-${e.condition}">${t(e.condition)}</span></span>
+      <span style="font-size:0.8rem;color:var(--text2)">${e.location||''}</span>
+    </div>`).join('')}</div>`:''}
+
+    ${d.notices.length?`<div class="card"><h3 style="margin:0 0 0.8rem;font-size:1rem">📢 ${t('noticeBoard')}</h3>
+    ${d.notices.map(n=>`<div style="padding:0.4rem 0;border-bottom:1px solid rgba(255,255,255,0.03)">
+      ${n.priority==='urgent'?'🔴':'📌'} <strong>${n.title}</strong>
+      <span style="font-size:0.8rem;color:var(--text2);margin-left:0.5rem">${n.created_at}</span>
+      ${n.content?`<div style="font-size:0.85rem;color:var(--text2);margin-top:0.2rem">${n.content}</div>`:''}
+    </div>`).join('')}</div>`:''}`;
+}
+
+// ====== MEMBERS ======
+async function loadMembers(){
+  const stats=await apiFetch('/api/members/stats/summary').then(r=>r.json());
+  const statusFilter=document.getElementById('mb-status')?.value||'';
+  const qFilter=document.getElementById('mb-search')?.value||'';
+  const params=new URLSearchParams();
+  if(statusFilter)params.set('status',statusFilter);
+  if(qFilter)params.set('q',qFilter);
+  const members=await apiFetch('/api/members?'+params).then(r=>r.json());
+  const today=todayUB();
+
+  document.getElementById('sec-members').innerHTML=`
+    <div class="page-header"><h2>👥 ${t('memberMgmt')}</h2>
+      <button class="btn btn-primary" onclick="openMemberModal()"><i class="fas fa-plus"></i> ${t('addMember')}</button>
+    </div>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">${t('totalMembers')}</div><div class="stat-value">${stats.total}</div></div>
+      <div class="stat"><div class="stat-label">🟢 ${t('activeMembers')}</div><div class="stat-value" style="color:var(--success)">${stats.active}</div></div>
+      <div class="stat"><div class="stat-label">🔴 ${t('expiredMembers')}</div><div class="stat-value" style="color:var(--danger)">${stats.expired}</div></div>
+      <div class="stat"><div class="stat-label">⚠️ ${t('expiringMembers')}</div><div class="stat-value" style="color:var(--warning)">${stats.expiring}</div></div>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
+      <input id="mb-search" placeholder="🔍 ${t('searchMember')}" style="max-width:200px" value="${qFilter}" onkeyup="if(event.key==='Enter')loadMembers()">
+      <select id="mb-status" style="max-width:140px" onchange="loadMembers()">
+        <option value="" ${!statusFilter?'selected':''}>${t('allStatus')}</option>
+        <option value="active" ${statusFilter==='active'?'selected':''}>${t('activeSt')}</option>
+        <option value="inactive" ${statusFilter==='inactive'?'selected':''}>${t('inactiveSt')}</option>
+        <option value="expired" ${statusFilter==='expired'?'selected':''}>${t('expiredSt')}</option>
+      </select>
+      <button class="btn btn-sm btn-info" onclick="loadMembers()"><i class="fas fa-search"></i></button>
+    </div>
+    <div class="card" style="overflow-x:auto"><table><thead><tr>
+      <th>${t('memberName')}</th><th>${t('memberPhone')}</th><th>${t('membershipType')}</th>
+      <th>${t('startDate')}</th><th>${t('endDate')}</th><th>${t('lockerNo')}</th><th>${t('status')}</th><th></th>
+    </tr></thead>
+    <tbody>${members.length?members.map(m=>{
+      const isExpired=m.end_date&&m.end_date<today;
+      const isExpiring=m.end_date&&!isExpired&&m.end_date<=new Date(Date.now()+7*86400000).toISOString().split('T')[0];
+      return `<tr>
+        <td><strong>${m.name}</strong> <span style="font-size:0.75rem;color:var(--text2)">${m.gender==='F'?'👩':'👨'}</span></td>
+        <td style="font-size:0.85rem">${m.phone||'-'}</td>
+        <td><span class="badge badge-available">${m.membership_type}</span></td>
+        <td style="font-size:0.82rem">${m.start_date||'-'}</td>
+        <td style="font-size:0.82rem;${isExpired?'color:var(--danger);font-weight:700':isExpiring?'color:var(--warning);font-weight:700':''}">${m.end_date||'-'}${isExpired?' ⛔':isExpiring?' ⚠️':''}</td>
+        <td>${m.locker_no||'-'}</td>
+        <td><span class="badge ${m.status==='active'?'badge-available':'badge-maintenance'}">${m.status==='active'?t('activeSt'):t('inactiveSt')}</span></td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-sm btn-info" onclick="openMemberModal(${m.id})"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-sm btn-danger" onclick="deleteMember(${m.id})"><i class="fas fa-trash"></i></button>
+        </td>
+      </tr>`}).join(''):`<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:2rem">등록된 회원이 없습니다</td></tr>`}
+    </tbody></table></div>`;
+}
+
+async function openMemberModal(id){
+  let m=null;
+  if(id){m=await apiFetch('/api/members/'+id).then(r=>r.json())}
+  const today=todayUB();
+  const endDefault=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3 style="margin:0 0 1rem">${id?'✏️ '+t('editMember'):'➕ '+t('addMember')}</h3>
+    <div class="form-row">
+      <div class="form-group"><label>${t('memberName')} *</label><input id="mb-name" value="${m?.name||''}"></div>
+      <div class="form-group"><label>${t('memberPhone')}</label><input id="mb-phone" value="${m?.phone||''}" placeholder="99001234"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>${t('memberGender')}</label><select id="mb-gender">
+        <option value="M" ${m?.gender!=='F'?'selected':''}>👨 ${t('male')}</option>
+        <option value="F" ${m?.gender==='F'?'selected':''}>👩 ${t('female')}</option>
+      </select></div>
+      <div class="form-group"><label>${t('memberBirth')}</label><input type="date" id="mb-birth" value="${m?.birth_date||''}"></div>
+    </div>
+    <div class="form-group"><label>${t('membershipType')}</label><select id="mb-type">
+      <option ${m?.membership_type==='일반'||!m?'selected':''}>일반</option>
+      <option ${m?.membership_type==='1개월'?'selected':''}>1개월</option>
+      <option ${m?.membership_type==='3개월'?'selected':''}>3개월</option>
+      <option ${m?.membership_type==='6개월'?'selected':''}>6개월</option>
+      <option ${m?.membership_type==='1년'?'selected':''}>1년</option>
+      <option ${m?.membership_type==='무제한'?'selected':''}>무제한</option>
+      <option ${m?.membership_type==='수업전용'?'selected':''}>수업전용</option>
+    </select></div>
+    <div class="form-row">
+      <div class="form-group"><label>${t('startDate')}</label><input type="date" id="mb-start" value="${m?.start_date||today}" onchange="autoEndDate()"></div>
+      <div class="form-group"><label>${t('endDate')}</label><input type="date" id="mb-end" value="${m?.end_date||endDefault}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>${t('lockerNo')}</label><input id="mb-locker" value="${m?.locker_no||''}" placeholder="예: L-01"></div>
+      ${id?`<div class="form-group"><label>${t('status')}</label><select id="mb-stat">
+        <option value="active" ${m?.status==='active'?'selected':''}>${t('activeSt')}</option>
+        <option value="inactive" ${m?.status==='inactive'?'selected':''}>${t('inactiveSt')}</option>
+        <option value="expired" ${m?.status==='expired'?'selected':''}>${t('expiredSt')}</option>
+      </select></div>`:`<div class="form-group"></div>`}
+    </div>
+    <div class="form-group"><label>${t('memo')}</label><textarea id="mb-notes" rows="2">${m?.notes||''}</textarea></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+      <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+      <button class="btn btn-primary" onclick="saveMember(${id||'null'})">${t('save')}</button>
+    </div>
+  </div></div>`;
+}
+
+function autoEndDate(){
+  const typeEl=document.getElementById('mb-type');
+  const startEl=document.getElementById('mb-start');
+  const endEl=document.getElementById('mb-end');
+  if(!typeEl||!startEl||!endEl||!startEl.value)return;
+  const start=new Date(startEl.value);
+  const type=typeEl.value;
+  const days={'1개월':30,'3개월':90,'6개월':180,'1년':365,'무제한':3650};
+  if(days[type]){start.setDate(start.getDate()+days[type]);endEl.value=start.toISOString().split('T')[0]}
+}
+document.addEventListener('change',e=>{if(e.target.id==='mb-type')autoEndDate()});
+
+async function saveMember(id){
+  const body={name:g('mb-name'),phone:g('mb-phone'),gender:g('mb-gender'),birth_date:g('mb-birth'),membership_type:g('mb-type'),start_date:g('mb-start'),end_date:g('mb-end'),locker_no:g('mb-locker'),notes:document.getElementById('mb-notes')?.value||''};
+  if(id){body.status=g('mb-stat')||'active'}
+  if(!body.name)return alert(t('memberName'));
+  const res=await apiFetch(id?'/api/members/'+id:'/api/members',{method:id?'PUT':'POST',body:JSON.stringify(body)});
+  const d=await res.json();if(!res.ok)return alert(d.error);
+  closeModal();alert('✅ '+d.message);loadMembers();
+}
+
+async function deleteMember(id){if(!confirm(t('delete')+'?'))return;
+  await apiFetch('/api/members/'+id,{method:'DELETE'});loadMembers();
+}
+
+// ====== FACILITIES ======
+async function loadFacilities(){
+  const facs=await apiFetch('/api/facilities').then(r=>r.json());
+  document.getElementById('sec-facilities').innerHTML=`
+    <div class="page-header"><h2>🏟️ ${t('facilityStatus')}</h2></div>
+    <div class="facility-grid">
+      ${facs.map(f=>`<div class="card" style="border-left:4px solid ${f.status==='available'?'var(--success)':f.status==='occupied'?'var(--danger)':'var(--warning)'}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+          <h3 style="font-size:1.1rem">${f.type==='court'?'🎾':f.type==='room'?'🏢':'🚿'} ${f.name}</h3>
+          <span class="badge badge-${f.status}">${t(f.status)}</span>
+        </div>
+        ${f.hourly_rate?`<div style="font-size:0.9rem;color:var(--primary);font-weight:700">${formatMoney(f.hourly_rate)}${t('perHour')}</div>`:''}
+        ${f.capacity?`<div style="font-size:0.8rem;color:var(--text2)">${t('maxStudents')}: ${f.capacity}${t('person')}</div>`:''}
+        ${f.description?`<div style="font-size:0.8rem;color:var(--text2);margin-top:0.3rem">${f.description}</div>`:''}
+        <div style="margin-top:0.8rem;display:flex;gap:0.3rem;flex-wrap:wrap">
+          <button class="btn btn-sm btn-success" onclick="setFacStatus(${f.id},'available')">${t('available')}</button>
+          <button class="btn btn-sm btn-danger" onclick="setFacStatus(${f.id},'occupied')">${t('occupied')}</button>
+          <button class="btn btn-sm btn-warning" onclick="setFacStatus(${f.id},'maintenance')">${t('maintenance')}</button>
+          <button class="btn btn-sm btn-info" onclick="openFacEditModal(${f.id})"><i class="fas fa-edit"></i> ${t('editPrice')}</button>
+        </div>
+      </div>`).join('')}
+    </div>`;
+}
+
+async function setFacStatus(id,status){await apiFetch('/api/facilities/'+id+'/status',{method:'PUT',body:JSON.stringify({status})});loadFacilities()}
+
+async function openFacEditModal(id){
+  const fac=facilities.find(f=>f.id===id);if(!fac)return;
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3 style="margin:0 0 1rem">✏️ ${t('editPrice')} - ${fac.name}</h3>
+    <div class="form-group"><label>${t('facility')}</label><input id="fe-name" value="${fac.name}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>${t('amount')} (₮${t('perHour')})</label><input type="number" id="fe-rate" value="${fac.hourly_rate}"></div>
+      <div class="form-group"><label>${t('maxStudents')}</label><input type="number" id="fe-cap" value="${fac.capacity}"></div>
+    </div>
+    <div class="form-group"><label>${t('memo')}</label><input id="fe-desc" value="${fac.description||''}"></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+      <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+      <button class="btn btn-primary" onclick="saveFacEdit(${id})">${t('save')}</button>
+    </div>
+  </div></div>`;
+}
+
+async function saveFacEdit(id){
+  const body={name:g('fe-name'),hourly_rate:Number(g('fe-rate'))||0,capacity:Number(g('fe-cap'))||0,description:g('fe-desc')};
+  await apiFetch('/api/facilities/'+id,{method:'PUT',body:JSON.stringify(body)});
+  facilities=await apiFetch('/api/facilities').then(r=>r.json());
+  closeModal();alert('✅');loadFacilities();
+}
+
+// ====== BOOKINGS ======
+async function loadBookings(){
+  const today=todayUB();
+  const courts=facilities.filter(f=>f.hourly_rate>0);
+  document.getElementById('sec-bookings').innerHTML=`
+    <div class="page-header"><h2>📋 ${t('bookingMgmt')}</h2>
+      <div style="display:flex;gap:0.5rem">
+        <button class="btn btn-sm ${typeof bkView==='undefined'||bkView==='timeline'?'btn-primary':''}" onclick="bkView='timeline';loadBookings()" style="background:${typeof bkView==='undefined'||bkView==='timeline'?'var(--primary)':'var(--card2)'}"><i class="fas fa-clock"></i> ${t('timeView')}</button>
+        <button class="btn btn-sm ${bkView==='list'?'btn-primary':''}" onclick="bkView='list';loadBookings()" style="background:${bkView==='list'?'var(--primary)':'var(--card2)'}"><i class="fas fa-list"></i> ${t('listView')}</button>
+        <button class="btn btn-sm ${bkView==='month'?'btn-primary':''}" onclick="bkView='month';loadBookings()" style="background:${bkView==='month'?'var(--primary)':'var(--card2)'}"><i class="fas fa-calendar"></i> 월간</button>
+        <button class="btn btn-primary btn-sm" onclick="openBookingModal()"><i class="fas fa-plus"></i> ${t('addBooking')}</button>
+        <button class="btn btn-sm" style="background:var(--warning);color:#000" onclick="openBulkBookingModal()"><i class="fas fa-trophy"></i> 시합/전체</button>
+      </div>
+    </div>
+    ${bkView==='month'?`
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-sm" style="background:var(--card2)" onclick="changeBkMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+      <span id="bk-month-label" style="font-size:1.1rem;font-weight:700;min-width:120px;text-align:center"></span>
+      <button class="btn btn-sm" style="background:var(--card2)" onclick="changeBkMonth(1)"><i class="fas fa-chevron-right"></i></button>
+      <select id="bk-fac" style="max-width:160px" onchange="loadMonthView()"><option value="">${t('facility')} (${t('all')})</option>${facilities.map(f=>`<option value="${f.id}">${f.name}</option>`).join('')}</select>
+    </div>
+    <div id="month-calendar" class="card" style="overflow-x:auto"></div>
+    `:`
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
+      <input type="date" id="bk-date" value="${today}" style="max-width:160px" onchange="filterBookings()">
+      <select id="bk-fac" style="max-width:160px" onchange="filterBookings()"><option value="">${t('facility')} (${t('all')})</option>${facilities.map(f=>`<option value="${f.id}">${f.name}</option>`).join('')}</select>
+    </div>
+    ${typeof bkView==='undefined'||bkView==='timeline'?`
+    <div class="card" style="overflow-x:auto">
+      <div id="timeline-grid" style="display:grid;grid-template-columns:60px ${courts.map(()=>'1fr').join(' ')};gap:0;min-width:${60+courts.length*150}px">
+        <div style="padding:0.5rem;font-weight:700;font-size:0.8rem;color:var(--text2);border-bottom:2px solid var(--primary)">${t('time')}</div>
+        ${courts.map(f=>`<div style="padding:0.5rem;font-weight:700;font-size:0.85rem;text-align:center;border-bottom:2px solid ${f.status==='available'?'var(--success)':f.status==='occupied'?'var(--danger)':'var(--warning)'}">🎾 ${f.name}</div>`).join('')}
+      </div>
+      <div id="timeline-body"></div>
+    </div>`:`
+    <div class="card" style="overflow-x:auto"><table><thead><tr><th>${t('time')}</th><th>${t('facility')}</th><th>${t('customer')}</th><th>${t('phone')}</th><th>${t('amount')}</th><th>${t('payment')}</th><th></th></tr></thead>
+    <tbody id="bk-tbody"></tbody></table></div>`}
+    `}`;
+  if(bkView==='month') loadMonthView(); else filterBookings();
+}
+
+async function filterBookings(){
+  const params=new URLSearchParams();if(g('bk-date'))params.set('date',g('bk-date'));if(g('bk-fac'))params.set('facility_id',g('bk-fac'));
+  const bks=await apiFetch('/api/bookings?'+params).then(r=>r.json());
+
+  if(typeof bkView==='undefined'||bkView==='timeline'){
+    renderTimeline(bks);
+  } else {
+    document.getElementById('bk-tbody').innerHTML=bks.length?bks.map(b=>`<tr>
+      <td><span class="time-slot booked">${b.start_time}~${b.end_time}</span></td><td>${b.facility_name}</td>
+      <td>${b.customer_name||'-'}</td><td style="font-size:0.8rem">${b.customer_phone||'-'}</td>
+      <td style="font-weight:700">${formatMoney(b.amount)}</td>
+      <td><span class="badge badge-available">${b.payment_method}</span></td>
+      <td>${b.status!=='cancelled'?`<button class="btn btn-sm btn-danger" onclick="cancelBooking(${b.id})"><i class="fas fa-times"></i></button>`:''}</td>
+    </tr>`).join(''):`<tr><td colspan="7" style="text-align:center;color:var(--text2);padding:2rem">${t('noBookings')}</td></tr>`;
+  }
+}
+
+function renderTimeline(bookings){
+  const courts=facilities.filter(f=>f.hourly_rate>0);
+  const slots=[];
+  for(let h=6;h<=23;h++){for(let m=0;m<60;m+=30){slots.push({h,m,time:String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')})}}
+  const now=new Date();const currentHour=now.getHours();const currentMin=now.getMinutes();
+  const selDate=g('bk-date');const isToday=selDate===todayUB();
+
+  const dow=['일','월','화','수','목','금','토'][new Date(selDate+'T00:00:00+08:00').getUTCDay()];
+
+  function timeToMin(t){const[hh,mm]=t.split(':').map(Number);return hh*60+(mm||0)}
+
+  let html=`<div style="display:grid;grid-template-columns:60px ${courts.map(()=>'1fr').join(' ')};gap:0;min-width:${60+courts.length*150}px">`;
+
+  // 시합 그룹 감지: 같은 시간+같은 이름으로 여러 코트 예약
+  function findBulkGroup(slot, cIdx){
+    const slotMin=slot.h*60+slot.m;
+    const first=bookings.find(b=>b.facility_id===courts[cIdx].id&&b.status!=='cancelled'&&timeToMin(b.start_time)===slotMin);
+    if(!first)return null;
+    let cnt=0;
+    for(let i=cIdx;i<courts.length;i++){
+      const b=bookings.find(bk=>bk.facility_id===courts[i].id&&bk.status!=='cancelled'&&bk.start_time===first.start_time&&bk.end_time===first.end_time&&bk.customer_name===first.customer_name);
+      if(b)cnt++;else break;
+    }
+    return cnt>=2?{booking:first,span:cnt}:null;
+  }
+
+  const bulkRendered={};
+
+  slots.forEach(slot=>{
+    const slotMin=slot.h*60+slot.m;
+    const nextMin=slotMin+30;
+    const nextTime=String(Math.floor(nextMin/60)).padStart(2,'0')+':'+String(nextMin%60).padStart(2,'0');
+    const isNow=isToday&&currentHour===slot.h&&((slot.m===0&&currentMin<30)||(slot.m===30&&currentMin>=30));
+    const isHalf=slot.m===30;
+
+    html+=`<div style="padding:0.25rem 0.4rem;font-size:0.75rem;font-weight:${isNow?'700':'400'};color:${isNow?'var(--primary)':isHalf?'var(--card2)':'var(--text2)'};border-bottom:1px solid rgba(255,255,255,${isHalf?'0.01':'0.03'});${isNow?'background:rgba(16,185,129,0.05)':''}">${slot.time}</div>`;
+
+    let skipUntil=-1;
+    courts.forEach((court,cIdx)=>{
+      if(cIdx<skipUntil){return;}
+
+      const booking=bookings.find(b=>{
+        if(b.facility_id!==court.id||b.status==='cancelled')return false;
+        const bStart=timeToMin(b.start_time);
+        const bEnd=timeToMin(b.end_time);
+        return slotMin>=bStart&&slotMin<bEnd;
+      });
+
+      const isStart=booking&&timeToMin(booking.start_time)===slotMin;
+
+      // 시합 그룹 체크 (첫 슬롯에서만)
+      if(isStart){
+        const grp=findBulkGroup(slot,cIdx);
+        if(grp){
+          const bKey=grp.booking.start_time+grp.booking.customer_name;
+          if(!bulkRendered[bKey]){
+            bulkRendered[bKey]=true;
+            html+=`<div style="grid-column:span ${grp.span};padding:0.3rem 0.5rem;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(239,68,68,0.1));border-left:4px solid var(--warning);border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;text-align:center" onclick="viewBookingDetail(${grp.booking.id})" title="${grp.booking.customer_name} ${grp.booking.start_time}~${grp.booking.end_time}">
+              <div style="font-size:0.85rem;font-weight:700;color:var(--warning)">${grp.booking.customer_name}</div>
+              <div style="font-size:0.7rem;color:var(--text2)">${grp.booking.start_time}~${grp.booking.end_time} | ${grp.span}코트</div>
+            </div>`;
+            skipUntil=cIdx+grp.span;
+            return;
+          }
+        }
+      }
+
+      // 시합 그룹의 연속 슬롯
+      if(booking&&!isStart){
+        const grp=findBulkGroup({h:Math.floor(timeToMin(booking.start_time)/60),m:timeToMin(booking.start_time)%60},cIdx);
+        if(grp&&grp.span>=2){
+          const bKey=booking.start_time+booking.customer_name;
+          const contKey=bKey+'_cont_'+slotMin;
+          if(!bulkRendered[contKey]){
+            bulkRendered[contKey]=true;
+            html+=`<div style="grid-column:span ${grp.span};padding:0.1rem;background:rgba(245,158,11,0.08);border-left:4px solid rgba(245,158,11,0.3);border-bottom:1px solid rgba(255,255,255,0.02)"></div>`;
+            skipUntil=cIdx+grp.span;
+            return;
+          }
+        }
+        html+=`<div style="padding:0.2rem;background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.3);border-bottom:1px solid rgba(255,255,255,0.02)"></div>`;
+        return;
+      }
+
+      if(booking){
+        if(isStart){
+          html+=`<div style="padding:0.25rem 0.4rem;background:rgba(59,130,246,0.12);border-left:3px solid var(--info);border-bottom:1px solid rgba(255,255,255,0.03);${isNow?'box-shadow:inset 0 0 0 1px var(--primary)':''};cursor:pointer" onclick="viewBookingDetail(${booking.id})" title="${booking.customer_name||''} ${booking.start_time}~${booking.end_time}">
+            <div style="font-size:0.78rem;font-weight:700;color:var(--info)">${booking.customer_name||t('customer')}</div>
+            <div style="font-size:0.68rem;color:var(--text2)">${booking.start_time}~${booking.end_time}</div>
+            <div style="font-size:0.68rem;color:var(--primary)">${formatMoney(booking.amount)}</div>
+          </div>`;
+        } else {
+          html+=`<div style="padding:0.2rem;background:rgba(59,130,246,0.06);border-left:3px solid rgba(59,130,246,0.3);border-bottom:1px solid rgba(255,255,255,0.02)"></div>`;
+        }
+      } else {
+        html+=`<div style="padding:0.2rem;border-bottom:1px solid rgba(255,255,255,${isHalf?'0.01':'0.03'});${isNow?'background:rgba(16,185,129,0.03)':''};cursor:pointer;min-height:28px" onclick="quickBook(${court.id},'${slot.time}','${nextTime}')" title="${t('addBooking')}">
+          ${isNow?'<div style="font-size:0.6rem;color:var(--primary)">▸ now</div>':''}
+        </div>`;
+      }
+    });
+  });
+
+  html+=`</div>`;
+
+  const body=document.getElementById('timeline-body');
+  if(body) body.innerHTML=html;
+
+  // Auto scroll to current hour
+  if(isToday){
+    const gridEl=body?.parentElement;
+    if(gridEl){
+      const rowHeight=39;
+      gridEl.scrollTop=Math.max(0,(currentHour-7)*rowHeight);
+    }
+  }
+}
+
+function quickBook(facId,start,end){
+  openBookingModal();
+  setTimeout(()=>{
+    const sel=document.getElementById('nb-fac');
+    if(sel){for(let i=0;i<sel.options.length;i++){if(sel.options[i].value==facId){sel.selectedIndex=i;break}}}
+    const s=document.getElementById('nb-start');if(s){s.value=start;s.dispatchEvent(new Event('change'))}
+    const e=document.getElementById('nb-end');if(e)e.value=end;
+    // Trigger amount calc
+    const evt=new Event('change');if(s)s.dispatchEvent(evt);
+  },100);
+}
+
+function viewBookingDetail(id){
+  const bk=document.querySelector('[onclick*="cancelBooking('+id+')"]');
+  // Simple: just show alert with booking info, or could make a modal
+  apiFetch('/api/bookings?date='+g('bk-date')).then(r=>r.json()).then(bks=>{
+    const b=bks.find(x=>x.id===id);if(!b)return;
+    document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+      <h3 style="margin:0 0 1rem">📋 ${t('bookingMgmt')} #${b.id}</h3>
+      <div style="font-size:0.9rem"><p>🎾 <strong>${b.facility_name}</strong></p>
+      <p>⏰ ${b.start_time} ~ ${b.end_time}</p>
+      <p>👤 ${b.customer_name||'-'} ${b.customer_phone?'| 📞 '+b.customer_phone:''}</p>
+      <p>💰 ${formatMoney(b.amount)} | ${b.payment_method}</p>
+      ${b.notes?'<p>📝 '+b.notes+'</p>':''}</div>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+        ${b.status!=='cancelled'?`<button class="btn btn-danger btn-sm" onclick="cancelBooking(${b.id});closeModal()"><i class="fas fa-ban"></i> ${t('cancel')}</button>`:''}
+        <button class="btn btn-sm" style="background:#dc2626;color:#fff" onclick="deleteBooking(${b.id})"><i class="fas fa-trash"></i> 삭제</button>
+        <button class="btn btn-sm" style="background:var(--card2)" onclick="closeModal()">${t('close') || '닫기'}</button>
+      </div>
+    </div></div>`;
+  });
+}
+async function deleteBooking(id){
+  if(!confirm('예약 #'+id+'을(를) 완전히 삭제하시겠습니까? (복구 불가)'))return;
+  await apiFetch('/api/bookings/'+id,{method:'DELETE'});
+  closeModal();loadBookings();
+}
+
+function openBulkBookingModal(){
+  const today=todayUB();
+  const courts=facilities.filter(f=>f.hourly_rate>0);
+  document.getElementById('modal-container').innerHTML=`
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="max-width:440px">
+        <h3 style="margin:0 0 1rem">🏆 시합/이벤트 전체 예약</h3>
+        <p style="font-size:0.82rem;color:var(--text2);margin-bottom:1rem">선택한 코트를 한번에 예약합니다</p>
+        <div class="form-group"><label>📅 날짜</label><input type="date" id="bk-date2" value="${today}"></div>
+        <div class="form-row">
+          <div class="form-group"><label>⏰ 시작</label><select id="bk-start2">${timeOptions(6,23)}</select></div>
+          <div class="form-group"><label>⏰ 종료</label><select id="bk-end2">${timeOptions(6,24,'24:00',true)}</select></div>
+        </div>
+        <div class="form-group"><label>🎾 코트 선택</label>
+          <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.3rem">
+            ${courts.map(c=>`<label style="display:flex;align-items:center;gap:0.3rem;background:var(--bg);padding:0.4rem 0.7rem;border-radius:8px;cursor:pointer;font-size:0.9rem">
+              <input type="checkbox" class="bulk-court" value="${c.id}" ${c.name!=='2층코트'?'checked':''}> ${c.name}
+            </label>`).join('')}
+          </div>
+          <div style="margin-top:0.3rem">
+            <button class="btn btn-sm" style="background:var(--card2);font-size:0.75rem" onclick="document.querySelectorAll('.bulk-court').forEach(c=>c.checked=true)">전체 선택</button>
+            <button class="btn btn-sm" style="background:var(--card2);font-size:0.75rem" onclick="document.querySelectorAll('.bulk-court').forEach(c=>c.checked=false)">전체 해제</button>
+          </div>
+        </div>
+        <div class="form-group"><label>📝 제목</label><input id="bk-title2" value="🏆 시합" placeholder="예: 주말 시합, 친선 경기" style="font-size:1.1rem;font-weight:700"></div>
+        <div class="form-row">
+          <div class="form-group"><label>💰 금액 (₮)</label><input type="number" id="bk-amt2" value="0"></div>
+          <div class="form-group"><label>💳 결제</label><select id="bk-pay2"><option value="cash">현금</option><option value="card">카드</option><option value="transfer">이체</option><option value="qpay">큐페이</option><option value="none">없음</option></select></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.8rem;font-size:0.85rem;background:rgba(239,68,68,0.08);padding:0.5rem 0.7rem;border-radius:8px;cursor:pointer">
+          <input type="checkbox" id="bk-override" checked> ⚠️ 기존 예약이 있으면 취소하고 예약
+        </label>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">취소</button>
+          <button class="btn" style="background:var(--warning);color:#000;font-weight:700" onclick="saveBulkBooking()"><i class="fas fa-trophy"></i> 전체 예약</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveBulkBooking(){
+  const facility_ids=[...document.querySelectorAll('.bulk-court:checked')].map(c=>Number(c.value));
+  if(facility_ids.length===0)return alert('코트를 선택하세요');
+  const body={
+    booking_date:g('bk-date2'),start_time:g('bk-start2'),end_time:g('bk-end2'),
+    customer_name:g('bk-title2')||'🏆 시합',notes:g('bk-title2'),
+    amount:Number(g('bk-amt2'))||0,payment_method:g('bk-pay2'),facility_ids
+  };
+  body.override=document.getElementById('bk-override')?.checked||false;
+  if(body.start_time>=body.end_time)return alert('종료 시간이 시작보다 빨라요');
+  if(body.override&&!confirm('⚠️ 기존 예약이 취소됩니다. 진행할까요?'))return;
+  const res=await apiFetch('/api/bookings/bulk',{method:'POST',body:JSON.stringify(body)}).then(r=>r.json());
+  if(res.error)return alert('❌ '+res.error);
+  closeModal();
+  alert('✅ '+res.message);
+  if(bkView==='month')loadMonthView();else filterBookings();
+}
+
+function openBookingModal(){
+  const today=todayUB();
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3 style="margin:0 0 1rem">${t('addBooking')}</h3>
+    <div class="form-group"><label>${t('facility')}</label><select id="nb-fac">${facilities.filter(f=>f.hourly_rate>0).map(f=>`<option value="${f.id}" data-rate="${f.hourly_rate}">${f.name} (${formatMoney(f.hourly_rate)}${t('perHour')})</option>`).join('')}</select></div>
+    <div class="form-group"><label>${t('date')}</label><input type="date" id="nb-date" value="${today}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>${t('startTime')}</label><select id="nb-start">${timeOptions(6,23,'10:00')}</select></div>
+      <div class="form-group"><label>${t('endTime')}</label><select id="nb-end">${timeOptions(6,24,'11:00',true)}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>${t('customer')}</label><input id="nb-name"></div>
+      <div class="form-group"><label>${t('phone')}</label><input id="nb-phone"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>${t('amount')} (₮)</label><input type="number" id="nb-amount"></div>
+      <div class="form-group"><label>${t('payment')}</label><select id="nb-pay"><option value="cash">${t('cash')}</option><option value="card">${t('card')}</option><option value="qpay">QPay</option><option value="transfer">${t('transfer')}</option></select></div>
+    </div>
+    <div class="form-group"><label>${t('memo')}</label><input id="nb-notes"></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+      <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+      <button class="btn btn-primary" onclick="saveBooking()">${t('save')}</button>
+    </div>
+  </div></div>`;
+  // Auto calc amount
+  const calcAmount=()=>{const sel=document.getElementById('nb-fac');const rate=Number(sel.options[sel.selectedIndex]?.dataset?.rate||0);
+    const s=g('nb-start'),e=g('nb-end');if(s&&e){const h=(new Date('2000-01-01T'+e)-new Date('2000-01-01T'+s))/3600000;document.getElementById('nb-amount').value=Math.round(rate*Math.max(h,0))}};
+  ['nb-fac','nb-start','nb-end'].forEach(id=>document.getElementById(id).addEventListener('change',calcAmount));calcAmount();
+}
+
+async function saveBooking(){
+  const body={facility_id:Number(g('nb-fac')),booking_date:g('nb-date'),start_time:g('nb-start'),end_time:g('nb-end'),customer_name:g('nb-name'),customer_phone:g('nb-phone'),amount:Number(g('nb-amount'))||0,payment_method:g('nb-pay'),notes:g('nb-notes')};
+  const res=await apiFetch('/api/bookings',{method:'POST',body:JSON.stringify(body)});const d=await res.json();
+  if(!res.ok)return alert(d.error);closeModal();alert('✅ '+d.message);loadBookings();
+}
+
+async function cancelBooking(id){if(!confirm(t('cancel')+'?'))return;await apiFetch('/api/bookings/'+id,{method:'DELETE'});try{filterBookings()}catch(e){}}
+
+async function openEditBookingModal(id){
+  const b=await apiFetch('/api/bookings/'+id).then(r=>r.json());
+  if(!b||b.error)return;
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3 style="margin:0 0 1rem">✏️ ${t('editBooking')} #${b.id}</h3>
+    <div class="form-group"><label>${t('facility')}</label><select id="eb-fac">${facilities.filter(f=>f.hourly_rate>0).map(f=>`<option value="${f.id}" data-rate="${f.hourly_rate}" ${f.id===b.facility_id?'selected':''}>${f.name} (${formatMoney(f.hourly_rate)}${t('perHour')})</option>`).join('')}</select></div>
+    <div class="form-group"><label>${t('date')}</label><input type="date" id="eb-date" value="${b.booking_date}"></div>
+    <div class="form-row">
+      <div class="form-group"><label>${t('startTime')}</label><select id="eb-start">${timeOptions(6,23,b.start_time)}</select></div>
+      <div class="form-group"><label>${t('endTime')}</label><select id="eb-end">${timeOptions(6,24,b.end_time,true)}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>${t('customer')}</label><input id="eb-name" value="${b.customer_name||''}"></div>
+      <div class="form-group"><label>${t('phone')}</label><input id="eb-phone" value="${b.customer_phone||''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>${t('amount')} (₮)</label><input type="number" id="eb-amount" value="${b.amount}"></div>
+      <div class="form-group"><label>${t('payment')}</label><select id="eb-pay"><option value="cash" ${b.payment_method==='cash'?'selected':''}>${t('cash')}</option><option value="card" ${b.payment_method==='card'?'selected':''}>${t('card')}</option><option value="qpay" ${b.payment_method==='qpay'?'selected':''}>QPay</option><option value="transfer" ${b.payment_method==='transfer'?'selected':''}>${t('transfer')}</option></select></div>
+    </div>
+    <div class="form-group"><label>${t('memo')}</label><input id="eb-notes" value="${b.notes||''}"></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+      <button class="btn btn-danger btn-sm" onclick="cancelBooking(${b.id});closeModal();loadDashboard()"><i class="fas fa-times"></i> ${t('cancel')}</button>
+      <div style="flex:1"></div>
+      <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('close')||'닫기'}</button>
+      <button class="btn btn-primary" onclick="updateBooking(${b.id})">${t('save')}</button>
+    </div>
+  </div></div>`;
+  const calcAmt=()=>{const sel=document.getElementById('eb-fac');const rate=Number(sel.options[sel.selectedIndex]?.dataset?.rate||0);
+    const s=g('eb-start'),e=g('eb-end');if(s&&e){const sh=parseInt(s),eh=parseInt(e),sm=parseInt(s.split(':')[1]),em=parseInt(e.split(':')[1]);
+    const h=((eh*60+em)-(sh*60+sm))/60;document.getElementById('eb-amount').value=Math.round(rate*Math.max(h,0))}};
+  ['eb-fac','eb-start','eb-end'].forEach(id=>document.getElementById(id)?.addEventListener('change',calcAmt));
+}
+
+async function updateBooking(id){
+  const body={facility_id:Number(g('eb-fac')),booking_date:g('eb-date'),start_time:g('eb-start'),end_time:g('eb-end'),customer_name:g('eb-name'),customer_phone:g('eb-phone'),amount:Number(g('eb-amount'))||0,payment_method:g('eb-pay'),notes:g('eb-notes')};
+  const res=await apiFetch('/api/bookings/'+id,{method:'PUT',body:JSON.stringify(body)});const d=await res.json();
+  if(!res.ok)return alert(d.error);
+  closeModal();alert('✅ '+d.message);
+  try{filterBookings()}catch(e){}loadDashboard();
+}
+
+// ====== CLASSES ======
+async function loadClasses(){
+  const cls=await apiFetch('/api/classes').then(r=>r.json());
+  document.getElementById('sec-classes').innerHTML=`
+    <div class="page-header"><h2>📚 ${t('classMgmt')}</h2>
+      <button class="btn btn-primary" onclick="openClassModal()"><i class="fas fa-plus"></i> ${t('className')}</button>
+    </div>
+    ${cls.map(c=>`<div class="card" style="border-left:4px solid ${c.status==='active'?'var(--primary)':'var(--card2)'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem">
+        <div>
+          <h3 style="font-size:1.1rem;margin:0">${c.name}</h3>
+          <div style="font-size:0.85rem;color:var(--text2);margin-top:0.3rem">👨‍🏫 ${c.instructor} | 📍 ${c.facility_name||'-'}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="color:var(--primary);font-weight:700">${formatMoney(c.monthly_fee)}/월</div>
+          <div style="font-size:0.85rem;color:var(--text2)">${c.current_students}/${c.max_students}${t('person')}</div>
+        </div>
+      </div>
+      <div style="margin-top:0.5rem">
+        <span style="font-size:0.85rem;color:var(--info)">📅 ${c.day_of_week} | ⏰ ${c.start_time}~${c.end_time}</span>
+      </div>
+      ${c.description?`<div style="font-size:0.8rem;color:var(--text2);margin-top:0.3rem">${c.description}</div>`:''}
+      <div style="margin-top:0.8rem"><button class="btn btn-sm btn-info" onclick="openClassModal(${c.id})"><i class="fas fa-edit"></i></button></div>
+    </div>`).join('')}`;
+}
+
+async function openClassModal(id){
+  let cls=null;if(id){const all=await apiFetch('/api/classes').then(r=>r.json());cls=all.find(c=>c.id===id)}
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3 style="margin:0 0 1rem">${id?'✏️':'➕'} ${t('className')}</h3>
+    <div class="form-row">
+      <div class="form-group"><label>${t('className')}</label><input id="cl-name" value="${cls?.name||''}"></div>
+      <div class="form-group"><label>${t('instructor')}</label><input id="cl-inst" value="${cls?.instructor||''}"></div>
+    </div>
+    <div class="form-group"><label>${t('facility')}</label><select id="cl-fac">${facilities.map(f=>`<option value="${f.id}" ${cls?.facility_id==f.id?'selected':''}>${f.name}</option>`).join('')}</select></div>
+    <div class="form-group"><label>${t('schedule')} (요일)</label><input id="cl-dow" value="${cls?.day_of_week||''}" placeholder="월,수,금"></div>
+    <div class="form-row">
+      <div class="form-group"><label>${t('startTime')}</label><input type="time" id="cl-start" value="${cls?.start_time||''}"></div>
+      <div class="form-group"><label>${t('endTime')}</label><input type="time" id="cl-end" value="${cls?.end_time||''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>${t('maxStudents')}</label><input type="number" id="cl-max" value="${cls?.max_students||20}"></div>
+      <div class="form-group"><label>${t('fee')} (₮)</label><input type="number" id="cl-fee" value="${cls?.monthly_fee||''}"></div>
+    </div>
+    <div class="form-group"><label>${t('memo')}</label><input id="cl-desc" value="${cls?.description||''}"></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+      <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+      <button class="btn btn-primary" onclick="saveClass(${id||'null'})">${t('save')}</button>
+    </div>
+  </div></div>`;
+}
+
+async function saveClass(id){
+  const body={name:g('cl-name'),instructor:g('cl-inst'),facility_id:Number(g('cl-fac')),day_of_week:g('cl-dow'),start_time:g('cl-start'),end_time:g('cl-end'),max_students:Number(g('cl-max')),current_students:0,monthly_fee:Number(g('cl-fee'))||0,status:'active',description:g('cl-desc')};
+  await apiFetch(id?'/api/classes/'+id:'/api/classes',{method:id?'PUT':'POST',body:JSON.stringify(body)});closeModal();loadClasses();
+}
+
+// ====== EQUIPMENT ======
+async function loadEquipment(){
+  const eqs=await apiFetch('/api/equipment').then(r=>r.json());
+  document.getElementById('sec-equipment').innerHTML=`
+    <div class="page-header"><h2>🔧 ${t('equipmentMgmt')}</h2>
+      <button class="btn btn-primary" onclick="openEquipModal()"><i class="fas fa-plus"></i> ${t('equipment')}</button>
+    </div>
+    <div class="card" style="overflow-x:auto"><table><thead><tr><th>${t('equipment')}</th><th>${t('category')}</th><th>${t('qty')}</th><th>${t('location')}</th><th>${t('condition')}</th><th>${t('lastMaint')}</th><th></th></tr></thead>
+    <tbody>${eqs.map(e=>`<tr>
+      <td><strong>${e.name}</strong></td><td>${e.category||'-'}</td><td>${e.qty}</td><td>${e.location||'-'}</td>
+      <td><span class="badge badge-${e.condition}">${t(e.condition)}</span></td>
+      <td style="font-size:0.8rem">${e.last_maintenance||'-'}</td>
+      <td>
+        <button class="btn btn-sm btn-info" onclick="openEquipModal(${e.id})"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-sm btn-warning" onclick="openMaintModal(${e.id},'${e.name.replace(/'/g,"\\'")}')"><i class="fas fa-wrench"></i></button>
+      </td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+async function openEquipModal(id){
+  let eq=null;if(id){const all=await apiFetch('/api/equipment').then(r=>r.json());eq=all.find(e=>e.id===id)}
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3 style="margin:0 0 1rem">${t('equipment')}</h3>
+    <div class="form-row"><div class="form-group"><label>${t('equipment')}</label><input id="eq-name" value="${eq?.name||''}"></div>
+    <div class="form-group"><label>${t('category')}</label><input id="eq-cat" value="${eq?.category||''}"></div></div>
+    <div class="form-row"><div class="form-group"><label>${t('qty')}</label><input type="number" id="eq-qty" value="${eq?.qty||1}"></div>
+    <div class="form-group"><label>${t('location')}</label><input id="eq-loc" value="${eq?.location||''}"></div></div>
+    <div class="form-group"><label>${t('condition')}</label><select id="eq-cond"><option value="good" ${eq?.condition==='good'?'selected':''}>${t('good')}</option><option value="fair" ${eq?.condition==='fair'?'selected':''}>${t('fair')}</option><option value="poor" ${eq?.condition==='poor'?'selected':''}>${t('poor')}</option></select></div>
+    <div class="form-group"><label>${t('memo')}</label><input id="eq-notes" value="${eq?.notes||''}"></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+      <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+      <button class="btn btn-primary" onclick="saveEquip(${id||'null'})">${t('save')}</button>
+    </div></div></div>`;
+}
+
+async function saveEquip(id){
+  const body={name:g('eq-name'),category:g('eq-cat'),qty:Number(g('eq-qty')),location:g('eq-loc'),condition:g('eq-cond'),notes:g('eq-notes')};
+  await apiFetch(id?'/api/equipment/'+id:'/api/equipment',{method:id?'PUT':'POST',body:JSON.stringify(body)});closeModal();loadEquipment();
+}
+
+function openMaintModal(eqId,name){
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3 style="margin:0 0 1rem">🔧 ${t('addMaint')} - ${name}</h3>
+    <div class="form-group"><label>${t('type')}</label><select id="mt-type"><option value="repair">${t('repair')}</option><option value="inspection">${t('inspection')}</option><option value="replacement">${t('replacement')}</option></select></div>
+    <div class="form-group"><label>${t('memo')}</label><textarea id="mt-desc" rows="2"></textarea></div>
+    <div class="form-row"><div class="form-group"><label>${t('cost')} (₮)</label><input type="number" id="mt-cost"></div>
+    <div class="form-group"><label>${t('doneBy')}</label><input id="mt-by"></div></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+      <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+      <button class="btn btn-warning" onclick="saveMaint(${eqId})">${t('save')}</button>
+    </div></div></div>`;
+}
+
+async function saveMaint(eqId){
+  await apiFetch('/api/equipment/'+eqId+'/maintenance',{method:'POST',body:JSON.stringify({type:g('mt-type'),description:g('mt-desc'),cost:Number(g('mt-cost')),done_by:g('mt-by')})});
+  closeModal();alert('✅');loadEquipment();
+}
+
+// ====== CHECKLIST ======
+async function loadChecklist(){
+  const d=await apiFetch('/api/dashboard').then(r=>r.json());
+  document.getElementById('sec-checklist').innerHTML=`
+    <div class="page-header"><h2>✅ ${t('dailyCheck')}</h2><span style="color:var(--text2)">${d.today}</span></div>
+    <div class="card"><h3 style="margin:0 0 1rem;font-size:1rem">🌅 ${t('openCheck')}</h3>
+    ${d.openChecks.map(c=>`<div class="checklist-item ${d.checkedToday.includes(c.id)?'checked':''}">
+      <input type="checkbox" ${d.checkedToday.includes(c.id)?'checked':''} onchange="toggleCheck(${c.id},this.checked)">
+      <span style="font-size:0.95rem">${c.task}</span>
+    </div>`).join('')}
+    <div style="margin-top:0.8rem;text-align:right;color:var(--primary);font-weight:700">${d.openChecks.filter(c=>d.checkedToday.includes(c.id)).length}/${d.openChecks.length} ${t('checked')}</div></div>
+
+    <div class="card"><h3 style="margin:0 0 1rem;font-size:1rem">🌙 ${t('closeCheck')}</h3>
+    ${d.closeChecks.map(c=>`<div class="checklist-item ${d.checkedToday.includes(c.id)?'checked':''}">
+      <input type="checkbox" ${d.checkedToday.includes(c.id)?'checked':''} onchange="toggleCheck(${c.id},this.checked)">
+      <span style="font-size:0.95rem">${c.task}</span>
+    </div>`).join('')}
+    <div style="margin-top:0.8rem;text-align:right;color:var(--primary);font-weight:700">${d.closeChecks.filter(c=>d.checkedToday.includes(c.id)).length}/${d.closeChecks.length} ${t('checked')}</div></div>`;
+}
+
+async function toggleCheck(id,checked){
+  await apiFetch('/api/checklist/'+(checked?'check':'uncheck'),{method:'POST',body:JSON.stringify({checklist_id:id})});
+}
+
+// ====== NOTICES ======
+async function loadNotices(){
+  const notices=await apiFetch('/api/notices').then(r=>r.json());
+  document.getElementById('sec-notices').innerHTML=`
+    <div class="page-header"><h2>📢 ${t('noticeBoard')}</h2>
+      <button class="btn btn-primary" onclick="openNoticeModal()"><i class="fas fa-plus"></i> ${t('addNotice')}</button>
+    </div>
+    ${notices.map(n=>`<div class="card" style="border-left:4px solid ${n.priority==='urgent'?'var(--danger)':'var(--info)'}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 style="font-size:1rem">${n.priority==='urgent'?'🔴':'📌'} ${n.title}</h3>
+        <div><span style="font-size:0.75rem;color:var(--text2)">${n.created_at}</span>
+          <button class="btn btn-sm btn-danger" onclick="deleteNotice(${n.id})" style="margin-left:0.3rem"><i class="fas fa-trash"></i></button></div>
+      </div>
+      ${n.content?`<div style="margin-top:0.5rem;color:var(--text2);font-size:0.9rem">${n.content}</div>`:''}
+    </div>`).join('')||`<div class="card" style="text-align:center;color:var(--text2);padding:2rem">공지사항 없음</div>`}`;
+}
+
+function openNoticeModal(){
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3 style="margin:0 0 1rem">${t('addNotice')}</h3>
+    <div class="form-group"><label>${t('title')}</label><input id="nt-title"></div>
+    <div class="form-group"><label>${t('content')}</label><textarea id="nt-content" rows="3"></textarea></div>
+    <div class="form-group"><label>${t('priority')}</label><select id="nt-pri"><option value="normal">${t('normal')}</option><option value="urgent">${t('urgent')}</option></select></div>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+      <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+      <button class="btn btn-primary" onclick="saveNotice()">${t('save')}</button>
+    </div></div></div>`;
+}
+
+async function saveNotice(){
+  await apiFetch('/api/notices',{method:'POST',body:JSON.stringify({title:g('nt-title'),content:g('nt-content'),priority:g('nt-pri')})});
+  closeModal();loadNotices();
+}
+
+async function deleteNotice(id){if(!confirm(t('delete')+'?'))return;await apiFetch('/api/notices/'+id,{method:'DELETE'});loadNotices()}
+
+// ====== APPROVALS ======
+async function loadApprovals(){
+  const pending=await apiFetch('/api/pending-bookings').then(r=>r.json());
+  document.getElementById('sec-approvals').innerHTML=`
+    <div class="page-header"><h2>🔔 예약 승인 관리</h2></div>
+    ${pending.length?pending.map(b=>`<div class="card" style="border-left:4px solid var(--warning)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem">
+        <div>
+          <div style="font-size:0.75rem;color:var(--warning);font-weight:700">⏳ 승인 대기</div>
+          <div style="font-weight:700;font-size:1.1rem;margin:0.3rem 0">👤 ${b.customer_name} ${b.customer_phone?'('+b.customer_phone+')':''}</div>
+          <div style="font-size:0.9rem">🎾 <strong>${b.facility_name}</strong></div>
+          <div style="font-size:0.9rem;color:var(--text2)">📅 ${b.booking_date} &nbsp; ⏰ ${b.start_time} ~ ${b.end_time}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:800;color:var(--primary);font-size:1.3rem">${formatMoney(b.amount)}</div>
+          <div style="font-size:0.8rem;color:var(--text2)">${b.payment_method}</div>
+          <div style="font-size:0.75rem;color:var(--text2);margin-top:0.3rem">${b.created_at||''}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:0.5rem;margin-top:1rem;justify-content:flex-end">
+        <button class="btn btn-danger" onclick="rejectBooking(${b.id})"><i class="fas fa-times"></i> 거절</button>
+        <button class="btn btn-success" onclick="approveBooking(${b.id})" style="padding:0.6rem 1.5rem"><i class="fas fa-check"></i> 승인</button>
+      </div>
+    </div>`).join(''):`
+    <div class="card" style="text-align:center;padding:3rem;color:var(--text2)">
+      <div style="font-size:3rem;margin-bottom:1rem">✅</div>
+      <p>승인 대기 중인 예약이 없습니다</p>
+    </div>`}`;
+  updatePendingBadge(pending.length);
+}
+
+async function approveBooking(id){
+  const res=await apiFetch('/api/bookings/'+id+'/approve',{method:'POST'});
+  const d=await res.json();
+  if(!res.ok)return alert('❌ '+d.error);
+  alert('✅ '+d.message);loadApprovals();
+}
+
+async function rejectBooking(id){
+  const reason=prompt('거절 사유 (선택):');
+  const res=await apiFetch('/api/bookings/'+id+'/reject',{method:'POST',body:JSON.stringify({reason:reason||''})});
+  const d=await res.json();
+  if(!res.ok)return alert('❌ '+d.error);
+  alert('✅ '+d.message);loadApprovals();
+}
+
+function updatePendingBadge(cnt){
+  const badge=document.getElementById('pending-badge');
+  if(badge){badge.textContent=cnt;badge.style.display=cnt>0?'inline':'none'}
+}
+
+// 주기적 알림 체크 (30초)
+if(typeof pendingInterval==='undefined'){var pendingInterval=setInterval(async()=>{
+  if(!authToken||!currentUser||currentUser.role==='customer')return;
+  try{
+    const pending=await apiFetch('/api/pending-bookings').then(r=>r.json());
+    updatePendingBadge(pending.length);
+  }catch(e){}
+},30000)}
+
+// ====== CUSTOMER BOOKING ======
+async function loadCustBooking(){
+  const today=todayUB();
+  const selDate=document.getElementById('cb-date')?.value||today;
+  const [facs,bookings]=await Promise.all([
+    apiFetch('/api/facilities').then(r=>r.json()),
+    apiFetch('/api/bookings?date='+selDate).then(r=>r.json())
+  ]);
+  const courts=facs.filter(f=>f.hourly_rate>0);
+
+  document.getElementById('sec-cust-booking').innerHTML=`
+    <div class="page-header"><h2>🎾 코트 예약</h2></div>
+    <div style="margin-bottom:1rem">
+      <input type="date" id="cb-date" value="${selDate}" min="${today}" style="max-width:180px" onchange="loadCustBooking()">
+    </div>
+    <div class="card" style="overflow-x:auto">
+      <div style="display:grid;grid-template-columns:55px ${courts.map(()=>'1fr').join(' ')};gap:0;min-width:${55+courts.length*120}px;font-size:0.8rem">
+        <div style="padding:0.4rem;font-weight:700;color:var(--text2)"></div>
+        ${courts.map(f=>`<div style="padding:0.4rem;font-weight:700;text-align:center;color:var(--primary)">
+          🎾 ${f.name}<br><span style="font-size:0.7rem;color:var(--text2)">${formatMoney(f.hourly_rate)}${t('perHour')}</span>
+        </div>`).join('')}
+        ${Array.from({length:18},(_, i)=>i+6).map(h=>{
+          const time=String(h).padStart(2,'0')+':00';
+          const endTime=String(h+1).padStart(2,'0')+':00';
+          return `<div style="padding:0.35rem;color:var(--text2);font-size:0.78rem">${time}</div>`+
+            courts.map(f=>{
+              const booked=bookings.some(b=>b.facility_id===f.id&&b.status!=='cancelled'&&parseInt(b.start_time)<=h&&parseInt(b.end_time)>h);
+              if(booked){
+                const bk=bookings.find(b=>b.facility_id===f.id&&b.status!=='cancelled'&&parseInt(b.start_time)===h);
+                return `<div style="padding:0.35rem;text-align:center;background:rgba(239,68,68,0.1);border-radius:6px;margin:1px">
+                  <span style="color:var(--danger);font-size:0.75rem">예약됨</span>
+                </div>`;
+              }
+              return `<div style="padding:0.35rem;text-align:center;cursor:pointer;border-radius:6px;margin:1px;background:rgba(16,185,129,0.06);transition:all .2s" 
+                onclick="openCustBookModal(${f.id},'${f.name}',${f.hourly_rate},'${selDate}','${time}','${endTime}')"
+                onmouseover="this.style.background='rgba(16,185,129,0.2)'" onmouseout="this.style.background='rgba(16,185,129,0.06)'">
+                <span style="color:var(--success);font-size:0.75rem">○ 가능</span>
+              </div>`;
+            }).join('');
+        }).join('')}
+      </div>
+    </div>
+    <div style="font-size:0.8rem;color:var(--text2);margin-top:0.5rem">
+      <span style="color:var(--success)">○ 가능</span> — 클릭하면 바로 예약! &nbsp;
+      <span style="color:var(--danger)">예약됨</span> — 이미 예약된 시간
+    </div>`;
+}
+
+function openCustBookModal(facId,facName,rate,date,start,end){
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3 style="margin:0 0 1rem">🎾 코트 예약</h3>
+    <div class="card" style="background:var(--bg);text-align:center;padding:1.5rem">
+      <div style="font-size:2rem;margin-bottom:0.3rem">🎾</div>
+      <div style="font-size:1.2rem;font-weight:800;color:var(--primary)">${facName}</div>
+      <div style="font-size:1rem;margin:0.5rem 0">${date} (${['일','월','화','수','목','금','토'][new Date(date+'T00:00:00+08:00').getUTCDay()]})</div>
+    </div>
+    <div class="form-row" style="margin-top:1rem">
+      <div class="form-group"><label>${t('startTime')}</label><select id="cb-start" onchange="calcCustAmount(${rate})">${timeOptions(6,23,start)}</select></div>
+      <div class="form-group"><label>${t('endTime')}</label><select id="cb-end" onchange="calcCustAmount(${rate})">${timeOptions(7,24,end,true)}</select></div>
+    </div>
+    <div class="form-group"><label>${t('payment')}</label><select id="cb-pay">
+      <option value="qpay" selected>📱 QPay (즉시 결제 → 자동 확정)</option>
+      <option value="cash">💵 ${t('cash')} (현장 결제 → 매니저 승인)</option>
+      <option value="card">💳 ${t('card')} (현장 결제 → 매니저 승인)</option>
+      <option value="transfer">🏦 ${t('transfer')} (매니저 승인)</option>
+    </select></div>
+    <div class="card" style="background:var(--bg);margin:1rem 0">
+      <div style="display:flex;justify-content:space-between;font-size:0.9rem">
+        <span>시간당</span><span>${formatMoney(rate)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:1.2rem;font-weight:800;color:var(--primary);margin-top:0.3rem;padding-top:0.3rem;border-top:1px solid var(--card2)">
+        <span>총 금액</span><span id="cb-total">${formatMoney(rate)}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:0.5rem">
+      <button class="btn" style="flex:1;justify-content:center;background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+      <button class="btn btn-primary" style="flex:1;justify-content:center;padding:0.75rem;font-size:1rem" onclick="submitCustBooking(${facId},'${date}')">✅ 예약하기</button>
+    </div>
+  </div></div>`;
+}
+
+function calcCustAmount(rate){
+  const s=parseInt(g('cb-start')),e=parseInt(g('cb-end'));
+  const hours=Math.max(e-s,0);
+  document.getElementById('cb-total').textContent=formatMoney(rate*hours);
+}
+
+async function submitCustBooking(facId,date){
+  const body={facility_id:facId,booking_date:date,start_time:g('cb-start'),end_time:g('cb-end'),payment_method:g('cb-pay')};
+  const res=await apiFetch('/api/my-bookings',{method:'POST',body:JSON.stringify(body)});
+  const d=await res.json();
+  if(!res.ok)return alert('❌ '+d.error);
+  closeModal();
+
+  if(d.qpay){
+    // QPay 결제 모달
+    showQPayModal(d);
+  } else {
+    alert('🎉 '+d.message);
+    loadCustBooking();
+  }
+}
+
+function showQPayModal(d){
+  const qrImg=d.qpay.qr_image?`<img src="data:image/png;base64,${d.qpay.qr_image}" style="width:200px;height:200px;border-radius:12px;margin:1rem auto;display:block">`
+    :`<div style="background:white;color:#000;padding:1rem;border-radius:12px;word-break:break-all;font-size:0.7rem;margin:1rem 0">${d.qpay.qr_text||'QR 로딩 중...'}</div>`;
+  
+  const bankApps=d.qpay.urls||[];
+  
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay"><div class="modal" style="text-align:center">
+    <div style="font-size:2.5rem;margin-bottom:0.5rem">📱</div>
+    <h3 style="margin:0 0 0.3rem">QPay 결제</h3>
+    <p style="color:var(--text2);font-size:0.85rem;margin-bottom:0.5rem">${d.message}</p>
+    <div style="font-size:1.8rem;font-weight:800;color:var(--primary);margin:0.5rem 0">${formatMoney(d.amount)}</div>
+    ${qrImg}
+    ${bankApps.length?`<div style="margin:1rem 0">
+      <p style="font-size:0.8rem;color:var(--text2);margin-bottom:0.5rem">앱으로 결제:</p>
+      <div style="display:flex;flex-wrap:wrap;gap:0.3rem;justify-content:center">
+        ${bankApps.slice(0,8).map(u=>`<a href="${u.link}" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.4rem 0.8rem;border-radius:8px;background:var(--bg);color:var(--text);text-decoration:none;font-size:0.75rem">
+          ${u.logo?`<img src="${u.logo}" style="width:20px;height:20px;border-radius:4px">`:''}${u.description||u.name||''}
+        </a>`).join('')}
+      </div>
+    </div>`:''}
+    <div id="qpay-status" style="padding:0.8rem;border-radius:10px;background:rgba(245,158,11,0.1);margin:1rem 0">
+      <div style="color:var(--warning);font-weight:700">⏳ 결제 대기 중...</div>
+      <div style="font-size:0.8rem;color:var(--text2)">결제 완료 시 자동으로 예약이 확정됩니다</div>
+    </div>
+    <button class="btn" style="background:var(--card2);width:100%;justify-content:center" onclick="closeModal();loadCustBooking()">닫기</button>
+  </div></div>`;
+
+  // 결제 완료 폴링 (5초마다 확인)
+  let checkCount=0;
+  const checkInterval=setInterval(async()=>{
+    checkCount++;
+    if(checkCount>60){clearInterval(checkInterval);return} // 5분 후 중단
+    try{
+      const r=await fetch(API+'/api/qpay/check/'+d.id).then(r=>r.json());
+      if(r.paid){
+        clearInterval(checkInterval);
+        document.getElementById('qpay-status').innerHTML=`
+          <div style="color:var(--success);font-weight:700;font-size:1.1rem">✅ 결제 완료!</div>
+          <div style="font-size:0.9rem;color:var(--text)">예약이 자동 확정되었습니다</div>`;
+        document.getElementById('qpay-status').style.background='rgba(34,197,94,0.1)';
+      }
+    }catch(e){}
+  },5000);
+}
+
+// ====== CUSTOMER MY BOOKINGS ======
+async function loadCustMyBookings(){
+  const bookings=await apiFetch('/api/my-bookings').then(r=>r.json());
+  const today=todayUB();
+  document.getElementById('sec-cust-mybookings').innerHTML=`
+    <div class="page-header"><h2>📋 내 예약</h2></div>
+    ${bookings.length?bookings.map(b=>{
+      const isPast=b.booking_date<today;
+      const isToday=b.booking_date===today;
+      return `<div class="card" style="border-left:4px solid ${isPast?'var(--card2)':isToday?'var(--primary)':'var(--info)'}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem">
+          <div>
+            <div style="font-weight:700;font-size:1.1rem">🎾 ${b.facility_name}</div>
+            <div style="color:var(--text2);font-size:0.85rem;margin-top:0.3rem">
+              📅 ${b.booking_date} (${['일','월','화','수','목','금','토'][new Date(b.booking_date+'T00:00:00+08:00').getUTCDay()]})
+              &nbsp; ⏰ ${b.start_time} ~ ${b.end_time}
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700;color:var(--primary);font-size:1.1rem">${formatMoney(b.amount)}</div>
+            <span class="badge ${b.status==='pending'?'badge-maintenance':b.status==='rejected'?'badge-occupied':'badge-available'}">${b.status==='pending'?'⏳ 승인대기':b.status==='rejected'?'❌ 거절됨':'✅ 승인됨'}</span>
+          </div>
+        </div>
+        ${!isPast&&!isToday?`<div style="margin-top:0.8rem;text-align:right">
+          <button class="btn btn-sm btn-danger" onclick="cancelMyBooking(${b.id})"><i class="fas fa-times"></i> 예약 취소</button>
+        </div>`:''}
+        ${isToday?'<div style="margin-top:0.5rem;color:var(--primary);font-size:0.85rem;font-weight:700">📍 오늘 예약입니다!</div>':''}
+      </div>`}).join(''):`
+      <div class="card" style="text-align:center;padding:3rem;color:var(--text2)">
+        <div style="font-size:3rem;margin-bottom:1rem">🎾</div>
+        <p>아직 예약이 없습니다</p>
+        <button class="btn btn-primary" style="margin-top:1rem" onclick="showSection('cust-booking')">코트 예약하기</button>
+      </div>`}`;
+}
+
+async function cancelMyBooking(id){
+  if(!confirm('예약을 취소하시겠습니까?'))return;
+  const res=await apiFetch('/api/my-bookings/'+id,{method:'DELETE'});
+  const d=await res.json();
+  if(!res.ok)return alert('❌ '+d.error);
+  alert('✅ '+d.message);loadCustMyBookings();
+}
+
+// ====== CUSTOMER CLASSES ======
+async function loadCustClasses(){
+  const classes=await fetch(API+'/api/public/classes').then(r=>r.json());
+  document.getElementById('sec-cust-classes').innerHTML=`
+    <div class="page-header"><h2>📚 수업 안내</h2></div>
+    ${classes.map(c=>`<div class="card" style="border-left:4px solid var(--info)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.5rem">
+        <div>
+          <div style="font-weight:700;font-size:1.1rem">${c.name}</div>
+          <div style="color:var(--text2);font-size:0.85rem;margin-top:0.3rem">👨‍🏫 ${c.instructor}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="color:var(--primary);font-weight:700;font-size:1.1rem">${formatMoney(c.monthly_fee)}<span style="font-size:0.8rem;font-weight:400">/월</span></div>
+          <div style="font-size:0.85rem;color:var(--text2)">${c.current_students}/${c.max_students}명</div>
+        </div>
+      </div>
+      <div style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid rgba(255,255,255,0.03)">
+        <span style="color:var(--info)">📅 ${c.day_of_week}</span> &nbsp;
+        <span style="color:var(--text2)">⏰ ${c.start_time} ~ ${c.end_time}</span>
+      </div>
+      ${c.description?`<div style="font-size:0.85rem;color:var(--text2);margin-top:0.3rem">${c.description}</div>`:''}
+      ${c.current_students<c.max_students?`<div style="margin-top:0.5rem"><span class="badge badge-available">수강 가능</span></div>`:`<div style="margin-top:0.5rem"><span class="badge badge-occupied">마감</span></div>`}
+    </div>`).join('')}`;
+}
+
+// ====== USERS ======
+async function loadUsers(){
+  if(currentUser.role!=='admin')return;
+  const users=await apiFetch('/api/users').then(r=>r.json());
+  const roleBadge=r=>r==='admin'?`<span class="badge" style="background:rgba(139,92,246,0.15);color:#8b5cf6">${t('roleAdmin')}</span>`:
+    r==='staff'?`<span class="badge badge-available">${t('roleStaff')}</span>`:
+    `<span class="badge" style="background:rgba(59,130,246,0.15);color:var(--info)">${t('roleCustomer')}</span>`;
+  document.getElementById('sec-users').innerHTML=`
+    <div class="page-header"><h2>👥 ${t('userMgmt')}</h2>
+      <button class="btn btn-primary" onclick="openUserModal()"><i class="fas fa-plus"></i> ${t('addUser')}</button></div>
+    <div class="card" style="overflow-x:auto"><table><thead><tr><th>ID</th><th>${t('username')}</th><th>이름</th><th>${t('role')}</th><th></th></tr></thead>
+    <tbody>${users.map(u=>`<tr>
+      <td>${u.id}</td><td><strong>${u.username}</strong></td><td>${u.name}</td><td>${roleBadge(u.role)}</td>
+      <td><button class="btn btn-sm btn-info" onclick="openUserModal(${u.id},'${u.username.replace(/'/g,"\\'")}','${u.name.replace(/'/g,"\\'")}','${u.role}')"><i class="fas fa-edit"></i></button>
+      ${u.id!==currentUser.id?`<button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})"><i class="fas fa-trash"></i></button>`:''}</td>
+    </tr>`).join('')}</tbody></table></div>
+    <div class="card" style="background:rgba(59,130,246,0.05);border:1px solid rgba(59,130,246,0.2)">
+      <h4 style="color:var(--info);margin:0 0 0.5rem">📋 권한 안내</h4>
+      <div style="font-size:0.85rem;color:var(--text2)">
+        <p>🟣 <strong>${t('roleAdmin')}</strong> — 모든 기능 사용 가능 (설정, 가격, 사용자 관리)</p>
+        <p>🟢 <strong>${t('roleStaff')}</strong> — 예약, 체크리스트, 장비, 공지 관리 가능</p>
+        <p>🔵 <strong>${t('roleCustomer')}</strong> — 코트 현황, 수업 정보 조회만 가능</p>
+      </div>
+    </div>`;
+}
+
+function openUserModal(id,username,name,role){
+  document.getElementById('modal-container').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
+    <h3 style="margin:0 0 1rem">${id?'✏️ '+t('editUser'):'➕ '+t('addUser')}</h3>
+    <div class="form-group"><label>${t('username')}</label><input id="us-id" value="${username||''}" ${id?'disabled':''}></div>
+    ${id?'':`<div class="form-group"><label>${t('password')}</label><input id="us-pw" type="password"></div>`}
+    <div class="form-group"><label>이름</label><input id="us-name" value="${name||''}"></div>
+    <div class="form-group"><label>${t('role')}</label><select id="us-role">
+      <option value="admin" ${role==='admin'?'selected':''}>🟣 ${t('roleAdmin')}</option>
+      <option value="staff" ${role==='staff'?'selected':''}>🟢 ${t('roleStaff')}</option>
+      <option value="customer" ${role==='customer'||!role?'selected':''}>🔵 ${t('roleCustomer')}</option>
+    </select></div>
+    ${id?`<div class="form-group"><label>비밀번호 변경 (선택)</label><input id="us-pw" type="password" placeholder="변경 시에만 입력"></div>`:''}
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+      <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+      <button class="btn btn-primary" onclick="saveUser(${id||'null'})">${t('save')}</button>
+    </div></div></div>`;
+}
+
+async function saveUser(id){
+  const body={username:g('us-id'),name:g('us-name'),role:g('us-role')};
+  const pw=g('us-pw');if(pw)body.password=pw;
+  if(!id&&!pw)return alert(t('password'));
+  const res=await apiFetch(id?'/api/users/'+id:'/api/users',{method:id?'PUT':'POST',body:JSON.stringify(body)});
+  const d=await res.json();if(!res.ok)return alert(d.error);
+  closeModal();alert('✅ '+d.message);loadUsers();
+}
+
+async function deleteUser(id){if(!confirm(t('delete')+'?'))return;
+  const res=await apiFetch('/api/users/'+id,{method:'DELETE'});const d=await res.json();
+  if(!res.ok)return alert(d.error);loadUsers();
+}
+
+if(authToken&&currentUser)initApp();else applyLang();
+document.getElementById('login-pass')?.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+
+history.replaceState({sec:'dashboard'},'','#dashboard');
+window.addEventListener('popstate',e=>{if(e.state&&e.state.sec){showSection(e.state.sec,true);}else{history.pushState({sec:_curSec},'','#'+_curSec);}});
+if(location.hash){const h=location.hash.slice(1);if(h)setTimeout(()=>showSection(h,true),100);}
+</script>
+<script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});</script>
+</body>
+</html>

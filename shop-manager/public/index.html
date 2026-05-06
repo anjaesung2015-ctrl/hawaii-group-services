@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>샵 매니저</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--card2:#334155;--primary:#f59e0b;--primary2:#d97706;--success:#22c55e;--danger:#ef4444;--warning:#f59e0b;--info:#3b82f6;--text:#f1f5f9;--text2:#94a3b8;--sidebar-w:240px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+.sidebar{position:fixed;left:0;top:0;width:var(--sidebar-w);height:100vh;background:var(--card);padding:1rem;display:flex;flex-direction:column;z-index:100;transition:transform .3s}
+.logo{font-size:1.2rem;font-weight:800;padding:0.5rem;margin-bottom:1rem;color:var(--primary)}
+.nav-item{padding:0.7rem 0.8rem;border-radius:10px;cursor:pointer;font-size:0.9rem;margin:2px 0;transition:all .2s;display:flex;align-items:center;gap:0.6rem;color:var(--text2)}
+.nav-item:hover,.nav-item.active{background:rgba(245,158,11,0.15);color:var(--primary)}
+.main{margin-left:var(--sidebar-w);padding:1.5rem;min-height:100vh}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.5rem}
+.page-header h2{font-size:1.3rem;font-weight:700}
+.card{background:var(--card);border-radius:16px;padding:1.2rem;margin-bottom:1rem}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
+.stat{background:var(--card);border-radius:16px;padding:1.2rem}
+.stat-value{font-size:1.8rem;font-weight:800;margin:0.3rem 0}
+.stat-label{color:var(--text2);font-size:0.85rem}
+.btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.5rem 1rem;border:none;border-radius:10px;cursor:pointer;font-size:0.85rem;font-weight:600;transition:all .2s;color:white}
+.btn-primary{background:var(--primary);color:#000}.btn-primary:hover{background:var(--primary2)}
+.btn-success{background:var(--success)}.btn-danger{background:var(--danger)}
+.btn-info{background:var(--info)}.btn-warning{background:var(--warning);color:#000}
+.btn-sm{padding:0.35rem 0.7rem;font-size:0.8rem}
+input,select,textarea{width:100%;padding:0.6rem 0.8rem;border:1px solid var(--card2);border-radius:10px;background:var(--bg);color:var(--text);font-size:0.9rem;outline:none}
+input:focus,select:focus{border-color:var(--primary)}
+.form-group{margin-bottom:0.8rem}
+.form-group label{display:block;font-size:0.8rem;color:var(--text2);margin-bottom:0.3rem;font-weight:600}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:0.8rem}
+table{width:100%;border-collapse:collapse;font-size:0.85rem}
+th{text-align:left;padding:0.6rem;color:var(--text2);border-bottom:1px solid var(--card2);font-weight:600;font-size:0.8rem}
+td{padding:0.6rem;border-bottom:1px solid rgba(255,255,255,0.03)}
+tr:hover{background:rgba(255,255,255,0.02)}
+.badge{padding:0.2rem 0.6rem;border-radius:20px;font-size:0.75rem;font-weight:600;display:inline-block}
+.badge-success{background:rgba(34,197,94,0.15);color:var(--success)}
+.badge-danger{background:rgba(239,68,68,0.15);color:var(--danger)}
+.badge-warning{background:rgba(245,158,11,0.15);color:var(--warning)}
+.badge-info{background:rgba(59,130,246,0.15);color:var(--info)}
+.section{display:none}.section.active{display:block}
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal{background:var(--card);border-radius:20px;padding:1.5rem;width:100%;max-width:550px;max-height:90vh;overflow-y:auto}
+.hamburger{display:none;position:fixed;top:1rem;left:1rem;z-index:101;background:var(--card);border:none;color:var(--text);font-size:1.3rem;padding:0.5rem 0.7rem;border-radius:10px;cursor:pointer}
+/* POS Cart */
+.pos-layout{display:grid;grid-template-columns:1fr 380px;gap:1rem;min-height:70vh}
+.cart-item{display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.cart-total{border-top:2px solid var(--primary);padding-top:0.8rem;margin-top:0.5rem}
+/* Stock indicator */
+.stock-low{color:var(--danger);font-weight:700}
+.stock-ok{color:var(--success)}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.8rem}
+.product-card{background:var(--card2);border-radius:12px;padding:1rem;cursor:pointer;transition:all .2s;text-align:center}
+.product-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+.product-card .price{color:var(--primary);font-weight:700;font-size:1.1rem;margin-top:0.3rem}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .hamburger{display:block}
+  .main{margin-left:0;padding:1rem}
+  .pos-layout{grid-template-columns:1fr}
+  .form-row{grid-template-columns:1fr}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem}
+#app-screen{display:none}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="card" style="width:100%;max-width:380px;text-align:center;padding:2rem">
+    <div style="font-size:3rem;margin-bottom:0.5rem">🏪</div>
+    <h2 style="margin:0 0 0.3rem;color:var(--primary)">샵 매니저</h2>
+    <p style="color:var(--text2);margin-bottom:1.5rem;font-size:0.85rem">재고 · 매출 · 관리</p>
+    <div class="form-group"><label>아이디</label><input id="login-user" placeholder="아이디 입력"></div>
+    <div class="form-group"><label>비밀번호</label><input type="password" id="login-pass" placeholder="비밀번호 입력"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:0.75rem;font-size:1rem;background:var(--primary);color:#000" onclick="doLogin()">로그인</button>
+    <button id="login-lang-toggle" class="btn btn-sm" style="background:var(--card2);width:100%;justify-content:center;margin-top:0.75rem;padding:0.6rem" onclick="switchLang()">🇲🇳 Монгол</button>
+    <p id="login-error" style="color:var(--danger);font-size:0.85rem;margin-top:0.5rem"></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+<button class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>
+<div class="sidebar" id="sidebar">
+  <div class="logo">🏪 샵 매니저</div>
+  <a href="/center/portal" class="nav-item" style="background:rgba(245,158,11,0.1);margin-bottom:8px;text-decoration:none;color:var(--text2)"><i class="fas fa-th-large"></i> ← 포털</a>
+  <div class="nav-item active" onclick="showSection('dashboard')"><i class="fas fa-chart-line"></i> 대시보드</div>
+  <div class="nav-item" onclick="showSection('pos')"><i class="fas fa-cash-register"></i> 판매 (POS)</div>
+  <div class="nav-item" onclick="showSection('products')"><i class="fas fa-boxes-stacked"></i> 상품 관리</div>
+  <div class="nav-item" onclick="showSection('inventory')"><i class="fas fa-warehouse"></i> 재고 관리</div>
+  <div class="nav-item" onclick="showSection('stock-io')"><i class="fas fa-exchange-alt"></i> 입출고 관리</div>
+  <div class="nav-item" onclick="showSection('sales')"><i class="fas fa-receipt"></i> 매출 내역</div>
+  <div class="nav-item" onclick="showSection('suppliers')"><i class="fas fa-truck"></i> 공급업체</div>
+  <div class="nav-item" onclick="showSection('reports')"><i class="fas fa-chart-pie"></i> 리포트</div>
+  <div style="border-top:1px solid rgba(255,255,255,0.1);margin:0.5rem 0;padding-top:0.3rem">
+    <div style="font-size:0.7rem;color:var(--text2);padding:0 0.8rem">🇰🇷 한국 수입</div>
+  </div>
+  <div class="nav-item" onclick="showSection('parts')"><i class="fas fa-cogs"></i> KR 부품</div>
+  <div class="nav-item" onclick="showSection('orders-kr')"><i class="fas fa-clipboard-list"></i> KR 주문건</div>
+  <div style="flex:1"></div>
+  <button id="lang-toggle" class="btn btn-sm" style="background:var(--card2);width:100%;justify-content:center;margin-bottom:0.5rem" onclick="switchLang()">🇲🇳 Монгол</button>
+  <button class="btn btn-sm" style="background:var(--card2);width:100%;justify-content:center" onclick="logout()"><i class="fas fa-sign-out-alt"></i> 로그아웃</button>
+</div>
+
+<div class="main">
+  <!-- DASHBOARD -->
+  <div class="section active" id="sec-dashboard"></div>
+  <!-- POS -->
+  <div class="section" id="sec-pos"></div>
+  <!-- PRODUCTS -->
+  <div class="section" id="sec-products"></div>
+  <!-- INVENTORY -->
+  <div class="section" id="sec-inventory"></div>
+  <!-- SALES -->
+  <div class="section" id="sec-stock-io"></div>
+  <div class="section" id="sec-sales"></div>
+  <!-- SUPPLIERS -->
+  <div class="section" id="sec-suppliers"></div>
+  <!-- REPORTS -->
+  <div class="section" id="sec-reports"></div>
+  <div class="section" id="sec-parts"></div>
+  <div class="section" id="sec-orders-kr"></div>
+</div>
+</div>
+
+<div id="modal-container"></div>
+
+<script>
+const API = window.location.pathname.replace(/\/+$/, '');
+let authToken = localStorage.getItem('shop_token');
+let currentUser = JSON.parse(localStorage.getItem('shop_user') || 'null');
+let cart = [];
+let allProducts = [];
+let categories = [];
+let brands = [];
+let currentLang = localStorage.getItem('shop_lang') || 'ko';
+
+const i18n = {
+  ko: {
+    appTitle: '샵 매니저', subtitle: '재고 · 매출 · 관리',
+    login: '로그인', username: '아이디', password: '비밀번호',
+    usernamePh: '아이디 입력', passwordPh: '비밀번호 입력',
+    loginError: '아이디 또는 비밀번호가 틀렸습니다',
+    langBtn: '🇲🇳 Монгол', logout: '로그아웃',
+    // Nav
+    dashboard: '대시보드', pos: '판매 (POS)', productMgmt: '상품 관리',
+    inventoryMgmt: '재고 관리', stockIO: '입출고 관리', salesHistory: '매출 내역',
+    supplierMgmt: '공급업체', reports: '리포트',
+    // Dashboard
+    todaySales: '오늘 매출', monthSales: '이번 달 매출', totalProducts: '전체 상품',
+    lowStock: '재고 부족', outOfStock: '품절', items: '건',
+    lowStockProducts: '재고 부족 상품', topProducts: '이번 달 인기 상품',
+    todaySalesDetail: '오늘 판매 내역',
+    // Table headers
+    product: '상품', category: '카테고리', currentStock: '현재 재고',
+    minStock: '최소 재고', qty: '수량', soldQty: '판매 수량',
+    amount: '금액', time: '시간', customer: '고객', payment: '결제',
+    handler: '담당', status: '상태',
+    // POS
+    searchProduct: '상품명 / 바코드 검색', allCategories: '전체 카테고리',
+    cart: '장바구니', cartEmpty: '상품을 추가하세요', total: '합계',
+    customerName: '고객명 (선택)', payComplete: '결제 완료',
+    confirmPay: '결제하시겠습니까?', saleComplete: '판매 완료!',
+    stockInsufficient: '재고가 부족합니다', cartIsEmpty: '장바구니가 비어있습니다',
+    cash: '현금', card: '카드', qpay: 'QPay', transfer: '계좌이체',
+    noProducts: '상품이 없습니다', stock: '재고',
+    // Products
+    addProduct: '상품 등록', editProduct: '상품 수정',
+    productName: '상품명', barcode: '바코드', sku: 'SKU',
+    brand: '브랜드', costPrice: '원가', sellPrice: '판매가',
+    margin: '마진', unit: '단위', supplier: '공급업체',
+    description: '설명', save: '저장', cancel: '취소', delete: '삭제',
+    deleteConfirm: '이 상품을 삭제하시겠습니까?',
+    nameRequired: '상품명을 입력해주세요', search: '검색', all: '전체',
+    barcodeScan: '바코드 스캔', select: '선택',
+    // Stock
+    stockIn: '입고', stockInProcess: '입고 처리', invoiceNo: '송장번호',
+    memo: '메모', qtyRequired: '수량을 입력해주세요',
+    totalProductCount: '총 상품 수', stockCostValue: '재고 원가',
+    stockSellValue: '재고 판매가', lowStockCount: '부족 상품',
+    allStockOk: '모든 상품 재고 충분!', needed: '필요',
+    categoryStock: '카테고리별 재고', productCount: '상품 수',
+    totalStock: '총 재고', stockValue: '재고 가치',
+    // Sales
+    dateFrom: '시작일', dateTo: '종료일', query: '조회',
+    saleDetail: '판매 상세', unitPrice: '단가', subtotal: '소계',
+    refund: '환불', refunded: '환불', completed: '완료',
+    refundConfirm: '이 판매를 환불 처리하시겠습니까? (재고가 복원됩니다)',
+    close: '닫기', noData: '데이터 없음',
+    // Suppliers
+    addSupplier: '업체 등록', editSupplier: '업체 수정',
+    supplierName: '업체명', contactPerson: '담당자', phone: '전화',
+    email: '이메일', address: '주소', noSuppliers: '등록된 공급업체 없음',
+    supplierNameRequired: '업체명을 입력해주세요',
+    // Reports
+    totalRevenue: '총 매출', totalCost: '총 원가', netProfit: '순이익',
+    marginRate: '마진율', dailySales: '일별 매출 (최근 30일)',
+    monthlySales: '월별 매출', productProfit: '상품별 수익',
+    date: '날짜', month: '월', count: '건수', revenue: '매출',
+    cost: '원가', profit: '이익',
+  },
+  mn: {
+    appTitle: 'Дэлгүүрийн менежер', subtitle: 'Нөөц · Борлуулалт · Удирдлага',
+    login: 'Нэвтрэх', username: 'Хэрэглэгчийн нэр', password: 'Нууц үг',
+    usernamePh: 'Нэр оруулна уу', passwordPh: 'Нууц үг оруулна уу',
+    loginError: 'Хэрэглэгчийн нэр эсвэл нууц үг буруу',
+    langBtn: '🇰🇷 한국어', logout: 'Гарах',
+    // Nav
+    dashboard: 'Хянах самбар', pos: 'Борлуулалт (POS)', productMgmt: 'Бараа удирдлага',
+    inventoryMgmt: 'Нөөц удирдлага', stockIO: 'Орлого/Зарлага', salesHistory: 'Борлуулалтын түүх',
+    supplierMgmt: 'Нийлүүлэгч', reports: 'Тайлан',
+    // Dashboard
+    todaySales: 'Өнөөдрийн борлуулалт', monthSales: 'Энэ сарын борлуулалт',
+    totalProducts: 'Нийт бараа', lowStock: 'Нөөц дутагдалтай',
+    outOfStock: 'Дууссан', items: 'ш',
+    lowStockProducts: 'Нөөц дутагдалтай бараа', topProducts: 'Энэ сарын шилдэг бараа',
+    todaySalesDetail: 'Өнөөдрийн борлуулалтын дэлгэрэнгүй',
+    // Table headers
+    product: 'Бараа', category: 'Ангилал', currentStock: 'Одоогийн нөөц',
+    minStock: 'Доод нөөц', qty: 'Тоо хэмжээ', soldQty: 'Зарагдсан тоо',
+    amount: 'Дүн', time: 'Цаг', customer: 'Худалдан авагч', payment: 'Төлбөр',
+    handler: 'Хариуцагч', status: 'Төлөв',
+    // POS
+    searchProduct: 'Бараа / баркод хайх', allCategories: 'Бүх ангилал',
+    cart: 'Сагс', cartEmpty: 'Бараа нэмнэ үү', total: 'Нийт',
+    customerName: 'Худалдан авагч (сонголт)', payComplete: 'Төлбөр хийх',
+    confirmPay: 'Төлбөр хийх үү?', saleComplete: 'Борлуулалт амжилттай!',
+    stockInsufficient: 'Нөөц хүрэлцэхгүй байна', cartIsEmpty: 'Сагс хоосон байна',
+    cash: 'Бэлэн мөнгө', card: 'Карт', qpay: 'QPay', transfer: 'Шилжүүлэг',
+    noProducts: 'Бараа байхгүй', stock: 'Нөөц',
+    // Products
+    addProduct: 'Бараа бүртгэх', editProduct: 'Бараа засах',
+    productName: 'Барааны нэр', barcode: 'Баркод', sku: 'SKU',
+    brand: 'Брэнд', costPrice: 'Өртөг', sellPrice: 'Зарах үнэ',
+    margin: 'Маржин', unit: 'Нэгж', supplier: 'Нийлүүлэгч',
+    description: 'Тайлбар', save: 'Хадгалах', cancel: 'Цуцлах', delete: 'Устгах',
+    deleteConfirm: 'Энэ барааг устгах уу?',
+    nameRequired: 'Барааны нэр оруулна уу', search: 'Хайх', all: 'Бүгд',
+    barcodeScan: 'Баркод скан', select: 'Сонгох',
+    // Stock
+    stockIn: 'Бараа авах', stockInProcess: 'Бараа авах', invoiceNo: 'Нэхэмжлэх №',
+    memo: 'Тэмдэглэл', qtyRequired: 'Тоо хэмжээ оруулна уу',
+    totalProductCount: 'Нийт барааны тоо', stockCostValue: 'Нөөцийн өртөг',
+    stockSellValue: 'Нөөцийн зарах үнэ', lowStockCount: 'Дутагдалтай бараа',
+    allStockOk: 'Бүх барааны нөөц хангалттай!', needed: 'Шаардлагатай',
+    categoryStock: 'Ангиллаар нөөц', productCount: 'Барааны тоо',
+    totalStock: 'Нийт нөөц', stockValue: 'Нөөцийн үнэ цэнэ',
+    // Sales
+    dateFrom: 'Эхлэх огноо', dateTo: 'Дуусах огноо', query: 'Хайх',
+    saleDetail: 'Борлуулалтын дэлгэрэнгүй', unitPrice: 'Нэгж үнэ', subtotal: 'Дүн',
+    refund: 'Буцаалт', refunded: 'Буцаагдсан', completed: 'Дууссан',
+    refundConfirm: 'Энэ борлуулалтыг буцаах уу? (Нөөц сэргэнэ)',
+    close: 'Хаах', noData: 'Мэдээлэл байхгүй',
+    // Suppliers
+    addSupplier: 'Нийлүүлэгч бүртгэх', editSupplier: 'Нийлүүлэгч засах',
+    supplierName: 'Нийлүүлэгчийн нэр', contactPerson: 'Холбоо барих хүн', phone: 'Утас',
+    email: 'Имэйл', address: 'Хаяг', noSuppliers: 'Бүртгэлтэй нийлүүлэгч байхгүй',
+    supplierNameRequired: 'Нийлүүлэгчийн нэр оруулна уу',
+    // Reports
+    totalRevenue: 'Нийт орлого', totalCost: 'Нийт зардал', netProfit: 'Цэвэр ашиг',
+    marginRate: 'Маржин хувь', dailySales: 'Өдрийн борлуулалт (сүүлийн 30 хоног)',
+    monthlySales: 'Сарын борлуулалт', productProfit: 'Бараа тус бүрийн ашиг',
+    date: 'Огноо', month: 'Сар', count: 'Тоо', revenue: 'Орлого',
+    cost: 'Зардал', profit: 'Ашиг',
+  }
+};
+
+function t(key) { return i18n[currentLang]?.[key] || i18n.ko[key] || key; }
+
+function switchLang() {
+  currentLang = currentLang === 'ko' ? 'mn' : 'ko';
+  localStorage.setItem('shop_lang', currentLang);
+  applyLang();
+}
+
+function applyLang() {
+  try {
+    // Login screen
+    const loginTitle = document.querySelector('#login-screen h2');
+    if (loginTitle) loginTitle.textContent = t('appTitle');
+    const loginSub = document.querySelector('#login-screen .card > p');
+    if (loginSub) loginSub.textContent = t('subtitle');
+    const labels = document.querySelectorAll('#login-screen .form-group label');
+    if (labels[0]) labels[0].textContent = t('username');
+    if (labels[1]) labels[1].textContent = t('password');
+    const loginUser = document.getElementById('login-user');
+    if (loginUser) loginUser.placeholder = t('usernamePh');
+    const loginPass = document.getElementById('login-pass');
+    if (loginPass) loginPass.placeholder = t('passwordPh');
+    const loginBtn = document.querySelector('#login-screen .btn-primary');
+    if (loginBtn) loginBtn.textContent = t('login');
+    const loginLangBtn = document.getElementById('login-lang-toggle');
+    if (loginLangBtn) loginLangBtn.textContent = t('langBtn');
+
+    // Sidebar
+    const navItems = document.querySelectorAll('.nav-item');
+    const navKeys = ['dashboard','pos','productMgmt','inventoryMgmt','stockIO','salesHistory','supplierMgmt','reports'];
+    navItems.forEach((el, i) => {
+      if (navKeys[i]) {
+        const icon = el.querySelector('i');
+        if (icon) el.innerHTML = icon.outerHTML + ' ' + t(navKeys[i]);
+      }
+    });
+
+    const logo = document.querySelector('.logo');
+    if (logo) logo.textContent = '🏪 ' + t('appTitle');
+
+    const logoutBtn = document.querySelector('[onclick="logout()"]');
+    if (logoutBtn) logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> ' + t('logout');
+
+    const langToggle = document.getElementById('lang-toggle');
+    if (langToggle) langToggle.textContent = t('langBtn');
+
+    // Refresh current section
+    if (authToken && currentUser) {
+      const activeSection = document.querySelector('.section.active');
+      if (activeSection) {
+        const id = activeSection.id.replace('sec-', '');
+        showSection(id);
+      }
+    }
+  } catch(e) { console.log('applyLang error:', e); }
+}
+
+function todayUB(){const d=new Date(Date.now()+8*3600000);return d.toISOString().split('T')[0]}
+function g(id) { const el = document.getElementById(id); return el?.value?.trim?.() ?? el?.value ?? ''; }
+function formatMoney(n) { return '₮' + Number(n||0).toLocaleString(); }
+
+// AUTH
+async function doLogin() {
+  const res = await fetch(API + '/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ username: g('login-user'), password: g('login-pass') }) });
+  const data = await res.json();
+  if (!res.ok) { document.getElementById('login-error').textContent = data.error; return; }
+  authToken = data.token; currentUser = data.user;
+  localStorage.setItem('shop_token', authToken);
+  localStorage.setItem('shop_user', JSON.stringify(currentUser));
+  initApp();
+}
+function logout() { localStorage.removeItem('shop_token'); localStorage.removeItem('shop_user'); location.reload(); }
+
+function initApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  loadMeta();
+  showSection('dashboard');
+}
+
+async function loadMeta() {
+  const headers = { 'Authorization': 'Bearer ' + authToken };
+  categories = await fetch(API + '/api/categories', { headers }).then(r => r.json());
+  brands = await fetch(API + '/api/brands', { headers }).then(r => r.json());
+}
+
+async function apiFetch(url, opts = {}) {
+  opts.headers = { ...opts.headers, 'Authorization': 'Bearer ' + authToken, 'Content-Type': 'application/json' };
+  const res = await fetch(API + url, opts);
+  return res;
+}
+
+let _curSec='dashboard';
+function showSection(name,noPush){
+  if(!noPush&&name!==_curSec){history.pushState({sec:name},'','#'+name);}_curSec=name;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const allSections = ['dashboard','pos','products','inventory','stock-io','sales','suppliers','reports','parts','orders-kr'];
+  const navIdx = allSections.indexOf(name);
+  if (navIdx >= 0) document.querySelectorAll('.nav-item:not(a)')[navIdx]?.classList.add('active');
+  document.querySelector('.sidebar').classList.remove('open');
+
+  if (name === 'dashboard') loadDashboard();
+  else if (name === 'pos') initPOS();
+  else if (name === 'products') loadProducts();
+  else if (name === 'inventory') loadInventory();
+  else if (name === 'stock-io') loadStockIO();
+  else if (name === 'sales') loadSales();
+  else if (name === 'suppliers') loadSuppliers();
+  else if (name === 'reports') loadReports();
+  else if (name === 'parts') loadParts();
+  else if (name === 'orders-kr') loadOrdersKR();
+}
+
+function closeModal() { document.getElementById('modal-container').innerHTML = ''; }
+
+// ====== DASHBOARD ======
+async function loadDashboard() {
+  const data = await apiFetch('/api/dashboard').then(r => r.json());
+  document.getElementById('sec-dashboard').innerHTML = `
+    <div class="page-header"><h2>📊 ${t('dashboard')}</h2></div>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">💰 ${t('todaySales')}</div><div class="stat-value" style="color:var(--primary)">${formatMoney(data.todaySales.total)}</div><div class="stat-label">${data.todaySales.cnt}${t('items')}</div></div>
+      <div class="stat"><div class="stat-label">📅 ${t('monthSales')}</div><div class="stat-value" style="color:var(--success)">${formatMoney(data.monthSales.total)}</div><div class="stat-label">${data.monthSales.cnt}${t('items')}</div></div>
+      <div class="stat"><div class="stat-label">📦 ${t('totalProducts')}</div><div class="stat-value">${data.totalProducts}</div></div>
+      <div class="stat"><div class="stat-label">⚠️ ${t('lowStock')}</div><div class="stat-value" style="color:${data.lowStock > 0 ? 'var(--danger)' : 'var(--success)'}">${data.lowStock}</div><div class="stat-label">${t('outOfStock')}: ${data.outOfStock}</div></div>
+    </div>
+    ${data.lowStockItems.length ? `
+    <div class="card">
+      <h3 style="margin:0 0 1rem;font-size:1rem">⚠️ ${t('lowStockProducts')}</h3>
+      <table><thead><tr><th>${t('product')}</th><th>${t('category')}</th><th>${t('currentStock')}</th><th>${t('minStock')}</th></tr></thead>
+      <tbody>${data.lowStockItems.map(p => `<tr>
+        <td><strong>${p.name}</strong></td><td>${p.category_name || '-'}</td>
+        <td class="${p.stock_qty === 0 ? 'stock-low' : ''}">${p.stock_qty} ${p.unit}</td>
+        <td>${p.min_stock} ${p.unit}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>` : ''}
+    ${data.topProducts.length ? `
+    <div class="card">
+      <h3 style="margin:0 0 1rem;font-size:1rem">🏆 ${t('topProducts')}</h3>
+      <table><thead><tr><th>${t('product')}</th><th>${t('soldQty')}</th><th>${t('revenue')}</th></tr></thead>
+      <tbody>${data.topProducts.map(p => `<tr>
+        <td><strong>${p.name}</strong></td><td>${p.total_qty}개</td><td>${formatMoney(p.total_amount)}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>` : ''}
+    ${data.todayDetail.length ? `
+    <div class="card">
+      <h3 style="margin:0 0 1rem;font-size:1rem">🧾 ${t('todaySalesDetail')}</h3>
+      <table><thead><tr><th>${t('time')}</th><th>${t('customer')}</th><th>${t('amount')}</th><th>${t('payment')}</th><th>${t('handler')}</th></tr></thead>
+      <tbody>${data.todayDetail.map(s => `<tr>
+        <td>${s.sale_date.split(' ')[1] || s.sale_date}</td><td>${s.customer_name || '-'}</td>
+        <td><strong>${formatMoney(s.final_amount)}</strong></td>
+        <td><span class="badge badge-${s.payment_method === 'card' ? 'info' : s.payment_method === 'qpay' ? 'success' : 'warning'}">${s.payment_method}</span></td>
+        <td>${s.seller_name || '-'}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>` : ''}`;
+}
+
+// ====== POS ======
+async function initPOS() {
+  allProducts = await apiFetch('/api/products').then(r => r.json());
+  renderPOS();
+}
+
+function renderPOS() {
+  const sec = document.getElementById('sec-pos');
+  sec.innerHTML = `
+    <div class="page-header"><h2>💳 ${t('pos')}</h2></div>
+    <div class="pos-layout">
+      <div>
+        <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
+          <input type="text" id="pos-search" placeholder="🔍 ${t('searchProduct')}" style="max-width:300px" oninput="filterPOSProducts()">
+          <select id="pos-cat-filter" onchange="filterPOSProducts()" style="max-width:180px">
+            <option value="">${t('allCategories')}</option>
+            ${categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="product-grid" id="pos-products"></div>
+      </div>
+      <div>
+        <div class="card" style="position:sticky;top:1rem">
+          <h3 style="margin:0 0 1rem;font-size:1rem">🛒 ${t('cart')} <span id="cart-count">(0)</span></h3>
+          <div id="cart-items" style="max-height:300px;overflow-y:auto"></div>
+          <div class="cart-total" id="cart-total"></div>
+          <div class="form-group" style="margin-top:0.8rem"><input id="pos-customer" placeholder="${t('customerName')}"></div>
+          <div class="form-group">
+            <select id="pos-payment"><option value="cash">💵 ${t('cash')}</option><option value="card">💳 ${t('card')}</option><option value="qpay">📱 ${t('qpay')}</option><option value="transfer">🏦 ${t('transfer')}</option></select>
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;padding:0.8rem;font-size:1.1rem" onclick="completeSale()">💰 ${t('payComplete')}</button>
+        </div>
+      </div>
+    </div>`;
+  filterPOSProducts();
+  renderCart();
+
+  // Barcode scan listener
+  document.getElementById('pos-search').addEventListener('keydown', async function(e) {
+    if (e.key === 'Enter') {
+      const val = this.value.trim();
+      const product = allProducts.find(p => p.barcode === val);
+      if (product) { addToCart(product.id); this.value = ''; }
+    }
+  });
+}
+
+function filterPOSProducts() {
+  const search = g('pos-search').toLowerCase();
+  const catId = g('pos-cat-filter');
+  let filtered = allProducts.filter(p => p.stock_qty > 0);
+  if (search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search) || (p.barcode||'').includes(search));
+  if (catId) filtered = filtered.filter(p => p.category_id == catId);
+
+  document.getElementById('pos-products').innerHTML = filtered.map(p => `
+    <div class="product-card" onclick="addToCart(${p.id})">
+      <div style="font-size:0.85rem;font-weight:600">${p.name}</div>
+      <div class="price">${formatMoney(p.sell_price)}</div>
+      <div style="font-size:0.75rem;color:${p.stock_qty <= p.min_stock ? 'var(--danger)' : 'var(--text2)'}">${t('stock')}: ${p.stock_qty}${p.unit}</div>
+    </div>
+  `).join('') || `<p style="color:var(--text2);grid-column:1/-1;text-align:center;padding:2rem">${t('noProducts')}</p>`;
+}
+
+function addToCart(productId) {
+  const p = allProducts.find(x => x.id === productId);
+  if (!p) return;
+  const existing = cart.find(c => c.product_id === productId);
+  if (existing) {
+    if (existing.qty >= p.stock_qty) return alert('재고가 부족합니다');
+    existing.qty++;
+    existing.subtotal = existing.qty * existing.unit_price;
+  } else {
+    cart.push({ product_id: p.id, name: p.name, unit_price: p.sell_price, qty: 1, subtotal: p.sell_price, stock: p.stock_qty });
+  }
+  renderCart();
+}
+
+function updateCartQty(idx, delta) {
+  cart[idx].qty += delta;
+  if (cart[idx].qty <= 0) cart.splice(idx, 1);
+  else {
+    if (cart[idx].qty > cart[idx].stock) { cart[idx].qty = cart[idx].stock; alert('재고 부족'); }
+    cart[idx].subtotal = cart[idx].qty * cart[idx].unit_price;
+  }
+  renderCart();
+}
+
+function removeFromCart(idx) { cart.splice(idx, 1); renderCart(); }
+
+function renderCart() {
+  document.getElementById('cart-count').textContent = `(${cart.length})`;
+  document.getElementById('cart-items').innerHTML = cart.length ? cart.map((c, i) => `
+    <div class="cart-item">
+      <div style="flex:1"><div style="font-size:0.85rem;font-weight:600">${c.name}</div><div style="font-size:0.8rem;color:var(--text2)">${formatMoney(c.unit_price)} × ${c.qty}</div></div>
+      <div style="display:flex;align-items:center;gap:0.3rem">
+        <button class="btn btn-sm" style="background:var(--card2);padding:0.2rem 0.5rem" onclick="updateCartQty(${i},-1)">−</button>
+        <span style="min-width:1.5rem;text-align:center">${c.qty}</span>
+        <button class="btn btn-sm" style="background:var(--card2);padding:0.2rem 0.5rem" onclick="updateCartQty(${i},1)">+</button>
+        <button class="btn btn-sm btn-danger" style="padding:0.2rem 0.4rem" onclick="removeFromCart(${i})"><i class="fas fa-trash"></i></button>
+      </div>
+      <div style="min-width:80px;text-align:right;font-weight:700">${formatMoney(c.subtotal)}</div>
+    </div>
+  `).join('') : `<p style="color:var(--text2);text-align:center;padding:2rem">${t('cartEmpty')}</p>`;
+
+  const total = cart.reduce((s, c) => s + c.subtotal, 0);
+  document.getElementById('cart-total').innerHTML = `
+    <div style="display:flex;justify-content:space-between;font-size:1.2rem;font-weight:800;color:var(--primary)">
+      <span>${t('total')}</span><span>${formatMoney(total)}</span>
+    </div>`;
+}
+
+async function completeSale() {
+  if (!cart.length) return alert(t('cartIsEmpty'));
+  const total = cart.reduce((s, c) => s + c.subtotal, 0);
+  if (!confirm(`${t('total')} ${formatMoney(total)} - ${t('confirmPay')}`)) return;
+
+  const body = {
+    items: cart.map(c => ({ product_id: c.product_id, qty: c.qty, unit_price: c.unit_price })),
+    customer_name: g('pos-customer') || null,
+    payment_method: g('pos-payment')
+  };
+
+  const res = await apiFetch('/api/sales', { method: 'POST', body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) return alert(data.error);
+
+  alert(`✅ ${t('saleComplete')}\n${t('amount')}: ${formatMoney(data.final_amount)}`);
+  cart = [];
+  initPOS();
+}
+
+// ====== PRODUCTS ======
+async function loadProducts(search) {
+  const params = new URLSearchParams();
+  if (search) params.set('search', search);
+  const products = await apiFetch('/api/products?' + params).then(r => r.json());
+
+  document.getElementById('sec-products').innerHTML = `
+    <div class="page-header">
+      <h2>📦 ${t('productMgmt')} <span style="font-size:0.9rem;color:var(--text2)">(${products.length})</span></h2>
+      <button class="btn btn-primary" onclick="openProductModal()"><i class="fas fa-plus"></i> ${t('addProduct')}</button>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
+      <input type="text" id="prod-search" placeholder="🔍 ${t('productName')}, ${t('barcode')}, ${t('sku')}" style="max-width:300px" value="${search||''}" onkeydown="if(event.key==='Enter')loadProducts(this.value)">
+      <button class="btn btn-sm btn-info" onclick="loadProducts(g('prod-search'))"><i class="fas fa-search"></i></button>
+      <button class="btn btn-sm btn-danger" onclick="loadProducts()">${t('all')}</button>
+    </div>
+    <div class="card" style="overflow-x:auto">
+    <table><thead><tr><th>${t('productName')}</th><th>${t('barcode')}</th><th>${t('category')}</th><th>${t('costPrice')}</th><th>${t('sellPrice')}</th><th>${t('stock')}</th><th>${t('margin')}</th><th></th></tr></thead>
+    <tbody>${products.map(p => {
+      const margin = p.sell_price ? ((p.sell_price - p.cost_price) / p.sell_price * 100).toFixed(0) : 0;
+      return `<tr>
+        <td><strong>${p.name}</strong>${p.brand_name ? `<br><span style="font-size:0.75rem;color:var(--text2)">${p.brand_name}</span>` : ''}</td>
+        <td style="font-size:0.8rem;color:var(--text2)">${p.barcode || '-'}</td>
+        <td style="font-size:0.8rem">${p.category_name || '-'}</td>
+        <td>${formatMoney(p.cost_price)}</td>
+        <td style="font-weight:700;color:var(--primary)">${formatMoney(p.sell_price)}</td>
+        <td class="${p.stock_qty <= p.min_stock ? 'stock-low' : 'stock-ok'}">${p.stock_qty} ${p.unit}</td>
+        <td><span class="badge ${margin >= 30 ? 'badge-success' : margin >= 15 ? 'badge-warning' : 'badge-danger'}">${margin}%</span></td>
+        <td>
+          <button class="btn btn-sm btn-info" onclick="openProductModal(${p.id})"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-sm btn-success" onclick="openStockInModal(${p.id},'${p.name.replace(/'/g,"\\'")}')"><i class="fas fa-arrow-down"></i> 입고</button>
+        </td>
+      </tr>`}).join('')}
+    </tbody></table></div>`;
+}
+
+async function openProductModal(id) {
+  let product = null;
+  if (id) product = await apiFetch('/api/products/' + id).then(r => r.json());
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">${id ? '✏️ ' + t('editProduct') : '➕ ' + t('addProduct')}</h3>
+        <div class="form-group"><label>${t('productName')} *</label><input id="p-name" value="${product?.name||''}"></div>
+        <div class="form-row">
+          <div class="form-group"><label>${t('barcode')}</label><input id="p-barcode" value="${product?.barcode||''}" placeholder="${t('barcodeScan')}"></div>
+          <div class="form-group"><label>${t('sku')}</label><input id="p-sku" value="${product?.sku||''}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>${t('category')}</label><select id="p-cat"><option value="">${t('select')}</option>${categories.map(c => `<option value="${c.id}" ${product?.category_id==c.id?'selected':''}>${c.name}</option>`).join('')}</select></div>
+          <div class="form-group"><label>${t('brand')}</label><select id="p-brand"><option value="">${t('select')}</option>${brands.map(b => `<option value="${b.id}" ${product?.brand_id==b.id?'selected':''}>${b.name}</option>`).join('')}</select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>${t('costPrice')} (₮)</label><input type="number" id="p-cost" value="${product?.cost_price||''}"></div>
+          <div class="form-group"><label>${t('sellPrice')} (₮)</label><input type="number" id="p-sell" value="${product?.sell_price||''}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>${t('currentStock')}</label><input type="number" id="p-stock" value="${product?.stock_qty||0}"></div>
+          <div class="form-group"><label>${t('minStock')}</label><input type="number" id="p-minstock" value="${product?.min_stock||5}"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>${t('unit')}</label><input id="p-unit" value="${product?.unit||'개'}"></div>
+          <div class="form-group"><label>${t('supplier')}</label><select id="p-supplier"><option value="">${t('select')}</option></select></div>
+        </div>
+        <div class="form-group"><label>${t('description')}</label><textarea id="p-desc" rows="2">${product?.description||''}</textarea></div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          ${id ? `<button class="btn btn-danger" onclick="deleteProduct(${id})"><i class="fas fa-trash"></i> ${t('delete')}</button>` : ''}
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+          <button class="btn btn-primary" onclick="saveProduct(${id||'null'})">${t('save')}</button>
+        </div>
+      </div>
+    </div>`;
+
+  // Load suppliers
+  const suppliers = await apiFetch('/api/suppliers').then(r => r.json());
+  const sel = document.getElementById('p-supplier');
+  suppliers.forEach(s => { const o = document.createElement('option'); o.value = s.id; o.textContent = s.name; if (product?.supplier_id == s.id) o.selected = true; sel.appendChild(o); });
+}
+
+async function saveProduct(id) {
+  const body = { name: g('p-name'), barcode: g('p-barcode'), sku: g('p-sku'), category_id: g('p-cat')||null, brand_id: g('p-brand')||null, supplier_id: g('p-supplier')||null, cost_price: Number(g('p-cost'))||0, sell_price: Number(g('p-sell'))||0, stock_qty: Number(g('p-stock'))||0, min_stock: Number(g('p-minstock'))||5, unit: g('p-unit')||'개', description: g('p-desc') };
+  if (!body.name) return alert(t('nameRequired'));
+  const res = await apiFetch(id ? '/api/products/'+id : '/api/products', { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) return alert(data.error);
+  closeModal(); loadProducts();
+}
+
+async function deleteProduct(id) {
+  if (!confirm(t('deleteConfirm'))) return;
+  await apiFetch('/api/products/' + id, { method: 'DELETE' });
+  closeModal(); loadProducts();
+}
+
+// ====== STOCK IN ======
+function openStockInModal(productId, productName) {
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">📥 ${t('stockIn')} - ${productName}</h3>
+        <div class="form-row">
+          <div class="form-group"><label>${t('qty')} *</label><input type="number" id="si-qty" placeholder="${t('qty')}"></div>
+          <div class="form-group"><label>${t('costPrice')} (₮)</label><input type="number" id="si-cost" placeholder="${t('unitPrice')}"></div>
+        </div>
+        <div class="form-group"><label>${t('invoiceNo')}</label><input id="si-invoice"></div>
+        <div class="form-group"><label>${t('memo')}</label><input id="si-notes"></div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+          <button class="btn btn-success" onclick="doStockIn(${productId})">${t('stockInProcess')}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function doStockIn(productId) {
+  const qty = Number(g('si-qty'));
+  if (!qty || qty <= 0) return alert(t('qtyRequired'));
+  const body = { product_id: productId, qty, cost_price: Number(g('si-cost'))||undefined, invoice_no: g('si-invoice'), notes: g('si-notes') };
+  const res = await apiFetch('/api/stock-in', { method: 'POST', body: JSON.stringify(body) });
+  const data = await res.json();
+  closeModal(); alert(data.message); loadProducts();
+}
+
+// ====== INVENTORY ======
+async function loadInventory() {
+  const products = await apiFetch('/api/products?low_stock=1').then(r => r.json());
+  const allProds = await apiFetch('/api/products').then(r => r.json());
+
+  // Calc total inventory value
+  const totalCost = allProds.reduce((s, p) => s + (p.cost_price * p.stock_qty), 0);
+  const totalSell = allProds.reduce((s, p) => s + (p.sell_price * p.stock_qty), 0);
+
+  document.getElementById('sec-inventory').innerHTML = `
+    <div class="page-header"><h2>🏬 ${t('inventoryMgmt')}</h2></div>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">📦 ${t('totalProductCount')}</div><div class="stat-value">${allProds.length}</div></div>
+      <div class="stat"><div class="stat-label">💰 ${t('stockCostValue')}</div><div class="stat-value" style="font-size:1.3rem">${formatMoney(totalCost)}</div></div>
+      <div class="stat"><div class="stat-label">💎 ${t('stockSellValue')}</div><div class="stat-value" style="font-size:1.3rem;color:var(--primary)">${formatMoney(totalSell)}</div></div>
+      <div class="stat"><div class="stat-label">⚠️ ${t('lowStockCount')}</div><div class="stat-value" style="color:var(--danger)">${products.length}</div></div>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 1rem;font-size:1rem">⚠️ ${t('lowStockProducts')}</h3>
+      ${products.length ? `<table><thead><tr><th>${t('product')}</th><th>${t('category')}</th><th>${t('currentStock')}</th><th>${t('minStock')}</th><th>${t('needed')}</th><th></th></tr></thead>
+      <tbody>${products.map(p => `<tr>
+        <td><strong>${p.name}</strong></td><td>${p.category_name||'-'}</td>
+        <td class="stock-low">${p.stock_qty} ${p.unit}</td><td>${p.min_stock}</td>
+        <td style="color:var(--info)">${Math.max(0, p.min_stock - p.stock_qty)} ${p.unit}</td>
+        <td><button class="btn btn-sm btn-success" onclick="openStockInModal(${p.id},'${p.name.replace(/'/g,"\\'")}')"><i class="fas fa-arrow-down"></i> 입고</button></td>
+      </tr>`).join('')}</tbody></table>` : `<p style="color:var(--success);text-align:center;padding:2rem">✅ ${t('allStockOk')}</p>`}
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 1rem;font-size:1rem">📊 ${t('categoryStock')}</h3>
+      <table><thead><tr><th>${t('category')}</th><th>${t('productCount')}</th><th>${t('totalStock')}</th><th>${t('stockValue')}</th></tr></thead>
+      <tbody>${categories.map(c => {
+        const catProds = allProds.filter(p => p.category_id == c.id);
+        if (!catProds.length) return '';
+        const totalQ = catProds.reduce((s,p) => s + p.stock_qty, 0);
+        const totalV = catProds.reduce((s,p) => s + (p.sell_price * p.stock_qty), 0);
+        return `<tr><td>${c.name}</td><td>${catProds.length}</td><td>${totalQ}</td><td>${formatMoney(totalV)}</td></tr>`;
+      }).join('')}</tbody></table>
+    </div>`;
+}
+
+// ====== SALES HISTORY ======
+async function loadSales() {
+  const today = todayUB();
+  const monthStart = today.slice(0, 7) + '-01';
+  const sales = await apiFetch(`/api/sales?date_from=${monthStart}`).then(r => r.json());
+
+  document.getElementById('sec-sales').innerHTML = `
+    <div class="page-header"><h2>🧾 ${t('salesHistory')}</h2></div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+      <input type="date" id="sale-from" value="${monthStart}" style="max-width:160px">
+      <span style="color:var(--text2)">~</span>
+      <input type="date" id="sale-to" value="${today}" style="max-width:160px">
+      <button class="btn btn-sm btn-info" onclick="filterSales()"><i class="fas fa-search"></i> ${t('query')}</button>
+    </div>
+    <div class="card" style="overflow-x:auto">
+    <table><thead><tr><th>${t('date')}</th><th>${t('customer')}</th><th>${t('amount')}</th><th>${t('payment')}</th><th>${t('status')}</th><th>${t('handler')}</th><th></th></tr></thead>
+    <tbody id="sales-tbody">${renderSalesRows(sales)}</tbody></table></div>`;
+}
+
+function renderSalesRows(sales) {
+  return sales.map(s => `<tr>
+    <td>${s.sale_date}</td><td>${s.customer_name || '-'}</td>
+    <td style="font-weight:700">${formatMoney(s.final_amount)}</td>
+    <td><span class="badge badge-${s.payment_method === 'card' ? 'info' : s.payment_method === 'qpay' ? 'success' : 'warning'}">${s.payment_method}</span></td>
+    <td>${s.payment_status === 'refunded' ? `<span class="badge badge-danger">${t('refunded')}</span>` : `<span class="badge badge-success">${t('completed')}</span>`}</td>
+    <td>${s.seller_name || '-'}</td>
+    <td>
+      <button class="btn btn-sm btn-info" onclick="viewSale(${s.id})"><i class="fas fa-eye"></i></button>
+      ${s.payment_status !== 'refunded' ? `<button class="btn btn-sm btn-danger" onclick="refundSale(${s.id})"><i class="fas fa-undo"></i></button>` : ''}
+    </td>
+  </tr>`).join('');
+}
+
+async function filterSales() {
+  const sales = await apiFetch(`/api/sales?date_from=${g('sale-from')}&date_to=${g('sale-to')}`).then(r => r.json());
+  document.getElementById('sales-tbody').innerHTML = renderSalesRows(sales);
+}
+
+async function viewSale(id) {
+  const s = await apiFetch('/api/sales/' + id).then(r => r.json());
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">🧾 ${t('saleDetail')} #${s.id}</h3>
+        <p style="color:var(--text2);font-size:0.85rem">${s.sale_date} | ${s.seller_name || '-'} | ${s.payment_method}</p>
+        ${s.customer_name ? `<p style="font-size:0.85rem;margin-top:0.3rem">👤 ${s.customer_name} ${s.customer_phone || ''}</p>` : ''}
+        <table style="margin-top:1rem"><thead><tr><th>${t('product')}</th><th>${t('unitPrice')}</th><th>${t('qty')}</th><th>${t('subtotal')}</th></tr></thead>
+        <tbody>${s.items.map(i => `<tr><td>${i.product_name}</td><td>${formatMoney(i.unit_price)}</td><td>${i.qty}</td><td>${formatMoney(i.subtotal)}</td></tr>`).join('')}</tbody></table>
+        <div style="text-align:right;margin-top:1rem;font-size:1.2rem;font-weight:800;color:var(--primary)">${t('total')}: ${formatMoney(s.final_amount)}</div>
+        ${s.payment_status === 'refunded' ? '<p style="color:var(--danger);text-align:center;margin-top:0.5rem;font-weight:700">🔴 환불 완료</p>' : ''}
+        <div style="text-align:right;margin-top:1rem"><button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('close')}</button></div>
+      </div>
+    </div>`;
+}
+
+async function refundSale(id) {
+  if (!confirm(t('refundConfirm'))) return;
+  const res = await apiFetch('/api/sales/' + id + '/refund', { method: 'POST' });
+  const data = await res.json();
+  alert(data.message || data.error);
+  loadSales();
+}
+
+// ====== SUPPLIERS ======
+async function loadSuppliers() {
+  const suppliers = await apiFetch('/api/suppliers').then(r => r.json());
+  document.getElementById('sec-suppliers').innerHTML = `
+    <div class="page-header">
+      <h2>🚚 ${t('supplierMgmt')}</h2>
+      <button class="btn btn-primary" onclick="openSupplierModal()"><i class="fas fa-plus"></i> ${t('addSupplier')}</button>
+    </div>
+    <div class="card">
+    <table><thead><tr><th>${t('supplierName')}</th><th>${t('contactPerson')}</th><th>${t('phone')}</th><th>${t('email')}</th><th></th></tr></thead>
+    <tbody>${suppliers.length ? suppliers.map(s => `<tr>
+      <td><strong>${s.name}</strong></td><td>${s.contact_person||'-'}</td><td>${s.phone||'-'}</td><td>${s.email||'-'}</td>
+      <td><button class="btn btn-sm btn-info" onclick="openSupplierModal(${s.id})"><i class="fas fa-edit"></i></button></td>
+    </tr>`).join('') : `<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:2rem">${t('noSuppliers')}</td></tr>`}</tbody></table></div>`;
+}
+
+async function openSupplierModal(id) {
+  let s = null;
+  if (id) { const list = await apiFetch('/api/suppliers').then(r => r.json()); s = list.find(x => x.id === id); }
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">${id ? '✏️ ' + t('editSupplier') : '➕ ' + t('addSupplier')}</h3>
+        <div class="form-group"><label>${t('supplierName')} *</label><input id="s-name" value="${s?.name||''}"></div>
+        <div class="form-row">
+          <div class="form-group"><label>${t('contactPerson')}</label><input id="s-contact" value="${s?.contact_person||''}"></div>
+          <div class="form-group"><label>${t('phone')}</label><input id="s-phone" value="${s?.phone||''}"></div>
+        </div>
+        <div class="form-group"><label>${t('email')}</label><input id="s-email" value="${s?.email||''}"></div>
+        <div class="form-group"><label>${t('address')}</label><input id="s-address" value="${s?.address||''}"></div>
+        <div class="form-group"><label>${t('memo')}</label><textarea id="s-notes" rows="2">${s?.notes||''}</textarea></div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+          <button class="btn btn-primary" onclick="saveSupplier(${id||'null'})">${t('save')}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveSupplier(id) {
+  const body = { name: g('s-name'), contact_person: g('s-contact'), phone: g('s-phone'), email: g('s-email'), address: g('s-address'), notes: g('s-notes') };
+  if (!body.name) return alert(t('supplierNameRequired'));
+  await apiFetch(id ? '/api/suppliers/'+id : '/api/suppliers', { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
+  closeModal(); loadSuppliers();
+}
+
+// ====== REPORTS ======
+async function loadReports() {
+  const daily = await apiFetch('/api/reports/sales?period=daily').then(r => r.json());
+  const monthly = await apiFetch('/api/reports/sales?period=monthly').then(r => r.json());
+  const profit = await apiFetch('/api/reports/profit').then(r => r.json());
+
+  document.getElementById('sec-reports').innerHTML = `
+    <div class="page-header"><h2>📈 ${t('reports')}</h2></div>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">💰 ${t('totalRevenue')}</div><div class="stat-value" style="color:var(--primary);font-size:1.3rem">${formatMoney(profit.totalRevenue)}</div></div>
+      <div class="stat"><div class="stat-label">📦 ${t('totalCost')}</div><div class="stat-value" style="font-size:1.3rem">${formatMoney(profit.totalCost)}</div></div>
+      <div class="stat"><div class="stat-label">💎 ${t('netProfit')}</div><div class="stat-value" style="color:var(--success);font-size:1.3rem">${formatMoney(profit.totalProfit)}</div></div>
+      <div class="stat"><div class="stat-label">📊 ${t('marginRate')}</div><div class="stat-value" style="color:var(--info)">${profit.profitMargin}%</div></div>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 1rem;font-size:1rem">📅 ${t('dailySales')}</h3>
+      ${daily.length ? `<table><thead><tr><th>${t('date')}</th><th>${t('count')}</th><th>${t('revenue')}</th></tr></thead>
+      <tbody>${daily.map(d => `<tr><td>${d.period}</td><td>${d.count}${t('items')}</td><td style="font-weight:700;color:var(--primary)">${formatMoney(d.revenue)}</td></tr>`).join('')}</tbody></table>` : `<p style="color:var(--text2);text-align:center;padding:1rem">${t('noData')}</p>`}
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 1rem;font-size:1rem">📊 ${t('monthlySales')}</h3>
+      ${monthly.length ? `<table><thead><tr><th>${t('month')}</th><th>${t('count')}</th><th>${t('revenue')}</th></tr></thead>
+      <tbody>${monthly.map(m => `<tr><td>${m.period}</td><td>${m.count}${t('items')}</td><td style="font-weight:700;color:var(--primary)">${formatMoney(m.revenue)}</td></tr>`).join('')}</tbody></table>` : `<p style="color:var(--text2);text-align:center;padding:1rem">${t('noData')}</p>`}
+    </div>
+    ${profit.items.length ? `<div class="card">
+      <h3 style="margin:0 0 1rem;font-size:1rem">🏆 ${t('productProfit')}</h3>
+      <table><thead><tr><th>${t('product')}</th><th>${t('soldQty')}</th><th>${t('revenue')}</th><th>${t('cost')}</th><th>${t('profit')}</th></tr></thead>
+      <tbody>${profit.items.slice(0,15).map(p => `<tr>
+        <td><strong>${p.name}</strong></td><td>${p.total_qty}개</td>
+        <td>${formatMoney(p.revenue)}</td><td>${formatMoney(p.cost)}</td>
+        <td style="color:${p.profit >= 0 ? 'var(--success)' : 'var(--danger)'};font-weight:700">${formatMoney(p.profit)}</td>
+      </tr>`).join('')}</tbody></table>
+    </div>` : ''}`;
+}
+
+// ====== STOCK I/O (입출고 관리) ======
+let stockIOTab = 'all'; // all, in, out
+async function loadStockIO() {
+  const today = todayUB();
+  const monthStart = today.slice(0,7)+'-01';
+  const dateFrom = document.getElementById('sio-from')?.value || monthStart;
+  const dateTo = document.getElementById('sio-to')?.value || today;
+
+  const history = await apiFetch(`/api/stock-history?type=${stockIOTab}&date_from=${dateFrom}&date_to=${dateTo}`).then(r=>r.json());
+  const prods = await apiFetch('/api/products').then(r=>r.json());
+
+  // 통계
+  const totalIn = history.filter(h=>h.direction==='in').reduce((s,h)=>s+h.qty,0);
+  const totalOut = history.filter(h=>h.direction==='out').reduce((s,h)=>s+h.qty,0);
+  const totalSale = history.filter(h=>h.direction==='sale').reduce((s,h)=>s+h.qty,0);
+
+  const outTypeLabels = {
+    'return': '반품', 'dispose': '폐기', 'transfer': '이동', 'damage': '파손', 'gift': '증정', 'other': '기타'
+  };
+  const outTypeLabelsMn = {
+    'return': 'Буцаалт', 'dispose': 'Устгал', 'transfer': 'Шилжүүлэг', 'damage': 'Гэмтэл', 'gift': 'Бэлэг', 'other': 'Бусад'
+  };
+
+  function dirBadge(d) {
+    if (d==='in') return `<span class="badge badge-success">📥 ${currentLang==='mn'?'Орлого':'입고'}</span>`;
+    if (d==='sale') return `<span class="badge badge-info">💳 ${currentLang==='mn'?'Борлуулалт':'판매'}</span>`;
+    return `<span class="badge badge-danger">📤 ${currentLang==='mn'?'Зарлага':'출고'}</span>`;
+  }
+
+  function outTypeLabel(t) {
+    return currentLang==='mn' ? (outTypeLabelsMn[t]||t) : (outTypeLabels[t]||t);
+  }
+
+  document.getElementById('sec-stock-io').innerHTML = `
+    <div class="page-header">
+      <h2>📦 ${currentLang==='mn'?'Орлого/Зарлага удирдлага':'입출고 관리'}</h2>
+      <div style="display:flex;gap:0.5rem">
+        <button class="btn btn-success" onclick="openStockInFullModal()"><i class="fas fa-arrow-down"></i> ${currentLang==='mn'?'Орлого':'입고'}</button>
+        <button class="btn btn-danger" onclick="openStockOutModal()"><i class="fas fa-arrow-up"></i> ${currentLang==='mn'?'Зарлага':'출고'}</button>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">📥 ${currentLang==='mn'?'Нийт орлого':'총 입고'}</div><div class="stat-value" style="color:var(--success)">${totalIn}</div></div>
+      <div class="stat"><div class="stat-label">💳 ${currentLang==='mn'?'Борлуулалт':'판매 출고'}</div><div class="stat-value" style="color:var(--info)">${totalSale}</div></div>
+      <div class="stat"><div class="stat-label">📤 ${currentLang==='mn'?'Бусад зарлага':'기타 출고'}</div><div class="stat-value" style="color:var(--danger)">${totalOut}</div></div>
+      <div class="stat"><div class="stat-label">📊 ${currentLang==='mn'?'Цэвэр':'순 변동'}</div><div class="stat-value" style="color:${totalIn-totalOut-totalSale>=0?'var(--success)':'var(--danger)'}">${totalIn-totalOut-totalSale>=0?'+':''}${totalIn-totalOut-totalSale}</div></div>
+    </div>
+
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+      <button class="btn ${stockIOTab==='all'?'btn-primary':'btn-sm'}" style="${stockIOTab!=='all'?'background:var(--card2)':''}" onclick="stockIOTab='all';loadStockIO()">📋 ${currentLang==='mn'?'Бүгд':'전체'}</button>
+      <button class="btn ${stockIOTab==='in'?'btn-primary':'btn-sm'}" style="${stockIOTab!=='in'?'background:rgba(34,197,94,0.2);color:var(--success)':''}" onclick="stockIOTab='in';loadStockIO()">📥 ${currentLang==='mn'?'Орлого':'입고'}</button>
+      <button class="btn ${stockIOTab==='out'?'btn-primary':'btn-sm'}" style="${stockIOTab!=='out'?'background:rgba(239,68,68,0.2);color:var(--danger)':''}" onclick="stockIOTab='out';loadStockIO()">📤 ${currentLang==='mn'?'Зарлага':'출고'}</button>
+      <button class="btn ${stockIOTab==='sale'?'btn-primary':'btn-sm'}" style="${stockIOTab!=='sale'?'background:rgba(59,130,246,0.2);color:var(--info)':''}" onclick="stockIOTab='sale';loadStockIO()">💳 ${currentLang==='mn'?'Борлуулалт':'판매'}</button>
+      <div style="flex:1"></div>
+      <input type="date" id="sio-from" value="${dateFrom}" style="max-width:150px">
+      <span style="color:var(--text2)">~</span>
+      <input type="date" id="sio-to" value="${dateTo}" style="max-width:150px">
+      <button class="btn btn-sm btn-info" onclick="loadStockIO()"><i class="fas fa-search"></i></button>
+    </div>
+
+    <div class="card" style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>${currentLang==='mn'?'Огноо':'날짜'}</th>
+          <th>${currentLang==='mn'?'Төрөл':'구분'}</th>
+          <th>${currentLang==='mn'?'Бараа':'상품'}</th>
+          <th>${currentLang==='mn'?'Тоо':'수량'}</th>
+          <th>${currentLang==='mn'?'Дэлгэрэнгүй':'상세'}</th>
+          <th>${currentLang==='mn'?'Хариуцагч':'담당'}</th>
+        </tr></thead>
+        <tbody>${history.length ? history.map(h => `<tr>
+          <td style="font-size:0.8rem;white-space:nowrap">${h.date||h.created_at?.split(' ')[0]||'-'}</td>
+          <td>${dirBadge(h.direction)}${h.direction==='out'?'<br><span style="font-size:0.7rem;color:var(--text2)">'+outTypeLabel(h.invoice_no)+'</span>':''}</td>
+          <td><strong>${h.product_name}</strong>${h.barcode?'<br><span style="font-size:0.7rem;color:var(--text2)">'+h.barcode+'</span>':''}</td>
+          <td style="font-weight:700;color:${h.direction==='in'?'var(--success)':'var(--danger)'};font-size:1.1rem">${h.direction==='in'?'+':'-'}${h.qty}</td>
+          <td style="font-size:0.8rem;color:var(--text2);max-width:200px;overflow:hidden;text-overflow:ellipsis">${
+            h.direction==='in' ? [h.supplier_name?'🏭 '+h.supplier_name:'', h.invoice_no?'📄 '+h.invoice_no:'', h.cost_price?'💰₮'+Number(h.cost_price).toLocaleString():'', h.notes||''].filter(Boolean).join('<br>') :
+            h.direction==='sale' ? [h.invoice_no?'💳 '+h.invoice_no:'', h.notes?'👤 '+h.notes:'', h.cost_price?'💰₮'+Number(h.cost_price).toLocaleString():''].filter(Boolean).join('<br>') :
+            [h.supplier_name?'📍 '+h.supplier_name:'', h.notes||''].filter(Boolean).join('<br>') || '-'
+          }</td>
+          <td style="font-size:0.8rem">${h.user_name||'-'}</td>
+        </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:2rem">${currentLang==='mn'?'Мэдээлэл байхгүй':'데이터 없음'}</td></tr>`}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+// 입고 모달 (전체 상품 선택)
+async function openStockInFullModal() {
+  const prods = await apiFetch('/api/products').then(r=>r.json());
+  const suppliers = await apiFetch('/api/suppliers').then(r=>r.json());
+
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">📥 ${currentLang==='mn'?'Бараа орлого':'입고 처리'}</h3>
+        <div class="form-group">
+          <label>${currentLang==='mn'?'Бараа':'상품'} *</label>
+          <select id="sio-product">
+            <option value="">${currentLang==='mn'?'Бараа сонгох':'상품 선택'}</option>
+            ${prods.map(p=>`<option value="${p.id}">${p.name} (${currentLang==='mn'?'Нөөц':'재고'}: ${p.stock_qty})</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>${currentLang==='mn'?'Тоо хэмжээ':'수량'} *</label><input type="number" id="sio-qty" min="1" placeholder="${currentLang==='mn'?'Тоо':'수량'}"></div>
+          <div class="form-group"><label>${currentLang==='mn'?'Өртөг':'원가'} (₮)</label><input type="number" id="sio-cost" placeholder="${currentLang==='mn'?'Нэгж өртөг':'단가'}"></div>
+        </div>
+        <div class="form-group">
+          <label>${currentLang==='mn'?'Нийлүүлэгч':'공급업체'}</label>
+          <select id="sio-supplier">
+            <option value="">${currentLang==='mn'?'Сонгох':'선택'}</option>
+            ${suppliers.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group"><label>${currentLang==='mn'?'Нэхэмжлэх №':'송장번호'}</label><input id="sio-invoice" placeholder="${currentLang==='mn'?'Нэхэмжлэх дугаар':'송장/인보이스 번호'}"></div>
+        <div class="form-group"><label>${currentLang==='mn'?'Тэмдэглэл':'메모'}</label><input id="sio-notes" placeholder="${currentLang==='mn'?'Нэмэлт тэмдэглэл':'입고 사유/메모'}"></div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+          <button class="btn btn-success" onclick="doStockInFull()">📥 ${currentLang==='mn'?'Орлого хийх':'입고 처리'}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function doStockInFull() {
+  const product_id = Number(g('sio-product'));
+  const qty = Number(g('sio-qty'));
+  if (!product_id) return alert(currentLang==='mn'?'Бараа сонгоно уу':'상품을 선택해주세요');
+  if (!qty || qty <= 0) return alert(t('qtyRequired'));
+  const body = { product_id, qty, cost_price: Number(g('sio-cost'))||undefined, supplier_id: g('sio-supplier')||undefined, invoice_no: g('sio-invoice'), notes: g('sio-notes') };
+  const res = await apiFetch('/api/stock-in', { method:'POST', body:JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) return alert(data.error);
+  closeModal(); alert(data.message); loadStockIO();
+}
+
+// 출고 모달
+async function openStockOutModal() {
+  const prods = await apiFetch('/api/products').then(r=>r.json()).then(p=>p.filter(x=>x.stock_qty>0));
+
+  const outTypes = currentLang==='mn' ? [
+    ['return','Буцаалт (нийлүүлэгч рүү)'], ['dispose','Устгал (хугацаа дууссан)'],
+    ['transfer','Шилжүүлэг (бусад салбар)'], ['damage','Гэмтэл'],
+    ['gift','Бэлэг/Дээж'], ['other','Бусад']
+  ] : [
+    ['return','반품 (공급업체로)'], ['dispose','폐기 (유통기한/불량)'],
+    ['transfer','이동 (다른 매장)'], ['damage','파손'],
+    ['gift','증정/샘플'], ['other','기타']
+  ];
+
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <h3 style="margin:0 0 1rem">📤 ${currentLang==='mn'?'Бараа зарлага':'출고 처리'}</h3>
+        <div class="form-group">
+          <label>${currentLang==='mn'?'Бараа':'상품'} *</label>
+          <select id="soo-product" onchange="updateStockOutMax()">
+            <option value="">${currentLang==='mn'?'Бараа сонгох':'상품 선택'}</option>
+            ${prods.map(p=>`<option value="${p.id}" data-stock="${p.stock_qty}" data-unit="${p.unit}">${p.name} (${currentLang==='mn'?'Нөөц':'재고'}: ${p.stock_qty} ${p.unit})</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>${currentLang==='mn'?'Тоо хэмжээ':'수량'} * <span id="soo-stock-info" style="color:var(--text2);font-size:0.75rem"></span></label>
+            <input type="number" id="soo-qty" min="1" placeholder="${currentLang==='mn'?'Тоо':'수량'}">
+          </div>
+          <div class="form-group">
+            <label>${currentLang==='mn'?'Зарлагын төрөл':'출고 유형'}</label>
+            <select id="soo-type">
+              ${outTypes.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>${currentLang==='mn'?'Хүлээн авагч':'출고처'}</label><input id="soo-dest" placeholder="${currentLang==='mn'?'Хаана илгээх':'출고처/반품처'}"></div>
+        <div class="form-group"><label>${currentLang==='mn'?'Тэмдэглэл':'메모'}</label><input id="soo-notes" placeholder="${currentLang==='mn'?'Зарлагын шалтгаан':'출고 사유/메모'}"></div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:1rem">
+          <button class="btn" style="background:var(--card2)" onclick="closeModal()">${t('cancel')}</button>
+          <button class="btn btn-danger" onclick="doStockOut()">📤 ${currentLang==='mn'?'Зарлага хийх':'출고 처리'}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function updateStockOutMax() {
+  const sel = document.getElementById('soo-product');
+  const opt = sel.options[sel.selectedIndex];
+  const stock = opt?.dataset?.stock || 0;
+  const unit = opt?.dataset?.unit || '';
+  document.getElementById('soo-stock-info').textContent = stock ? `(${currentLang==='mn'?'Нөөц':'재고'}: ${stock} ${unit})` : '';
+  document.getElementById('soo-qty').max = stock;
+}
+
+async function doStockOut() {
+  const product_id = Number(g('soo-product'));
+  const qty = Number(g('soo-qty'));
+  if (!product_id) return alert(currentLang==='mn'?'Бараа сонгоно уу':'상품을 선택해주세요');
+  if (!qty || qty <= 0) return alert(t('qtyRequired'));
+  const body = { product_id, qty, out_type: g('soo-type'), destination: g('soo-dest'), notes: g('soo-notes') };
+  const res = await apiFetch('/api/stock-out', { method:'POST', body:JSON.stringify(body) });
+  const data = await res.json();
+  if (!res.ok) return alert(data.error);
+  closeModal(); alert(data.message); loadStockIO();
+}
+
+// ====== KR PARTS (한국 부품) ======
+let partsSearch = '';
+async function loadParts() {
+  const q = partsSearch ? `?search=${encodeURIComponent(partsSearch)}` : '';
+  const parts = await apiFetch('/api/parts' + q).then(r => r.json());
+  
+  // 제품별 그룹핑
+  const grouped = {};
+  parts.forEach(p => {
+    if (!grouped[p.product_model]) grouped[p.product_model] = [];
+    grouped[p.product_model].push(p);
+  });
+  
+  document.getElementById('sec-parts').innerHTML = `
+    <div class="page-header"><h2>🔧 KR→MG 부품 (${parts.length}건)</h2></div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem">
+      <input type="text" placeholder="모델/부품번호/부품명 검색..." value="${partsSearch}" 
+        onkeyup="if(event.key==='Enter'){partsSearch=this.value;loadParts()}" 
+        style="flex:1;padding:0.6rem;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text)">
+      <button class="btn btn-primary" onclick="partsSearch=this.previousElementSibling.value;loadParts()">🔍</button>
+    </div>
+    ${Object.entries(grouped).map(([model, pts]) => `
+      <div class="card" style="margin-bottom:0.8rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;cursor:pointer" onclick="var d=document.getElementById('pt-${model}');d.style.display=d.style.display==='none'?'block':'none'">
+          <h3 style="margin:0;font-size:1rem">🔨 ${model} <span style="color:var(--text2);font-size:0.8rem">(${pts.length}개 부품)</span></h3>
+          <span style="font-size:0.8rem;color:var(--text2)">▼</span>
+        </div>
+        <div id="pt-${model}" style="display:none">
+          <div style="max-height:300px;overflow-y:auto">
+          <table><thead><tr style="position:sticky;top:0;background:var(--card)">
+            <th>부품번호</th><th>부품명</th><th>수량</th><th>발송일</th></tr></thead>
+          <tbody>${pts.map(p => `<tr>
+            <td style="font-family:monospace;font-size:0.8rem">${p.part_number}</td>
+            <td>${p.part_name}</td>
+            <td style="text-align:center;font-weight:700">${p.qty}</td>
+            <td style="font-size:0.8rem;color:var(--text2)">${p.ship_date_center||'-'}</td>
+          </tr>`).join('')}</tbody></table>
+          </div>
+        </div>
+      </div>
+    `).join('')}`;
+}
+
+// ====== KR ORDERS (한국 주문건) ======
+let ordersKRFilter = 'all';
+async function loadOrdersKR() {
+  const q = ordersKRFilter !== 'all' ? `?status=${ordersKRFilter}` : '';
+  const orders = await apiFetch('/api/orders-kr' + q).then(r => r.json());
+  
+  const totalOrdered = orders.reduce((s,o) => s + (o.order_qty||0), 0);
+  const totalSecured = orders.reduce((s,o) => s + (o.secured||0), 0);
+  const totalShortage = orders.reduce((s,o) => s + Math.max(0, o.shortage||0), 0);
+  const totalShipped = orders.reduce((s,o) => s + (o.shipped_qty||0), 0);
+  
+  document.getElementById('sec-orders-kr').innerHTML = `
+    <div class="page-header"><h2>📋 한국 주문건 (${orders.length}건)</h2></div>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-label">📦 주문 총수량</div><div class="stat-value">${totalOrdered}</div></div>
+      <div class="stat"><div class="stat-label">✅ 확보</div><div class="stat-value" style="color:var(--success)">${totalSecured}</div></div>
+      <div class="stat"><div class="stat-label">⚠️ 부족</div><div class="stat-value" style="color:${totalShortage>0?'var(--danger)':'var(--success)'}">${totalShortage}</div></div>
+      <div class="stat"><div class="stat-label">🚚 발송</div><div class="stat-value" style="color:var(--info)">${totalShipped}</div></div>
+    </div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
+      <button class="btn ${ordersKRFilter==='all'?'btn-primary':'btn-sm'}" onclick="ordersKRFilter='all';loadOrdersKR()">📊 전체</button>
+      <button class="btn ${ordersKRFilter==='shortage'?'btn-primary':'btn-sm'}" style="${ordersKRFilter!=='shortage'?'background:rgba(239,68,68,0.2);color:var(--danger)':''}" onclick="ordersKRFilter='shortage';loadOrdersKR()">⚠️ 부족</button>
+      <button class="btn ${ordersKRFilter==='shipped'?'btn-primary':'btn-sm'}" style="${ordersKRFilter!=='shipped'?'background:rgba(34,197,94,0.2);color:var(--success)':''}" onclick="ordersKRFilter='shipped';loadOrdersKR()">🚚 발송완료</button>
+      <button class="btn ${ordersKRFilter==='pending'?'btn-primary':'btn-sm'}" style="${ordersKRFilter!=='pending'?'background:rgba(245,158,11,0.2);color:var(--primary)':''}" onclick="ordersKRFilter='pending';loadOrdersKR()">⏳ 대기중</button>
+    </div>
+    <div class="card" style="overflow-x:auto">
+      <div style="max-height:500px;overflow-y:auto">
+      <table><thead><tr style="position:sticky;top:0;background:var(--card)">
+        <th>모델명</th><th>제품명</th><th>주문일</th><th>주문</th><th>확보</th><th>부족</th><th>발송</th><th>발송일</th>
+      </tr></thead>
+      <tbody>${orders.map(o => {
+        const status = o.shortage > 0 ? 'color:var(--danger)' : o.shipped_qty > 0 ? 'color:var(--success)' : '';
+        return `<tr style="${status}">
+          <td style="font-family:monospace;font-size:0.8rem;font-weight:700">${o.model}</td>
+          <td style="font-size:0.85rem">${o.name||'-'}</td>
+          <td style="font-size:0.8rem">${o.order_date||'-'}</td>
+          <td style="text-align:center">${o.order_qty||0}</td>
+          <td style="text-align:center;color:var(--success)">${o.secured||0}</td>
+          <td style="text-align:center;font-weight:700;${o.shortage>0?'color:var(--danger)':''}">${o.shortage>0?o.shortage:'-'}</td>
+          <td style="text-align:center;color:var(--info)">${o.shipped_qty||'-'}</td>
+          <td style="font-size:0.8rem">${o.ship_date||'-'}</td>
+        </tr>`;
+      }).join('')}</tbody></table>
+      </div>
+    </div>`;
+}
+
+// INIT
+if (authToken && currentUser) initApp();
+else applyLang();
+document.getElementById('login-pass')?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// 뒤로가기 처리 — 앱 밖으로 나가지 않도록
+history.replaceState({sec:'dashboard'},'','#dashboard');
+window.addEventListener('popstate',e=>{
+  if(e.state&&e.state.sec){showSection(e.state.sec,true);}
+  else{history.pushState({sec:_curSec},'','#'+_curSec);}
+});
+if(location.hash){const h=location.hash.slice(1);if(h)setTimeout(()=>showSection(h,true),100);}
+</script>
+<script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});</script>
+</body>
+</html>

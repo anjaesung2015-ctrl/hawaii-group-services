@@ -1,0 +1,245 @@
+<!DOCTYPE html><html lang="ko"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>🏝️ Hawaii Group</title>
+<meta name="theme-color" content="#f59e0b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hawaii Group">
+<link rel="apple-touch-icon" href="/center/portal-icon-192.png">
+<link rel="manifest" href="/center/portal-manifest.json">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a1a;color:#f0f0f0;min-height:100vh}
+.header{background:linear-gradient(135deg,#1a0a00,#2d1b00);padding:2rem 1rem;text-align:center}
+.header h1{font-size:1.8rem;margin-bottom:0.3rem}
+.header p{color:#8888aa;font-size:0.9rem}
+.content{padding:1rem;max-width:600px;margin:0 auto}
+.section-title{font-size:0.85rem;color:#8888aa;margin:1.5rem 0 0.5rem;padding-left:0.3rem;text-transform:uppercase;letter-spacing:1px}
+.app-card{background:#141428;border-radius:14px;padding:1rem;margin-bottom:0.6rem;display:flex;align-items:center;gap:1rem;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;text-decoration:none;color:#f0f0f0;border:1px solid rgba(255,255,255,0.03)}
+.app-card:hover,.app-card:active{transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.app-icon{width:50px;height:50px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0}
+.app-info{flex:1}
+.app-info h3{font-size:1rem;margin-bottom:0.15rem}
+.app-info p{font-size:0.78rem;color:#8888aa;line-height:1.3}
+.app-badge{font-size:0.65rem;padding:0.15rem 0.5rem;border-radius:10px;color:white;font-weight:600}
+.footer{text-align:center;padding:2rem 1rem;color:#8888aa;font-size:0.8rem}
+</style></head><body>
+
+<div class="header">
+  <div style="font-size:3rem;margin-bottom:0.5rem">🏝️</div>
+  <h1>Hawaii Group</h1>
+  <p>피트니스 · 테니스 · 샵 · 종합 관리</p>
+</div>
+
+<div class="content" id="app-list">
+</div>
+
+<!-- 역할 선택 모달 -->
+<div id="role-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;display:none;align-items:center;justify-content:center">
+  <div style="background:#141428;border-radius:16px;padding:2rem;max-width:320px;width:90%;text-align:center">
+    <div style="font-size:3rem;margin-bottom:1rem">🏝️</div>
+    <h2 style="margin-bottom:1.5rem">접속 유형 선택</h2>
+    <button onclick="setRole('admin')" style="width:100%;padding:1rem;margin-bottom:0.8rem;border-radius:12px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;font-size:1.1rem;font-weight:700;cursor:pointer">👑 관리자 (사장)</button>
+    <button onclick="setRole('staff')" style="width:100%;padding:1rem;border-radius:12px;border:none;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-size:1.1rem;font-weight:700;cursor:pointer">👤 직원</button>
+    <p style="margin-top:1rem;font-size:0.75rem;color:#666">선택은 브라우저에 저장됩니다</p>
+  </div>
+</div>
+
+<div id="install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,#1a0a00,#2d1b00);padding:1rem;text-align:center;border-top:2px solid #f59e0b;z-index:999">
+  <p style="margin:0 0 0.5rem;font-size:0.9rem">📱 홈 화면에 추가하면 앱처럼 사용할 수 있어요!</p>
+  <button id="install-btn" onclick="installApp()" style="background:#f59e0b;color:#000;border:none;padding:0.6rem 2rem;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer">📲 앱 설치</button>
+  <button onclick="document.getElementById('install-banner').style.display='none'" style="background:none;border:none;color:#888;padding:0.5rem;cursor:pointer;font-size:0.8rem;display:block;margin:0.3rem auto 0">나중에</button>
+</div>
+
+<div style="text-align:center;margin:1rem 0 0.5rem;color:#666;font-size:0.7rem">💡 카드를 길게 누르면 편집 / 삭제 · 마지막 "+항목 추가"로 새로 만들기 · <a href="#" onclick="if(confirm('포털을 기본값으로 되돌릴까요?')){resetApps();location.reload()}return false" style="color:#888">기본값으로 초기화</a></div>
+<div class="footer">
+  <p>🏝️ Hawaii Group · hawaiigroup.co</p>
+  <p style="margin-top:0.3rem">© 2026 All Rights Reserved</p>
+  <p id="install-guide" style="display:none;margin-top:0.8rem;padding:0.8rem;background:rgba(245,158,11,0.1);border-radius:10px;font-size:0.82rem;line-height:1.5"></p>
+</div>
+
+<script>
+// PWA 설치
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').style.display = 'block';
+});
+
+function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(r => {
+      document.getElementById('install-banner').style.display = 'none';
+      deferredPrompt = null;
+    });
+  }
+}
+
+// iOS/Android 가이드
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isAndroid = /Android/.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+
+if (!isStandalone) {
+  const guide = document.getElementById('install-guide');
+  if (isIOS) {
+    guide.innerHTML = '📱 <strong>iPhone 홈 화면 추가:</strong><br>하단 <strong>공유 버튼 ↑</strong> → <strong>"홈 화면에 추가"</strong> 탭';
+    guide.style.display = 'block';
+  } else if (isAndroid && !deferredPrompt) {
+    guide.innerHTML = '📱 <strong>Android 홈 화면 추가:</strong><br>브라우저 메뉴 <strong>⋮</strong> → <strong>"홈 화면에 추가"</strong>';
+    guide.style.display = 'block';
+  }
+}
+
+// 역할 기반 포털 (DEFAULT — 사용자가 편집하면 localStorage가 우선)
+const DEFAULT_APPS = [
+  {section:'💪 피트니스', apps:[
+    {href:'/fitness/',icon:'🏋️',grad:'#6366f1,#8b5cf6',name:'피트니스 CRM',desc:'회원 등록 · 출석 체크 · 바코드 · PT · 결제',badge:'관리자',bc:'#6366f1',role:'all'},
+    {href:'/fitness-trainer/',icon:'💪',grad:'#ef4444,#dc2626',name:'개인 트레이너',desc:'운동 프로그램 · 체형 기록 · 일일 습관',badge:'개인용',bc:'#ef4444',role:'admin'},
+  ]},
+  {section:'🎾 테니스', apps:[
+    {href:'/lesson/',icon:'🎾',grad:'#f59e0b,#d97706',name:'레슨 관리',desc:'수강생 · 출석 · 수납 · 훈련 프로그램 · 일지',badge:'코치용',bc:'#f59e0b',role:'admin'},
+    {href:"/coach/admin",icon:"🏆",grad:"#dc2626,#991b1b",name:"코치 관리자",desc:"드릴 라이브러리 · 훈련 템플릿 · 페이즈 프로그램 관리",badge:"관리자",bc:"#dc2626",role:"admin"},
+    {href:'/center/',icon:'🏟️',grad:'#22c55e,#16a34a',name:'센터 예약',desc:'코트 예약 · 시간표 · 고객 관리',badge:'고객+관리',bc:'#22c55e',role:'all'},
+    {href:'/touring-manager/',icon:'🌏',grad:'#3b82f6,#2563eb',name:'투어링팀',desc:'선수 관리 · 대회 · 원정 · 경기 기록',badge:'코치용',bc:'#3b82f6',role:'admin'},
+    {href:'/center/camp.html',icon:'🏕️',grad:'#10b981,#059669',name:'몽골 테니스 캠프',desc:'선수반 · 일반반 · 전지훈련 · 투어 프로그램',badge:'캠프',bc:'#10b981',role:'admin'},
+  ]},
+  {section:'🏪 비즈니스', apps:[
+    {href:'/shop/',icon:'🏪',grad:'#ec4899,#db2777',name:'샵 관리',desc:'재고 · 판매 · POS · 테니스용품 · DeWalt',badge:'직원용',bc:'#ec4899',role:'all'},
+    {href:'/finance/',icon:'💰',grad:'#14b8a6,#0d9488',name:'재무 관리',desc:'수입/지출 · 4개 사업장 · 직원 급여',badge:'사장용',bc:'#14b8a6',role:'admin'},
+    {href:'/staff-manager/',icon:'👥',grad:'#6366f1,#4f46e5',name:'직원 관리',desc:'업무 배정 · 일일 체크 · 진행률 · 리포트',badge:'사장용',bc:'#6366f1',role:'all'},
+  ]},
+  {section:'📅 일정 · 학습', apps:[
+    {href:'/schedule-manager/',icon:'📅',grad:'#a855f7,#9333ea',name:'스케줄',desc:'연간 일정 · 대회 · 원정 · 마일스톤',badge:'전체',bc:'#a855f7',role:'admin'},
+    {href:'/vocab-trainer/',icon:'📚',grad:'#f97316,#ea580c',name:'단어 훈련',desc:'영어 · 몽골어 · 매일 10단어 · 퀴즈',badge:'개인용',bc:'#f97316',role:'admin'},
+  ]},
+  {section:'🌐 도구', apps:[
+    {href:'/translate/',icon:'🌐',grad:'#06b6d4,#0891b2',name:'번역기',desc:'한국어 ↔ 몽골어 · 영어 · 실시간 음성 번역',badge:'전체',bc:'#06b6d4',role:'all'},
+    {href:'/center/chat/',icon:'💬',grad:'#6366f1,#4f46e5',name:'팀챗',desc:'사내 메신저 · 한↔몽 자동 번역 채팅',badge:'전체',bc:'#6366f1',role:'all'},
+  ]},
+];
+
+// localStorage 기반 편집 가능 데이터
+function getApps(){
+  try { var s = localStorage.getItem('portalApps_v2'); if (s) { var a = JSON.parse(s); if (Array.isArray(a)) return a; } } catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_APPS));
+}
+function setApps(arr){ try { localStorage.setItem('portalApps_v2', JSON.stringify(arr)); } catch(e){} }
+function resetApps(){ try { localStorage.removeItem('portalApps_v2'); } catch(e){} }
+let ALL_APPS = getApps();
+
+function editPortalApp(si, ai){
+  var apps = getApps();
+  var a = apps[si] && apps[si].apps && apps[si].apps[ai];
+  if (!a) return;
+  var act = prompt('"'+a.name+'" 편집:\n1 = 이름\n2 = 아이콘 (이모지)\n3 = 설명\n4 = 주소\n5 = 배지\n6 = 삭제\n(빈 칸: 닫기)', '');
+  if (!act) return;
+  act = act.trim();
+  if (act === '1') { var v = prompt('새 이름:', a.name); if (v && v.trim()) a.name = v.trim(); else return; }
+  else if (act === '2') { var v = prompt('새 아이콘 (이모지 1개):', a.icon); if (v && v.trim()) a.icon = v.trim(); else return; }
+  else if (act === '3') { var v = prompt('새 설명:', a.desc||''); if (v === null) return; a.desc = v.trim(); }
+  else if (act === '4') { var v = prompt('새 주소 (예: /pos/ 또는 https://...):', a.href); if (v && v.trim()) a.href = v.trim(); else return; }
+  else if (act === '5') { var v = prompt('배지 텍스트:', a.badge||''); if (v === null) return; a.badge = v.trim(); }
+  else if (act === '6') { if (confirm('"'+a.name+'" 삭제할까요?')) apps[si].apps.splice(ai, 1); else return; }
+  else return;
+  setApps(apps); ALL_APPS = apps; renderApps('admin');
+}
+
+function addPortalApp(si){
+  var apps = getApps();
+  if (!apps[si]) return;
+  var name = prompt('이름:', ''); if (!name || !name.trim()) return;
+  var icon = prompt('아이콘 (이모지 1개):', '🔗'); if (icon === null) return;
+  var href = prompt('주소 (예: /pos/ 또는 https://example.com):', '/'); if (!href || !href.trim()) return;
+  var desc = prompt('설명 (생략 가능):', '') || '';
+  var badge = prompt('배지 (생략 가능, 예: 직원용):', '') || '';
+  apps[si].apps.push({
+    href: href.trim(), icon: (icon.trim()||'🔗'),
+    grad: '#64748b,#475569', name: name.trim(),
+    desc: desc.trim(), badge: badge.trim(),
+    bc: '#64748b', role: 'all'
+  });
+  setApps(apps); ALL_APPS = apps; renderApps('admin');
+}
+
+function attachPortalCardEvents(){
+  document.querySelectorAll('.app-card').forEach(function(card){
+    var lp = null, longFired = false;
+    function start(){ longFired = false; if(lp) clearTimeout(lp); lp = setTimeout(function(){ lp = null; longFired = true; doLong(); }, 500); }
+    function cancel(){ if(lp){ clearTimeout(lp); lp = null; } }
+    function doLong(){
+      var addSi = card.getAttribute('data-add-si');
+      if (addSi !== null) { addPortalApp(parseInt(addSi,10)); return; }
+      var si = parseInt(card.getAttribute('data-si'),10);
+      var ai = parseInt(card.getAttribute('data-ai'),10);
+      if (!isNaN(si) && !isNaN(ai)) editPortalApp(si, ai);
+    }
+    card.addEventListener('touchstart', start, {passive:true});
+    card.addEventListener('touchend', cancel);
+    card.addEventListener('touchmove', cancel);
+    card.addEventListener('touchcancel', cancel);
+    card.addEventListener('mousedown', start);
+    card.addEventListener('mouseup', cancel);
+    card.addEventListener('mouseleave', cancel);
+    card.addEventListener('contextmenu', function(ev){ ev.preventDefault(); longFired = true; doLong(); });
+    card.addEventListener('click', function(ev){
+      if (longFired) { ev.preventDefault(); ev.stopPropagation(); longFired = false; return; }
+      var addSi = card.getAttribute('data-add-si');
+      if (addSi !== null) { ev.preventDefault(); addPortalApp(parseInt(addSi,10)); return; }
+      var href = card.getAttribute('data-href');
+      if (href) window.location.href = href;
+    });
+  });
+}
+
+function setRole(r) {
+  localStorage.setItem('portal_role', r);
+  document.getElementById('role-modal').style.display = 'none';
+  renderApps(r);
+}
+
+function renderApps(role) {
+  ALL_APPS = getApps();
+  const list = document.getElementById('app-list');
+  let html = '';
+  ALL_APPS.forEach((sec, si) => {
+    const apps = sec.apps || [];
+    html += `<div class="section-title">${sec.section}</div>`;
+    apps.forEach((a, ai) => {
+      html += `<div class="app-card" data-href="${a.href}" data-si="${si}" data-ai="${ai}" style="-webkit-user-select:none;user-select:none">
+        <div class="app-icon" style="background:linear-gradient(135deg,${a.grad})">${a.icon}</div>
+        <div class="app-info"><h3>${a.name}</h3><p>${a.desc||''}</p></div>
+        <span class="app-badge" style="background:${a.bc}">${a.badge||''}</span>
+      </div>`;
+    });
+    html += `<div class="app-card" data-add-si="${si}" style="background:transparent;border:1px dashed #333;justify-content:center;color:#888;cursor:pointer">+ 항목 추가</div>`;
+  });
+  if (role === 'admin') {
+    html += `<div style="text-align:center;margin:1.5rem 0"><button onclick="setRole('staff')" style="background:none;border:1px solid #333;color:#888;padding:0.4rem 1rem;border-radius:8px;cursor:pointer;font-size:0.8rem">👤 직원 모드로 전환</button></div>`;
+  } else {
+    html += `<div style="text-align:center;margin:1.5rem 0"><button onclick="setRole('admin')" style="background:none;border:1px solid #333;color:#888;padding:0.4rem 1rem;border-radius:8px;cursor:pointer;font-size:0.8rem">👑 관리자 모드로 전환</button></div>`;
+  }
+  list.innerHTML = html;
+  attachPortalCardEvents();
+}
+
+// 초기화 — 항상 관리자 모드
+document.getElementById('role-modal').style.display = 'none';
+renderApps('admin');
+
+// 서비스워커 등록
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/center/portal-sw.js').catch(e => {});
+}
+
+// 뒤로가기 방지 — 포털에서 나가지 않도록
+history.replaceState({portal:true},'','');
+history.pushState({portal:true},'','');
+window.addEventListener('popstate', function(e) {
+  history.pushState({portal:true},'','');
+});
+</script>
+</body></html>

@@ -1,0 +1,1 @@
+const CACHE='v-simplify-1';self.addEventListener('fetch',e=>{});

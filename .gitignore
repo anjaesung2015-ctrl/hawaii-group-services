@@ -1,0 +1,56 @@
+# === SECRETS — NEVER COMMIT ===
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*_rsa
+*_ed25519
+
+# === DATABASES ===
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# === BACKUPS ===
+*.bak
+*.bak-*
+*.bak.*
+
+# === DEPENDENCIES ===
+node_modules/
+
+# === LOGS ===
+*.log
+logs/
+
+# === UPLOADS ===
+uploads/
+**/uploads/
+public/uploads/
+
+# === BUILD ARTIFACTS ===
+dist/
+build/
+
+# === OS / EDITOR ===
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# === RUNTIME STATE ===
+notifications.json
+healthcheck.log
+
+# === EXCEL (often contains sensitive financial data) ===
+*.xlsx
+*.xls
+
+# === .bak variants (.bak2, .bak.timestamp, etc.) ===
+*.bak[0-9]*
+*.bak.[0-9]*
+
+# === Old git backup ===
+.git.old*

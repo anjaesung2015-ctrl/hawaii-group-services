@@ -1,0 +1,651 @@
+{
+  "monday": [
+    {
+      "start": "09:30",
+      "end": "10:00",
+      "icon": "☀️",
+      "task": "기상 + 준비",
+      "cat": "personal"
+    },
+    {
+      "start": "10:00",
+      "end": "11:00",
+      "icon": "📚",
+      "task": "어학 공부 (영어/몽골어)",
+      "cat": "growth"
+    },
+    {
+      "start": "11:00",
+      "end": "11:30",
+      "icon": "☕",
+      "task": "준비 + 이동 준비",
+      "cat": "break"
+    },
+    {
+      "start": "11:30",
+      "end": "12:00",
+      "icon": "🚗",
+      "task": "컴플렉스 이동",
+      "cat": "move"
+    },
+    {
+      "start": "12:00",
+      "end": "13:00",
+      "icon": "🎾",
+      "task": "일반인 레슨 (컴플렉스)",
+      "cat": "lesson"
+    },
+    {
+      "start": "13:00",
+      "end": "13:30",
+      "icon": "🍽️",
+      "task": "점심",
+      "cat": "meal"
+    },
+    {
+      "start": "13:30",
+      "end": "14:30",
+      "icon": "🚗",
+      "task": "센터 이동",
+      "cat": "move"
+    },
+    {
+      "start": "14:30",
+      "end": "15:00",
+      "icon": "💼",
+      "task": "센터 순회 + 레슨 준비",
+      "cat": "business"
+    },
+    {
+      "start": "15:00",
+      "end": "19:00",
+      "icon": "🎾",
+      "task": "선수반 (센터)",
+      "cat": "lesson"
+    },
+    {
+      "start": "19:00",
+      "end": "20:00",
+      "icon": "🚗",
+      "task": "귀가",
+      "cat": "move"
+    },
+    {
+      "start": "20:00",
+      "end": "20:30",
+      "icon": "🍽️",
+      "task": "저녁",
+      "cat": "meal"
+    },
+    {
+      "start": "20:30",
+      "end": "22:00",
+      "icon": "👨‍👩‍👧‍👦",
+      "task": "가족 시간",
+      "cat": "family"
+    },
+    {
+      "start": "22:00",
+      "end": "24:00",
+      "icon": "📱",
+      "task": "나만의 시간",
+      "cat": "rest"
+    }
+  ],
+  "tuesday": [
+    {
+      "start": "09:00",
+      "end": "09:30",
+      "icon": "☀️",
+      "task": "기상 + 준비",
+      "cat": "personal"
+    },
+    {
+      "start": "09:00",
+      "end": "10:00",
+      "icon": "💪",
+      "task": "운동 (피트니스)",
+      "cat": "health"
+    },
+    {
+      "start": "10:00",
+      "end": "01:00",
+      "icon": "📌",
+      "task": "트레이닝셈터미팅",
+      "cat": "business"
+    },
+    {
+      "start": "12:00",
+      "end": "13:30",
+      "icon": "🍽️",
+      "task": "점심 + 네트워킹",
+      "cat": "relation"
+    },
+    {
+      "start": "13:30",
+      "end": "14:00",
+      "icon": "💼",
+      "task": "미팅 준비",
+      "cat": "business"
+    },
+    {
+      "start": "14:00",
+      "end": "15:00",
+      "icon": "👥",
+      "task": "직원 미팅",
+      "cat": "business"
+    },
+    {
+      "start": "15:00",
+      "end": "16:00",
+      "icon": "💼",
+      "task": "사업 관리 (매출/재무 체크)",
+      "cat": "business"
+    },
+    {
+      "start": "15:00",
+      "end": "17:00",
+      "icon": "💼",
+      "task": "자유 업무 (기획/영업/거래처)",
+      "cat": "business"
+    },
+    {
+      "start": "17:00",
+      "end": "18:00",
+      "icon": "☕",
+      "task": "자유 시간",
+      "cat": "break"
+    },
+    {
+      "start": "18:00",
+      "end": "18:30",
+      "icon": "🚗",
+      "task": "컴플렉스 이동",
+      "cat": "move"
+    },
+    {
+      "start": "18:30",
+      "end": "19:00",
+      "icon": "🍽️",
+      "task": "가벼운 저녁",
+      "cat": "meal"
+    },
+    {
+      "start": "19:00",
+      "end": "21:00",
+      "icon": "🎾",
+      "task": "그룹레슨 (컴플렉스)",
+      "cat": "lesson"
+    },
+    {
+      "start": "21:00",
+      "end": "21:30",
+      "icon": "🚗",
+      "task": "귀가",
+      "cat": "move"
+    },
+    {
+      "start": "21:30",
+      "end": "22:30",
+      "icon": "👨‍👩‍👧‍👦",
+      "task": "가족 시간",
+      "cat": "family"
+    },
+    {
+      "start": "22:30",
+      "end": "24:00",
+      "icon": "📱",
+      "task": "나만의 시간",
+      "cat": "rest"
+    }
+  ],
+  "wednesday": [
+    {
+      "start": "09:30",
+      "end": "10:00",
+      "icon": "☀️",
+      "task": "기상 + 준비",
+      "cat": "personal"
+    },
+    {
+      "start": "10:00",
+      "end": "10:30",
+      "icon": "🍳",
+      "task": "아침",
+      "cat": "meal"
+    },
+    {
+      "start": "10:00",
+      "end": "00:00",
+      "icon": "📌",
+      "task": "일본트레이너와 미팅",
+      "cat": "business"
+    },
+    {
+      "start": "10:30",
+      "end": "12:00",
+      "icon": "💼",
+      "task": "사업 전략 (캠프/신규사업 기획)",
+      "cat": "business"
+    },
+    {
+      "start": "12:00",
+      "end": "12:30",
+      "icon": "🍽️",
+      "task": "점심 + 피트니스 체크",
+      "cat": "business"
+    },
+    {
+      "start": "12:30",
+      "end": "13:00",
+      "icon": "💼",
+      "task": "업무 마무리",
+      "cat": "business"
+    },
+    {
+      "start": "13:00",
+      "end": "14:00",
+      "icon": "🚗",
+      "task": "센터 이동",
+      "cat": "move"
+    },
+    {
+      "start": "14:00",
+      "end": "15:00",
+      "icon": "💼",
+      "task": "센터 순회 + 준비",
+      "cat": "business"
+    },
+    {
+      "start": "15:00",
+      "end": "19:00",
+      "icon": "🎾",
+      "task": "선수반 (센터)",
+      "cat": "lesson"
+    },
+    {
+      "start": "19:00",
+      "end": "20:00",
+      "icon": "🚗",
+      "task": "컴플렉스 이동 ⚠️",
+      "cat": "move"
+    },
+    {
+      "start": "20:00",
+      "end": "22:00",
+      "icon": "🎾",
+      "task": "친목 동호 레슨 (컴플렉스)",
+      "cat": "lesson"
+    },
+    {
+      "start": "22:00",
+      "end": "22:30",
+      "icon": "🚗",
+      "task": "귀가",
+      "cat": "move"
+    },
+    {
+      "start": "22:30",
+      "end": "23:00",
+      "icon": "🍽️",
+      "task": "늦은 저녁",
+      "cat": "meal"
+    },
+    {
+      "start": "23:00",
+      "end": "24:00",
+      "icon": "📱",
+      "task": "나만의 시간",
+      "cat": "rest"
+    }
+  ],
+  "thursday": [
+    {
+      "start": "09:30",
+      "end": "10:00",
+      "icon": "☀️",
+      "task": "기상 + 준비",
+      "cat": "personal"
+    },
+    {
+      "start": "10:00",
+      "end": "11:00",
+      "icon": "📚",
+      "task": "자기계발 (독서/강의/영상)",
+      "cat": "growth"
+    },
+    {
+      "start": "11:00",
+      "end": "11:30",
+      "icon": "💼",
+      "task": "사업 실행 (밀린 일 처리)",
+      "cat": "business"
+    },
+    {
+      "start": "11:30",
+      "end": "12:00",
+      "icon": "🚗",
+      "task": "컴플렉스 이동",
+      "cat": "move"
+    },
+    {
+      "start": "12:00",
+      "end": "13:00",
+      "icon": "🎾",
+      "task": "일반인 레슨 (컴플렉스)",
+      "cat": "lesson"
+    },
+    {
+      "start": "13:00",
+      "end": "14:00",
+      "icon": "🍽️",
+      "task": "점심 + 사람 만남",
+      "cat": "relation"
+    },
+    {
+      "start": "14:00",
+      "end": "16:00",
+      "icon": "🤝",
+      "task": "네트워킹/거래처/학부모 미팅",
+      "cat": "relation"
+    },
+    {
+      "start": "16:00",
+      "end": "17:00",
+      "icon": "☕",
+      "task": "휴식 + 레슨 준비",
+      "cat": "break"
+    },
+    {
+      "start": "17:00",
+      "end": "18:00",
+      "icon": "🎾",
+      "task": "쌍둥이 레슨 (컴플렉스)",
+      "cat": "lesson"
+    },
+    {
+      "start": "18:00",
+      "end": "19:00",
+      "icon": "🍽️",
+      "task": "저녁 (컴플렉스 근처)",
+      "cat": "meal"
+    },
+    {
+      "start": "19:00",
+      "end": "21:00",
+      "icon": "🎾",
+      "task": "그룹레슨 (컴플렉스)",
+      "cat": "lesson"
+    },
+    {
+      "start": "21:00",
+      "end": "21:30",
+      "icon": "🚗",
+      "task": "귀가",
+      "cat": "move"
+    },
+    {
+      "start": "21:30",
+      "end": "22:30",
+      "icon": "👨‍👩‍👧‍👦",
+      "task": "가족 시간",
+      "cat": "family"
+    },
+    {
+      "start": "22:30",
+      "end": "24:00",
+      "icon": "📱",
+      "task": "나만의 시간",
+      "cat": "rest"
+    }
+  ],
+  "friday": [
+    {
+      "start": "09:30",
+      "end": "10:00",
+      "icon": "☀️",
+      "task": "기상 + 준비",
+      "cat": "personal"
+    },
+    {
+      "start": "10:00",
+      "end": "10:30",
+      "icon": "🍳",
+      "task": "아침",
+      "cat": "meal"
+    },
+    {
+      "start": "10:30",
+      "end": "11:30",
+      "icon": "💼",
+      "task": "주간 리뷰 + 다음 주 계획",
+      "cat": "business"
+    },
+    {
+      "start": "11:00",
+      "end": "00:26",
+      "icon": "📌",
+      "task": "월급정산",
+      "cat": "business"
+    },
+    {
+      "start": "11:30",
+      "end": "12:00",
+      "icon": "💼",
+      "task": "직원 지시 + 피트니스 체크",
+      "cat": "business"
+    },
+    {
+      "start": "12:00",
+      "end": "13:00",
+      "icon": "🍽️",
+      "task": "점심",
+      "cat": "meal"
+    },
+    {
+      "start": "13:00",
+      "end": "14:00",
+      "icon": "🚗",
+      "task": "센터 이동",
+      "cat": "move"
+    },
+    {
+      "start": "14:00",
+      "end": "15:00",
+      "icon": "💼",
+      "task": "센터 순회 + 준비",
+      "cat": "business"
+    },
+    {
+      "start": "15:00",
+      "end": "19:00",
+      "icon": "🎾",
+      "task": "선수반 (센터)",
+      "cat": "lesson"
+    },
+    {
+      "start": "19:00",
+      "end": "20:00",
+      "icon": "🚗",
+      "task": "귀가",
+      "cat": "move"
+    },
+    {
+      "start": "20:00",
+      "end": "20:30",
+      "icon": "🍽️",
+      "task": "저녁",
+      "cat": "meal"
+    },
+    {
+      "start": "20:30",
+      "end": "24:00",
+      "icon": "🎉",
+      "task": "자유 시간 (금요일!)",
+      "cat": "rest"
+    }
+  ],
+  "saturday": [
+    {
+      "start": "10:00",
+      "end": "10:30",
+      "icon": "☀️",
+      "task": "느긋한 기상",
+      "cat": "personal"
+    },
+    {
+      "start": "10:30",
+      "end": "11:00",
+      "icon": "🍳",
+      "task": "집에서 릴렉스",
+      "cat": "move"
+    },
+    {
+      "start": "11:00",
+      "end": "12:30",
+      "icon": "💪",
+      "task": "운동 (피트니스)",
+      "cat": "health"
+    },
+    {
+      "start": "14:00",
+      "end": "15:00",
+      "icon": "🍽️",
+      "task": "점심",
+      "cat": "meal"
+    },
+    {
+      "start": "15:00",
+      "end": "17:00",
+      "icon": "📌",
+      "task": "소통의시간",
+      "cat": "rest"
+    },
+
+    {
+      "start": "17:00",
+      "end": "18:00",
+      "icon": "☕",
+      "task": "자유",
+      "cat": "break"
+    }
+  ],
+  "sunday": [
+    {
+      "start": "10:00",
+      "end": "10:30",
+      "icon": "☀️",
+      "task": "기상",
+      "cat": "personal"
+    },
+    {
+      "start": "10:30",
+      "end": "11:00",
+      "icon": "🍳",
+      "task": "아침",
+      "cat": "meal"
+    },
+    {
+      "start": "11:00",
+      "end": "11:30",
+      "icon": "🚗",
+      "task": "교회 이동",
+      "cat": "move"
+    },
+    {
+      "start": "11:30",
+      "end": "13:00",
+      "icon": "⛪",
+      "task": "교회 예배",
+      "cat": "personal"
+    },
+    {
+      "start": "13:00",
+      "end": "14:00",
+      "icon": "🍽️",
+      "task": "점심 (교회 사람들과)",
+      "cat": "relation"
+    },
+    {
+      "start": "14:00",
+      "end": "16:00",
+      "icon": "📖",
+      "task": "독서/산책/혼자 시간",
+      "cat": "growth"
+    },
+    {
+      "start": "16:00",
+      "end": "18:00",
+      "icon": "👨‍👩‍👧‍👦",
+      "task": "가족 시간",
+      "cat": "family"
+    },
+    {
+      "start": "18:00",
+      "end": "19:00",
+      "icon": "🍽️",
+      "task": "저녁",
+      "cat": "meal"
+    },
+    {
+      "start": "19:00",
+      "end": "20:00",
+      "icon": "📋",
+      "task": "다음 주 스케줄 확인",
+      "cat": "business"
+    },
+    {
+      "start": "20:00",
+      "end": "24:00",
+      "icon": "📱",
+      "task": "자유 시간",
+      "cat": "rest"
+    }
+  ],
+  "categories": {
+    "lesson": {
+      "color": "#22c55e",
+      "label": "레슨"
+    },
+    "business": {
+      "color": "#3b82f6",
+      "label": "사업"
+    },
+    "health": {
+      "color": "#ef4444",
+      "label": "건강"
+    },
+    "growth": {
+      "color": "#f97316",
+      "label": "성장"
+    },
+    "family": {
+      "color": "#ec4899",
+      "label": "가족"
+    },
+    "relation": {
+      "color": "#a855f7",
+      "label": "관계"
+    },
+    "meal": {
+      "color": "#78716c",
+      "label": "식사"
+    },
+    "move": {
+      "color": "#6b7280",
+      "label": "이동"
+    },
+    "break": {
+      "color": "#94a3b8",
+      "label": "휴식"
+    },
+    "rest": {
+      "color": "#475569",
+      "label": "나만의시간"
+    },
+    "personal": {
+      "color": "#64748b",
+      "label": "개인"
+    }
+  }
+}

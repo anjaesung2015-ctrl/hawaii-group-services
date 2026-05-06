@@ -1,0 +1,17 @@
+{
+  "name": "하와이 레슨",
+  "short_name": "레슨",
+  "start_url": "/my-lesson/",
+  "scope": "/my-lesson/",
+  "display": "standalone",
+  "background_color": "#0c0f1a",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
