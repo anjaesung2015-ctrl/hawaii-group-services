@@ -267,10 +267,10 @@ module.exports = function createReportRoutes(db) {
 
   // ===== 관리자(사장님) 영역 =====
 
-  // 오늘 대시보드: 제출/미제출 직원 + 짧은 요약
+  // 일자별 대시보드: 제출/미제출 직원 + 짧은 요약 (?date=YYYY-MM-DD; 기본 오늘)
   r.get('/admin/today', requireBoss, (req, res) => {
-    const date = todayStr();
-    const dayKo = ['일','월','화','수','목','금','토'][new Date().getDay()];
+    const date = req.query.date || todayStr();
+    const dayKo = ['일','월','화','수','목','금','토'][new Date(date + 'T00:00:00Z').getUTCDay()];
     const all = db.prepare("SELECT id, name, name_mn, work_days FROM staff WHERE is_active=1 ORDER BY name").all();
     const expected = all.filter(s => !s.work_days || s.work_days.includes(dayKo));
     const submitted = db.prepare(`SELECT wr.id, wr.staff_id, wr.submitted_at, wr.updated_at, wr.translation_status, wr.field_today_ko, wr.field_today,

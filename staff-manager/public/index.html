@@ -1447,6 +1447,12 @@ function loadRpAdmin(){
       <div class="nav-tab" id="rpa-subtab-settings" onclick="rpaTab('settings')">⚙️ 설정</div>
     </div>
     <div id="rpa-today" style="display:block">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:0.6rem;flex-wrap:wrap">
+        <button class="btn-sm" onclick="rpaShiftToday(-1)" style="font-size:12px;padding:4px 10px">◀ 어제</button>
+        <input type="date" id="rpa-today-date" onchange="rpaLoadToday(this.value)" style="padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text)">
+        <button class="btn-sm" onclick="rpaShiftToday(1)" style="font-size:12px;padding:4px 10px">내일 ▶</button>
+        <button class="btn-sm" onclick="rpaLoadToday()" style="font-size:12px;padding:4px 10px">오늘로</button>
+      </div>
       <div id="rpa-today-summary"></div>
       <h4 style="margin:0.8rem 0 0.4rem">✅ 제출 완료</h4>
       <div id="rpa-today-submitted"></div>
@@ -1762,13 +1768,17 @@ function rpaShowCompletions(id) {
     });
 }
 
-async function rpaLoadToday(){
+async function rpaLoadToday(date){
+  const dateInput = document.getElementById('rpa-today-date');
+  const today = new Date().toISOString().slice(0,10);
+  const targetDate = date || (dateInput && dateInput.value) || today;
+  if (dateInput) dateInput.value = targetDate;
   const sumEl = document.getElementById('rpa-today-summary');
   const subEl = document.getElementById('rpa-today-submitted');
   const misEl = document.getElementById('rpa-today-missing');
   sumEl.innerHTML = '<div class="card">불러오는 중...</div>';
   subEl.innerHTML = ''; misEl.innerHTML = '';
-  const res = await apiFetch('/api/reports/admin/today');
+  const res = await apiFetch('/api/reports/admin/today?date='+encodeURIComponent(targetDate));
   if(!res.ok){ sumEl.innerHTML = '<div class="card" style="color:var(--danger)">불러오기 실패 ('+res.status+')</div>'; return; }
   const d = await res.json();
   sumEl.innerHTML = `<div class="card"><b>${rpaEsc(d.date)}</b> · 제출 ${d.submitted.length} / 예상 ${d.expected_count}명</div>`;
@@ -1785,6 +1795,14 @@ async function rpaLoadToday(){
   misEl.innerHTML = d.missing.length ? d.missing.map(m =>
     `<span style="display:inline-block;padding:4px 10px;margin:2px;background:#fef2f2;color:#b91c1c;border-radius:999px;font-size:12px">${rpaEsc(m.name)}</span>`
   ).join(' ') : '<p style="color:#047857">모두 제출 완료 ✓</p>';
+}
+
+function rpaShiftToday(delta){
+  const input = document.getElementById('rpa-today-date');
+  const cur = (input && input.value) || new Date().toISOString().slice(0,10);
+  const d = new Date(cur+'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate()+delta);
+  rpaLoadToday(d.toISOString().slice(0,10));
 }
 
 async function rpaShowDetail(id){
