@@ -178,8 +178,9 @@ app.post('/api/tasks/generate', (req, res) => {
     });
     
     if (assigned.length === 0) {
-      // 사업장 매니저에게 할당
-      const mgr = staff.find(s => s.business === tmpl.business && s.role === '매니저');
+      // 사업장 책임자(매니저/총매니저/대표)에게 fallback, 없으면 사업장의 아무 활성 직원
+      const mgr = staff.find(s => s.business === tmpl.business && ['매니저','총매니저','대표'].includes(s.role))
+               || staff.find(s => s.business === tmpl.business);
       if (mgr) {
         db.prepare("INSERT INTO daily_tasks (task_date, staff_id, template_id, title, description, business) VALUES (?,?,?,?,?,?)")
           .run(today, mgr.id, tmpl.id, tmpl.title, tmpl.description, tmpl.business);
