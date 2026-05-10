@@ -293,6 +293,7 @@ async function loadTasks(){
           <div class="task-title" style="${t.status==='done'?'text-decoration:line-through':''}">${t.title}</div>
           <div class="task-meta">${t.staff_name||'미배정'} · ${t.notes||''}</div>
         </div>
+        <button onclick='openEditTask(${JSON.stringify(t)})' style="background:none;border:none;cursor:pointer;font-size:1rem;padding:0 0.3rem;color:var(--text2)" title="수정">✏️</button>
       </div>`).join('')}
     `).join('')}
   `;
@@ -674,6 +675,40 @@ async function submitTask(){
     description:document.getElementById('at-desc').value,
     business:document.getElementById('at-biz').value,
     staff_id:document.getElementById('at-staff').value||null
+  }});
+  closeModal();
+  switchTab(currentTab);
+}
+
+function openEditTask(t){
+  const esc = function(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));};
+  const bizList = ['피트니스','샵','센터','테니스'];
+  const bizOptions = bizList.map(b=>'<option value="'+b+'"'+(t.business===b?' selected':'')+'>'+b+'</option>').join('');
+  document.getElementById('modal-body').innerHTML=`
+    <h3>✏️ 업무 수정</h3>
+    <label>날짜</label><input type="date" id="et-date" value="${t.task_date||currentDate}">
+    <label>사업장</label>
+    <select id="et-biz">${bizOptions}</select>
+    <label>업무 제목</label><input id="et-title" value="${esc(t.title)}">
+    <label>상세 설명</label><textarea id="et-desc" rows="2">${esc(t.description||'')}</textarea>
+    <label>담당자 ID (비우면 미배정)</label><input id="et-staff" value="${t.staff_id||''}" placeholder="직원 ID">
+    <label>메모</label><textarea id="et-notes" rows="2">${esc(t.notes||'')}</textarea>
+    <div style="display:flex;gap:0.5rem;margin-top:1rem">
+      <button class="btn btn-primary" onclick="submitEditTask(${t.id})">저장</button>
+      <button class="btn btn-sm" onclick="closeModal()">취소</button>
+    </div>`;
+  document.getElementById('modal').classList.add('open');
+}
+
+async function submitEditTask(id){
+  const staffVal = document.getElementById('et-staff').value.trim();
+  await apiFetch('/api/tasks/'+id,{method:'PUT',body:{
+    task_date: document.getElementById('et-date').value,
+    business: document.getElementById('et-biz').value,
+    title: document.getElementById('et-title').value,
+    description: document.getElementById('et-desc').value,
+    notes: document.getElementById('et-notes').value,
+    staff_id: staffVal === '' ? null : Number(staffVal)
   }});
   closeModal();
   switchTab(currentTab);
@@ -1553,6 +1588,7 @@ function rpaLoadAssignments() {
           '<div style="font-size:11px;color:#6b6b6a;margin-top:6px">📍 '+scopeLabel+' · 🔁 '+recLabel+' · 오늘 완료 '+a.done_today+'명</div>'+
           '<div style="display:flex;gap:6px;margin-top:8px">'+
             '<button onclick="rpaShowCompletions('+a.id+')" style="font-size:12px;padding:4px 10px">완료 현황</button>'+
+            '<button onclick=\'rpaShowEditAssignment('+JSON.stringify(a)+')\' style="font-size:12px;padding:4px 10px">✏️ 수정</button>'+
             '<button onclick="rpaToggleAssignmentActive('+a.id+', '+(a.is_active?0:1)+')" style="font-size:12px;padding:4px 10px">'+(a.is_active?'중지':'재개')+'</button>'+
             '<button onclick="rpaDeleteAssignment('+a.id+')" style="font-size:12px;padding:4px 10px;color:#b91c1c">삭제</button>'+
           '</div></div>';
@@ -1617,6 +1653,71 @@ function rpaCreateAssignment() {
   }).then(r=>r.json()).then(d=>{
     if (d.ok) { document.getElementById('na-modal').remove(); rpaLoadAssignments(); }
     else document.getElementById('na-msg').textContent = '실패: '+(d.error||'unknown');
+  });
+}
+
+function rpaShowEditAssignment(a) {
+  const token = localStorage.getItem('staff_token') || localStorage.getItem('token');
+  fetch(API+'/api/reports/admin/staff', { headers:{Authorization:'Bearer '+token} })
+    .then(r=>r.json()).then(staff => {
+      const businesses = [...new Set(staff.map(s=>s.business).filter(Boolean))];
+      const today = new Date().toISOString().slice(0,10);
+      const sel = function(opts, current) { return opts.map(o=>'<option value="'+rpaEsc(o.v)+'"'+(String(o.v)===String(current)?' selected':'')+'>'+rpaEsc(o.t)+'</option>').join(''); };
+      const scopeOpts = [{v:'all',t:'전체 직원'},{v:'business',t:'사업장별'},{v:'staff',t:'개별 직원'}];
+      const recOpts = [{v:'daily',t:'매일 반복'},{v:'once',t:'1회성 (특정 날짜)'}];
+      const bizOpts = businesses.map(b=>({v:b,t:b}));
+      const staffOpts = staff.filter(s=>s.is_active).map(s=>({v:s.id,t:s.name+(s.business?' ('+s.business+')':'')}));
+      const html =
+        '<h3>✏️ 업무지시 수정</h3>' +
+        '<div class="field"><label>제목</label><input type="text" id="ea-title" value="'+rpaEsc(a.title||'')+'"></div>' +
+        '<div class="field"><label>설명</label><textarea id="ea-desc" rows="2">'+rpaEsc(a.description||'')+'</textarea></div>' +
+        '<div class="field"><label>대상</label><select id="ea-scope" onchange="rpaEaScopeChanged()">'+sel(scopeOpts, a.scope)+'</select></div>' +
+        '<div class="field" id="ea-business-wrap" style="display:'+(a.scope==='business'?'block':'none')+'"><label>사업장 선택</label><select id="ea-business">'+sel(bizOpts, a.scope_value)+'</select></div>' +
+        '<div class="field" id="ea-staff-wrap" style="display:'+(a.scope==='staff'?'block':'none')+'"><label>직원 선택</label><select id="ea-staff">'+sel(staffOpts, a.scope_value)+'</select></div>' +
+        '<div class="field"><label>주기</label><select id="ea-rec" onchange="rpaEaRecChanged()">'+sel(recOpts, a.recurrence)+'</select></div>' +
+        '<div class="field" id="ea-date-wrap" style="display:'+(a.recurrence==='once'?'block':'none')+'"><label>날짜</label><input type="date" id="ea-date" value="'+(a.target_date||today)+'"></div>' +
+        '<button class="primary" onclick="rpaUpdateAssignment('+a.id+')">저장</button>' +
+        '<button onclick="document.getElementById(\'ea-modal\').remove()" style="margin-left:8px">취소</button>' +
+        '<div id="ea-msg" style="margin-top:8px;font-size:13px"></div>';
+      const m = document.createElement('div');
+      m.id = 'ea-modal';
+      m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;padding:16px;overflow:auto;display:flex;align-items:flex-start;justify-content:center';
+      m.innerHTML = '<div style="background:#fff;max-width:500px;width:100%;margin-top:30px;padding:20px;border-radius:12px">'+html+'</div>';
+      document.body.appendChild(m);
+    });
+}
+
+function rpaEaScopeChanged() {
+  const v = document.getElementById('ea-scope').value;
+  document.getElementById('ea-business-wrap').style.display = v==='business' ? 'block' : 'none';
+  document.getElementById('ea-staff-wrap').style.display = v==='staff' ? 'block' : 'none';
+}
+
+function rpaEaRecChanged() {
+  const v = document.getElementById('ea-rec').value;
+  document.getElementById('ea-date-wrap').style.display = v==='once' ? 'block' : 'none';
+}
+
+function rpaUpdateAssignment(id) {
+  const token = localStorage.getItem('staff_token') || localStorage.getItem('token');
+  const scope = document.getElementById('ea-scope').value;
+  const body = {
+    title: document.getElementById('ea-title').value.trim(),
+    description: document.getElementById('ea-desc').value.trim(),
+    scope: scope,
+    recurrence: document.getElementById('ea-rec').value
+  };
+  if (!body.title) { document.getElementById('ea-msg').textContent = '제목을 입력하세요'; return; }
+  body.scope_value = scope==='business' ? document.getElementById('ea-business').value
+                   : scope==='staff' ? document.getElementById('ea-staff').value
+                   : '';
+  body.target_date = body.recurrence==='once' ? document.getElementById('ea-date').value : null;
+  fetch(API+'/api/reports/admin/assignments/'+id, {
+    method:'PUT', headers:{'Content-Type':'application/json', Authorization:'Bearer '+token},
+    body: JSON.stringify(body)
+  }).then(r=>r.json()).then(d=>{
+    if (d.ok) { document.getElementById('ea-modal').remove(); rpaLoadAssignments(); }
+    else document.getElementById('ea-msg').textContent = '실패: '+(d.error||'unknown');
   });
 }
 

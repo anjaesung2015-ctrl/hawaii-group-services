@@ -261,14 +261,17 @@ app.post('/api/tasks/generate-week', (req, res) => {
   res.json({ message: `${totalCount}건 생성`, count: totalCount });
 });
 
-// 업무 상태 업데이트
+// 업무 상태/내용 업데이트 (부분 업데이트)
 app.put('/api/tasks/:id', (req, res) => {
-  const { status, notes } = req.body;
-  if (status === 'done') {
-    db.prepare("UPDATE daily_tasks SET status='done', completed_at=datetime('now'), notes=? WHERE id=?").run(notes || null, req.params.id);
-  } else {
-    db.prepare("UPDATE daily_tasks SET status=?, notes=? WHERE id=?").run(status, notes || null, req.params.id);
-  }
+  const allowed = ['status', 'notes', 'title', 'description', 'business', 'staff_id', 'task_date'];
+  const fields = []; const vals = [];
+  for (const k of allowed) if (k in req.body) { fields.push(k + '=?'); vals.push(req.body[k]); }
+  if (req.body.status === 'done') fields.push("completed_at=datetime('now')");
+  else if (req.body.status && req.body.status !== 'done') fields.push("completed_at=NULL");
+  if (!fields.length) return res.status(400).json({ error: 'no_changes' });
+  vals.push(req.params.id);
+  const r = db.prepare("UPDATE daily_tasks SET " + fields.join(', ') + " WHERE id=?").run(...vals);
+  if (!r.changes) return res.status(404).json({ error: 'not_found' });
   res.json({ ok: true });
 });
 
