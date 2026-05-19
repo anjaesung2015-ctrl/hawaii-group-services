@@ -82,7 +82,7 @@ app.get('/api/staff', (req, res) => {
 app.post('/api/staff', (req, res) => {
   const { name, name_mn, role, position, business, phone, work_days, salary } = req.body;
   const r = db.prepare("INSERT INTO staff (name, name_mn, role, position, business, phone, work_days, salary) VALUES (?,?,?,?,?,?,?,?)")
-    .run(name, name_mn, role, position, business, phone, work_days || '월,화,수,목,금,토');
+    .run(name, name_mn, role, position, business, phone, work_days || '월,화,수,목,금,토', salary ?? 0);
   // Auto-create user account
   const uname = name.replace(/\s/g, '').toLowerCase();
   try {
