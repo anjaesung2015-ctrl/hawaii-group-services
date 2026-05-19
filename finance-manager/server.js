@@ -128,7 +128,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 function auth(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '') || req.cookies?.fin_token;
-  if (!token) return res.status(401).json({ error: 'Login required' });
+  if (!token || token === 'null' || token === 'undefined') return res.status(401).json({ error: 'Login required' });
   try { req.user = jwt.verify(token, JWT_SECRET); next(); }
   catch(e) { console.error("Auth error:", e.message, "Token:", token?.slice(0,20)); res.status(401).json({ error: "Session expired" }); }
 }
