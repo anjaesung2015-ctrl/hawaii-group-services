@@ -410,6 +410,16 @@ app.get('/api/salary-summary', (req, res) => {
   res.json({ byBusiness: staff, total: grand.total || 0, count: grand.cnt || 0 });
 });
 
+// 글로벌 에러 핸들러 — 스택 트레이스 노출 방지, SQLite 제약 위반은 400
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  console.error(`[${req.method} ${req.originalUrl}]`, err);
+  if (err && typeof err.code === 'string' && err.code.startsWith('SQLITE_CONSTRAINT')) {
+    return res.status(400).json({ error: 'constraint_violation' });
+  }
+  res.status(500).json({ error: 'server_error' });
+});
+
 app.listen(PORT, () => console.log(`Staff Manager on port ${PORT}`));
 
 require('./retranslate-job').start(db);
