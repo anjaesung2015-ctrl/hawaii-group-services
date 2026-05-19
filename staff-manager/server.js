@@ -456,6 +456,43 @@ app.get('/api/salary-summary', (req, res) => {
   res.json({ byBusiness: staff, total: grand.total || 0, count: grand.cnt || 0 });
 });
 
+// === 강제 체크인/아웃 (사장·매니저, GPS 검증 우회) ===
+function forceAttendance(type) {
+  return (req, res) => {
+    const { staff_id, date, reason } = req.body || {};
+    if (!staff_id || !date || !reason) return res.status(400).json({ error: 'missing_fields' });
+    const target = db.prepare("SELECT id, business FROM staff WHERE id=? AND is_active=1").get(staff_id);
+    if (!target) return res.status(404).json({ error: 'staff_not_found' });
+
+    const isAdmin = req.user.role === 'admin';
+    const isManager = req.user.role === 'manager';
+    if (!isAdmin && !isManager) return res.status(403).json({ error: 'forbidden' });
+    if (isManager) {
+      const myBiz = getMyBusiness(req);
+      if (!myBiz || target.business !== myBiz) return res.status(403).json({ error: 'forbidden_business' });
+    }
+
+    const now = new Date().toISOString();
+    const noteAppend = `\n[강제 ${type} by ${req.user.name}: ${reason}]`;
+    const exists = db.prepare("SELECT id, check_in, check_out, note FROM attendance WHERE staff_id=? AND date=?").get(staff_id, date);
+    const timeCol = type === 'in' ? 'check_in' : 'check_out';
+    const overrideCol = type === 'in' ? 'check_in_override_by' : 'check_out_override_by';
+
+    if (exists) {
+      const newNote = (exists.note || '') + noteAppend;
+      db.prepare(`UPDATE attendance SET ${timeCol}=?, ${overrideCol}=?, note=? WHERE id=?`)
+        .run(now, req.user.id, newNote, exists.id);
+    } else {
+      db.prepare(`INSERT INTO attendance (staff_id, date, ${timeCol}, ${overrideCol}, note) VALUES (?,?,?,?,?)`)
+        .run(staff_id, date, now, req.user.id, noteAppend.trim());
+    }
+    res.json({ ok: true, [timeCol]: now, override_by: req.user.id });
+  };
+}
+
+app.post('/api/attendance/force-check-in',  forceAttendance('in'));
+app.post('/api/attendance/force-check-out', forceAttendance('out'));
+
 // 글로벌 에러 핸들러 — 스택 트레이스 노출 방지, SQLite 제약 위반은 400
 app.use((err, req, res, next) => {
   if (res.headersSent) return next(err);
