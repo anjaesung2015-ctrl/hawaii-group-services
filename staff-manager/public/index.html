@@ -139,6 +139,19 @@ async function apiFetch(url, opts={}){
   return r;
 }
 
+async function forceAttendance(staffId, staffName, type, date){
+  const reason = prompt('강제 ' + (type==='in'?'출근':'퇴근') + ' (' + staffName + '): 사유를 입력하세요.');
+  if (!reason) return;
+  const r = await apiFetch('/api/attendance/force-check-' + type, {
+    method:'POST',
+    body:{ staff_id: staffId, date, reason }
+  });
+  const d = await r.json().catch(()=>({}));
+  if (r.ok) { alert('완료'); loadDashboard(); }
+  else if (d.error === 'forbidden_business') alert('본인 사업장 직원만 처리할 수 있습니다.');
+  else alert('실패: ' + (d.error || r.status));
+}
+
 function doLogin(){
   const u=document.getElementById('lg-user').value;
   const p=document.getElementById('lg-pass').value;
@@ -236,13 +249,18 @@ async function loadDashboard(){
     
     <h3 style="font-size:1rem;margin:1rem 0 0.8rem">⏰ 근태 (${presentCount}/${(att.rows||[]).length} 출근)</h3>
     <div class="card"><table>
-      <thead><tr><th>직원</th><th>사업장</th><th>출근</th><th>퇴근</th></tr></thead>
-      <tbody>${(att.rows||[]).map(r=>`<tr>
-        <td><strong>${r.name}</strong></td>
-        <td style="color:var(--text2)">${r.business||''}</td>
-        <td>${fmtTime(r.check_in)}</td>
-        <td>${fmtTime(r.check_out)}</td>
-      </tr>`).join('')}</tbody>
+      <thead><tr><th>직원</th><th>사업장</th><th>출근</th><th>퇴근</th><th>강제</th></tr></thead>
+      <tbody>${(att.rows||[]).map(r=>{
+        const inBtn = r.check_in ? '' : `<button onclick="forceAttendance(${r.staff_id},'${r.name.replace(/'/g,"\\'")}','in','${currentDate}')" style="font-size:0.75em;padding:2px 6px;background:#16a34a;color:white;border:none;border-radius:4px;cursor:pointer">출근</button>`;
+        const outBtn = (r.check_in && !r.check_out) ? `<button onclick="forceAttendance(${r.staff_id},'${r.name.replace(/'/g,"\\'")}','out','${currentDate}')" style="font-size:0.75em;padding:2px 6px;background:#dc2626;color:white;border:none;border-radius:4px;cursor:pointer;margin-left:4px">퇴근</button>` : '';
+        return `<tr>
+          <td><strong>${r.name}</strong></td>
+          <td style="color:var(--text2)">${r.business||''}</td>
+          <td>${fmtTime(r.check_in)}</td>
+          <td>${fmtTime(r.check_out)}</td>
+          <td>${inBtn}${outBtn}</td>
+        </tr>`;
+      }).join('')}</tbody>
     </table></div>
 
     <h3 style="font-size:1rem;margin:1rem 0 0.8rem">👤 직원별 진행</h3>
@@ -1115,21 +1133,61 @@ function rpLoadAttendance() {
     }).catch(()=>{ row.innerHTML = '<div style="color:#b91c1c;font-size:12px">불러오기 실패</div>'; });
 }
 
+async function rpGetMyLocation() {
+  if (!navigator.geolocation) throw new Error('GPS_NOT_SUPPORTED');
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+      err => reject(err),
+      { timeout: 10000, enableHighAccuracy: true, maximumAge: 0 }
+    );
+  });
+}
+
+function rpAttHandleError(d, status) {
+  if (d.error === 'out_of_range') return alert('사업장에서 약 ' + d.distance_m + 'm 떨어져 있습니다.\n사장님께 강제 체크인을 요청하세요.');
+  if (d.error === 'business_not_configured') return alert(d.business + ' 사업장 위치가 아직 등록되지 않았습니다.\n사장님이 먼저 한 번 체크인하시면 자동 등록됩니다.');
+  if (d.error === 'gps_too_inaccurate') return alert('GPS 신호가 약합니다 (정확도 ' + Math.round(d.accuracy_m) + 'm).\n야외에서 다시 시도하세요.');
+  if (d.error === 'no_business_assigned') return alert('소속 사업장이 지정되지 않았습니다.\n사장님께 문의하세요.');
+  if (d.error === 'location_required') return alert('위치 정보가 필요합니다.');
+  if (d.error === 'already_checked_in') return alert('이미 출근 체크인 완료');
+  if (d.error === 'already_checked_out') return alert('이미 퇴근 체크아웃 완료');
+  if (d.error === 'check_in_required') return alert('먼저 출근 체크인을 해주세요.');
+  alert('실패: ' + (d.error || status || 'unknown'));
+}
+
+async function rpAttCall(endpoint) {
+  let coords;
+  try {
+    coords = await rpGetMyLocation();
+  } catch (err) {
+    if (err && err.code === 1) return alert('위치 권한이 거부됐습니다.\n브라우저 설정에서 위치 권한을 허용해주세요.');
+    if (err && err.code === 3) return alert('위치 확인 시간 초과.\n야외에서 다시 시도해주세요.');
+    if (err && err.message === 'GPS_NOT_SUPPORTED') return alert('이 브라우저는 GPS를 지원하지 않습니다.');
+    return alert('위치 확인 실패: ' + (err && err.message || 'unknown'));
+  }
+  const res = await fetch(API + endpoint, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(coords),
+  });
+  const d = await res.json().catch(() => ({}));
+  if (res.ok) {
+    if (d.bootstrapped) alert('첫 체크인 — 이 위치가 사업장 기준점으로 등록됐습니다.');
+    rpLoadAttendance();
+  } else {
+    rpAttHandleError(d, res.status);
+  }
+}
+
 function rpAttCheckIn() {
-  fetch(API + '/api/reports/attendance/check-in', { method:'POST', credentials:'include' })
-    .then(r=>r.json()).then(d => {
-      if (d.ok) rpLoadAttendance();
-      else alert('Алдаа: ' + (d.error || 'unknown'));
-    });
+  rpAttCall('/api/reports/attendance/check-in');
 }
 
 function rpAttCheckOut() {
   if (!confirm('Явах уу? (퇴근하시겠습니까?)')) return;
-  fetch(API + '/api/reports/attendance/check-out', { method:'POST', credentials:'include' })
-    .then(r=>r.json()).then(d => {
-      if (d.ok) rpLoadAttendance();
-      else alert('Алдаа: ' + (d.error || 'unknown'));
-    });
+  rpAttCall('/api/reports/attendance/check-out');
 }
 
 function rpLoadMyChecklist() {
