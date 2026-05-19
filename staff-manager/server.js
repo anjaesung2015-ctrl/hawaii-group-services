@@ -265,6 +265,10 @@ app.post('/api/tasks/generate-week', (req, res) => {
 // 업무 상태/내용 업데이트 (부분 업데이트)
 app.put('/api/tasks/:id', (req, res) => {
   const allowed = ['status', 'notes', 'title', 'description', 'business', 'staff_id', 'task_date'];
+  if ('staff_id' in req.body && req.body.staff_id != null
+      && !db.prepare('SELECT 1 FROM staff WHERE id=?').get(req.body.staff_id)) {
+    return res.status(400).json({ error: 'invalid_staff_id' });
+  }
   const fields = []; const vals = [];
   for (const k of allowed) if (k in req.body) { fields.push(k + '=?'); vals.push(req.body[k]); }
   if (req.body.status === 'done') fields.push("completed_at=datetime('now')");
@@ -286,6 +290,9 @@ app.delete('/api/tasks/:id', (req, res) => {
 // 특별 업무 추가
 app.post('/api/tasks', (req, res) => {
   const { task_date, staff_id, title, description, business, priority } = req.body;
+  if (staff_id != null && !db.prepare('SELECT 1 FROM staff WHERE id=?').get(staff_id)) {
+    return res.status(400).json({ error: 'invalid_staff_id' });
+  }
   const r = db.prepare("INSERT INTO daily_tasks (task_date, staff_id, title, description, business) VALUES (?,?,?,?,?)")
     .run(task_date || new Date().toISOString().split('T')[0], staff_id, title, description, business);
   res.json({ id: r.lastInsertRowid });
