@@ -326,6 +326,30 @@ app.get('/api/dashboard', (req, res) => {
   res.json({ totalStaff, todayTasks, byBusiness, byStaff, pending });
 });
 
+// ====== 근태 (관리자/매니저 조회) ======
+app.get('/api/attendance', (req, res) => {
+  const date = req.query.date || new Date().toISOString().split('T')[0];
+  const isAdmin = req.user.role === 'admin';
+  const isManager = req.user.role === 'manager';
+  if (!isAdmin && !isManager) return res.status(403).json({ error: 'forbidden' });
+
+  let sql = `
+    SELECT s.id as staff_id, s.name, s.business,
+           a.check_in, a.check_out, a.note
+    FROM staff s
+    LEFT JOIN attendance a ON a.staff_id = s.id AND a.date = ?
+    WHERE s.is_active = 1
+  `;
+  const params = [date];
+  if (isManager) {
+    const myBiz = getMyBusiness(req);
+    if (myBiz) { sql += ' AND s.business = ?'; params.push(myBiz); }
+  }
+  sql += ' ORDER BY s.business, s.name';
+  const rows = db.prepare(sql).all(...params);
+  res.json({ date, rows });
+});
+
 // ====== REPORT ======
 app.get('/api/report', (req, res) => {
   const { from, to } = req.query;

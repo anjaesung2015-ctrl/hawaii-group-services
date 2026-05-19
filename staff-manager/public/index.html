@@ -203,7 +203,10 @@ async function loadDashboard(){
   // 먼저 오늘 업무 생성
   await apiFetch('/api/tasks/generate',{method:'POST',body:{date:currentDate}});
   const d=await apiFetch('/api/dashboard').then(r=>r.json());
+  const att=await apiFetch('/api/attendance?date='+encodeURIComponent(currentDate)).then(r=>r.json()).catch(()=>({rows:[]}));
   const pct=d.todayTasks.total?Math.round(100*d.todayTasks.done/d.todayTasks.total):0;
+  const fmtTime=t=>t?new Date(t).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):'<span style="color:var(--text2)">-</span>';
+  const presentCount=(att.rows||[]).filter(r=>r.check_in).length;
   
   document.getElementById('content').innerHTML=`
     <div style="margin-bottom:1rem">
@@ -231,6 +234,17 @@ async function loadDashboard(){
       </div>`;
     }).join('')}
     
+    <h3 style="font-size:1rem;margin:1rem 0 0.8rem">⏰ 근태 (${presentCount}/${(att.rows||[]).length} 출근)</h3>
+    <div class="card"><table>
+      <thead><tr><th>직원</th><th>사업장</th><th>출근</th><th>퇴근</th></tr></thead>
+      <tbody>${(att.rows||[]).map(r=>`<tr>
+        <td><strong>${r.name}</strong></td>
+        <td style="color:var(--text2)">${r.business||''}</td>
+        <td>${fmtTime(r.check_in)}</td>
+        <td>${fmtTime(r.check_out)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+
     <h3 style="font-size:1rem;margin:1rem 0 0.8rem">👤 직원별 진행</h3>
     <div class="card"><table>
       <thead><tr><th>직원</th><th>사업장</th><th>완료</th><th>진행률</th></tr></thead>
