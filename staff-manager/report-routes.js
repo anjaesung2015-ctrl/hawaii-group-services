@@ -27,6 +27,57 @@ const SECRET = process.env.STAFF_MGR_SECRET || 'staff-mgr-2026-secret';
 // users.role 에 존재하는 값. 현재 users 테이블엔 'admin', 'manager' 만 존재 → 둘 다 사장권한 허용
 const BOSS_ROLES = ['admin', 'manager'];
 
+// === Geofencing helpers ===
+const GEOFENCE_RADIUS_M = 50;
+const GPS_ACCURACY_LIMIT_M = 100;
+// staff.role 한국어 값 — 부트스트랩(첫 좌표 등록) 가능 권한
+const GEOFENCE_BOOTSTRAP_ROLES = ['대표', '총매니저', '매니저'];
+
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+// 위치 검증 + 좌표 없으면 admin/manager가 bootstrap.
+// 반환: { ok: true, distance_m?, bootstrapped? } 또는 { status, error, ...detail }
+function validateLocation(db, staff, body) {
+  const { lat, lng, accuracy } = body || {};
+  if (typeof lat !== 'number' || typeof lng !== 'number' || typeof accuracy !== 'number') {
+    return { status: 400, error: 'location_required' };
+  }
+  if (accuracy > GPS_ACCURACY_LIMIT_M) {
+    return { status: 400, error: 'gps_too_inaccurate', accuracy_m: accuracy };
+  }
+  if (!staff.business) {
+    return { status: 400, error: 'no_business_assigned' };
+  }
+  const loc = db.prepare('SELECT lat, lng FROM business_locations WHERE business=?').get(staff.business);
+  if (!loc) {
+    if (GEOFENCE_BOOTSTRAP_ROLES.includes(staff.role)) {
+      db.prepare(`INSERT INTO business_locations (business, lat, lng, accuracy, set_by_staff_id)
+                  VALUES (?,?,?,?,?)`).run(staff.business, lat, lng, accuracy, staff.id);
+      return { ok: true, bootstrapped: true };
+    }
+    return { status: 400, error: 'business_not_configured', business: staff.business };
+  }
+  const distance = haversineMeters(lat, lng, loc.lat, loc.lng);
+  if (distance - accuracy > GEOFENCE_RADIUS_M) {
+    return {
+      status: 403, error: 'out_of_range',
+      distance_m: Math.round(distance),
+      accuracy_m: Math.round(accuracy),
+      threshold_m: GEOFENCE_RADIUS_M,
+    };
+  }
+  return { ok: true, distance_m: distance };
+}
+
 // === M5: realtime telegram alert (debounced 5min) ===
 const debounceTimers = new Map(); // key: staff_id::report_date
 
@@ -473,26 +524,41 @@ module.exports = function createReportRoutes(db) {
   });
 
   r.post('/attendance/check-in', requireStaff, (req, res) => {
+    const staff = db.prepare("SELECT id, business, role FROM staff WHERE id=?").get(req.staffId);
+    if (!staff) return res.status(404).json({ error: 'staff_not_found' });
+    const v = validateLocation(db, staff, req.body);
+    if (!v.ok) return res.status(v.status).json(v);
+
     const today = todayStr();
     const now = new Date().toISOString();
+    const { lat, lng, accuracy } = req.body;
     const exists = db.prepare("SELECT id, check_in FROM attendance WHERE staff_id=? AND date=?").get(req.staffId, today);
     if (exists) {
       if (exists.check_in) return res.status(400).json({ error: 'already_checked_in', check_in: exists.check_in });
-      db.prepare("UPDATE attendance SET check_in=? WHERE id=?").run(now, exists.id);
+      db.prepare("UPDATE attendance SET check_in=?, check_in_lat=?, check_in_lng=?, check_in_accuracy=? WHERE id=?")
+        .run(now, lat, lng, accuracy, exists.id);
     } else {
-      db.prepare("INSERT INTO attendance (staff_id, date, check_in) VALUES (?,?,?)").run(req.staffId, today, now);
+      db.prepare("INSERT INTO attendance (staff_id, date, check_in, check_in_lat, check_in_lng, check_in_accuracy) VALUES (?,?,?,?,?,?)")
+        .run(req.staffId, today, now, lat, lng, accuracy);
     }
-    res.json({ ok: true, check_in: now });
+    res.json({ ok: true, check_in: now, bootstrapped: v.bootstrapped || false, distance_m: v.distance_m });
   });
 
   r.post('/attendance/check-out', requireStaff, (req, res) => {
+    const staff = db.prepare("SELECT id, business, role FROM staff WHERE id=?").get(req.staffId);
+    if (!staff) return res.status(404).json({ error: 'staff_not_found' });
+    const v = validateLocation(db, staff, req.body);
+    if (!v.ok) return res.status(v.status).json(v);
+
     const today = todayStr();
     const now = new Date().toISOString();
+    const { lat, lng, accuracy } = req.body;
     const exists = db.prepare("SELECT id, check_in, check_out FROM attendance WHERE staff_id=? AND date=?").get(req.staffId, today);
     if (!exists || !exists.check_in) return res.status(400).json({ error: 'check_in_required' });
     if (exists.check_out) return res.status(400).json({ error: 'already_checked_out', check_out: exists.check_out });
-    db.prepare("UPDATE attendance SET check_out=? WHERE id=?").run(now, exists.id);
-    res.json({ ok: true, check_out: now });
+    db.prepare("UPDATE attendance SET check_out=?, check_out_lat=?, check_out_lng=?, check_out_accuracy=? WHERE id=?")
+      .run(now, lat, lng, accuracy, exists.id);
+    res.json({ ok: true, check_out: now, bootstrapped: v.bootstrapped || false, distance_m: v.distance_m });
   });
 
   return r;
