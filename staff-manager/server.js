@@ -36,6 +36,28 @@ try {
   schema.split(';').filter(s => s.trim()).forEach(s => { try { db.exec(s); } catch(e) {} });
 } catch(e) { /* DB already initialized */ }
 
+// === Geofencing migration (idempotent) ===
+try {
+  db.exec(`CREATE TABLE IF NOT EXISTS business_locations (
+    business TEXT PRIMARY KEY,
+    lat REAL NOT NULL,
+    lng REAL NOT NULL,
+    accuracy REAL,
+    set_by_staff_id INTEGER,
+    set_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (set_by_staff_id) REFERENCES staff(id)
+  )`);
+} catch(e) { console.error('[migration] business_locations:', e.message); }
+
+for (const col of [
+  'check_in_lat REAL', 'check_in_lng REAL', 'check_in_accuracy REAL',
+  'check_out_lat REAL', 'check_out_lng REAL', 'check_out_accuracy REAL',
+  'check_in_override_by INTEGER', 'check_out_override_by INTEGER',
+]) {
+  try { db.exec(`ALTER TABLE attendance ADD COLUMN ${col}`); }
+  catch(e) { /* duplicate column name 정상 — 이미 있음 */ }
+}
+
 // Auth
 function auth(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '') || req.cookies?.staff_token;
