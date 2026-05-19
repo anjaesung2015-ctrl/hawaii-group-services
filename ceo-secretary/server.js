@@ -106,7 +106,7 @@ function auth(req, res, next) {
 }
 
 app.post('/api/login', (req, res) => {
-  const { password } = req.body;
+  const { password } = req.body || {};
   if (password !== 'hawaii100') return res.status(401).json({error:'비밀번호 오류'});
   const token = jwt.sign({role:'ceo',name:'안재성'}, SECRET, {expiresIn:'30d'});
   res.cookie('ceo_token', token, {httpOnly:false, maxAge:30*24*60*60*1000, path:'/', sameSite:'lax'});
@@ -1016,4 +1016,15 @@ setInterval(autoGenerateMissions, 60 * 60 * 1000); // 매시간 체크 (자정 �
 
 
 app.use((req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+
+// 글로벌 에러 핸들러 — 스택 트레이스 노출 방지, SQLite 제약 위반은 400
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  console.error(`[${req.method} ${req.originalUrl}]`, err);
+  if (err && typeof err.code === 'string' && err.code.startsWith('SQLITE_CONSTRAINT')) {
+    return res.status(400).json({ error: 'constraint_violation' });
+  }
+  res.status(500).json({ error: 'server_error' });
+});
+
 app.listen(PORT, () => console.log('[CEO Secretary] port ' + PORT));
