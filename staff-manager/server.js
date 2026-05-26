@@ -6,25 +6,25 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
 
+const bcrypt = require('bcryptjs');
+
 const app = express();
 const PORT = 6010;
-const SECRET = 'staff-mgr-2026-secret';
+const SECRET = process.env.STAFF_MGR_SECRET || 'staff-mgr-2026-secret';
 const db = new Database(path.join(__dirname, 'staff.db'));
 db.pragma('journal_mode = WAL');
+
+function todayKST() {
+  const d = new Date(Date.now() + 9 * 3600000);
+  return d.toISOString().slice(0, 10);
+}
 
 app.use(express.json());
 app.use(cookieParser());
 app.use((req, res, next) => {
-  if (req.path.endsWith('.html') || req.path === '/') {
+  if (req.path.endsWith('.html') || req.path === '/' || req.path === '') {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-  }
-  next();
-});
-// HTML/JS 항상 fresh (PWA 캐시 우회)
-app.use((req, res, next) => {
-  if (req.path.endsWith(".html") || req.path === "/" || req.path === "") {
-    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-    res.setHeader("Pragma", "no-cache");
+    res.set('Pragma', 'no-cache');
   }
   next();
 });
@@ -35,28 +35,6 @@ try {
   const schema = fs.readFileSync(path.join(__dirname, 'staff_schema.sql'), 'utf8');
   schema.split(';').filter(s => s.trim()).forEach(s => { try { db.exec(s); } catch(e) {} });
 } catch(e) { /* DB already initialized */ }
-
-// === Geofencing migration (idempotent) ===
-try {
-  db.exec(`CREATE TABLE IF NOT EXISTS business_locations (
-    business TEXT PRIMARY KEY,
-    lat REAL NOT NULL,
-    lng REAL NOT NULL,
-    accuracy REAL,
-    set_by_staff_id INTEGER,
-    set_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (set_by_staff_id) REFERENCES staff(id)
-  )`);
-} catch(e) { console.error('[migration] business_locations:', e.message); }
-
-for (const col of [
-  'check_in_lat REAL', 'check_in_lng REAL', 'check_in_accuracy REAL',
-  'check_out_lat REAL', 'check_out_lng REAL', 'check_out_accuracy REAL',
-  'check_in_override_by INTEGER', 'check_out_override_by INTEGER',
-]) {
-  try { db.exec(`ALTER TABLE attendance ADD COLUMN ${col}`); }
-  catch(e) { /* duplicate column name 정상 — 이미 있음 */ }
-}
 
 // Auth
 function auth(req, res, next) {
@@ -69,7 +47,9 @@ function auth(req, res, next) {
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   const user = db.prepare('SELECT * FROM users WHERE username=?').get(username);
-  if (!user || user.password !== password) return res.status(401).json({ error: '로그인 실패' });
+  if (!user) return res.status(401).json({ error: '로그인 실패' });
+  const pwMatch = user.password.startsWith('$2') ? bcrypt.compareSync(password, user.password) : (user.password === password);
+  if (!pwMatch) return res.status(401).json({ error: '로그인 실패' });
   const token = jwt.sign({ id: user.id, username: user.username, name: user.name, role: user.role, staff_id: user.staff_id }, SECRET, { expiresIn: '30d' });
   res.json({ token, user: { id: user.id, name: user.name, role: user.role, staff_id: user.staff_id } });
 });
@@ -104,13 +84,15 @@ app.get('/api/staff', (req, res) => {
 app.post('/api/staff', (req, res) => {
   const { name, name_mn, role, position, business, phone, work_days, salary } = req.body;
   const r = db.prepare("INSERT INTO staff (name, name_mn, role, position, business, phone, work_days, salary) VALUES (?,?,?,?,?,?,?,?)")
-    .run(name, name_mn, role, position, business, phone, work_days || '월,화,수,목,금,토', salary ?? 0);
+    .run(name, name_mn, role, position, business, phone, work_days || '월,화,수,목,금,토');
   // Auto-create user account
   const uname = name.replace(/\s/g, '').toLowerCase();
+  const tempPw = String(Math.floor(Math.random()*9000)+1000);
   try {
     db.prepare("INSERT INTO users (username, password, name, role, staff_id) VALUES (?,?,?,?,?)")
-      .run(uname, '1234', name, 'staff', r.lastInsertRowid);
+      .run(uname, bcrypt.hashSync(tempPw, 10), name, 'staff', r.lastInsertRowid);
   } catch(e) {}
+  console.log(`[auto-user] ${uname} / temp password: ${tempPw}`);
   res.json({ id: r.lastInsertRowid });
 });
 
@@ -150,9 +132,10 @@ app.delete('/api/staff/:id', (req, res) => {
 app.get('/api/templates', (req, res) => {
   const { business } = req.query;
   let sql = "SELECT * FROM task_templates WHERE is_active=1";
-  if (business) { sql += ` AND business='${business}'`; }
+  const params = [];
+  if (business) { sql += " AND business=?"; params.push(business); }
   sql += " ORDER BY business, sort_order, time_slot";
-  res.json(db.prepare(sql).all());
+  res.json(db.prepare(sql).all(...params));
 });
 
 app.post('/api/templates', (req, res) => {
@@ -179,8 +162,8 @@ const dayNames = ['일','월','화','수','목','금','토'];
 
 // 오늘 업무 자동 생성
 app.post('/api/tasks/generate', (req, res) => {
-  const today = req.body.date || new Date().toISOString().split('T')[0];
-  const dayOfWeek = dayNames[new Date(today+'T00:00:00+08:00').getDay()];
+  const today = req.body.date || todayKST();
+  const dayOfWeek = dayNames[new Date(today+'T00:00:00+09:00').getDay()];
   
   // 이미 생성됐으면 스킵
   const existing = db.prepare("SELECT COUNT(*) as cnt FROM daily_tasks WHERE task_date=?").get(today).cnt;
@@ -228,7 +211,7 @@ app.get('/api/tasks', (req, res) => {
   if (date_from && date_to) {
     sql += " AND dt.task_date BETWEEN ? AND ?"; params.push(date_from, date_to);
   } else {
-    const d = date || new Date().toISOString().split('T')[0];
+    const d = date || todayKST();
     sql += " AND dt.task_date=?"; params.push(d);
   }
   if (business) { sql += " AND dt.business=?"; params.push(business); }
@@ -240,8 +223,8 @@ app.get('/api/tasks', (req, res) => {
 
 // 주간 업무 자동 생성
 app.post('/api/tasks/generate-week', (req, res) => {
-  const startDate = req.body.start || new Date().toISOString().split('T')[0];
-  const start = new Date(startDate + 'T00:00:00+08:00');
+  const startDate = req.body.start || todayKST();
+  const start = new Date(startDate + 'T00:00:00+09:00');
   let totalCount = 0;
   
   for (let i = 0; i < 7; i++) {
@@ -287,10 +270,6 @@ app.post('/api/tasks/generate-week', (req, res) => {
 // 업무 상태/내용 업데이트 (부분 업데이트)
 app.put('/api/tasks/:id', (req, res) => {
   const allowed = ['status', 'notes', 'title', 'description', 'business', 'staff_id', 'task_date'];
-  if ('staff_id' in req.body && req.body.staff_id != null
-      && !db.prepare('SELECT 1 FROM staff WHERE id=?').get(req.body.staff_id)) {
-    return res.status(400).json({ error: 'invalid_staff_id' });
-  }
   const fields = []; const vals = [];
   for (const k of allowed) if (k in req.body) { fields.push(k + '=?'); vals.push(req.body[k]); }
   if (req.body.status === 'done') fields.push("completed_at=datetime('now')");
@@ -312,17 +291,14 @@ app.delete('/api/tasks/:id', (req, res) => {
 // 특별 업무 추가
 app.post('/api/tasks', (req, res) => {
   const { task_date, staff_id, title, description, business, priority } = req.body;
-  if (staff_id != null && !db.prepare('SELECT 1 FROM staff WHERE id=?').get(staff_id)) {
-    return res.status(400).json({ error: 'invalid_staff_id' });
-  }
   const r = db.prepare("INSERT INTO daily_tasks (task_date, staff_id, title, description, business) VALUES (?,?,?,?,?)")
-    .run(task_date || new Date().toISOString().split('T')[0], staff_id, title, description, business);
+    .run(task_date || todayKST(), staff_id, title, description, business);
   res.json({ id: r.lastInsertRowid });
 });
 
 // ====== DASHBOARD (대표용) ======
 app.get('/api/dashboard', (req, res) => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayKST();
   
   const totalStaff = db.prepare("SELECT COUNT(*) as cnt FROM staff WHERE is_active=1").get().cnt;
   const todayTasks = db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN status='done' THEN 1 ELSE 0 END) as done FROM daily_tasks WHERE task_date=?").get(today);
@@ -348,35 +324,11 @@ app.get('/api/dashboard', (req, res) => {
   res.json({ totalStaff, todayTasks, byBusiness, byStaff, pending });
 });
 
-// ====== 근태 (관리자/매니저 조회) ======
-app.get('/api/attendance', (req, res) => {
-  const date = req.query.date || new Date().toISOString().split('T')[0];
-  const isAdmin = req.user.role === 'admin';
-  const isManager = req.user.role === 'manager';
-  if (!isAdmin && !isManager) return res.status(403).json({ error: 'forbidden' });
-
-  let sql = `
-    SELECT s.id as staff_id, s.name, s.business,
-           a.check_in, a.check_out, a.note
-    FROM staff s
-    LEFT JOIN attendance a ON a.staff_id = s.id AND a.date = ?
-    WHERE s.is_active = 1
-  `;
-  const params = [date];
-  if (isManager) {
-    const myBiz = getMyBusiness(req);
-    if (myBiz) { sql += ' AND s.business = ?'; params.push(myBiz); }
-  }
-  sql += ' ORDER BY s.business, s.name';
-  const rows = db.prepare(sql).all(...params);
-  res.json({ date, rows });
-});
-
 // ====== REPORT ======
 app.get('/api/report', (req, res) => {
   const { from, to } = req.query;
-  const f = from || new Date(Date.now() - 7*86400000).toISOString().split('T')[0];
-  const t = to || new Date().toISOString().split('T')[0];
+  const f = from || new Date(Date.now() + 9*3600000 - 7*86400000).toISOString().slice(0,10);
+  const t = to || todayKST();
   
   const daily = db.prepare(`
     SELECT task_date, COUNT(*) as total, SUM(CASE WHEN status='done' THEN 1 ELSE 0 END) as done
@@ -406,7 +358,7 @@ app.put('/api/accounts/:id', (req, res) => {
     if (dup) return res.status(400).json({ error: '이미 사용 중인 아이디입니다' });
     db.prepare("UPDATE users SET username=? WHERE id=?").run(username, req.params.id);
   }
-  if (password) db.prepare("UPDATE users SET password=? WHERE id=?").run(password, req.params.id);
+  if (password) db.prepare("UPDATE users SET password=? WHERE id=?").run(bcrypt.hashSync(password, 10), req.params.id);
   if (name) db.prepare("UPDATE users SET name=? WHERE id=?").run(name, req.params.id);
   res.json({ ok: true });
 });
@@ -430,8 +382,9 @@ app.put('/api/my-account', (req, res) => {
 
   // 비밀번호 변경은 현재 비밀번호 확인 필수
   if (new_password !== undefined && new_password !== '') {
-    if (user.password !== password) return res.status(400).json({ error: '현재 비밀번호가 틀립니다' });
-    db.prepare("UPDATE users SET password=? WHERE id=?").run(new_password, req.user.id);
+    const curMatch = user.password.startsWith('$2') ? bcrypt.compareSync(password || '', user.password) : (user.password === password);
+    if (!curMatch) return res.status(400).json({ error: '현재 비밀번호가 틀립니다' });
+    db.prepare("UPDATE users SET password=? WHERE id=?").run(bcrypt.hashSync(new_password, 10), req.user.id);
   }
 
   // 이름/전화는 staff 테이블 업데이트, users.name도 같이 sync
@@ -454,53 +407,6 @@ app.get('/api/salary-summary', (req, res) => {
   const staff = db.prepare("SELECT business, SUM(salary) as total, COUNT(*) as cnt FROM staff WHERE is_active=1 GROUP BY business").all();
   const grand = db.prepare("SELECT SUM(salary) as total, COUNT(*) as cnt FROM staff WHERE is_active=1").get();
   res.json({ byBusiness: staff, total: grand.total || 0, count: grand.cnt || 0 });
-});
-
-// === 강제 체크인/아웃 (사장·매니저, GPS 검증 우회) ===
-function forceAttendance(type) {
-  return (req, res) => {
-    const { staff_id, date, reason } = req.body || {};
-    if (!staff_id || !date || !reason) return res.status(400).json({ error: 'missing_fields' });
-    const target = db.prepare("SELECT id, business FROM staff WHERE id=? AND is_active=1").get(staff_id);
-    if (!target) return res.status(404).json({ error: 'staff_not_found' });
-
-    const isAdmin = req.user.role === 'admin';
-    const isManager = req.user.role === 'manager';
-    if (!isAdmin && !isManager) return res.status(403).json({ error: 'forbidden' });
-    if (isManager) {
-      const myBiz = getMyBusiness(req);
-      if (!myBiz || target.business !== myBiz) return res.status(403).json({ error: 'forbidden_business' });
-    }
-
-    const now = new Date().toISOString();
-    const noteAppend = `\n[강제 ${type} by ${req.user.name}: ${reason}]`;
-    const exists = db.prepare("SELECT id, check_in, check_out, note FROM attendance WHERE staff_id=? AND date=?").get(staff_id, date);
-    const timeCol = type === 'in' ? 'check_in' : 'check_out';
-    const overrideCol = type === 'in' ? 'check_in_override_by' : 'check_out_override_by';
-
-    if (exists) {
-      const newNote = (exists.note || '') + noteAppend;
-      db.prepare(`UPDATE attendance SET ${timeCol}=?, ${overrideCol}=?, note=? WHERE id=?`)
-        .run(now, req.user.id, newNote, exists.id);
-    } else {
-      db.prepare(`INSERT INTO attendance (staff_id, date, ${timeCol}, ${overrideCol}, note) VALUES (?,?,?,?,?)`)
-        .run(staff_id, date, now, req.user.id, noteAppend.trim());
-    }
-    res.json({ ok: true, [timeCol]: now, override_by: req.user.id });
-  };
-}
-
-app.post('/api/attendance/force-check-in',  forceAttendance('in'));
-app.post('/api/attendance/force-check-out', forceAttendance('out'));
-
-// 글로벌 에러 핸들러 — 스택 트레이스 노출 방지, SQLite 제약 위반은 400
-app.use((err, req, res, next) => {
-  if (res.headersSent) return next(err);
-  console.error(`[${req.method} ${req.originalUrl}]`, err);
-  if (err && typeof err.code === 'string' && err.code.startsWith('SQLITE_CONSTRAINT')) {
-    return res.status(400).json({ error: 'constraint_violation' });
-  }
-  res.status(500).json({ error: 'server_error' });
 });
 
 app.listen(PORT, () => console.log(`Staff Manager on port ${PORT}`));
