@@ -163,7 +163,7 @@ function initApp(){
   document.getElementById('h-user').textContent=user.name;
   
   const tabs = user.role==='admin' ?
-    [{id:'dashboard',icon:'📊',label:'대시보드'},{id:'tasks',icon:'✅',label:'오늘 업무'},{id:'staff',icon:'👥',label:'직원'},{id:'accounts',icon:'🔑',label:'계정'},{id:'templates',icon:'📋',label:'업무 템플릿'},{id:'report',icon:'📈',label:'리포트'},{id:'rp-admin',icon:'📋',label:'업무보고 관리'}] :
+    [{id:'dashboard',icon:'📊',label:'대시보드'},{id:'tasks',icon:'✅',label:'오늘 업무'},{id:'staff',icon:'👥',label:'직원'},{id:'accounts',icon:'🔑',label:'계정'},{id:'report',icon:'📈',label:'리포트'},{id:'rp-admin',icon:'📋',label:'업무보고 관리'}] :
     user.role==='manager' ?
     [{id:'my-tasks',icon:'✅',label:'내 업무'},{id:'team',icon:'👥',label:'우리 팀'},{id:'my-staff',icon:'👤',label:'직원 관리'},{id:'my-account',icon:'🔑',label:'내 계정'}] :
     [{id:'my-tasks',icon:'✅',label:'내 업무'},{id:'team',icon:'👥',label:'우리 팀'},{id:'my-account',icon:'🔑',label:'내 계정'}];
@@ -192,7 +192,6 @@ function switchTab(tab){
   else if(tab==='tasks')loadTasks();
   else if(tab==='staff')loadStaff();
   else if(tab==='accounts')loadAccounts();
-  else if(tab==='templates')loadTemplates();
   else if(tab==='report')loadReport();
   else if(tab==='my-tasks')loadMyTasks();
   else if(tab==='team')loadTeam();

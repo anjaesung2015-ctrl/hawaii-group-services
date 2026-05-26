@@ -128,35 +128,6 @@ app.delete('/api/staff/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// ====== TASK TEMPLATES ======
-app.get('/api/templates', (req, res) => {
-  const { business } = req.query;
-  let sql = "SELECT * FROM task_templates WHERE is_active=1";
-  const params = [];
-  if (business) { sql += " AND business=?"; params.push(business); }
-  sql += " ORDER BY business, sort_order, time_slot";
-  res.json(db.prepare(sql).all(...params));
-});
-
-app.post('/api/templates', (req, res) => {
-  const { business, position, title, description, time_slot, priority, recurring } = req.body;
-  const r = db.prepare("INSERT INTO task_templates (business, position, title, description, time_slot, priority, recurring) VALUES (?,?,?,?,?,?,?)")
-    .run(business, position, title, description, time_slot, priority || 'normal', recurring || 'daily');
-  res.json({ id: r.lastInsertRowid });
-});
-
-app.put('/api/templates/:id', (req, res) => {
-  const { business, position, title, description, time_slot, priority, recurring } = req.body;
-  db.prepare("UPDATE task_templates SET business=?,position=?,title=?,description=?,time_slot=?,priority=?,recurring=? WHERE id=?")
-    .run(business, position, title, description, time_slot, priority, recurring, req.params.id);
-  res.json({ ok: true });
-});
-
-app.delete('/api/templates/:id', (req, res) => {
-  db.prepare("UPDATE task_templates SET is_active=0 WHERE id=?").run(req.params.id);
-  res.json({ ok: true });
-});
-
 // ====== DAILY TASKS ======
 const dayNames = ['일','월','화','수','목','금','토'];
 
