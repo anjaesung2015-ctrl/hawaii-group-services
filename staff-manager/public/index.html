@@ -139,18 +139,7 @@ async function apiFetch(url, opts={}){
   return r;
 }
 
-async function forceAttendance(staffId, staffName, type, date){
-  const reason = prompt('강제 ' + (type==='in'?'출근':'퇴근') + ' (' + staffName + '): 사유를 입력하세요.');
-  if (!reason) return;
-  const r = await apiFetch('/api/attendance/force-check-' + type, {
-    method:'POST',
-    body:{ staff_id: staffId, date, reason }
-  });
-  const d = await r.json().catch(()=>({}));
-  if (r.ok) { alert('완료'); loadDashboard(); }
-  else if (d.error === 'forbidden_business') alert('본인 사업장 직원만 처리할 수 있습니다.');
-  else alert('실패: ' + (d.error || r.status));
-}
+// forceAttendance removed
 
 function doLogin(){
   const u=document.getElementById('lg-user').value;
@@ -216,10 +205,7 @@ async function loadDashboard(){
   // 먼저 오늘 업무 생성
   await apiFetch('/api/tasks/generate',{method:'POST',body:{date:currentDate}});
   const d=await apiFetch('/api/dashboard').then(r=>r.json());
-  const att=await apiFetch('/api/attendance?date='+encodeURIComponent(currentDate)).then(r=>r.json()).catch(()=>({rows:[]}));
   const pct=d.todayTasks.total?Math.round(100*d.todayTasks.done/d.todayTasks.total):0;
-  const fmtTime=t=>t?new Date(t).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',hour12:false}):'<span style="color:var(--text2)">-</span>';
-  const presentCount=(att.rows||[]).filter(r=>r.check_in).length;
   
   document.getElementById('content').innerHTML=`
     <div style="margin-bottom:1rem">
@@ -247,22 +233,6 @@ async function loadDashboard(){
       </div>`;
     }).join('')}
     
-    <h3 style="font-size:1rem;margin:1rem 0 0.8rem">⏰ 근태 (${presentCount}/${(att.rows||[]).length} 출근)</h3>
-    <div class="card"><table>
-      <thead><tr><th>직원</th><th>사업장</th><th>출근</th><th>퇴근</th><th>강제</th></tr></thead>
-      <tbody>${(att.rows||[]).map(r=>{
-        const inBtn = r.check_in ? '' : `<button onclick="forceAttendance(${r.staff_id},'${r.name.replace(/'/g,"\\'")}','in','${currentDate}')" style="font-size:0.75em;padding:2px 6px;background:#16a34a;color:white;border:none;border-radius:4px;cursor:pointer">출근</button>`;
-        const outBtn = (r.check_in && !r.check_out) ? `<button onclick="forceAttendance(${r.staff_id},'${r.name.replace(/'/g,"\\'")}','out','${currentDate}')" style="font-size:0.75em;padding:2px 6px;background:#dc2626;color:white;border:none;border-radius:4px;cursor:pointer;margin-left:4px">퇴근</button>` : '';
-        return `<tr>
-          <td><strong>${r.name}</strong></td>
-          <td style="color:var(--text2)">${r.business||''}</td>
-          <td>${fmtTime(r.check_in)}</td>
-          <td>${fmtTime(r.check_out)}</td>
-          <td>${inBtn}${outBtn}</td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table></div>
-
     <h3 style="font-size:1rem;margin:1rem 0 0.8rem">👤 직원별 진행</h3>
     <div class="card"><table>
       <thead><tr><th>직원</th><th>사업장</th><th>완료</th><th>진행률</th></tr></thead>
@@ -975,52 +945,34 @@ function rpRenderApp(staff) {
       <button class="mini" id="rp-logout">гарах (로그아웃)</button>
     </div>
     <div class="tabs" style="margin-bottom:12px">
-      <button class="tab active" data-rptab="daily">📝 Өдрийн / 일일</button>
-      <button class="tab" data-rptab="weekly">📅 Долоо хоногийн / 주간</button>
+      <button class="tab active" data-rptab="assignments">📌 Даалгавар / 업무지시</button>
+      <button class="tab" data-rptab="daily">📝 Өдрийн / 일일</button>
+      <button class="tab" data-rptab="weekly">📅 7 хоног / 주간</button>
+      <button class="tab" data-rptab="monthly">📆 Сарын / 월간</button>
+      <button class="tab" data-rptab="yearly">📊 Жилийн / 연간</button>
       <button class="tab" data-rptab="history">📚 Түүх / 이력</button>
-      <button class="tab" data-rptab="myinfo">👤 Миний мэдээлэл / 내 정보</button>
     </div>
-    <div class="rp-panel" id="rp-daily">
-      <div id="rp-attendance" style="background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:12px;margin-bottom:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <h4 style="margin:0;font-size:14px">⏰ Ирц / 근태</h4>
-          <span id="rp-att-status" style="font-size:11px;color:#9a3412"></span>
-        </div>
-        <div id="rp-att-row" style="display:flex;gap:8px"></div>
-      </div>
-      <div id="rp-mychecklist" style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;margin-bottom:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <h4 style="margin:0;font-size:14px">✅ Жагсаалт / 내 체크리스트</h4>
-          <span id="rp-mc-progress" style="font-size:12px;color:#15803d;font-weight:600"></span>
-        </div>
-        <div id="rp-mc-list" style="display:flex;flex-direction:column;gap:4px"></div>
-        <div style="display:flex;gap:6px;margin-top:8px">
-          <input type="text" id="rp-mc-input" placeholder="нэмэх / 항목 추가..." onkeydown="if(event.key==='Enter')rpMyChecklistAdd()" style="flex:1;padding:7px;border:1px solid #cbd5e1;border-radius:6px;font-size:13px">
-          <button type="button" onclick="rpMyChecklistAdd()" style="padding:7px 12px;background:#16a34a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">+ нэмэх</button>
-        </div>
-      </div>
+    <div class="rp-panel" id="rp-assignments">
+      <div id="rp-assignments-list" style="display:flex;flex-direction:column;gap:6px"></div>
+      <div id="rp-no-assignments" style="display:none;text-align:center;color:var(--text2);padding:20px;font-size:13px">Одоогоор даалгавар байхгүй / 현재 업무지시 없음</div>
+    </div>
+    <div class="rp-panel" id="rp-daily" style="display:none">
       <div class="field"><label>📝 Өнөөдөр хийсэн зүйл (오늘 한 일)</label>
         <textarea id="rp-today" rows="4" placeholder="..."></textarea></div>
       <div class="field"><label>📅 Маргааш хийх зүйл (내일 할 일)</label>
         <textarea id="rp-tomorrow" rows="3" placeholder="..."></textarea></div>
       <div class="field"><label>⚠️ Асуудал / Санал (이슈/건의)</label>
         <textarea id="rp-issue" rows="2" placeholder=""></textarea></div>
-      <div class="field" id="rp-assignments-wrap" style="display:none">
-        <label>📌 Сайн дарагын даалгавар / 사장님 지시</label>
-        <div id="rp-assignments-list" style="display:flex;flex-direction:column;gap:6px"></div>
-      </div>
       <button class="primary" id="rp-submit-daily" style="width:100%;margin-top:8px">📤 илгээх (제출)</button>
       <div id="rp-daily-msg" style="text-align:center;font-size:13px;margin-top:8px;min-height:20px"></div>
     </div>
     <div class="rp-panel" id="rp-weekly" style="display:none"></div>
+    <div class="rp-panel" id="rp-monthly" style="display:none"></div>
+    <div class="rp-panel" id="rp-yearly" style="display:none"></div>
     <div class="rp-panel" id="rp-history" style="display:none"><div id="rp-history-list"></div></div>
-    <div class="rp-panel" id="rp-myinfo" style="display:none"></div>
   `;
 
-  // 지시 로드 (사장님이 내려준 업무)
   rpLoadAssignments();
-  rpLoadMyChecklist();
-  rpLoadAttendance();
 
   document.querySelectorAll('[data-rptab]').forEach(btn => {
     btn.onclick = () => {
@@ -1030,7 +982,8 @@ function rpRenderApp(staff) {
       document.getElementById('rp-' + btn.dataset.rptab).style.display = 'block';
       if (btn.dataset.rptab === 'history') rpLoadHistory();
       else if (btn.dataset.rptab === 'weekly') rpInitWeekly();
-      else if (btn.dataset.rptab === 'myinfo') rpInitMyInfo();
+      else if (btn.dataset.rptab === 'monthly') rpInitMonthly();
+      else if (btn.dataset.rptab === 'yearly') rpInitYearly();
     };
   });
 
@@ -1042,17 +995,11 @@ function rpRenderApp(staff) {
     });
   };
 
-  var __cAdd = document.getElementById('rp-checklist-add');
-  if (__cAdd) __cAdd.onclick = function() { rpAddChecklistItem(); };
   document.getElementById('rp-submit-daily').onclick = () => {
     const fields = {
       today: document.getElementById('rp-today').value.trim(),
       tomorrow: document.getElementById('rp-tomorrow').value.trim(),
-      issue: document.getElementById('rp-issue').value.trim(),
-      checklist: Array.from(document.querySelectorAll('#rp-checklist-items .rp-cl-item')).map(el => ({
-        text: el.querySelector('input[type=text]').value.trim(),
-        done: el.querySelector('input[type=checkbox]').checked
-      })).filter(it => it.text)
+      issue: document.getElementById('rp-issue').value.trim()
     };
     const msg = document.getElementById('rp-daily-msg');
     msg.style.color = 'var(--text)';
@@ -1064,11 +1011,6 @@ function rpRenderApp(staff) {
       if (data.ok) {
         msg.style.color = '#10b981';
         msg.textContent = `✅ ${data.action==='created'?'илгээгдлээ':'шинэчлэгдлээ'} (${data.action==='created'?'제출 완료':'수정 완료'})`;
-        document.getElementById('rp-today').value = '';
-        document.getElementById('rp-tomorrow').value = '';
-        document.getElementById('rp-issue').value = '';
-        const __cl = document.getElementById('rp-checklist-items');
-        if (__cl) __cl.innerHTML = '';
       } else {
         msg.style.color = '#b91c1c';
         msg.textContent = '❌ ' + (data.error || 'fail');
@@ -1085,183 +1027,104 @@ function rpRenderApp(staff) {
         document.getElementById('rp-today').value = d.field_today || '';
         document.getElementById('rp-tomorrow').value = d.field_tomorrow || '';
         document.getElementById('rp-issue').value = d.field_issue || '';
-        try {
-          const list = JSON.parse(d.field_checklist || '[]');
-          list.forEach(it => rpAddChecklistItem(it.text, it.done));
-        } catch(e) {}
       });
     }
   });
 }
 
-function rpLoadAttendance() {
-  const row = document.getElementById('rp-att-row');
-  const status = document.getElementById('rp-att-status');
-  if (!row) return;
-  row.innerHTML = '<div style="color:#9a3412;font-size:12px">Уншиж байна...</div>';
-  fetch(API + '/api/reports/attendance/today', { credentials:'include' })
-    .then(r=>r.json()).then(d => {
-      const fmt = (iso) => {
-        if (!iso) return '';
-        const dt = new Date(iso);
-        const hh = String(dt.getHours()).padStart(2,'0');
-        const mm = String(dt.getMinutes()).padStart(2,'0');
-        return hh + ':' + mm;
-      };
-      const inT = fmt(d.check_in), outT = fmt(d.check_out);
-      let leftBtn, rightBtn;
-      if (!d.check_in) {
-        leftBtn = '<button type="button" onclick="rpAttCheckIn()" style="flex:1;padding:12px;background:#16a34a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600">▶ Ирэх / 출근</button>';
-      } else {
-        leftBtn = '<div style="flex:1;padding:12px;background:#dcfce7;color:#166534;border-radius:8px;text-align:center;font-size:14px;font-weight:600">✓ '+inT+' Ирсэн</div>';
-      }
-      if (!d.check_out) {
-        const disabled = !d.check_in;
-        rightBtn = '<button type="button" onclick="rpAttCheckOut()" '+(disabled?'disabled':'')+' style="flex:1;padding:12px;background:'+(disabled?'#cbd5e1':'#dc2626')+';color:#fff;border:none;border-radius:8px;cursor:'+(disabled?'not-allowed':'pointer')+';font-size:15px;font-weight:600">◼ Явах / 퇴근</button>';
-      } else {
-        rightBtn = '<div style="flex:1;padding:12px;background:#fee2e2;color:#991b1b;border-radius:8px;text-align:center;font-size:14px;font-weight:600">✓ '+outT+' Явсан</div>';
-      }
-      row.innerHTML = leftBtn + rightBtn;
-      // duration display
-      if (d.check_in && d.check_out) {
-        const ms = new Date(d.check_out) - new Date(d.check_in);
-        const h = Math.floor(ms/3600000), m = Math.floor((ms%3600000)/60000);
-        if (status) status.textContent = h + 'ц ' + m + 'м';
-      } else if (status) {
-        status.textContent = '';
-      }
-    }).catch(()=>{ row.innerHTML = '<div style="color:#b91c1c;font-size:12px">불러오기 실패</div>'; });
-}
-
-async function rpGetMyLocation() {
-  if (!navigator.geolocation) throw new Error('GPS_NOT_SUPPORTED');
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-      err => reject(err),
-      { timeout: 10000, enableHighAccuracy: true, maximumAge: 0 }
-    );
+function rpInitMonthly() {
+  const el = document.getElementById('rp-monthly');
+  el.innerHTML = `
+    <div class="field"><label>🌟 Энэ сарын ажлын үр дүн (이번 달 성과)</label><textarea id="rp-m-done" rows="5"></textarea></div>
+    <div class="field"><label>📅 Дараа сарын төлөвлөгөө (다음 달 계획)</label><textarea id="rp-m-plan" rows="4"></textarea></div>
+    <div class="field"><label>💡 Санал / Хүсэлт (건의사항)</label><textarea id="rp-m-suggestion" rows="3"></textarea></div>
+    <button class="primary" id="rp-submit-monthly" style="width:100%;margin-top:8px">📤 илгээх (제출)</button>
+    <div id="rp-monthly-msg" style="text-align:center;font-size:13px;margin-top:8px;min-height:20px"></div>
+  `;
+  fetch(API + '/api/reports/my-reports', { credentials:'include' }).then(r=>r.json()).then(rows => {
+    const cur = new Date().toISOString().slice(0,7);
+    const m = rows.find(r => r.report_type==='monthly' && r.report_date===cur);
+    if (m) {
+      fetch(API + '/api/reports/my-reports/' + m.id, { credentials:'include' }).then(r=>r.json()).then(d => {
+        const cd = document.getElementById('rp-m-done'); if (cd) cd.value = d.field_done || '';
+        const cp = document.getElementById('rp-m-plan'); if (cp) cp.value = d.field_plan || '';
+        const cs = document.getElementById('rp-m-suggestion'); if (cs) cs.value = d.field_suggestion || '';
+      });
+    }
   });
+  document.getElementById('rp-submit-monthly').onclick = () => {
+    rpSubmitReport('monthly', {
+      done: document.getElementById('rp-m-done').value.trim(),
+      plan: document.getElementById('rp-m-plan').value.trim(),
+      suggestion: document.getElementById('rp-m-suggestion').value.trim()
+    }, 'rp-monthly-msg');
+  };
 }
 
-function rpAttHandleError(d, status) {
-  if (d.error === 'out_of_range') return alert('사업장에서 약 ' + d.distance_m + 'm 떨어져 있습니다.\n사장님께 강제 체크인을 요청하세요.');
-  if (d.error === 'business_not_configured') return alert(d.business + ' 사업장 위치가 아직 등록되지 않았습니다.\n사장님이 먼저 한 번 체크인하시면 자동 등록됩니다.');
-  if (d.error === 'gps_too_inaccurate') return alert('GPS 신호가 약합니다 (정확도 ' + Math.round(d.accuracy_m) + 'm).\n야외에서 다시 시도하세요.');
-  if (d.error === 'no_business_assigned') return alert('소속 사업장이 지정되지 않았습니다.\n사장님께 문의하세요.');
-  if (d.error === 'location_required') return alert('위치 정보가 필요합니다.');
-  if (d.error === 'already_checked_in') return alert('이미 출근 체크인 완료');
-  if (d.error === 'already_checked_out') return alert('이미 퇴근 체크아웃 완료');
-  if (d.error === 'check_in_required') return alert('먼저 출근 체크인을 해주세요.');
-  alert('실패: ' + (d.error || status || 'unknown'));
-}
-
-async function rpAttCall(endpoint) {
-  let coords;
-  try {
-    coords = await rpGetMyLocation();
-  } catch (err) {
-    if (err && err.code === 1) return alert('위치 권한이 거부됐습니다.\n브라우저 설정에서 위치 권한을 허용해주세요.');
-    if (err && err.code === 3) return alert('위치 확인 시간 초과.\n야외에서 다시 시도해주세요.');
-    if (err && err.message === 'GPS_NOT_SUPPORTED') return alert('이 브라우저는 GPS를 지원하지 않습니다.');
-    return alert('위치 확인 실패: ' + (err && err.message || 'unknown'));
-  }
-  const res = await fetch(API + endpoint, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(coords),
+function rpInitYearly() {
+  const el = document.getElementById('rp-yearly');
+  el.innerHTML = `
+    <div class="field"><label>🏆 Энэ жилийн ажлын амжилт (올해 성과)</label><textarea id="rp-y-done" rows="6"></textarea></div>
+    <div class="field"><label>📅 Ирэх жилийн зорилго (내년 계획)</label><textarea id="rp-y-plan" rows="5"></textarea></div>
+    <div class="field"><label>💡 Санал / Хүсэлт (건의사항)</label><textarea id="rp-y-suggestion" rows="3"></textarea></div>
+    <button class="primary" id="rp-submit-yearly" style="width:100%;margin-top:8px">📤 илгээх (제출)</button>
+    <div id="rp-yearly-msg" style="text-align:center;font-size:13px;margin-top:8px;min-height:20px"></div>
+  `;
+  fetch(API + '/api/reports/my-reports', { credentials:'include' }).then(r=>r.json()).then(rows => {
+    const cur = String(new Date().getFullYear());
+    const y = rows.find(r => r.report_type==='yearly' && r.report_date===cur);
+    if (y) {
+      fetch(API + '/api/reports/my-reports/' + y.id, { credentials:'include' }).then(r=>r.json()).then(d => {
+        const cd = document.getElementById('rp-y-done'); if (cd) cd.value = d.field_done || '';
+        const cp = document.getElementById('rp-y-plan'); if (cp) cp.value = d.field_plan || '';
+        const cs = document.getElementById('rp-y-suggestion'); if (cs) cs.value = d.field_suggestion || '';
+      });
+    }
   });
-  const d = await res.json().catch(() => ({}));
-  if (res.ok) {
-    if (d.bootstrapped) alert('첫 체크인 — 이 위치가 사업장 기준점으로 등록됐습니다.');
-    rpLoadAttendance();
-  } else {
-    rpAttHandleError(d, res.status);
-  }
+  document.getElementById('rp-submit-yearly').onclick = () => {
+    rpSubmitReport('yearly', {
+      done: document.getElementById('rp-y-done').value.trim(),
+      plan: document.getElementById('rp-y-plan').value.trim(),
+      suggestion: document.getElementById('rp-y-suggestion').value.trim()
+    }, 'rp-yearly-msg');
+  };
 }
 
-function rpAttCheckIn() {
-  rpAttCall('/api/reports/attendance/check-in');
-}
-
-function rpAttCheckOut() {
-  if (!confirm('Явах уу? (퇴근하시겠습니까?)')) return;
-  rpAttCall('/api/reports/attendance/check-out');
-}
-
-function rpLoadMyChecklist() {
-  const listEl = document.getElementById('rp-mc-list');
-  const progEl = document.getElementById('rp-mc-progress');
-  if (!listEl) return;
-  listEl.innerHTML = '<div style="color:#9b9b98;font-size:12px">Уншиж байна...</div>';
-  fetch(API + '/api/reports/my-checklist', { credentials:'include' })
-    .then(r=>r.json()).then(d => {
-      const items = d.items || [];
-      if (!items.length) {
-        listEl.innerHTML = '<div style="color:#6b6b6a;font-size:12px;padding:6px 0">Жагсаалт хоосон байна. Доор шинэ зүйл нэмнэ үү.</div>';
-        if (progEl) progEl.textContent = '';
-        return;
-      }
-      const done = items.filter(it=>it.done).length;
-      if (progEl) progEl.textContent = done + ' / ' + items.length;
-      listEl.innerHTML = items.map(it => {
-        const txtStyle = it.done ? 'text-decoration:line-through;color:#86efac' : 'color:#1e293b';
-        return '<div style="display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid #dcfce7">' +
-          '<input type="checkbox" ' + (it.done?'checked':'') + ' onchange="rpMyChecklistToggle('+it.id+', this.checked)" style="width:18px;height:18px;cursor:pointer;accent-color:#16a34a">' +
-          '<div style="flex:1;font-size:13px;'+txtStyle+'">'+rpaEsc(it.text)+'</div>' +
-          '<button type="button" onclick="rpMyChecklistDelete('+it.id+')" title="устгах" style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:13px;padding:2px 5px">🗑</button>' +
-          '</div>';
-      }).join('');
-    }).catch(()=>{ listEl.innerHTML = '<div style="color:#b91c1c;font-size:12px">불러오기 실패</div>'; });
-}
-
-function rpMyChecklistAdd() {
-  const inp = document.getElementById('rp-mc-input');
-  const text = (inp.value||'').trim();
-  if (!text) return;
-  inp.disabled = true;
-  fetch(API + '/api/reports/my-checklist', {
-    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-    body: JSON.stringify({ text })
-  }).then(r=>r.json()).then(d => {
-    inp.disabled = false;
-    if (d.ok) { inp.value = ''; rpLoadMyChecklist(); inp.focus(); }
-    else alert('Алдаа: ' + (d.error||'unknown'));
-  }).catch(()=>{ inp.disabled = false; alert('сүлжээний алдаа'); });
-}
-
-function rpMyChecklistToggle(id, done) {
-  fetch(API + '/api/reports/my-checklist/' + id + '/check', {
-    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-    body: JSON.stringify({ done: !!done })
-  }).then(()=>rpLoadMyChecklist());
-}
-
-function rpMyChecklistDelete(id) {
-  if (!confirm('Бүр мөсөн устгах уу? (영구 삭제)')) return;
-  fetch(API + '/api/reports/my-checklist/' + id, {
-    method:'DELETE', credentials:'include'
-  }).then(()=>rpLoadMyChecklist());
+function rpSubmitReport(type, fields, msgId) {
+  const msg = document.getElementById(msgId);
+  msg.style.color = 'var(--text)';
+  msg.textContent = '⏳ илгээж байна... (전송 중)';
+  fetch(API + '/api/reports/submit', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ report_type: type, fields }), credentials:'include'
+  }).then(r=>r.json()).then(data => {
+    if (data.ok) {
+      msg.style.color = '#10b981';
+      msg.textContent = `✅ ${data.action==='created'?'илгээгдлээ':'шинэчлэгдлээ'} (${data.action==='created'?'제출 완료':'수정 완료'})`;
+    } else {
+      msg.style.color = '#b91c1c';
+      msg.textContent = '❌ ' + (data.error || 'fail');
+    }
+  });
 }
 
 function rpLoadAssignments() {
-  const wrap = document.getElementById('rp-assignments-wrap');
   const list = document.getElementById('rp-assignments-list');
-  if (!wrap || !list) return;
+  const noMsg = document.getElementById('rp-no-assignments');
+  if (!list) return;
   fetch(API+'/api/reports/my-assignments', { credentials:'include' })
     .then(r => r.ok ? r.json() : [])
     .then(rows => {
-      if (!rows.length) { wrap.style.display = 'none'; return; }
-      wrap.style.display = '';
+      if (!rows.length) { list.innerHTML = ''; if(noMsg) noMsg.style.display = 'block'; return; }
+      if(noMsg) noMsg.style.display = 'none';
       list.innerHTML = rows.map(a => {
         const safeTitle = String(a.title||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
         const safeDesc = String(a.description||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
         const tag = a.recurrence==='once' ? '<span style="font-size:10px;color:#b45309;margin-left:6px">1회성</span>' : '<span style="font-size:10px;color:#1e40af;margin-left:6px">매일</span>';
-        return '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#fffbeb;border:1px solid #fcd34d;border-radius:6px">'+
-          '<input type="checkbox" '+(a.done?'checked':'')+' onchange="rpToggleAssignment('+a.id+', this.checked)" style="width:18px;height:18px;flex-shrink:0;margin-top:2px">'+
-          '<div style="flex:1"><div style="font-weight:600">'+safeTitle+tag+'</div>'+
-          (safeDesc ? '<div style="font-size:12px;color:#6b6b6a;margin-top:2px">'+safeDesc+'</div>' : '')+
+        return '<div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px">'+
+          '<input type="checkbox" '+(a.done?'checked':'')+' onchange="rpToggleAssignment('+a.id+', this.checked)" style="width:20px;height:20px;flex-shrink:0;margin-top:2px;accent-color:#f59e0b">'+
+          '<div style="flex:1"><div style="font-weight:600;font-size:14px">'+safeTitle+tag+'</div>'+
+          (safeDesc ? '<div style="font-size:12px;color:#6b6b6a;margin-top:3px">'+safeDesc+'</div>' : '')+
           '</div></div>';
       }).join('');
     });
@@ -1274,30 +1137,16 @@ function rpToggleAssignment(id, done) {
   });
 }
 
-function rpAddChecklistItem(text, done) {
-  text = text || '';
-  done = !!done;
-  const wrap = document.getElementById('rp-checklist-items');
-  if (!wrap) return;
-  const div = document.createElement('div');
-  div.className = 'rp-cl-item';
-  div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;background:#fafaf9;border:1px solid #e5e5e4;border-radius:6px';
-  const safeText = text.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
-  div.innerHTML = '<input type="checkbox" '+(done?'checked':'')+' style="width:18px;height:18px;flex-shrink:0">' +
-    '<input type="text" value="'+safeText+'" placeholder="항목 입력" style="flex:1;border:none;background:transparent;font-size:14px;padding:2px 0">' +
-    '<button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:16px;padding:0 4px">×</button>';
-  wrap.appendChild(div);
-}
-
 function rpLoadHistory() {
   const el = document.getElementById('rp-history-list');
   el.textContent = 'Уншиж байна...';
   fetch(API + '/api/reports/my-reports', { credentials:'include' }).then(r=>r.json()).then(rows => {
     if (!rows.length) { el.innerHTML = '<p style="color:var(--text2)">아직 제출한 보고가 없습니다</p>'; return; }
+    const typeLabel = t => ({daily:'📝 일일',weekly:'📅 주간',monthly:'📆 월간',yearly:'📊 연간'}[t]||t);
     el.innerHTML = rows.map(r => `
       <div class="card" style="cursor:pointer" onclick="rpToggleHistory(${r.id}, this)">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><b>${r.report_type==='daily'?'📝 일일':'📅 주간'}</b> ${r.report_date}<div class="sub">${r.submitted_at}${r.updated_at?' · 수정 '+r.updated_at:''}</div></div>
+          <div><b>${typeLabel(r.report_type)}</b> ${r.report_date}<div class="sub">${r.submitted_at}${r.updated_at?' · 수정 '+r.updated_at:''}</div></div>
           <div class="rp-chev" style="font-size:12px;color:var(--text2)">▼</div>
         </div>
         <div class="rp-detail" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid #eee"></div>
@@ -1319,19 +1168,18 @@ function rpRenderHistoryDetail(d) {
     html += pair('📝 오늘 한 일 / Өнөөдөр хийсэн', d.field_today, d.field_today_ko);
     html += pair('📅 내일 할 일 / Маргааш', d.field_tomorrow, d.field_tomorrow_ko);
     html += pair('⚠️ 이슈 / Асуудал', d.field_issue, d.field_issue_ko);
-    if (d.field_checklist && d.field_checklist !== '[]') {
-      try {
-        const items = JSON.parse(d.field_checklist);
-        if (items.length) {
-          html += `<div style="margin-top:8px"><div style="font-size:12px;color:var(--text2);font-weight:600">📋 체크리스트</div>` +
-            items.map(it => `<div style="font-size:13px;margin-top:2px">${it.done?'✅':'⬜'} ${rpaEsc(it.text||it.label||'')}</div>`).join('') + '</div>';
-        }
-      } catch(e) {}
-    }
-  } else {
-    html += pair('🌟 이번 주 성과 / Хийсэн', d.field_done, d.field_done_ko);
-    html += pair('📅 다음 주 계획 / Төлөвлөгөө', d.field_plan, d.field_plan_ko);
-    html += pair('💡 건의 / Санал', d.field_suggestion, d.field_suggestion_ko);
+  } else if (d.report_type === 'weekly') {
+    html += pair('🌟 이번 주 성과', d.field_done, d.field_done_ko);
+    html += pair('📅 다음 주 계획', d.field_plan, d.field_plan_ko);
+    html += pair('💡 건의', d.field_suggestion, d.field_suggestion_ko);
+  } else if (d.report_type === 'monthly') {
+    html += pair('🌟 이번 달 성과', d.field_done, d.field_done_ko);
+    html += pair('📅 다음 달 계획', d.field_plan, d.field_plan_ko);
+    html += pair('💡 건의', d.field_suggestion, d.field_suggestion_ko);
+  } else if (d.report_type === 'yearly') {
+    html += pair('🏆 올해 성과', d.field_done, d.field_done_ko);
+    html += pair('📅 내년 계획', d.field_plan, d.field_plan_ko);
+    html += pair('💡 건의', d.field_suggestion, d.field_suggestion_ko);
   }
   if (d.translation_status && d.translation_status !== 'done') {
     html += `<div style="margin-top:10px;font-size:11px;color:var(--text2)">번역 상태: ${rpaEsc(d.translation_status)}</div>`;
@@ -1359,7 +1207,8 @@ function rpToggleHistory(id, card) {
     }).catch(()=>{ detail.innerHTML = '<div style="color:#b91c1c;font-size:13px">네트워크 오류</div>'; });
 }
 
-function rpInitMyInfo() {
+function rpInitMyInfo_REMOVED() { /* removed */ return; }
+function rpInitMyInfo_OLD() {
   const wrap = document.getElementById('rp-myinfo');
   if (!wrap) return;
   wrap.innerHTML = '<div style="color:var(--text2);font-size:13px">Уншиж байна...</div>';
@@ -1509,9 +1358,11 @@ function loadRpAdmin(){
   document.getElementById('content').innerHTML = `
     <div class="nav-tabs" style="margin-bottom:0.8rem">
       <div class="nav-tab active" id="rpa-subtab-today" onclick="rpaTab('today')">📅 오늘</div>
-      <div class="nav-tab" id="rpa-subtab-staff" onclick="rpaTab('staff')">👥 직원/PIN</div>
-      <div class="nav-tab" id="rpa-subtab-weekly" onclick="rpaTab('weekly')">📅 주간</div>
       <div class="nav-tab" id="rpa-subtab-assignments" onclick="rpaTab('assignments')">📌 지시</div>
+      <div class="nav-tab" id="rpa-subtab-weekly" onclick="rpaTab('weekly')">📅 주간</div>
+      <div class="nav-tab" id="rpa-subtab-monthly" onclick="rpaTab('monthly')">📆 월간</div>
+      <div class="nav-tab" id="rpa-subtab-yearly" onclick="rpaTab('yearly')">📊 연간</div>
+      <div class="nav-tab" id="rpa-subtab-staff" onclick="rpaTab('staff')">👥 직원/PIN</div>
       <div class="nav-tab" id="rpa-subtab-history" onclick="rpaTab('history')">📁 이력</div>
       <div class="nav-tab" id="rpa-subtab-settings" onclick="rpaTab('settings')">⚙️ 설정</div>
     </div>
@@ -1532,6 +1383,8 @@ function loadRpAdmin(){
       <div id="rpa-staff-list"></div>
     </div>
     <div id="rpa-weekly" style="display:none"></div>
+    <div id="rpa-monthly" style="display:none"></div>
+    <div id="rpa-yearly" style="display:none"></div>
     <div id="rpa-assignments" style="display:none"></div>
     <div id="rpa-history" style="display:none"></div>
     <div id="rpa-settings" style="display:none"></div>
@@ -1540,7 +1393,7 @@ function loadRpAdmin(){
 }
 
 function rpaTab(name){
-  ['today','staff','weekly','settings','assignments','history'].forEach(n => {
+  ['today','staff','weekly','monthly','yearly','settings','assignments','history'].forEach(n => {
     const t = document.getElementById('rpa-subtab-'+n);
     if (t) t.classList.toggle('active', name===n);
     const p = document.getElementById('rpa-'+n);
@@ -1549,6 +1402,8 @@ function rpaTab(name){
   if(name==='today') rpaLoadToday();
   else if(name==='staff') rpaLoadStaff();
   else if(name==='weekly') rpaLoadWeekly();
+  else if(name==='monthly') rpaLoadMonthly();
+  else if(name==='yearly') rpaLoadYearly();
   else if(name==='settings') rpaLoadSettings();
   else if(name==='assignments') rpaLoadAssignments();
   else if(name==='history') rpaLoadHistory();
@@ -1629,10 +1484,10 @@ function rpaLoadStaffReports() {
         out.innerHTML = '<p style="color:#9b9b98">아직 제출한 보고가 없습니다.</p>';
         return;
       }
-      const cnt = { daily: d.reports.filter(r => r.report_type==='daily').length, weekly: d.reports.filter(r => r.report_type==='weekly').length };
-      out.innerHTML = '<div style="font-size:13px;color:#6b6b6a;margin-bottom:8px">총 ' + d.reports.length + '건 (일일 ' + cnt.daily + ' · 주간 ' + cnt.weekly + ')</div>' +
+      const cnt = { daily: d.reports.filter(r => r.report_type==='daily').length, weekly: d.reports.filter(r => r.report_type==='weekly').length, monthly: d.reports.filter(r => r.report_type==='monthly').length, yearly: d.reports.filter(r => r.report_type==='yearly').length };
+      out.innerHTML = '<div style="font-size:13px;color:#6b6b6a;margin-bottom:8px">총 ' + d.reports.length + '건 (일일 ' + cnt.daily + ' · 주간 ' + cnt.weekly + ' · 월간 ' + cnt.monthly + ' · 연간 ' + cnt.yearly + ')</div>' +
         d.reports.map(r => {
-          const typeLabel = r.report_type==='daily' ? '📝 일일' : '📅 주간';
+          const typeLabel = ({daily:'📝 일일',weekly:'📅 주간',monthly:'📆 월간',yearly:'📊 연간'})[r.report_type] || r.report_type;
           const tsLabel = r.submitted_at + (r.updated_at ? ' · 수정 ' + r.updated_at : '');
           const partial = r.translation_status==='partial' ? '<span style="color:#b45309;font-size:11px;margin-left:6px">번역 일부 실패</span>' : '';
           return '<div class="card" onclick="rpaShowDetail(' + r.id + ')" style="cursor:pointer">' +
@@ -1885,21 +1740,24 @@ async function rpaShowDetail(id){
       ${orig ? `<details style="margin-top:6px"><summary style="font-size:11px;color:var(--text2);cursor:pointer">원문 (몽골어/원본)</summary><div style="color:var(--text2);font-size:13px;margin-top:4px">${rpaEsc(orig)}</div></details>` : ''}
     </div>`;
   let html;
-  if(d.report_type==='weekly'){
+  const typeNames = {daily:'일일',weekly:'주간',monthly:'월간',yearly:'연간'};
+  const typeName = typeNames[d.report_type] || d.report_type;
+  if(d.report_type==='daily'){
     html = `
-      <h3 style="margin:0 0 0.8rem">${rpaEsc(d.name)}${d.name_mn?' · '+rpaEsc(d.name_mn):''} — ${rpaEsc(d.report_date)} (주간)</h3>
-      ${fld('✅ 한 일', d.field_done_ko, d.field_done)}
-      ${fld('📅 다음 계획', d.field_plan_ko, d.field_plan)}
-      ${fld('💡 제안', d.field_suggestion_ko, d.field_suggestion)}
-      <button class="btn btn-primary" onclick="document.getElementById('rpa-modal').remove()" style="margin-top:0.6rem">닫기</button>
-    `;
-  } else {
-    html = `
-      <h3 style="margin:0 0 0.8rem">${rpaEsc(d.name)}${d.name_mn?' · '+rpaEsc(d.name_mn):''} — ${rpaEsc(d.report_date)}</h3>
+      <h3 style="margin:0 0 0.8rem">${rpaEsc(d.name)}${d.name_mn?' · '+rpaEsc(d.name_mn):''} — ${rpaEsc(d.report_date)} (${typeName})</h3>
       ${fld('📝 오늘 한 일', d.field_today_ko, d.field_today)}
       ${fld('📅 내일 할 일', d.field_tomorrow_ko, d.field_tomorrow)}
       ${fld('⚠️ 이슈', d.field_issue_ko, d.field_issue)}
-      ${rpaChecklistHtml(d.field_checklist)}
+      <button class="btn btn-primary" onclick="document.getElementById('rpa-modal').remove()" style="margin-top:0.6rem">닫기</button>
+    `;
+  } else {
+    const doneLabel = d.report_type==='monthly' ? '이번 달 성과' : d.report_type==='yearly' ? '올해 성과' : '이번 주 성과';
+    const planLabel = d.report_type==='monthly' ? '다음 달 계획' : d.report_type==='yearly' ? '내년 계획' : '다음 주 계획';
+    html = `
+      <h3 style="margin:0 0 0.8rem">${rpaEsc(d.name)}${d.name_mn?' · '+rpaEsc(d.name_mn):''} — ${rpaEsc(d.report_date)} (${typeName})</h3>
+      ${fld('✅ ' + doneLabel, d.field_done_ko, d.field_done)}
+      ${fld('📅 ' + planLabel, d.field_plan_ko, d.field_plan)}
+      ${fld('💡 건의', d.field_suggestion_ko, d.field_suggestion)}
       <button class="btn btn-primary" onclick="document.getElementById('rpa-modal').remove()" style="margin-top:0.6rem">닫기</button>
     `;
   }
@@ -1974,6 +1832,55 @@ async function rpaLoadWeekly(){
       <div style="margin-top:6px"><b>📅 다음 주 계획</b><br>${r.field_plan_ko ? rpaEsc(r.field_plan_ko) : (r.field_plan ? rpaEsc(r.field_plan) : '<i style="color:var(--text2)">없음</i>')}</div>
       <div style="margin-top:6px"><b>💡 건의사항</b><br>${r.field_suggestion_ko ? rpaEsc(r.field_suggestion_ko) : (r.field_suggestion ? rpaEsc(r.field_suggestion) : '<i style="color:var(--text2)">없음</i>')}</div>
     </div>`).join('') : '<p style="color:var(--text2)">이 주간 보고가 아직 없습니다.</p>');
+}
+
+async function rpaLoadMonthly(){
+  const now = new Date();
+  const curMonth = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  const el = document.getElementById('rpa-monthly');
+  el.innerHTML = `<div style="display:flex;gap:6px;align-items:center;margin-bottom:0.6rem">
+    <input type="month" id="rpa-month-pick" value="${curMonth}" onchange="rpaLoadMonthlyData(this.value)" style="padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text)">
+  </div><div id="rpa-monthly-data"><div class="card">불러오는 중...</div></div>`;
+  rpaLoadMonthlyData(curMonth);
+}
+
+async function rpaLoadMonthlyData(month){
+  const el = document.getElementById('rpa-monthly-data');
+  el.innerHTML = '<div class="card">불러오는 중...</div>';
+  const res = await apiFetch('/api/reports/admin/monthly/'+month);
+  if(!res.ok){ el.innerHTML = '<div class="card" style="color:var(--danger)">불러오기 실패</div>'; return; }
+  const rows = await res.json();
+  el.innerHTML = `<div class="card"><b>월간 ${rpaEsc(month)}</b> · 제출 ${rows.length}명</div>` +
+    (rows.length ? rows.map(r => `<div class="card" onclick="rpaShowDetail(${r.id})" style="cursor:pointer">
+      <b>${rpaEsc(r.name)}</b>${r.name_mn?' · '+rpaEsc(r.name_mn):''}
+      <div style="margin-top:6px"><b>🌟 이번 달 성과</b><br>${r.field_done_ko ? rpaEsc(r.field_done_ko) : (r.field_done ? rpaEsc(r.field_done) : '<i style="color:var(--text2)">없음</i>')}</div>
+      <div style="margin-top:6px"><b>📅 다음 달 계획</b><br>${r.field_plan_ko ? rpaEsc(r.field_plan_ko) : (r.field_plan ? rpaEsc(r.field_plan) : '<i style="color:var(--text2)">없음</i>')}</div>
+    </div>`).join('') : '<p style="color:var(--text2)">이 월간 보고가 아직 없습니다.</p>');
+}
+
+async function rpaLoadYearly(){
+  const curYear = String(new Date().getFullYear());
+  const el = document.getElementById('rpa-yearly');
+  el.innerHTML = `<div style="display:flex;gap:6px;align-items:center;margin-bottom:0.6rem">
+    <select id="rpa-year-pick" onchange="rpaLoadYearlyData(this.value)" style="padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text)">
+      ${[0,1,2,3,4].map(i => { const y=new Date().getFullYear()-i; return '<option value="'+y+'"'+(String(y)===curYear?' selected':'')+'>'+y+'년</option>'; }).join('')}
+    </select>
+  </div><div id="rpa-yearly-data"><div class="card">불러오는 중...</div></div>`;
+  rpaLoadYearlyData(curYear);
+}
+
+async function rpaLoadYearlyData(year){
+  const el = document.getElementById('rpa-yearly-data');
+  el.innerHTML = '<div class="card">불러오는 중...</div>';
+  const res = await apiFetch('/api/reports/admin/yearly/'+year);
+  if(!res.ok){ el.innerHTML = '<div class="card" style="color:var(--danger)">불러오기 실패</div>'; return; }
+  const rows = await res.json();
+  el.innerHTML = `<div class="card"><b>연간 ${rpaEsc(year)}</b> · 제출 ${rows.length}명</div>` +
+    (rows.length ? rows.map(r => `<div class="card" onclick="rpaShowDetail(${r.id})" style="cursor:pointer">
+      <b>${rpaEsc(r.name)}</b>${r.name_mn?' · '+rpaEsc(r.name_mn):''}
+      <div style="margin-top:6px"><b>🏆 올해 성과</b><br>${r.field_done_ko ? rpaEsc(r.field_done_ko) : (r.field_done ? rpaEsc(r.field_done) : '<i style="color:var(--text2)">없음</i>')}</div>
+      <div style="margin-top:6px"><b>📅 내년 계획</b><br>${r.field_plan_ko ? rpaEsc(r.field_plan_ko) : (r.field_plan ? rpaEsc(r.field_plan) : '<i style="color:var(--text2)">없음</i>')}</div>
+    </div>`).join('') : '<p style="color:var(--text2)">이 연간 보고가 아직 없습니다.</p>');
 }
 
 // === M5: 설정 ===

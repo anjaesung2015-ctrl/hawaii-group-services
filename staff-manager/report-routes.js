@@ -85,6 +85,8 @@ function requireBoss(req, res, next) {
 }
 
 function todayStr() { return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10); }
+function monthStr() { return new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 7); }
+function yearStr() { return String(new Date(Date.now() + 9 * 3600000).getUTCFullYear()); }
 function isoWeek(d=new Date()) {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   const dayNum = (t.getUTCDay() + 6) % 7;
@@ -128,39 +130,12 @@ module.exports = function createReportRoutes(db) {
     res.json(s || {});
   });
 
-  // 본인 정보 변경 (이름/몽골어이름/전화/PIN)
-  r.put('/me', requireStaff, (req, res) => {
-    const { name, name_mn, phone, current_pin, new_pin } = req.body || {};
-    const s = db.prepare("SELECT * FROM staff WHERE id=?").get(req.staffId);
-    if (!s) return res.status(404).json({ error: 'not_found' });
-
-    // PIN 변경: current_pin 검증 후 새 hash 저장
-    if (new_pin !== undefined && new_pin !== '') {
-      if (!/^\d{4}$/.test(String(new_pin))) return res.status(400).json({ error: 'PIN은 4자리 숫자여야 합니다' });
-      const result = verifyPin(db, s, String(current_pin || ''));
-      if (!result.ok) return res.status(400).json({ error: '현재 PIN이 틀립니다' });
-      const bcrypt = require('bcryptjs');
-      const hash = bcrypt.hashSync(String(new_pin), 10);
-      db.prepare("UPDATE staff SET pin_hash=?, pin_fail_count=0, pin_locked_until=NULL WHERE id=?").run(hash, req.staffId);
-    }
-
-    // 이름/전화는 그냥 업데이트 (PIN 인증으로 이미 본인 확인됨)
-    if (name !== undefined || name_mn !== undefined || phone !== undefined) {
-      db.prepare("UPDATE staff SET name=?, name_mn=?, phone=? WHERE id=?")
-        .run(name ?? s.name, name_mn ?? s.name_mn, phone ?? s.phone, req.staffId);
-      // users.name도 sync (해당 staff_id를 가진 user)
-      if (name !== undefined && name !== s.name) {
-        db.prepare("UPDATE users SET name=? WHERE staff_id=?").run(name, req.staffId);
-      }
-    }
-    res.json({ ok: true });
-  });
-
-  // 보고 제출 (일일/주간) — M3: mn→ko 번역 통합
+  // 보고 제출 (일일/주간/월간/연간) — mn→ko 번역 통합
   r.post('/submit', requireStaff, async (req, res) => {
     const { report_type, fields } = req.body || {};
-    if (!['daily','weekly'].includes(report_type)) return res.status(400).json({ error: 'invalid_type' });
-    const date = report_type === 'daily' ? todayStr() : isoWeek();
+    if (!['daily','weekly','monthly','yearly'].includes(report_type)) return res.status(400).json({ error: 'invalid_type' });
+    const dateMap = { daily: todayStr(), weekly: isoWeek(), monthly: monthStr(), yearly: yearStr() };
+    const date = dateMap[report_type];
 
     const f = fields || {};
     const fieldMap = report_type === 'daily'
@@ -184,7 +159,6 @@ module.exports = function createReportRoutes(db) {
       }
     }
     cols.translation_status = translationFailed ? 'partial' : 'done';
-    if (report_type === 'daily') cols.field_checklist = JSON.stringify(Array.isArray(f.checklist) ? f.checklist : []);
 
     const existing = db.prepare("SELECT id FROM work_reports WHERE staff_id=? AND report_type=? AND report_date=?").get(req.staffId, report_type, date);
     let reportId;
@@ -422,77 +396,18 @@ module.exports = function createReportRoutes(db) {
   });
 
 
-  // === 직원: 영구 체크리스트 (staff_checklists) ===
-  r.get('/my-checklist', requireStaff, (req, res) => {
-    const today = todayStr();
-    const items = db.prepare("SELECT id, text, sort_order, created_at FROM staff_checklists WHERE staff_id=? AND deleted_at IS NULL ORDER BY sort_order ASC, id ASC").all(req.staffId);
-    const compStmt = db.prepare("SELECT done, done_at FROM staff_checklist_completions WHERE item_id=? AND date=?");
-    const result = items.map(it => {
-      const c = compStmt.get(it.id, today) || { done: 0 };
-      return { id: it.id, text: it.text, done: !!c.done, done_at: c.done_at };
-    });
-    res.json({ date: today, items: result });
+  // === 관리자: 월간 보고 조회 ===
+  r.get('/admin/monthly/:month', requireBoss, (req, res) => {
+    const rows = db.prepare(`SELECT wr.*, s.name, s.name_mn FROM work_reports wr JOIN staff s ON s.id=wr.staff_id
+      WHERE wr.report_type='monthly' AND wr.report_date=? ORDER BY s.name`).all(req.params.month);
+    res.json(rows);
   });
 
-  r.post('/my-checklist', requireStaff, (req, res) => {
-    const text = (req.body && req.body.text || '').trim();
-    if (!text) return res.status(400).json({ error: 'missing_text' });
-    const max = db.prepare("SELECT MAX(sort_order) AS m FROM staff_checklists WHERE staff_id=?").get(req.staffId);
-    const sort = (max && max.m ? max.m : 0) + 1;
-    const info = db.prepare("INSERT INTO staff_checklists (staff_id, text, sort_order) VALUES (?,?,?)").run(req.staffId, text, sort);
-    res.json({ ok: true, id: info.lastInsertRowid });
-  });
-
-  r.delete('/my-checklist/:id', requireStaff, (req, res) => {
-    const id = req.params.id;
-    const exists = db.prepare("SELECT id FROM staff_checklists WHERE id=? AND staff_id=? AND deleted_at IS NULL").get(id, req.staffId);
-    if (!exists) return res.status(404).json({ error: 'not_found' });
-    db.prepare("UPDATE staff_checklists SET deleted_at=datetime('now','localtime') WHERE id=?").run(id);
-    res.json({ ok: true });
-  });
-
-  r.post('/my-checklist/:id/check', requireStaff, (req, res) => {
-    const id = req.params.id;
-    const exists = db.prepare("SELECT id FROM staff_checklists WHERE id=? AND staff_id=? AND deleted_at IS NULL").get(id, req.staffId);
-    if (!exists) return res.status(404).json({ error: 'not_found' });
-    const today = todayStr();
-    const done = req.body && req.body.done ? 1 : 0;
-    const upsert = db.prepare(`INSERT INTO staff_checklist_completions (item_id, staff_id, date, done, done_at)
-      VALUES (?,?,?,?,?)
-      ON CONFLICT(item_id, date) DO UPDATE SET done=excluded.done, done_at=excluded.done_at`);
-    upsert.run(id, req.staffId, today, done, done ? new Date().toISOString() : null);
-    res.json({ ok: true });
-  });
-
-
-  // === 직원: 근태 (attendance) ===
-  r.get('/attendance/today', requireStaff, (req, res) => {
-    const today = todayStr();
-    const row = db.prepare("SELECT check_in, check_out FROM attendance WHERE staff_id=? AND date=?").get(req.staffId, today) || {};
-    res.json({ date: today, check_in: row.check_in || null, check_out: row.check_out || null });
-  });
-
-  r.post('/attendance/check-in', requireStaff, (req, res) => {
-    const today = todayStr();
-    const now = new Date().toISOString();
-    const exists = db.prepare("SELECT id, check_in FROM attendance WHERE staff_id=? AND date=?").get(req.staffId, today);
-    if (exists) {
-      if (exists.check_in) return res.status(400).json({ error: 'already_checked_in', check_in: exists.check_in });
-      db.prepare("UPDATE attendance SET check_in=? WHERE id=?").run(now, exists.id);
-    } else {
-      db.prepare("INSERT INTO attendance (staff_id, date, check_in) VALUES (?,?,?)").run(req.staffId, today, now);
-    }
-    res.json({ ok: true, check_in: now });
-  });
-
-  r.post('/attendance/check-out', requireStaff, (req, res) => {
-    const today = todayStr();
-    const now = new Date().toISOString();
-    const exists = db.prepare("SELECT id, check_in, check_out FROM attendance WHERE staff_id=? AND date=?").get(req.staffId, today);
-    if (!exists || !exists.check_in) return res.status(400).json({ error: 'check_in_required' });
-    if (exists.check_out) return res.status(400).json({ error: 'already_checked_out', check_out: exists.check_out });
-    db.prepare("UPDATE attendance SET check_out=? WHERE id=?").run(now, exists.id);
-    res.json({ ok: true, check_out: now });
+  // === 관리자: 연간 보고 조회 ===
+  r.get('/admin/yearly/:year', requireBoss, (req, res) => {
+    const rows = db.prepare(`SELECT wr.*, s.name, s.name_mn FROM work_reports wr JOIN staff s ON s.id=wr.staff_id
+      WHERE wr.report_type='yearly' AND wr.report_date=? ORDER BY s.name`).all(req.params.year);
+    res.json(rows);
   });
 
   return r;
