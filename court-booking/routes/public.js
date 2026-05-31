@@ -102,4 +102,39 @@ router.post('/bookings', express.json(), (req, res) => {
   }
 });
 
+
+router.get('/bookings/:code', (req, res) => {
+  try {
+    const code = req.params.code;
+    const b = prepare(`
+      SELECT b.public_code, b.booking_date, b.start_time, b.end_time, b.status, b.amount,
+             b.guest_name, c.name_mn AS court_name
+      FROM booking b JOIN court c ON c.id = b.court_id
+      WHERE b.public_code = ?
+    `).get(code);
+    if (!b) throw apiError('BOOKING_NOT_FOUND');
+    res.json(b);
+  } catch (e) { sendError(res, e); }
+});
+
+router.get('/bookings/:code/payment-status', (req, res) => {
+  try {
+    const code = req.params.code;
+    const row = prepare(`
+      SELECT b.status AS booking_status, p.status AS payment_status
+      FROM booking b
+      LEFT JOIN payment p ON p.booking_id = b.id
+      WHERE b.public_code = ?
+      ORDER BY p.id DESC LIMIT 1
+    `).get(code);
+    if (!row) throw apiError('BOOKING_NOT_FOUND');
+
+    let status = 'awaiting';
+    if (row.payment_status === 'paid' || row.booking_status === 'confirmed') status = 'paid';
+    else if (row.booking_status === 'cancelled') status = 'cancelled';
+
+    res.json({ status });
+  } catch (e) { sendError(res, e); }
+});
+
 module.exports = router;
