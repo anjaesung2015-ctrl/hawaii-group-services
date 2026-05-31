@@ -421,6 +421,18 @@ nodemailer + Resend 무료(100/day). 고객용 확정 이메일만. `guest_email
 | Telegram (직원) | log만 |
 | Email (손님) | log만 |
 
+### 보안 가드
+
+| 위협 | 대응 |
+|---|---|
+| **CSRF** (어드민 cookie 인증) | `SameSite=Strict` 쿠키 + 상태변경 API는 `Origin` 헤더 검증 (`app.hawaiigroup.co` 화이트리스트) |
+| **공개 API 어뷰즈** (예약 봇/스팸) | `express-rate-limit`: `POST /api/bookings` 분당 5회/IP, GET 계열 분당 60회/IP. 메모리 store (단일 프로세스) |
+| **손님 cancel 인증** | `public_code`만으로 약함. 추가: 등록한 `guest_phone` 마지막 4자리 일치 확인 |
+| **public_code 추측 공격** | 6자(BK + 36진 4자리) ≈ 167만 조합. 활성 예약은 수십 건. cancel 엔드포인트 자체에도 rate limit (분당 10회/IP) |
+| **어드민 brute-force** | staff-manager의 PIN 잠금 정책에 위임 (court-booking은 JWT 검증만 함) |
+| **SQLi** | better-sqlite3 prepared statement 강제 사용. 동적 SQL 금지 |
+| **XSS** | Alpine.js는 기본 escape. 어드민에서 손님 입력(이름/메모) 표시 시 `x-text` 사용 (`x-html` 금지) |
+
 ## 9. 프론트엔드 구조
 
 ### 스택 (빌드 ✗)
@@ -588,6 +600,10 @@ node --test test/
 8. **코트 가격 ₮30,000/시간** — 시공 완료 시점에 시장 조사 후 확정
 9. **운영시간 06:00~22:00** — 디폴트, 운영자 결정 필요
 10. **약관/개인정보처리방침** — 별도 페이지 필요. 콘텐츠 운영자 제공
+11. **CSRF 정책 정합** — staff-manager가 현재 `SameSite=Strict`인지 `Lax`인지 확인. court-booking이 동일 도메인이지만 별도 쿠키면 영향 ✗
+12. **Rate limit 메모리 store 한계** — pm2 restart 시 카운터 초기화. 1단계 허용. 악성 트래픽 증가 시 Phase 1.5에 Redis/sqlite-backed 검토
+13. **손님 phone 인증 UX** — cancel 페이지에서 마지막 4자리 입력 form 추가. 이메일 OTP는 1단계 오버스펙
+14. **어드민 role 차등** — 1단계는 `super_admin`/`manager`/`staff` 동일 권한. 차등은 Phase 2 (예: staff는 강제취소 ✗)
 
 ## 15. 변경 이력
 
