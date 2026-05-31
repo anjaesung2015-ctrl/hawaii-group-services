@@ -1,4 +1,4 @@
-async function bootI18n() { await loadLocale('mn'); }
+async function bootI18n() { await loadLocale(); }
 document.addEventListener('alpine:init', bootI18n);
 
 function bookingApp() {
