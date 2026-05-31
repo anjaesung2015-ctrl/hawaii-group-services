@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#059669" />
+  <title>Хавайн теннисний корт — Захиалга</title>
+  <link rel="stylesheet" href="/booking/assets/css/app.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+  <script src="/booking/assets/js/i18n.js"></script>
+  <script src="/booking/assets/js/api.js"></script>
+  <script src="/booking/assets/js/customer.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+
+<div x-data="bookingApp()" x-init="init()" class="max-w-md mx-auto p-4">
+
+  <header class="mb-4">
+    <h1 class="text-2xl font-bold text-emerald-700" x-text="t('app_title')"></h1>
+    <p class="text-sm text-slate-500 mt-1" x-text="t('step', { n: step })"></p>
+  </header>
+
+  <div x-show="error" x-transition class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm" x-text="error"></div>
+
+  <section x-show="step === 1" class="fade-in space-y-4">
+    <div>
+      <label class="block text-sm font-medium mb-2" x-text="t('select_court')"></label>
+      <div class="p-4 bg-white rounded-xl border" x-show="selected.court">
+        <p class="font-semibold" x-text="selected.court?.name_mn"></p>
+        <p class="text-sm text-slate-500" x-text="`₮${(selected.court?.price_per_hour || 0).toLocaleString()} / цаг`"></p>
+      </div>
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-2" x-text="t('select_date')"></label>
+      <div class="overflow-x-auto -mx-4 px-4">
+        <div class="flex gap-2 pb-2">
+          <template x-for="d in next14Days()" :key="d.date">
+            <button @click="selectDate(d.date)" :class="selected.date === d.date ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white border-slate-200'" class="flex-shrink-0 w-16 py-3 rounded-xl border text-center">
+              <div class="text-xs" x-text="d.dow"></div>
+              <div class="text-lg font-bold" x-text="d.day"></div>
+            </button>
+          </template>
+        </div>
+      </div>
+    </div>
+    <button class="w-full bg-emerald-600 text-white font-semibold py-3 rounded-xl disabled:opacity-50" :disabled="!selected.court || !selected.date" @click="goToSlots()" x-text="t('next')"></button>
+  </section>
+
+  <section x-show="step === 2" class="fade-in space-y-4">
+    <button @click="step = 1" class="text-emerald-600 text-sm" x-text="'← ' + t('back')"></button>
+    <p class="text-sm text-slate-500" x-text="selected.date"></p>
+    <div x-show="availability.length === 0" class="text-center py-8 text-slate-400" x-text="t('no_slots')"></div>
+    <div class="grid grid-cols-4 gap-2">
+      <template x-for="slot in availability" :key="slot.start">
+        <button @click="slot.available && selectSlot(slot)" :disabled="!slot.available" :class="!slot.available ? 'border-slate-200 text-slate-400 line-through cursor-not-allowed' : (selected.slot?.start === slot.start ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-emerald-500 text-emerald-700 hover:bg-emerald-50')" class="border rounded-lg py-3 text-center font-medium">
+          <span x-text="slot.start"></span>
+        </button>
+      </template>
+    </div>
+    <button class="w-full bg-emerald-600 text-white font-semibold py-3 rounded-xl disabled:opacity-50" :disabled="!selected.slot" @click="step = 3" x-text="t('next')"></button>
+  </section>
+
+  <section x-show="step === 3" class="fade-in space-y-4">
+    <button @click="step = 2" class="text-emerald-600 text-sm" x-text="'← ' + t('back')"></button>
+    <div class="space-y-3">
+      <div>
+        <label class="block text-sm font-medium mb-1" x-text="t('name')"></label>
+        <input x-model.trim="form.guest_name" type="text" autocomplete="name" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" x-text="t('phone')"></label>
+        <input x-model.trim="form.guest_phone" type="tel" inputmode="tel" autocomplete="tel" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="99119911" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" x-text="t('email')"></label>
+        <input x-model.trim="form.guest_email" type="email" autocomplete="email" class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none" />
+      </div>
+      <label class="flex items-start gap-2 pt-2">
+        <input type="checkbox" x-model="form.agree" class="mt-1" />
+        <span class="text-sm text-slate-600" x-text="t('agree_terms')"></span>
+      </label>
+    </div>
+    <div class="p-3 bg-emerald-50 rounded-lg flex justify-between">
+      <span x-text="t('amount')"></span>
+      <span class="font-semibold" x-text="`₮${calcAmount().toLocaleString()}`"></span>
+    </div>
+    <button class="w-full bg-emerald-600 text-white font-semibold py-3 rounded-xl disabled:opacity-50" :disabled="!canSubmit() || submitting" @click="submit()">
+      <span x-show="!submitting" x-text="t('book_now')"></span>
+      <span x-show="submitting" x-text="t('loading')"></span>
+    </button>
+  </section>
+
+  <section x-show="step === 4" class="fade-in space-y-4 text-center">
+    <p class="text-sm text-slate-500" x-text="t('pay_qr_hint')"></p>
+    <div class="bg-white p-4 rounded-xl inline-block">
+      <img x-show="booking?.qpay_qr_image" :src="'data:image/png;base64,' + (booking?.qpay_qr_image || '')" alt="QPay QR" class="w-64 h-64 mx-auto" />
+    </div>
+    <div class="space-y-2">
+      <template x-for="link in (booking?.qpay_deeplinks || [])" :key="link.name">
+        <a :href="link.link" class="block bg-slate-100 hover:bg-slate-200 py-2 rounded-lg text-sm" x-text="link.name + ' →'"></a>
+      </template>
+    </div>
+    <div class="text-lg font-mono" x-text="t('payment_expires_in', { time: countdown })"></div>
+    <button class="text-red-600 text-sm underline" @click="cancelDuringPayment()" x-text="t('cancel_booking')"></button>
+  </section>
+
+  <section x-show="step === 5" class="fade-in text-center space-y-4 py-8">
+    <div class="text-6xl">✅</div>
+    <h2 class="text-xl font-bold text-emerald-700" x-text="t('booking_confirmed')"></h2>
+    <div class="bg-white p-6 rounded-2xl border-2 border-emerald-500">
+      <p class="text-sm text-slate-500" x-text="t('your_code')"></p>
+      <p class="text-4xl font-mono font-bold text-emerald-700 my-2" x-text="booking?.public_code"></p>
+    </div>
+    <div class="text-left bg-white p-4 rounded-xl space-y-1 text-sm">
+      <div class="flex justify-between"><span class="text-slate-500" x-text="t('venue')"></span><span x-text="selected.court?.name_mn"></span></div>
+      <div class="flex justify-between"><span class="text-slate-500" x-text="t('date')"></span><span x-text="selected.date"></span></div>
+      <div class="flex justify-between"><span class="text-slate-500" x-text="t('time')"></span><span x-text="`${selected.slot?.start} - ${selected.slot?.end}`"></span></div>
+      <div class="flex justify-between"><span class="text-slate-500" x-text="t('amount')"></span><span x-text="`₮${calcAmount().toLocaleString()}`"></span></div>
+    </div>
+    <p class="text-sm text-slate-500" x-text="t('screenshot_hint')"></p>
+  </section>
+
+</div>
+
+</body></html>
