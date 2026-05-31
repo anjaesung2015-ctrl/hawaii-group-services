@@ -6,6 +6,8 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
 const { PHASE_PROGRAMS, DRILLS, GROUP_PRESETS } = require('./seed');
+const { regenerateWeeklyPrograms } = require('./auto-program');
+const cron = require('node-cron');
 
 const app = express();
 const PORT = 6060;
@@ -968,6 +970,30 @@ app.delete('/api/phase-programs/:id', auth, (req, res) => {
   db.prepare("DELETE FROM phase_programs WHERE id=?").run(+req.params.id);
   res.json({ok:true});
 });
+
+
+// === 매주 자동 프로그램 재생성 (inseason + winter) ===
+// 수동 트리거 (코치 인증 필요)
+app.post('/api/programs/regenerate', auth, (req, res) => {
+  try {
+    const result = regenerateWeeklyPrograms(db, 'manual_trigger');
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    console.error('[regen]', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// 매주 일요일 23:30 UB = 15:30 UTC
+cron.schedule('30 15 * * 0', () => {
+  try {
+    const r = regenerateWeeklyPrograms(db, 'weekly_auto');
+    console.log('[regen weekly]', new Date().toISOString(), r);
+  } catch (e) {
+    console.error('[regen weekly]', e);
+  }
+});
+console.log('[Coach App] weekly regen schedule registered (Sun 23:30 UB)');
 
 app.use((req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.listen(PORT, () => console.log('[Coach App] port ' + PORT));
