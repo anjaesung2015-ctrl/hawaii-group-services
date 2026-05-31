@@ -21,6 +21,8 @@ app.use('/api', require('./routes/public'));
 // app.use('/api/admin', require('./routes/admin'));
 app.use('/qpay', require('./routes/qpay'));
 
+require('./cron-jobs')().startSchedules();
+
 app.listen(PORT, () => {
   console.log(`[court-booking] listening on ${PORT}`);
 });
