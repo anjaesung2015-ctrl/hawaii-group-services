@@ -1,21 +1,53 @@
 const path = require('path');
 const Database = require('better-sqlite3');
+const { generateUnique } = require('./public-code');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'court.db');
 const db = new Database(DB_PATH);
 db.pragma('foreign_keys = ON');
 db.pragma('journal_mode = WAL');
 
-// 캐시된 prepared statements (성능)
 const stmtCache = new Map();
 function prepare(sql) {
   if (!stmtCache.has(sql)) stmtCache.set(sql, db.prepare(sql));
   return stmtCache.get(sql);
 }
 
-// BEGIN IMMEDIATE 트랜잭션 (write lock 즉시 확보)
-function txImmediate(fn) {
-  return db.transaction(fn).immediate;
+// 슬롯 겹침 검사 + 부분유니크 인덱스의 안전망
+function createBookingSafely(input) {
+  const tx = module.exports.db.transaction((input) => {
+    const conflict = module.exports.db.prepare(`
+      SELECT id FROM booking
+      WHERE court_id = @court_id
+        AND booking_date = @booking_date
+        AND status NOT IN ('cancelled','no_show')
+        AND start_time < @end_time
+        AND end_time > @start_time
+    `).get(input);
+
+    if (conflict) {
+      const err = new Error('SLOT_CONFLICT');
+      err.code = 'SLOT_CONFLICT';
+      throw err;
+    }
+
+    const codeExists = (code) => module.exports.db.prepare('SELECT 1 FROM booking WHERE public_code=?').get(code);
+    const public_code = generateUnique(codeExists);
+
+    const result = module.exports.db.prepare(`
+      INSERT INTO booking
+        (public_code, court_id, booking_date, start_time, end_time,
+         guest_name, guest_phone, guest_email, amount)
+      VALUES
+        (@public_code, @court_id, @booking_date, @start_time, @end_time,
+         @guest_name, @guest_phone, @guest_email, @amount)
+    `).run({ ...input, public_code, guest_email: input.guest_email || null });
+
+    return result.lastInsertRowid;
+  });
+
+  // BEGIN IMMEDIATE — write lock 즉시 확보
+  return tx.immediate(input);
 }
 
-module.exports = { db, prepare, txImmediate };
+module.exports = { db, prepare, createBookingSafely };
