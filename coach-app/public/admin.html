@@ -1005,7 +1005,7 @@ function renderLibrary(){
   }));
   h += renderLibSection('🗓️ 페이즈 프로그램', libState.phases.length+'개', 'phase', libState.phases.map(function(p){
     return { id:p.id, line1:'['+p.phase+' / '+p.day_of_week+'일차] '+p.title, line2:(p.blocks||[]).map(function(b){return b.name}).join(' · ').slice(0,80), badge:p.phase };
-  }));
+  }), '<button class="mini warn" onclick="regeneratePhases()" title="inseason + winter 두 phase 6일치 모두 새 드릴로 재생성">🔄 시즌+비시즌 자동 재생성</button>');
   document.getElementById('library-content').innerHTML = h;
 }
 
@@ -1048,11 +1048,32 @@ function pickDrill(onSelect){
   });
 }
 
-function renderLibSection(title, count, kind, items){
+function regeneratePhases(){
+  if (!confirm('inseason + winter 두 phase의 6일치 프로그램을 모두 새 드릴로 재생성합니다.\n직전 데이터는 백업 테이블에 자동 보존됩니다.\n계속할까요?')) return;
+  var btn = event && event.target;
+  if (btn) { btn.disabled = true; btn.textContent = '재생성 중...'; }
+  F('/programs/regenerate', {method:'POST'}).then(function(r){
+    if (r && r.ok) {
+      alert('✅ 재생성 완료\n교체: '+(r.replaced||0)+'개 프로그램\n백업: '+(r.backed_up||0)+'개');
+      loadLibrary();
+    } else {
+      alert('실패: '+(r && r.error || '알 수 없음'));
+    }
+  }).catch(function(e){
+    alert('실패: '+e.message);
+  }).finally(function(){
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 시즌+비시즌 자동 재생성'; }
+  });
+}
+
+function renderLibSection(title, count, kind, items, headerExtra){
   var h = '<div class="card" style="margin-bottom:14px;background:#1a1a2e;border-radius:12px;padding:12px">';
   h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
   h += '<div style="font-size:15px;font-weight:700">'+title+' <span style="color:#9b9b98;font-size:11px;margin-left:6px">'+count+'</span></div>';
+  h += '<div style="display:flex;gap:6px;align-items:center">';
   h += '<button class="mini info" onclick="addLibItem(\''+kind+'\')">+ 추가</button>';
+  if (headerExtra) h += headerExtra;
+  h += '</div>';
   h += '</div>';
   h += '<div style="max-height:300px;overflow-y:auto">';
   if (!items.length) {
