@@ -44,7 +44,7 @@ function calcAmount(price_per_hour, start_time, end_time) {
   return Math.round(price_per_hour * hours);
 }
 
-router.post('/bookings', express.json(), (req, res) => {
+router.post('/bookings', express.json(), async (req, res) => {
   try {
     const { court_id, booking_date, start_time, end_time, guest_name, guest_phone, guest_email } = req.body || {};
 
@@ -89,10 +89,43 @@ router.post('/bookings', express.json(), (req, res) => {
       ip: req.ip
     });
 
-    // QPay 인보이스는 Task 16에서 연결
+    // QPay 인보이스 생성 (creds 있을 때만)
+    let invoice = null;
+    let expiresAt = null;
+    if (process.env.QPAY_USERNAME && process.env.QPAY_PASSWORD && process.env.QPAY_INVOICE_CODE) {
+      const qpay = require('../qpay-client');
+      try {
+        invoice = await qpay.createInvoice({
+          amount,
+          description: `Tennis ${booking_date} ${start_time}-${end_time}`,
+          callback_url: `${process.env.QPAY_CALLBACK_URL}?bk=${created.public_code}`,
+          sender_invoice_no: created.public_code,
+          receiver_code: guest_phone
+        });
+      } catch (e) {
+        // booking 롤백 (트랜잭션 후 INSERT라 별도 DELETE)
+        prepare('DELETE FROM booking WHERE id=?').run(id);
+        throw apiError('INTERNAL', { qpay_error: e.message });
+      }
+
+      expiresAt = new Date(Date.now() + 15 * 60_000).toISOString();
+      prepare(`
+        INSERT INTO payment (booking_id, provider, qpay_invoice_id, amount, status, awaiting_until)
+        VALUES (?, 'qpay', ?, ?, 'awaiting', ?)
+      `).run(id, invoice.invoice_id, amount, expiresAt);
+    }
+
     res.status(201).json({
       public_code: created.public_code,
-      amount
+      amount,
+      ...(invoice ? {
+        expires_at: expiresAt,
+        qpay_qr_text: invoice.qr_text,
+        qpay_qr_image: invoice.qr_image,
+        qpay_deeplinks: invoice.urls || []
+      } : {
+        qpay_unavailable: true   // 운영자가 creds 추가 필요
+      })
     });
   } catch (e) {
     if (e && e.code === 'SLOT_CONFLICT' && !e.error_code) {
