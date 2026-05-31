@@ -19,7 +19,7 @@ function bookingApp() {
     async init() {
       await bootI18n();
       try {
-        this.courts = await api.get('/booking/api/courts');
+        this.courts = await api.get(`${window.PATH_PREFIX}/api/courts`);
         this.selected.court = this.courts[0] || null;
       } catch (e) {
         this.error = e.message_mn || t('err_internal');
@@ -45,7 +45,7 @@ function bookingApp() {
     async goToSlots() {
       this.error = null;
       try {
-        this.availability = await api.get(`/booking/api/availability?court_id=${this.selected.court.id}&date=${this.selected.date}`);
+        this.availability = await api.get(`${window.PATH_PREFIX}/api/availability?court_id=${this.selected.court.id}&date=${this.selected.date}`);
         this.step = 2;
       } catch (e) {
         this.error = e.message_mn || t('err_internal');
@@ -73,7 +73,7 @@ function bookingApp() {
       this.submitting = true;
       this.error = null;
       try {
-        const res = await api.post('/booking/api/bookings', {
+        const res = await api.post(`${window.PATH_PREFIX}/api/bookings`, {
           court_id: this.selected.court.id,
           booking_date: this.selected.date,
           start_time: this.selected.slot.start,
@@ -103,7 +103,7 @@ function bookingApp() {
       clearInterval(this.pollTimer);
       this.pollTimer = setInterval(async () => {
         try {
-          const s = await api.get(`/booking/api/bookings/${this.booking.public_code}/payment-status`);
+          const s = await api.get(`${window.PATH_PREFIX}/api/bookings/${this.booking.public_code}/payment-status`);
           if (s.status === 'paid') {
             clearInterval(this.pollTimer); clearInterval(this.countdownTimer);
             this.step = 5;
@@ -131,7 +131,7 @@ function bookingApp() {
     async cancelDuringPayment() {
       const last4 = (this.form.guest_phone || '').slice(-4);
       try {
-        await api.post(`/booking/api/bookings/${this.booking.public_code}/cancel`, { phone_last4: last4 });
+        await api.post(`${window.PATH_PREFIX}/api/bookings/${this.booking.public_code}/cancel`, { phone_last4: last4 });
         clearInterval(this.pollTimer); clearInterval(this.countdownTimer);
         this.step = 1;
         this.selected.slot = null;

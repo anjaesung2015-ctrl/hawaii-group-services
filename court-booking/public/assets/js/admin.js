@@ -15,7 +15,7 @@ function adminApp() {
       const q = new URLSearchParams();
       for (const [k, v] of Object.entries(this.filters)) if (v) q.set(k, v);
       try {
-        this.bookings = await api.get('/booking/api/admin/bookings?' + q.toString());
+        this.bookings = await api.get(`${window.PATH_PREFIX}/api/admin/bookings?${q.toString()}`);
       } catch (e) {
         if (e.error_code === 'NO_TOKEN' || e.error_code === 'INVALID_TOKEN') {
           location.href = '/staff-manager/login?next=' + encodeURIComponent(location.pathname);
@@ -37,7 +37,7 @@ function adminApp() {
 
     async openDetail(b) {
       try {
-        this.detail = await api.get(`/booking/api/admin/bookings/${b.id}`);
+        this.detail = await api.get(`${window.PATH_PREFIX}/api/admin/bookings/${b.id}`);
       } catch (e) {
         this.error = e.message_mn || '상세 로드 실패';
       }
@@ -47,7 +47,7 @@ function adminApp() {
       const reason = prompt('취소 사유:');
       if (!reason || reason.length < 2) return;
       try {
-        await api.post(`/booking/api/admin/bookings/${this.detail.id}/cancel`, { reason });
+        await api.post(`${window.PATH_PREFIX}/api/admin/bookings/${this.detail.id}/cancel`, { reason });
         this.detail = null;
         await this.load();
       } catch (e) { this.error = e.message_mn || '취소 실패'; }
@@ -56,7 +56,7 @@ function adminApp() {
     async markNoShow() {
       if (!confirm('노쇼 처리하시겠습니까?')) return;
       try {
-        await api.post(`/booking/api/admin/bookings/${this.detail.id}/no-show`);
+        await api.post(`${window.PATH_PREFIX}/api/admin/bookings/${this.detail.id}/no-show`);
         this.detail = null;
         await this.load();
       } catch (e) { this.error = e.message_mn || '실패'; }
@@ -65,7 +65,7 @@ function adminApp() {
     async confirmCash() {
       if (!confirm('현금 수납 처리하시겠습니까?')) return;
       try {
-        await api.post(`/booking/api/admin/bookings/${this.detail.id}/confirm-cash`);
+        await api.post(`${window.PATH_PREFIX}/api/admin/bookings/${this.detail.id}/confirm-cash`);
         this.detail = null;
         await this.load();
       } catch (e) { this.error = e.message_mn || '실패'; }

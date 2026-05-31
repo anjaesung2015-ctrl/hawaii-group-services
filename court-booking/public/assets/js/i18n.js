@@ -1,7 +1,8 @@
 window.__i18n = { messages: {}, lang: 'mn' };
 
 async function loadLocale(lang = 'mn') {
-  const res = await fetch(`/booking/locales/${lang}.json`).catch(() => fetch(`/locales/${lang}.json`));
+  const prefix = window.PATH_PREFIX || '';
+  const res = await fetch(`${prefix}/locales/${lang}.json`);
   window.__i18n.messages = await res.json();
   window.__i18n.lang = lang;
 }

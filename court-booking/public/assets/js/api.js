@@ -1,3 +1,9 @@
+// 런타임 path prefix 감지: /booking/...로 접근됐으면 prefix='/booking', 아니면 ''
+window.PATH_PREFIX = (function () {
+  const m = window.location.pathname.match(/^(\/booking)(\/|$)/);
+  return m ? m[1] : '';
+})();
+
 async function _fetch(url, opts = {}) {
   const res = await fetch(url, {
     credentials: 'include',
