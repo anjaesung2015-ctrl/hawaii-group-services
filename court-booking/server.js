@@ -19,7 +19,7 @@ app.get('/health', (req, res) => res.json({ ok: true, ts: new Date().toISOString
 // 라우터 마운트 (admin/qpay는 이후 task에서)
 app.use('/api', require('./routes/public'));
 // app.use('/api/admin', require('./routes/admin'));
-// app.use('/qpay', require('./routes/qpay'));
+app.use('/qpay', require('./routes/qpay'));
 
 app.listen(PORT, () => {
   console.log(`[court-booking] listening on ${PORT}`);
