@@ -8,6 +8,7 @@ const fs = require('fs');
 const { PHASE_PROGRAMS, DRILLS, GROUP_PRESETS } = require('./seed');
 const { regenerateWeeklyPrograms } = require('./auto-program');
 const cron = require('node-cron');
+const telegram = require('./telegram-client');
 
 const app = express();
 const PORT = 6060;
@@ -978,9 +979,22 @@ app.post('/api/programs/regenerate', auth, (req, res) => {
   try {
     const result = regenerateWeeklyPrograms(db, 'manual_trigger');
     res.json({ ok: true, ...result });
+    // 비동기 알림
+    setImmediate(() => {
+      const msg = `🎾 *코치 프로그램 수동 재생성*
+교체: ${result.replaced || 0}개
+백업: ${result.backed_up || 0}개
+시각: ${new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Ulaanbaatar' })}`;
+      telegram.notify(msg).catch(e => console.error('[regen-notify]', e));
+    });
   } catch (e) {
     console.error('[regen]', e);
     res.status(500).json({ ok: false, error: e.message });
+    // 실패도 알림
+    setImmediate(() => {
+      telegram.notify(`⚠️ *코치 프로그램 재생성 실패*
+오류: ${e.message}`).catch(()=>{});
+    });
   }
 });
 
@@ -989,8 +1003,20 @@ cron.schedule('30 23 * * 0', () => {
   try {
     const r = regenerateWeeklyPrograms(db, 'weekly_auto');
     console.log('[regen weekly]', new Date().toISOString(), r);
+    setImmediate(() => {
+      const msg = `🗓️ *코치 프로그램 매주 자동 재생성*
+교체: ${r.replaced || 0}개
+백업: ${r.backed_up || 0}개
+다음 주(월~토) 프로그램이 새로 생성되었습니다.
+어드민에서 확인: https://app.hawaiigroup.co/coach/admin.html`;
+      telegram.notify(msg).catch(e => console.error('[regen-notify]', e));
+    });
   } catch (e) {
     console.error('[regen weekly]', e);
+    setImmediate(() => {
+      telegram.notify(`⚠️ *매주 자동 재생성 실패*
+${e.message}`).catch(()=>{});
+    });
   }
 });
 console.log('[Coach App] weekly regen schedule registered (Sun 23:30 UB)');
