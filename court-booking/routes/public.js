@@ -137,4 +137,51 @@ router.get('/bookings/:code/payment-status', (req, res) => {
   } catch (e) { sendError(res, e); }
 });
 
+
+router.post('/bookings/:code/cancel', express.json(), (req, res) => {
+  try {
+    const code = req.params.code;
+    const { phone_last4 } = req.body || {};
+    if (!phone_last4 || !/^\d{4}$/.test(phone_last4)) throw apiError('INVALID_INPUT', { field: 'phone_last4' });
+
+    const b = prepare(`
+      SELECT id, booking_date, start_time, guest_phone, status
+      FROM booking WHERE public_code = ?
+    `).get(code);
+    if (!b) throw apiError('BOOKING_NOT_FOUND');
+
+    if (b.guest_phone.slice(-4) !== phone_last4) throw apiError('PHONE_MISMATCH');
+
+    if (!['pending','confirmed'].includes(b.status)) throw apiError('BOOKING_NOT_CANCELLABLE');
+
+    // 24h 이내 차단 (코트 timezone UTC+8 기준)
+    const startIso = `${b.booking_date}T${b.start_time}:00`;
+    const startTs = new Date(startIso + '+08:00').getTime();
+    const now = Date.now();
+    if (startTs - now < 24 * 3600 * 1000) throw apiError('BOOKING_NOT_CANCELLABLE');
+
+    prepare(`
+      UPDATE booking
+      SET status='cancelled', cancelled_at=datetime('now'),
+          cancelled_by='customer', cancel_reason='self_cancel'
+      WHERE id = ?
+    `).run(b.id);
+
+    // 연관 awaiting payment도 정리
+    prepare(`
+      UPDATE payment SET status='auto_cancelled'
+      WHERE booking_id=? AND status='awaiting'
+    `).run(b.id);
+
+    auditLog({
+      actor_type: 'customer', action: 'booking.cancel.self',
+      entity_type: 'booking', entity_id: b.id,
+      metadata: { reason: 'self_cancel' },
+      ip: req.ip
+    });
+
+    res.json({ ok: true });
+  } catch (e) { sendError(res, e); }
+});
+
 module.exports = router;
