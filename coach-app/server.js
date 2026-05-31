@@ -984,8 +984,8 @@ app.post('/api/programs/regenerate', auth, (req, res) => {
   }
 });
 
-// 매주 일요일 23:30 UB = 15:30 UTC
-cron.schedule('30 15 * * 0', () => {
+// 매주 일요일 23:30 UB (EC2 TZ=Asia/Ulaanbaatar)
+cron.schedule('30 23 * * 0', () => {
   try {
     const r = regenerateWeeklyPrograms(db, 'weekly_auto');
     console.log('[regen weekly]', new Date().toISOString(), r);
