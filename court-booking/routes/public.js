@@ -3,10 +3,11 @@ const { db, prepare, createBookingSafely } = require('../db');
 const { computeAvailability } = require('../availability');
 const { apiError, sendError } = require('../errors');
 const { log: auditLog } = require('../audit-log');
+const { createBookingLimiter, cancelLimiter, readLimiter } = require('../middleware/rate-limit');
 
 const router = express.Router();
 
-router.get('/courts', (req, res) => {
+router.get('/courts', readLimiter, (req, res) => {
   const rows = prepare(`
     SELECT id, name_mn, group_name, sport, open_hours, price_per_hour
     FROM court WHERE active = 1 ORDER BY id
@@ -14,7 +15,7 @@ router.get('/courts', (req, res) => {
   res.json(rows.map(r => ({ ...r, open_hours: JSON.parse(r.open_hours) })));
 });
 
-router.get('/availability', (req, res) => {
+router.get('/availability', readLimiter, (req, res) => {
   try {
     const court_id = parseInt(req.query.court_id, 10);
     const date = String(req.query.date || '');
@@ -44,7 +45,7 @@ function calcAmount(price_per_hour, start_time, end_time) {
   return Math.round(price_per_hour * hours);
 }
 
-router.post('/bookings', express.json(), async (req, res) => {
+router.post('/bookings', createBookingLimiter, express.json(), async (req, res) => {
   try {
     const { court_id, booking_date, start_time, end_time, guest_name, guest_phone, guest_email } = req.body || {};
 
@@ -136,7 +137,7 @@ router.post('/bookings', express.json(), async (req, res) => {
 });
 
 
-router.get('/bookings/:code', (req, res) => {
+router.get('/bookings/:code', readLimiter, (req, res) => {
   try {
     const code = req.params.code;
     const b = prepare(`
@@ -150,7 +151,7 @@ router.get('/bookings/:code', (req, res) => {
   } catch (e) { sendError(res, e); }
 });
 
-router.get('/bookings/:code/payment-status', (req, res) => {
+router.get('/bookings/:code/payment-status', readLimiter, (req, res) => {
   try {
     const code = req.params.code;
     const row = prepare(`
@@ -171,7 +172,7 @@ router.get('/bookings/:code/payment-status', (req, res) => {
 });
 
 
-router.post('/bookings/:code/cancel', express.json(), (req, res) => {
+router.post('/bookings/:code/cancel', cancelLimiter, express.json(), (req, res) => {
   try {
     const code = req.params.code;
     const { phone_last4 } = req.body || {};
