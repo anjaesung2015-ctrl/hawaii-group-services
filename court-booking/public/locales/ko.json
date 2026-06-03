@@ -36,5 +36,15 @@
   "step": "단계 {n}/5",
   "open_hours": "운영시간",
   "today": "오늘",
-  "no_slots": "이 날은 운영하지 않습니다."
+  "no_slots": "이 날은 운영하지 않습니다.",
+  "per_hour": "시간",
+  "month_label": "{year}년 {month}월",
+  "weekdays": ["일", "월", "화", "수", "목", "금", "토"],
+  "deposit": "계약금",
+  "balance_onsite": "잔금(현장)",
+  "bank": "은행",
+  "account_no": "계좌번호",
+  "holder": "예금주",
+  "transfer_memo_hint": "입금자명/메모에 예약코드 {code} 를 꼭 적어주세요.",
+  "await_confirm_hint": "계약금 입금이 확인되면 예약이 확정됩니다."
 }

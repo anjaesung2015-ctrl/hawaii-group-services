@@ -13,26 +13,79 @@
 
 <div x-data="adminApp()" x-init="init()" class="max-w-6xl mx-auto p-4">
 
-  <header class="flex items-center justify-between mb-4">
-    <h1 class="text-xl font-bold">Court Booking Admin</h1>
+  <header class="flex flex-wrap items-center justify-between gap-2 mb-4">
+    <div class="flex items-center gap-3">
+      <h1 class="text-xl font-bold">Court Booking Admin</h1>
+      <div class="flex rounded-lg border border-slate-300 overflow-hidden text-sm">
+        <button @click="switchView('grid')" :class="view==='grid' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600'" class="px-3 py-1">현황판</button>
+        <button @click="switchView('list')" :class="view==='list' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600'" class="px-3 py-1 border-l">목록</button>
+      </div>
+    </div>
     <div class="flex items-center gap-2">
-      <input type="date" x-model="filters.date" @change="load()" class="border rounded px-2 py-1" />
-      <select x-model="filters.status" @change="load()" class="border rounded px-2 py-1">
-        <option value="">전체 상태</option>
-        <option value="pending">대기</option>
-        <option value="confirmed">확정</option>
-        <option value="cancelled">취소</option>
-        <option value="no_show">노쇼</option>
-        <option value="completed">완료</option>
-      </select>
-      <input type="text" x-model="filters.phone" @keyup.enter="load()" placeholder="전화 검색" class="border rounded px-2 py-1" />
-      <button @click="load()" class="bg-emerald-600 text-white px-3 py-1 rounded">↻</button>
+      <input type="date" x-model="filters.date" @change="refresh()" class="border rounded px-2 py-1" />
+      <template x-if="view==='list'">
+        <select x-model="filters.status" @change="load()" class="border rounded px-2 py-1">
+          <option value="active">진행중 (취소·노쇼 제외)</option>
+          <option value="">전체 상태</option>
+          <option value="pending">대기</option>
+          <option value="confirmed">확정</option>
+          <option value="cancelled">취소</option>
+          <option value="no_show">노쇼</option>
+          <option value="completed">완료</option>
+        </select>
+      </template>
+      <template x-if="view==='list'">
+        <input type="text" x-model="filters.phone" @keyup.enter="load()" placeholder="전화 검색" class="border rounded px-2 py-1" />
+      </template>
+      <button @click="refresh()" class="bg-emerald-600 text-white px-3 py-1 rounded">↻</button>
     </div>
   </header>
 
+  <!-- 현황판: 코트 × 시간 그리드 + 그날 요약 -->
+  <div x-show="view==='grid'" class="space-y-3">
+    <div class="flex flex-wrap gap-3 text-sm">
+      <span class="px-3 py-1 bg-white rounded shadow-sm">확정 <b x-text="gridData?.summary?.confirmed ?? 0"></b>건</span>
+      <span class="px-3 py-1 bg-white rounded shadow-sm">대기 <b x-text="gridData?.summary?.pending ?? 0"></b>건</span>
+      <span class="px-3 py-1 bg-white rounded shadow-sm">매출 <b x-text="'₮' + (gridData?.summary?.revenue ?? 0).toLocaleString()"></b></span>
+      <span class="text-xs text-slate-400 self-center">
+        <span class="px-1 bg-emerald-300 rounded">예약</span>
+        <span class="px-1 bg-yellow-100 rounded">대기</span>
+        <span class="px-1 bg-white border rounded">빈자리</span>
+      </span>
+    </div>
+    <div class="bg-white rounded-lg overflow-x-auto shadow-sm">
+      <table class="text-xs border-collapse w-full">
+        <thead class="bg-slate-50">
+          <tr>
+            <th class="p-2 sticky left-0 bg-slate-50">시간</th>
+            <template x-for="c in (gridData?.courts || [])" :key="c.court_id">
+              <th class="p-2 font-medium text-slate-600 whitespace-nowrap" x-text="c.name_ko || c.name_mn"></th>
+            </template>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="row in gridRows()" :key="row.start">
+            <tr class="border-t">
+              <td class="p-1 text-slate-500 sticky left-0 bg-slate-50 text-right whitespace-nowrap" x-text="row.start"></td>
+              <template x-for="(cell, ci) in row.cells" :key="ci">
+                <td class="p-0.5">
+                  <button @click="cell.booking && openDetail({id: cell.booking.id})"
+                    :class="cellClass(cell.status)"
+                    class="w-full min-w-[4rem] py-2 rounded text-center"
+                    x-text="cell.booking ? (cellLabel(cell.status) + ' ' + (cell.booking.name||'')) : cellLabel(cell.status)"></button>
+                </td>
+              </template>
+            </tr>
+          </template>
+          <tr x-show="!gridData || !gridData.courts.length"><td colspan="9" class="text-center py-8 text-slate-400">코트 없음</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <div x-show="error" class="mb-3 p-2 bg-red-100 text-red-700 rounded" x-text="error"></div>
 
-  <div class="bg-white rounded-lg overflow-hidden shadow-sm">
+  <div x-show="view==='list'" class="bg-white rounded-lg overflow-hidden shadow-sm">
     <table class="w-full text-sm">
       <thead class="bg-slate-50 text-left">
         <tr>

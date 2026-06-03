@@ -7,6 +7,8 @@ function detectLang() {
     const url = new URL(window.location.href);
     const q = url.searchParams.get('lang');
     if (q && SUPPORTED.includes(q)) return q;
+    const ls = localStorage.getItem('booking_lang');   // 저장된 언어 선택
+    if (ls && SUPPORTED.includes(ls)) return ls;
   } catch (e) {}
   return 'mn';
 }

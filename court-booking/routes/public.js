@@ -9,29 +9,64 @@ const router = express.Router();
 
 router.get('/courts', readLimiter, (req, res) => {
   const rows = prepare(`
-    SELECT id, name_mn, group_name, sport, open_hours, price_per_hour
+    SELECT id, name_mn, name_ko, group_name, sport, open_hours, price_per_hour
     FROM court WHERE active = 1 ORDER BY id
   `).all();
   res.json(rows.map(r => ({ ...r, open_hours: JSON.parse(r.open_hours) })));
 });
 
+// 공개 설정: 계좌이체 안내(계약금 비율 + 입금 계좌). 비밀값 아님.
+router.get('/config', readLimiter, (req, res) => {
+  res.json({
+    deposit_rate: parseFloat(process.env.DEPOSIT_RATE || '0.5'),
+    bank: {
+      name: process.env.BANK_NAME || '',
+      account: process.env.BANK_ACCOUNT || '',
+      holder: process.env.BANK_HOLDER || ''
+    }
+  });
+});
+
+// 빈 시간 조회. court_id 주면 단일 코트(슬롯 배열), 생략하면 전 코트 그리드.
+// 1층 공유바닥 규칙(4.1) 반영: 다른 종목이 섞이면 종목당 1면 → 초과 코트는 차단.
 router.get('/availability', readLimiter, (req, res) => {
   try {
-    const court_id = parseInt(req.query.court_id, 10);
     const date = String(req.query.date || '');
-    if (!court_id || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      throw apiError('INVALID_INPUT');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw apiError('INVALID_INPUT');
+    const { violatesFloorRule } = require('../floor-rule');
+
+    const courts = prepare(`SELECT id, name_mn, name_ko, price_per_hour, group_name, open_hours FROM court WHERE active=1 ORDER BY id`).all();
+    const allBookings = prepare(`
+      SELECT b.court_id, b.start_time, b.end_time, c.group_name
+      FROM booking b JOIN court c ON c.id = b.court_id
+      WHERE b.booking_date = ? AND b.status NOT IN ('cancelled','no_show')
+    `).all(date);
+
+    const computeCourt = (court) => {
+      const own = allBookings.filter(b => b.court_id === court.id).map(b => ({ start_time: b.start_time, end_time: b.end_time }));
+      return computeAvailability({ open_hours: court.open_hours, date, taken: own }).map(s => {
+        if (!s.available) return s;   // 자기 코트가 이미 예약됨
+        const others = allBookings
+          .filter(b => b.court_id !== court.id && b.start_time < s.end && b.end_time > s.start)
+          .map(b => b.group_name);
+        return { ...s, available: !violatesFloorRule(court.group_name, others) };
+      });
+    };
+
+    const court_id = parseInt(req.query.court_id, 10);
+    if (court_id) {
+      const court = courts.find(c => c.id === court_id);
+      if (!court) throw apiError('INVALID_INPUT');
+      return res.json(computeCourt(court));
     }
-    const court = prepare('SELECT open_hours FROM court WHERE id=? AND active=1').get(court_id);
-    if (!court) throw apiError('INVALID_INPUT');
 
-    const taken = prepare(`
-      SELECT start_time, end_time FROM booking
-      WHERE court_id = ? AND booking_date = ?
-        AND status NOT IN ('cancelled','no_show')
-    `).all(court_id, date);
-
-    res.json(computeAvailability({ open_hours: court.open_hours, date, taken }));
+    res.json({
+      date,
+      courts: courts.map(c => ({
+        court_id: c.id, name_mn: c.name_mn, name_ko: c.name_ko, price_per_hour: c.price_per_hour,
+        slots: computeCourt(c)
+      }))
+    });
   } catch (e) {
     sendError(res, e);
   }
@@ -88,6 +123,12 @@ router.post('/bookings', createBookingLimiter, express.json(), async (req, res) 
       entity_type: 'booking', entity_id: id,
       metadata: { court_id, booking_date, start_time, amount },
       ip: req.ip
+    });
+
+    // 신규 예약 → 사장님 텔레그램 승인요청 ([승인]/[거절] 버튼). 비동기, 실패해도 예약엔 영향 없음.
+    setImmediate(() => {
+      require('../notifications').sendApprovalRequest(id)
+        .catch(e => console.error('[approval-req]', e.message));
     });
 
     // QPay 인보이스 생성 (creds 있을 때만)

@@ -17,53 +17,89 @@
 
 <div x-data="bookingApp()" x-init="init()" class="max-w-md mx-auto p-4">
 
-  <header class="mb-4">
-    <h1 class="text-2xl font-bold text-emerald-700" x-text="t('app_title')"></h1>
-    <p class="text-sm text-slate-500 mt-1" x-text="t('step', { n: step })"></p>
+  <header class="mb-4 flex items-start justify-between gap-2">
+    <div>
+      <h1 class="text-2xl font-bold text-emerald-700" x-text="t('app_title')"></h1>
+      <p class="text-sm text-slate-500 mt-1" x-text="t('step', { n: step })"></p>
+    </div>
+    <!-- 언어 토글: 즉시 전환 + localStorage 저장 -->
+    <div class="flex-shrink-0 flex rounded-lg border border-slate-200 overflow-hidden text-sm">
+      <button @click="setLang('mn')" :class="lang === 'mn' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600'" class="px-3 py-1.5 font-medium">MN</button>
+      <button @click="setLang('ko')" :class="lang === 'ko' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600'" class="px-3 py-1.5 font-medium border-l border-slate-200">KO</button>
+    </div>
   </header>
 
   <div x-show="error" x-transition class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm" x-text="error"></div>
 
   <section x-show="step === 1" class="fade-in space-y-4">
     <div>
-      <label class="block text-sm font-medium mb-2" x-text="t('select_court')"></label>
-      <div class="p-4 bg-white rounded-xl border" x-show="selected.court">
-        <p class="font-semibold" x-text="selected.court?.name_mn"></p>
-        <p class="text-sm text-slate-500" x-text="`₮${(selected.court?.price_per_hour || 0).toLocaleString()} / цаг`"></p>
-      </div>
-    </div>
-    <div>
       <label class="block text-sm font-medium mb-2" x-text="t('select_date')"></label>
-      <div class="overflow-x-auto -mx-4 px-4">
-        <div class="flex gap-2 pb-2">
-          <template x-for="d in next14Days()" :key="d.date">
-            <button @click="selectDate(d.date)" :class="selected.date === d.date ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white border-slate-200'" class="flex-shrink-0 w-16 py-3 rounded-xl border text-center">
-              <div class="text-xs" x-text="d.dow"></div>
-              <div class="text-lg font-bold" x-text="d.day"></div>
-            </button>
+      <!-- 월 달력: 이번 달 + 다음 달을 세로로 이어서 스크롤. 7열 요일 그리드, 과거/예약불가일 비활성 -->
+      <div class="bg-white rounded-xl border p-3 max-h-96 overflow-y-auto">
+        <div class="grid grid-cols-7 gap-1 mb-1 sticky top-0 bg-white">
+          <template x-for="(w, i) in weekdays()" :key="i">
+            <div class="text-center text-xs text-slate-400 py-1" x-text="w"></div>
           </template>
         </div>
+        <template x-for="mon in months()" :key="mon.key">
+          <div class="mb-3">
+            <p class="text-center font-semibold my-2" x-text="mon.label"></p>
+            <div class="grid grid-cols-7 gap-1">
+              <template x-for="(cell, i) in mon.cells" :key="i">
+                <button
+                  @click="!cell.blank && cell.selectable && selectDate(cell.date)"
+                  :disabled="cell.blank || !cell.selectable"
+                  :class="cell.blank ? 'invisible' : (!cell.selectable ? 'text-slate-300 cursor-not-allowed' : (selected.date === cell.date ? 'bg-emerald-600 text-white' : (cell.isToday ? 'ring-1 ring-emerald-500 text-emerald-700' : 'text-slate-700 hover:bg-emerald-50')))"
+                  class="aspect-square rounded-lg text-sm font-medium flex items-center justify-center"
+                  x-text="cell.blank ? '' : cell.day"></button>
+              </template>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
-    <button class="w-full bg-emerald-600 text-white font-semibold py-3 rounded-xl disabled:opacity-50" :disabled="!selected.court || !selected.date" @click="goToSlots()" x-text="t('next')"></button>
-  </section>
-
-  <section x-show="step === 2" class="fade-in space-y-4">
-    <button @click="step = 1" class="text-emerald-600 text-sm" x-text="'← ' + t('back')"></button>
-    <p class="text-sm text-slate-500" x-text="selected.date"></p>
-    <div x-show="availability.length === 0" class="text-center py-8 text-slate-400" x-text="t('no_slots')"></div>
-    <div class="grid grid-cols-4 gap-2">
-      <template x-for="slot in availability" :key="slot.start">
-        <button @click="slot.available && selectSlot(slot)" :disabled="!slot.available" :class="!slot.available ? 'border-slate-200 text-slate-400 line-through cursor-not-allowed' : (selected.slot?.start === slot.start ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-emerald-500 text-emerald-700 hover:bg-emerald-50')" class="border rounded-lg py-3 text-center font-medium">
-          <span x-text="slot.start"></span>
-        </button>
-      </template>
+    <!-- 코트 × 시간 현황 그리드: 초록(빈자리) 탭 → 예약 진행 -->
+    <div x-show="selected.date" class="fade-in">
+      <div class="flex items-center justify-between mb-2">
+        <label class="block text-sm font-medium" x-text="t('select_time')"></label>
+        <span class="text-xs text-slate-400">
+          <span class="text-emerald-600">●</span> <span x-text="t('available')"></span>
+          &nbsp;<span class="text-slate-300">●</span> <span x-text="t('taken')"></span>
+        </span>
+      </div>
+      <div x-show="grid.length" class="overflow-x-auto bg-white rounded-xl border">
+        <table class="text-xs border-collapse w-full">
+          <thead>
+            <tr>
+              <th class="p-1 sticky left-0 bg-slate-50 z-10"></th>
+              <template x-for="c in grid" :key="c.court_id">
+                <th class="p-1 font-medium text-slate-600 whitespace-nowrap" x-text="courtName(c)"></th>
+              </template>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="row in gridRows()" :key="row.start">
+              <tr>
+                <td class="px-1 py-0.5 text-slate-500 sticky left-0 bg-slate-50 text-right whitespace-nowrap" x-text="row.start"></td>
+                <template x-for="(cell, ci) in row.cells" :key="ci">
+                  <td class="p-0.5">
+                    <button @click="selectCell(cell)" :disabled="!cell.available"
+                      :class="cell.available ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-slate-100 text-slate-300 cursor-not-allowed'"
+                      class="w-full min-w-[3rem] py-2 rounded text-center font-medium"
+                      x-text="cell.available ? '○' : '✕'"></button>
+                  </td>
+                </template>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
     </div>
-    <button class="w-full bg-emerald-600 text-white font-semibold py-3 rounded-xl disabled:opacity-50" :disabled="!selected.slot" @click="step = 3" x-text="t('next')"></button>
   </section>
 
   <section x-show="step === 3" class="fade-in space-y-4">
-    <button @click="step = 2" class="text-emerald-600 text-sm" x-text="'← ' + t('back')"></button>
+    <button @click="step = 1" class="text-emerald-600 text-sm" x-text="'← ' + t('back')"></button>
+    <p class="text-sm text-slate-500"><span x-text="courtName(selected.court)"></span> · <span x-text="selected.date"></span> <span x-text="selected.slot?.start"></span>~<span x-text="selected.slot?.end"></span></p>
     <div class="space-y-3">
       <div>
         <label class="block text-sm font-medium mb-1" x-text="t('name')"></label>
@@ -92,18 +128,44 @@
     </button>
   </section>
 
-  <section x-show="step === 4" class="fade-in space-y-4 text-center">
-    <p class="text-sm text-slate-500" x-text="t('pay_qr_hint')"></p>
-    <div class="bg-white p-4 rounded-xl inline-block">
-      <img x-show="booking?.qpay_qr_image" :src="'data:image/png;base64,' + (booking?.qpay_qr_image || '')" alt="QPay QR" class="w-64 h-64 mx-auto" />
-    </div>
-    <div class="space-y-2">
-      <template x-for="link in (booking?.qpay_deeplinks || [])" :key="link.name">
-        <a :href="link.link" class="block bg-slate-100 hover:bg-slate-200 py-2 rounded-lg text-sm" x-text="link.name + ' →'"></a>
-      </template>
-    </div>
-    <div class="text-lg font-mono" x-text="t('payment_expires_in', { time: countdown })"></div>
-    <button class="text-red-600 text-sm underline" @click="cancelDuringPayment()" x-text="t('cancel_booking')"></button>
+  <section x-show="step === 4" class="fade-in space-y-4">
+    <!-- 계좌이체 안내 (QPay 미연동 시) -->
+    <template x-if="booking?.qpay_unavailable">
+      <div class="space-y-4">
+        <div class="text-center">
+          <p class="text-xs text-slate-400" x-text="t('your_code')"></p>
+          <p class="text-3xl font-mono font-bold text-emerald-700" x-text="booking?.public_code"></p>
+        </div>
+        <div class="bg-emerald-50 rounded-xl p-3 space-y-1 text-sm">
+          <div class="flex justify-between"><span class="text-slate-500" x-text="t('deposit')"></span><span class="font-bold text-emerald-700" x-text="`₮${depositAmount().toLocaleString()}`"></span></div>
+          <div class="flex justify-between"><span class="text-slate-500" x-text="t('balance_onsite')"></span><span x-text="`₮${((booking?.amount||0)-depositAmount()).toLocaleString()}`"></span></div>
+        </div>
+        <div class="bg-white border rounded-xl p-3 space-y-1 text-sm">
+          <div class="flex justify-between"><span class="text-slate-500" x-text="t('bank')"></span><span class="font-medium" x-text="config.bank?.name"></span></div>
+          <div class="flex justify-between"><span class="text-slate-500" x-text="t('account_no')"></span><span class="font-mono font-medium select-all" x-text="config.bank?.account"></span></div>
+          <div class="flex justify-between" x-show="config.bank?.holder"><span class="text-slate-500" x-text="t('holder')"></span><span x-text="config.bank?.holder"></span></div>
+        </div>
+        <p class="text-xs text-amber-600" x-text="t('transfer_memo_hint', { code: booking?.public_code })"></p>
+        <p class="text-sm text-center text-slate-500" x-text="t('await_confirm_hint')"></p>
+      </div>
+    </template>
+
+    <!-- QPay 결제 (creds 연동 시) -->
+    <template x-if="!booking?.qpay_unavailable">
+      <div class="space-y-4 text-center">
+        <p class="text-sm text-slate-500" x-text="t('pay_qr_hint')"></p>
+        <div class="bg-white p-4 rounded-xl inline-block">
+          <img x-show="booking?.qpay_qr_image" :src="'data:image/png;base64,' + (booking?.qpay_qr_image || '')" alt="QPay QR" class="w-64 h-64 mx-auto" />
+        </div>
+        <div class="space-y-2">
+          <template x-for="link in (booking?.qpay_deeplinks || [])" :key="link.name">
+            <a :href="link.link" class="block bg-slate-100 hover:bg-slate-200 py-2 rounded-lg text-sm" x-text="link.name + ' →'"></a>
+          </template>
+        </div>
+        <div class="text-lg font-mono" x-text="t('payment_expires_in', { time: countdown })"></div>
+        <button class="text-red-600 text-sm underline" @click="cancelDuringPayment()" x-text="t('cancel_booking')"></button>
+      </div>
+    </template>
   </section>
 
   <section x-show="step === 5" class="fade-in text-center space-y-4 py-8">
@@ -114,7 +176,7 @@
       <p class="text-4xl font-mono font-bold text-emerald-700 my-2" x-text="booking?.public_code"></p>
     </div>
     <div class="text-left bg-white p-4 rounded-xl space-y-1 text-sm">
-      <div class="flex justify-between"><span class="text-slate-500" x-text="t('venue')"></span><span x-text="selected.court?.name_mn"></span></div>
+      <div class="flex justify-between"><span class="text-slate-500" x-text="t('venue')"></span><span x-text="courtName(selected.court)"></span></div>
       <div class="flex justify-between"><span class="text-slate-500" x-text="t('date')"></span><span x-text="selected.date"></span></div>
       <div class="flex justify-between"><span class="text-slate-500" x-text="t('time')"></span><span x-text="`${selected.slot?.start} - ${selected.slot?.end}`"></span></div>
       <div class="flex justify-between"><span class="text-slate-500" x-text="t('amount')"></span><span x-text="`₮${calcAmount().toLocaleString()}`"></span></div>

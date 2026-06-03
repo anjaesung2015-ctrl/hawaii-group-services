@@ -19,6 +19,7 @@ app.get('/health', (req, res) => res.json({ ok: true, ts: new Date().toISOString
 
 app.use('/api', require('./routes/public'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/telegram', require('./routes/telegram-webhook')());
 app.use('/qpay', require('./routes/qpay'));
 
 app.use(notFound);

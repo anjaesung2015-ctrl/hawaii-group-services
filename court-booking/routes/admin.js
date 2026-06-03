@@ -16,7 +16,8 @@ router.get('/bookings', (req, res) => {
     const where = [];
     const args = {};
     if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) { where.push('b.booking_date = @date'); args.date = date; }
-    if (status) { where.push('b.status = @status'); args.status = status; }
+    if (status === 'active') { where.push("b.status NOT IN ('cancelled','no_show')"); }
+    else if (status) { where.push('b.status = @status'); args.status = status; }
     if (phone) { where.push('b.guest_phone LIKE @phone'); args.phone = `%${phone}%`; }
     const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
     const rows = prepare(`
@@ -102,6 +103,54 @@ router.post('/bookings/:id/confirm-cash', (req, res) => {
   } catch (e) { sendError(res, e); }
 });
 
+// 현황판: 날짜의 코트×시간 그리드 + 그날 요약(건수/매출)
+router.get('/grid', (req, res) => {
+  try {
+    const date = req.query.date;
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw apiError('INVALID_INPUT');
+    const { computeAvailability } = require('../availability');
+    const { violatesFloorRule } = require('../floor-rule');
+
+    const courts = prepare(`SELECT id, name_mn, name_ko, group_name, open_hours FROM court WHERE active=1 ORDER BY id`).all();
+    // 그날 전체 예약(코트 group 포함) — floor 차단 계산용
+    const allBookings = prepare(`
+      SELECT b.id, b.public_code, b.court_id, b.start_time, b.end_time, b.status,
+             b.guest_name, b.guest_phone, b.amount, c.group_name
+      FROM booking b JOIN court c ON c.id = b.court_id
+      WHERE b.booking_date=? AND b.status NOT IN ('cancelled','no_show')
+    `).all(date);
+
+    const grid = courts.map(c => {
+      const own = allBookings.filter(b => b.court_id === c.id).map(b => ({ start_time: b.start_time, end_time: b.end_time }));
+      const slots = computeAvailability({ open_hours: c.open_hours, date, taken: own }).map(s => {
+        const bk = allBookings.find(b => b.court_id === c.id && b.start_time < s.end && b.end_time > s.start);
+        if (bk) {
+          return { start: s.start, end: s.end, status: bk.status,
+            booking: { id: bk.id, code: bk.public_code, name: bk.guest_name, phone: bk.guest_phone, amount: bk.amount } };
+        }
+        // 자기 코트는 비어있지만 1층 종목 섞임으로 차단되는지
+        const others = allBookings.filter(b => b.court_id !== c.id && b.start_time < s.end && b.end_time > s.start).map(b => b.group_name);
+        const blocked = violatesFloorRule(c.group_name, others);
+        return { start: s.start, end: s.end, status: blocked ? 'blocked' : 'available', booking: null };
+      });
+      return { court_id: c.id, name_mn: c.name_mn, name_ko: c.name_ko, slots };
+    });
+
+    const sum = prepare(`
+      SELECT
+        SUM(CASE WHEN status='confirmed' THEN 1 ELSE 0 END) AS confirmed_cnt,
+        SUM(CASE WHEN status='pending'   THEN 1 ELSE 0 END) AS pending_cnt,
+        SUM(CASE WHEN status='confirmed' THEN amount ELSE 0 END) AS revenue
+      FROM booking WHERE booking_date=? AND status NOT IN ('cancelled','no_show')
+    `).get(date);
+
+    res.json({
+      date, courts: grid,
+      summary: { confirmed: sum.confirmed_cnt || 0, pending: sum.pending_cnt || 0, revenue: sum.revenue || 0 }
+    });
+  } catch (e) { sendError(res, e); }
+});
+
 // 코트 관리
 router.get('/courts', (req, res) => {
   res.json(prepare('SELECT * FROM court ORDER BY id').all().map(r => ({ ...r, open_hours: JSON.parse(r.open_hours) })));
@@ -112,7 +161,7 @@ router.patch('/courts/:id', express.json(), (req, res) => {
     const id = parseInt(req.params.id, 10);
     const fields = [];
     const args = { id };
-    const allowed = ['name_mn','group_name','open_hours','price_per_hour','active','maintenance_mode'];
+    const allowed = ['name_mn','name_ko','group_name','open_hours','price_per_hour','active','maintenance_mode'];
     for (const k of allowed) {
       if (req.body?.[k] !== undefined) {
         fields.push(`${k} = @${k}`);
