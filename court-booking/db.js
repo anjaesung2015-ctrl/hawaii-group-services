@@ -33,10 +33,10 @@ function createBookingSafely(input) {
 
     // 1층 물리적 구역 규칙 (zone 모델): 같은 구역 1개만 + 농구 양쪽이면 중간도 차단
     const { violatesFloorRule } = require('./floor-rule');
-    const tgt = module.exports.db.prepare('SELECT group_name, zone FROM court WHERE id=?').get(input.court_id);
+    const tgt = module.exports.db.prepare('SELECT group_name, floor_cols AS cols FROM court WHERE id=?').get(input.court_id);
     if (tgt) {
       const others = module.exports.db.prepare(`
-        SELECT c.group_name, c.zone FROM booking b JOIN court c ON c.id = b.court_id
+        SELECT c.group_name, c.floor_cols AS cols FROM booking b JOIN court c ON c.id = b.court_id
         WHERE b.booking_date = @booking_date
           AND b.status NOT IN ('cancelled','no_show')
           AND b.start_time < @end_time AND b.end_time > @start_time

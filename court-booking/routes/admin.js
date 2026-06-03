@@ -111,11 +111,11 @@ router.get('/grid', (req, res) => {
     const { computeAvailability } = require('../availability');
     const { violatesFloorRule } = require('../floor-rule');
 
-    const courts = prepare(`SELECT id, name_mn, name_ko, group_name, zone, open_hours FROM court WHERE active=1 ORDER BY id`).all();
+    const courts = prepare(`SELECT id, name_mn, name_ko, group_name, floor_cols AS cols, open_hours FROM court WHERE active=1 ORDER BY id`).all();
     // 그날 전체 예약(코트 group 포함) — floor 차단 계산용
     const allBookings = prepare(`
       SELECT b.id, b.public_code, b.court_id, b.start_time, b.end_time, b.status,
-             b.guest_name, b.guest_phone, b.amount, c.group_name, c.zone
+             b.guest_name, b.guest_phone, b.amount, c.group_name, c.floor_cols AS cols
       FROM booking b JOIN court c ON c.id = b.court_id
       WHERE b.booking_date=? AND b.status NOT IN ('cancelled','no_show')
     `).all(date);
@@ -129,8 +129,8 @@ router.get('/grid', (req, res) => {
             booking: { id: bk.id, code: bk.public_code, name: bk.guest_name, phone: bk.guest_phone, amount: bk.amount } };
         }
         // 자기 코트는 비어있지만 1층 구역 규칙으로 차단되는지
-        const others = allBookings.filter(b => b.court_id !== c.id && b.start_time < s.end && b.end_time > s.start).map(b => ({ zone: b.zone, group_name: b.group_name }));
-        const blocked = violatesFloorRule({ zone: c.zone, group_name: c.group_name }, others);
+        const others = allBookings.filter(b => b.court_id !== c.id && b.start_time < s.end && b.end_time > s.start).map(b => ({ cols: b.cols, group_name: b.group_name }));
+        const blocked = violatesFloorRule({ cols: c.cols, group_name: c.group_name }, others);
         return { start: s.start, end: s.end, status: blocked ? 'blocked' : 'available', booking: null };
       });
       return { court_id: c.id, name_mn: c.name_mn, name_ko: c.name_ko, slots };

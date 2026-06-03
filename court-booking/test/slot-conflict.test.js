@@ -10,7 +10,7 @@ function freshDb() {
   db.pragma('foreign_keys = ON');
   const sql = fs.readFileSync(path.join(__dirname, '..', 'migrations', '001_init.sql'), 'utf-8');
   db.exec(sql);
-  db.exec('ALTER TABLE court ADD COLUMN zone TEXT');
+  db.exec('ALTER TABLE court ADD COLUMN floor_cols TEXT');
   return db;
 }
 
