@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#059669" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="코트예약" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg" />
   <title>Хавайн теннисний корт — Захиалга</title>
   <link rel="stylesheet" href="assets/css/app.css" />
   <script src="https://cdn.tailwindcss.com"></script>
@@ -12,6 +18,7 @@
   <script src="assets/js/i18n.js"></script>
   <script src="assets/js/api.js"></script>
   <script src="assets/js/customer.js"></script>
+  <script>if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});</script>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen">
 

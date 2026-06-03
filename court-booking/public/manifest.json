@@ -1,0 +1,12 @@
+{
+  "name": "하와이 코트 예약",
+  "short_name": "코트예약",
+  "start_url": "/booking/",
+  "scope": "/booking/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#059669",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
