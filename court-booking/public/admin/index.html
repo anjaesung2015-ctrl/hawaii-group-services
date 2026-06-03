@@ -51,14 +51,15 @@
 
   <!-- 현황판: 코트 × 시간 그리드 + 그날 요약 -->
   <div x-show="view==='grid'" class="space-y-3">
-    <div class="flex flex-wrap gap-3 text-sm">
-      <span class="px-3 py-1 bg-white rounded shadow-sm">확정 <b x-text="gridData?.summary?.confirmed ?? 0"></b>건</span>
-      <span class="px-3 py-1 bg-white rounded shadow-sm">대기 <b x-text="gridData?.summary?.pending ?? 0"></b>건</span>
-      <span class="px-3 py-1 bg-white rounded shadow-sm">매출 <b x-text="'₮' + (gridData?.summary?.revenue ?? 0).toLocaleString()"></b></span>
-      <span class="text-xs text-slate-400 self-center">
-        <span class="px-1 bg-emerald-300 rounded">예약</span>
-        <span class="px-1 bg-yellow-100 rounded">대기</span>
-        <span class="px-1 bg-white border rounded">빈자리</span>
+    <div class="flex flex-wrap items-center gap-2 text-sm">
+      <span class="px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg shadow-sm font-medium">확정 <b x-text="gridData?.summary?.confirmed ?? 0"></b>건</span>
+      <span class="px-3 py-1.5 bg-amber-50 text-amber-800 rounded-lg shadow-sm font-medium">대기 <b x-text="gridData?.summary?.pending ?? 0"></b>건</span>
+      <span class="px-3 py-1.5 bg-white rounded-lg shadow-sm font-medium">매출 <b x-text="'₮' + (gridData?.summary?.revenue ?? 0).toLocaleString()"></b></span>
+      <span class="text-xs self-center flex gap-1.5 ml-auto">
+        <span class="px-1.5 py-0.5 bg-emerald-500 text-white rounded">예약</span>
+        <span class="px-1.5 py-0.5 bg-amber-300 text-amber-950 rounded">대기</span>
+        <span class="px-1.5 py-0.5 bg-slate-50 border rounded text-slate-400">빈자리</span>
+        <span class="px-1.5 py-0.5 bg-slate-200 text-slate-400 rounded">막힘</span>
       </span>
     </div>
     <div class="bg-white rounded-lg overflow-x-auto shadow-sm">
@@ -67,7 +68,7 @@
           <tr>
             <th class="p-2 sticky left-0 bg-slate-50">시간</th>
             <template x-for="c in (gridData?.courts || [])" :key="c.court_id">
-              <th class="p-2 font-medium text-slate-600 whitespace-nowrap" x-text="c.name_ko || c.name_mn"></th>
+              <th class="p-2 font-semibold whitespace-nowrap" :class="courtTint(c.group_name)" x-text="c.name_ko || c.name_mn"></th>
             </template>
           </tr>
         </thead>
@@ -79,8 +80,9 @@
                 <td class="p-0.5">
                   <button @click="cell.booking && openDetail({id: cell.booking.id})"
                     :class="cellClass(cell.status)"
-                    class="w-full min-w-[4rem] py-2 rounded text-center"
-                    x-text="cell.booking ? (cellLabel(cell.status) + ' ' + (cell.booking.name||'')) : cellLabel(cell.status)"></button>
+                    :title="cell.booking ? (cell.booking.name + ' · ' + (cell.booking.phone||'') + ' · ' + (cell.booking.code||'')) : ''"
+                    class="w-full min-w-[3.5rem] py-2.5 rounded text-center text-[11px] leading-tight truncate border border-white"
+                    x-text="cellText(cell)"></button>
                 </td>
               </template>
             </tr>

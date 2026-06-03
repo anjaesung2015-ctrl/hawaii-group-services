@@ -133,7 +133,7 @@ router.get('/grid', (req, res) => {
         const blocked = violatesFloorRule({ cols: c.cols, group_name: c.group_name }, others);
         return { start: s.start, end: s.end, status: blocked ? 'blocked' : 'available', booking: null };
       });
-      return { court_id: c.id, name_mn: c.name_mn, name_ko: c.name_ko, slots };
+      return { court_id: c.id, name_mn: c.name_mn, name_ko: c.name_ko, group_name: c.group_name, slots };
     });
 
     const sum = prepare(`

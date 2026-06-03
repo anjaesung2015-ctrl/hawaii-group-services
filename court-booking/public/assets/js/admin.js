@@ -48,15 +48,29 @@ function adminApp() {
 
     cellClass(status) {
       return {
-        available: 'bg-white text-slate-300',
+        available: 'bg-slate-50 text-slate-300 hover:bg-slate-100',
         blocked:   'bg-slate-200 text-slate-400',
-        pending:   'bg-yellow-100 text-yellow-800 font-semibold',
-        confirmed: 'bg-emerald-300 text-emerald-900 font-semibold'
+        pending:   'bg-amber-300 text-amber-950 font-semibold',
+        confirmed: 'bg-emerald-500 text-white font-semibold'
       }[status] || 'bg-slate-100';
     },
 
     cellLabel(status) {
       return { available: '○', blocked: '✕', pending: '대기', confirmed: '예약' }[status] || status;
+    },
+
+    // 셀 내용: 예약/대기는 손님 이름, 차단은 ✕, 빈자리는 공백 (색으로 상태 구분)
+    cellText(cell) {
+      if (cell.booking) return cell.booking.name || (cell.status === 'pending' ? '대기' : '예약');
+      return cell.status === 'blocked' ? '✕' : '';
+    },
+
+    // 코트 헤더 종목별 색: 테니스 초록 / 농구 주황 / 배구 파랑
+    courtTint(g) {
+      if (!g) return 'text-slate-600';
+      if (g.indexOf('basketball') >= 0) return 'text-orange-600';
+      if (g.indexOf('volleyball') >= 0) return 'text-blue-600';
+      return 'text-emerald-700';
     },
 
     async load() {
