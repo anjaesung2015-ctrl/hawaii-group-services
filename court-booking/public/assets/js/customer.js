@@ -15,7 +15,6 @@ function bookingApp() {
     countdown: '15:00',
     submitting: false,
     error: null,
-    completed: false,   // 예약 확정(완료) 도달 여부 — 뒤로가기 시 메인으로 복귀용
 
     // i18n 반응성: locale은 fetch로 비동기 로드되고 window.__i18n.messages는 Alpine 반응형이 아니라,
     // 로드 완료 전 평가된 t() 바인딩이 키 문자열로 굳는다. _lv를 반응형 의존성으로 끼워넣고
@@ -37,20 +36,9 @@ function bookingApp() {
       await bootI18n();
       this.lang = window.__i18n.lang;
       this._lv++;   // locale 로드 완료 → 모든 t() 바인딩 재렌더
-      // 브라우저 뒤로가기를 단계 이동으로 (사이트 이탈 방지)
-      window.history.replaceState({ step: 1 }, '');
-      window.addEventListener('popstate', (e) => {
-        // 예약 확정(완료) 후 뒤로가기 → 중간 단계 건너뛰고 메인 화면으로
-        if (this.completed) {
-          this.completed = false;
-          this.resetToMain();
-          window.history.replaceState({ step: 1 }, '');
-          return;
-        }
-        const s = (e.state && e.state.step) || 1;
-        if (s !== 4) { clearInterval(this.pollTimer); clearInterval(this.countdownTimer); }
-        this.step = s;
-      });
+      // 뒤로가기는 어느 단계에서든 항상 메인 화면으로 복귀
+      window.history.replaceState({ main: true }, '');
+      window.addEventListener('popstate', () => { this.resetToMain(); });
       try { this.config = await api.get(`${window.PATH_PREFIX}/api/config`); } catch (e) {}
     },
 
@@ -145,9 +133,9 @@ function bookingApp() {
       this.gotoStep(3);
     },
 
-    // 단계 이동 + 히스토리 푸시 (뒤로가기로 이전 단계 복귀)
+    // 단계 이동. 메인(1)을 떠날 때만 히스토리 1개 push → 뒤로가기 한 번에 메인 복귀.
     gotoStep(s) {
-      if (s !== this.step) window.history.pushState({ step: s }, '');
+      if (this.step === 1 && s !== 1) window.history.pushState({ flow: true }, '');
       this.step = s;
     },
 
@@ -190,7 +178,6 @@ function bookingApp() {
         this.booking = res;
         this.expiresAt = res.expires_at ? new Date(res.expires_at).getTime() : Date.now() + 15 * 60_000;
         this.gotoStep(4);
-        this.completed = true;   // 예약 코드 발급됨 → 뒤로가기 시 첫 화면으로
         this.startPolling();
         this.startCountdown();
       } catch (e) {
@@ -214,7 +201,6 @@ function bookingApp() {
           if (s.status === 'paid') {
             clearInterval(this.pollTimer); clearInterval(this.countdownTimer);
             this.gotoStep(5);
-            this.completed = true;   // 확정 도달 → 뒤로가기 시 메인으로
           } else if (s.status === 'cancelled') {
             clearInterval(this.pollTimer); clearInterval(this.countdownTimer);
             this.error = t('err_payment_expired');

@@ -1,4 +1,4 @@
-// version: 2026-06-03-v1 (force update, no offline cache)
+// version: 2026-06-03-v2 (force update, no offline cache)
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => {
   e.waitUntil(
