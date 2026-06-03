@@ -4,6 +4,7 @@ document.addEventListener('alpine:init', bootI18n);
 function bookingApp() {
   return {
     step: 1,
+    calOpen: true,     // 날짜 달력 펼침 여부 (날짜 선택하면 접고 그리드 바로 표시)
     selected: { court: null, date: null, slot: null },
     grid: [],          // 선택 날짜의 전 코트 가용현황 [{court_id,name_mn,price_per_hour,slots:[{start,end,available}]}]
     config: { bank: {}, deposit_rate: 0.5 },   // 계좌이체 안내 (계약금 비율 + 입금 계좌)
@@ -97,6 +98,7 @@ function bookingApp() {
       this.selected.date = date;
       this.selected.slot = null;
       this.selected.court = null;
+      this.calOpen = false;        // 달력 접고 → 빈자리 그리드가 날짜 바로 밑에
       await this.loadGrid();
     },
 
@@ -143,6 +145,7 @@ function bookingApp() {
     resetToMain() {
       clearInterval(this.pollTimer); clearInterval(this.countdownTimer);
       this.step = 1;
+      this.calOpen = true;
       this.selected = { court: null, date: null, slot: null };
       this.form = { guest_name: '', guest_phone: '', guest_email: '', agree: false };
       this.booking = null;

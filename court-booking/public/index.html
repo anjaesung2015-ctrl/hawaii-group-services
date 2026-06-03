@@ -40,9 +40,14 @@
 
   <section x-show="step === 1" class="fade-in space-y-4">
     <div>
-      <label class="block text-sm font-medium mb-2" x-text="t('select_date')"></label>
+      <label class="block text-sm font-medium mb-2" x-show="calOpen || !selected.date" x-text="t('select_date')"></label>
+      <!-- 날짜 선택됨(달력 접힘): 선택 날짜 + 변경 버튼 -->
+      <div x-show="!calOpen && selected.date" class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-1">
+        <span class="font-semibold text-emerald-800" x-text="selected.date"></span>
+        <button @click="calOpen = true" class="text-emerald-600 text-sm font-medium underline" x-text="t('change_date')"></button>
+      </div>
       <!-- 월 달력: 이번 달 + 다음 달을 세로로 이어서 스크롤. 7열 요일 그리드, 과거/예약불가일 비활성 -->
-      <div class="bg-white rounded-xl border p-3 max-h-96 overflow-y-auto">
+      <div x-show="calOpen || !selected.date" class="bg-white rounded-xl border p-3 max-h-96 overflow-y-auto">
         <div class="grid grid-cols-7 gap-1 mb-1 sticky top-0 bg-white">
           <template x-for="(w, i) in weekdays()" :key="i">
             <div class="text-center text-xs text-slate-400 py-1" x-text="w"></div>
