@@ -31,18 +31,18 @@ function createBookingSafely(input) {
       throw err;
     }
 
-    // 1층 공유바닥 동시규칙 (SPEC 4.1): 같은 floor에서 종목이 섞이면 종목당 1면
+    // 1층 물리적 구역 규칙 (zone 모델): 같은 구역 1개만 + 농구 양쪽이면 중간도 차단
     const { violatesFloorRule } = require('./floor-rule');
-    const tgt = module.exports.db.prepare('SELECT group_name FROM court WHERE id=?').get(input.court_id);
+    const tgt = module.exports.db.prepare('SELECT group_name, zone FROM court WHERE id=?').get(input.court_id);
     if (tgt) {
       const others = module.exports.db.prepare(`
-        SELECT c.group_name AS g FROM booking b JOIN court c ON c.id = b.court_id
+        SELECT c.group_name, c.zone FROM booking b JOIN court c ON c.id = b.court_id
         WHERE b.booking_date = @booking_date
           AND b.status NOT IN ('cancelled','no_show')
           AND b.start_time < @end_time AND b.end_time > @start_time
           AND b.court_id != @court_id
-      `).all(input).map(r => r.g);
-      if (violatesFloorRule(tgt.group_name, others)) {
+      `).all(input);
+      if (violatesFloorRule(tgt, others)) {
         const err = new Error('SLOT_CONFLICT');
         err.code = 'SLOT_CONFLICT';
         throw err;

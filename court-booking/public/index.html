@@ -98,7 +98,7 @@
   </section>
 
   <section x-show="step === 3" class="fade-in space-y-4">
-    <button @click="step = 1" class="text-emerald-600 text-sm" x-text="'← ' + t('back')"></button>
+    <button @click="window.history.back()" class="text-emerald-600 text-sm" x-text="'← ' + t('back')"></button>
     <p class="text-sm text-slate-500"><span x-text="courtName(selected.court)"></span> · <span x-text="selected.date"></span> <span x-text="selected.slot?.start"></span>~<span x-text="selected.slot?.end"></span></p>
     <div class="space-y-3">
       <div>

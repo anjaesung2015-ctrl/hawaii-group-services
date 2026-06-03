@@ -35,9 +35,9 @@ router.get('/availability', readLimiter, (req, res) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw apiError('INVALID_INPUT');
     const { violatesFloorRule } = require('../floor-rule');
 
-    const courts = prepare(`SELECT id, name_mn, name_ko, price_per_hour, group_name, open_hours FROM court WHERE active=1 ORDER BY id`).all();
+    const courts = prepare(`SELECT id, name_mn, name_ko, price_per_hour, group_name, zone, open_hours FROM court WHERE active=1 ORDER BY id`).all();
     const allBookings = prepare(`
-      SELECT b.court_id, b.start_time, b.end_time, c.group_name
+      SELECT b.court_id, b.start_time, b.end_time, c.group_name, c.zone
       FROM booking b JOIN court c ON c.id = b.court_id
       WHERE b.booking_date = ? AND b.status NOT IN ('cancelled','no_show')
     `).all(date);
@@ -48,8 +48,8 @@ router.get('/availability', readLimiter, (req, res) => {
         if (!s.available) return s;   // 자기 코트가 이미 예약됨
         const others = allBookings
           .filter(b => b.court_id !== court.id && b.start_time < s.end && b.end_time > s.start)
-          .map(b => b.group_name);
-        return { ...s, available: !violatesFloorRule(court.group_name, others) };
+          .map(b => ({ zone: b.zone, group_name: b.group_name }));
+        return { ...s, available: !violatesFloorRule({ zone: court.zone, group_name: court.group_name }, others) };
       });
     };
 

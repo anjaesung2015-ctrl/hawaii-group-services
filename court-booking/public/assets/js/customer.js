@@ -15,6 +15,7 @@ function bookingApp() {
     countdown: '15:00',
     submitting: false,
     error: null,
+    completed: false,   // 예약 확정(완료) 도달 여부 — 뒤로가기 시 메인으로 복귀용
 
     // i18n 반응성: locale은 fetch로 비동기 로드되고 window.__i18n.messages는 Alpine 반응형이 아니라,
     // 로드 완료 전 평가된 t() 바인딩이 키 문자열로 굳는다. _lv를 반응형 의존성으로 끼워넣고
@@ -36,6 +37,20 @@ function bookingApp() {
       await bootI18n();
       this.lang = window.__i18n.lang;
       this._lv++;   // locale 로드 완료 → 모든 t() 바인딩 재렌더
+      // 브라우저 뒤로가기를 단계 이동으로 (사이트 이탈 방지)
+      window.history.replaceState({ step: 1 }, '');
+      window.addEventListener('popstate', (e) => {
+        // 예약 확정(완료) 후 뒤로가기 → 중간 단계 건너뛰고 메인 화면으로
+        if (this.completed) {
+          this.completed = false;
+          this.resetToMain();
+          window.history.replaceState({ step: 1 }, '');
+          return;
+        }
+        const s = (e.state && e.state.step) || 1;
+        if (s !== 4) { clearInterval(this.pollTimer); clearInterval(this.countdownTimer); }
+        this.step = s;
+      });
       try { this.config = await api.get(`${window.PATH_PREFIX}/api/config`); } catch (e) {}
     },
 
@@ -127,7 +142,23 @@ function bookingApp() {
       if (!cell.available) return;
       this.selected.court = { id: cell.court.court_id, name_mn: cell.court.name_mn, name_ko: cell.court.name_ko, price_per_hour: cell.court.price_per_hour };
       this.selected.slot = { start: cell.start, end: cell.end };
-      this.step = 3;
+      this.gotoStep(3);
+    },
+
+    // 단계 이동 + 히스토리 푸시 (뒤로가기로 이전 단계 복귀)
+    gotoStep(s) {
+      if (s !== this.step) window.history.pushState({ step: s }, '');
+      this.step = s;
+    },
+
+    // 메인(날짜선택) 화면으로 초기화 — 확정 후 뒤로가기 시 새 예약 시작 상태로
+    resetToMain() {
+      clearInterval(this.pollTimer); clearInterval(this.countdownTimer);
+      this.step = 1;
+      this.selected = { court: null, date: null, slot: null };
+      this.form = { guest_name: '', guest_phone: '', guest_email: '', agree: false };
+      this.booking = null;
+      this.error = null;
     },
 
     calcAmount() {
@@ -158,13 +189,14 @@ function bookingApp() {
         });
         this.booking = res;
         this.expiresAt = res.expires_at ? new Date(res.expires_at).getTime() : Date.now() + 15 * 60_000;
-        this.step = 4;
+        this.gotoStep(4);
+        this.completed = true;   // 예약 코드 발급됨 → 뒤로가기 시 첫 화면으로
         this.startPolling();
         this.startCountdown();
       } catch (e) {
         if (e.error_code === 'SLOT_CONFLICT') {
           this.error = t('err_slot_taken');
-          this.step = 1;
+          this.gotoStep(1);
           await this.loadGrid();
         } else {
           this.error = e.message_mn || t('err_internal');
@@ -181,11 +213,12 @@ function bookingApp() {
           const s = await api.get(`${window.PATH_PREFIX}/api/bookings/${this.booking.public_code}/payment-status`);
           if (s.status === 'paid') {
             clearInterval(this.pollTimer); clearInterval(this.countdownTimer);
-            this.step = 5;
+            this.gotoStep(5);
+            this.completed = true;   // 확정 도달 → 뒤로가기 시 메인으로
           } else if (s.status === 'cancelled') {
             clearInterval(this.pollTimer); clearInterval(this.countdownTimer);
             this.error = t('err_payment_expired');
-            this.step = 3;
+            this.gotoStep(3);
           }
         } catch (e) {}
       }, 3000);
@@ -208,7 +241,7 @@ function bookingApp() {
       try {
         await api.post(`${window.PATH_PREFIX}/api/bookings/${this.booking.public_code}/cancel`, { phone_last4: last4 });
         clearInterval(this.pollTimer); clearInterval(this.countdownTimer);
-        this.step = 1;
+        this.gotoStep(1);
         this.selected.slot = null;
       } catch (e) {
         this.error = e.message_mn || t('err_internal');
