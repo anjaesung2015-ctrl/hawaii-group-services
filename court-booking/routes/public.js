@@ -1,6 +1,7 @@
 const express = require('express');
 const { db, prepare, createBookingSafely } = require('../db');
 const { computeAvailability } = require('../availability');
+const { bookingWindow, isWithinWindow } = require('../booking-window');
 const { apiError, sendError } = require('../errors');
 const { log: auditLog } = require('../audit-log');
 const { createBookingLimiter, cancelLimiter, readLimiter } = require('../middleware/rate-limit');
@@ -19,6 +20,7 @@ router.get('/courts', readLimiter, (req, res) => {
 router.get('/config', readLimiter, (req, res) => {
   res.json({
     deposit_rate: parseFloat(process.env.DEPOSIT_RATE || '0.5'),
+    ...(() => { const w = bookingWindow(); return { booking_window_days: w.days, min_date: w.min, max_date: w.max }; })(),
     bank: {
       name: process.env.BANK_NAME || '',
       account: process.env.BANK_ACCOUNT || '',
@@ -33,6 +35,7 @@ router.get('/availability', readLimiter, (req, res) => {
   try {
     const date = String(req.query.date || '');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw apiError('INVALID_INPUT');
+    if (!isWithinWindow(date)) throw apiError('DATE_OUT_OF_WINDOW');
     const { violatesFloorRule } = require('../floor-rule');
 
     const courts = prepare(`SELECT id, name_mn, name_ko, price_per_hour, group_name, floor_cols AS cols, open_hours FROM court WHERE active=1 ORDER BY id`).all();
@@ -89,6 +92,7 @@ router.post('/bookings', createBookingLimiter, express.json(), async (req, res) 
       throw apiError('INVALID_INPUT', { missing: ['court_id','booking_date','start_time','end_time','guest_name','guest_phone'].filter(k => !(req.body && req.body[k])) });
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(booking_date)) throw apiError('INVALID_INPUT', { field: 'booking_date' });
+    if (!isWithinWindow(booking_date)) throw apiError('DATE_OUT_OF_WINDOW');
     if (!/^\d{2}:\d{2}$/.test(start_time) || !/^\d{2}:\d{2}$/.test(end_time)) throw apiError('INVALID_INPUT', { field: 'time' });
     if (!/^[0-9+\-\s]{6,20}$/.test(guest_phone)) throw apiError('INVALID_INPUT', { field: 'guest_phone' });
 

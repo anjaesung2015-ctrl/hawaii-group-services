@@ -41,6 +41,7 @@
   <section x-show="step === 1" class="fade-in space-y-4">
     <div>
       <label class="block text-sm font-medium mb-2" x-show="calOpen || !selected.date" x-text="t('select_date')"></label>
+      <p class="text-xs text-slate-500 mb-2" x-show="calOpen || !selected.date" x-text="t('booking_window_hint', { days: config.booking_window_days || 14 })"></p>
       <!-- 날짜 선택됨(달력 접힘): 선택 날짜 + 변경 버튼 -->
       <div x-show="!calOpen && selected.date" class="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-1">
         <span class="font-semibold text-emerald-800" x-text="selected.date"></span>

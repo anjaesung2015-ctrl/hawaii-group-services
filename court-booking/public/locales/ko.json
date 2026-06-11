@@ -3,6 +3,7 @@
   "select_court": "코트 선택",
   "select_date": "날짜 선택",
   "change_date": "날짜 변경",
+  "booking_window_hint": "오늘부터 {days}일 이내만 예약할 수 있어요.",
   "select_time": "시간 선택",
   "name": "이름",
   "phone": "전화 (+976)",

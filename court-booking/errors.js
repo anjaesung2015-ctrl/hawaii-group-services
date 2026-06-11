@@ -5,6 +5,7 @@ const CATALOG = {
   BOOKING_NOT_CANCELLABLE: { status: 409, mn: '24 цаг дотор захиалгыг цуцлах боломжгүй. Операторт хандана уу.', en: 'Cannot cancel within 24h.' },
   PAYMENT_EXPIRED:      { status: 410, mn: 'Төлбөрийн хугацаа дууссан.', en: 'Payment expired.' },
   INVALID_INPUT:        { status: 400, mn: 'Буруу мэдээлэл оруулсан байна.', en: 'Invalid input.' },
+  DATE_OUT_OF_WINDOW:   { status: 400, mn: 'Энэ өдөр захиалгын хугацаанд ороогүй байна. Зөвхөн ойрын 2 долоо хоногийн захиалга авна.', en: 'Date is outside the booking window (next 2 weeks only).' },
   NO_TOKEN:             { status: 401, mn: 'Нэвтэрнэ үү.', en: 'Login required.' },
   INVALID_TOKEN:        { status: 401, mn: 'Хүчингүй токен.', en: 'Invalid token.' },
   INSUFFICIENT_ROLE:    { status: 403, mn: 'Эрх хүрэлцэхгүй.', en: 'Insufficient permission.' },

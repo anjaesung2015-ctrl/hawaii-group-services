@@ -63,11 +63,15 @@ function bookingApp() {
     },
 
     // 이번 달 + 다음 달, 각 달을 {label, cells}로. 세로로 이어서 표시.
-    // 1일 앞은 빈칸(blank)으로 패딩해 요일 정렬. selectable: 오늘 이후(오늘 포함)만.
+    // 1일 앞은 빈칸(blank)으로 패딩해 요일 정렬.
+    // selectable: 롤링 윈도우 [min_date, max_date]. 서버(/api/config)가 진실원, 없으면 클라 계산 폴백.
     months() {
       this._lv;
       const today = dayjs();
       const todayStr = today.format('YYYY-MM-DD');
+      const windowDays = this.config.booking_window_days || 14;
+      const minStr = this.config.min_date || todayStr;
+      const maxStr = this.config.max_date || today.add(windowDays - 1, 'day').format('YYYY-MM-DD');
       const result = [];
       for (let mo = 0; mo < 2; mo++) {             // 0=이번 달, 1=다음 달
         const base = today.add(mo, 'month').startOf('month');
@@ -82,7 +86,7 @@ function bookingApp() {
             date: dateStr,
             day: d,
             isToday: dateStr === todayStr,
-            selectable: dateStr >= todayStr,        // YYYY-MM-DD 문자열 비교 = 날짜 비교
+            selectable: dateStr >= minStr && dateStr <= maxStr,   // 롤링 윈도우 내에서만 (문자열=날짜 비교)
           });
         }
         result.push({
