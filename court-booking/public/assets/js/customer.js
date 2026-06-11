@@ -62,7 +62,8 @@ function bookingApp() {
       return window.__i18n.messages.weekdays || ['일','월','화','수','목','금','토'];
     },
 
-    // 이번 달 + 다음 달, 각 달을 {label, cells}로. 세로로 이어서 표시.
+    // 윈도우(min~max)에 걸친 달만 {label, cells}로 세로로 이어 표시. 윈도우 밖 달은 안 그림.
+    // (보통 이번 달만, 윈도우가 다음 달로 넘어가면 다음 달까지)
     // 1일 앞은 빈칸(blank)으로 패딩해 요일 정렬.
     // selectable: 롤링 윈도우 [min_date, max_date]. 서버(/api/config)가 진실원, 없으면 클라 계산 폴백.
     months() {
@@ -73,8 +74,8 @@ function bookingApp() {
       const minStr = this.config.min_date || todayStr;
       const maxStr = this.config.max_date || today.add(windowDays - 1, 'day').format('YYYY-MM-DD');
       const result = [];
-      for (let mo = 0; mo < 2; mo++) {             // 0=이번 달, 1=다음 달
-        const base = today.add(mo, 'month').startOf('month');
+      const lastMonth = dayjs(maxStr).startOf('month');   // max_date가 속한 달까지만 렌더
+      for (let base = today.startOf('month'); !base.isAfter(lastMonth); base = base.add(1, 'month')) {
         const firstDow = base.day();               // 0=일
         const daysInMonth = base.daysInMonth();
         const cells = [];
