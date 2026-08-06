@@ -62,7 +62,50 @@ module.exports = function createReportRoutes(db, opts = {}) {
 
   router.use(requireSess);
 
-  // items routes added in Task 3
+  router.get('/items', (req, res) => {
+    const { period, date } = req.query;
+    if (period && !PERIODS.includes(period)) return res.status(400).json({ error: 'bad_period' });
+    const sid = targetStaffId(req, req.query.staff_id);
+    if (!sid) return res.status(400).json({ error: 'staff_id_required' });
+    let sql = "SELECT * FROM report_items WHERE staff_id=?"; const p = [sid];
+    if (period) { sql += " AND period=?"; p.push(period); }
+    if (date) { sql += " AND item_date=?"; p.push(date); }
+    sql += " ORDER BY id";
+    res.json(db.prepare(sql).all(...p));
+  });
+
+  router.post('/items', (req, res) => {
+    const { period, item_date, title, memo } = req.body || {};
+    if (!PERIODS.includes(period)) return res.status(400).json({ error: 'bad_period' });
+    if (!item_date) return res.status(400).json({ error: 'item_date_required' });
+    const sid = targetStaffId(req, req.body.staff_id);
+    if (!sid) return res.status(400).json({ error: 'staff_id_required' });
+    const r = db.prepare("INSERT INTO report_items (staff_id, period, item_date, title, memo) VALUES (?,?,?,?,?)")
+      .run(sid, period, item_date, title || '', memo || '');
+    res.json({ id: r.lastInsertRowid });
+  });
+
+  router.patch('/items/:id', (req, res) => {
+    const item = db.prepare("SELECT * FROM report_items WHERE id=?").get(req.params.id);
+    if (!item) return res.status(404).json({ error: 'not_found' });
+    if (!req.rsess.isBoss && item.staff_id !== req.rsess.staff_id) return res.status(403).json({ error: 'forbidden' });
+    const fields = []; const vals = [];
+    const body = req.body || {};
+    for (const k of ['title', 'memo', 'done']) if (k in body) { fields.push(k + '=?'); vals.push(k === 'done' ? (body[k] ? 1 : 0) : body[k]); }
+    if (!fields.length) return res.status(400).json({ error: 'no_changes' });
+    fields.push("updated_at=datetime('now','localtime')");
+    vals.push(req.params.id);
+    db.prepare("UPDATE report_items SET " + fields.join(', ') + " WHERE id=?").run(...vals);
+    res.json({ ok: true });
+  });
+
+  router.delete('/items/:id', (req, res) => {
+    const item = db.prepare("SELECT * FROM report_items WHERE id=?").get(req.params.id);
+    if (!item) return res.status(404).json({ error: 'not_found' });
+    if (!req.rsess.isBoss && item.staff_id !== req.rsess.staff_id) return res.status(403).json({ error: 'forbidden' });
+    db.prepare("DELETE FROM report_items WHERE id=?").run(req.params.id);
+    res.json({ ok: true });
+  });
 
   return router;
 };
