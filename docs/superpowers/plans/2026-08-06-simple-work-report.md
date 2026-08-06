@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** staff-manager를 오늘/내일(체크박스+메모) + 주/월/년(자유메모) 단순 업무보고 앱으로 재구축하되, court-booking/POS/비서가 의존하는 SSO·staff/users 테이블·로그인 경로는 보존한다.
+**Goal:** staff-manager를 오늘/내일(체크박스+메모) + 주/월/년(자유메모) 단순 업무보고 앱으로 재구축한다. **매니저/총매니저만 사용**(코치·일반직원 제외), PIN 완전 제거. court-booking/POS/비서가 의존하는 SSO·staff/users 테이블·로그인 경로는 보존한다.
 
 **Architecture:** 기존 slim server.js는 SSO용 `/api/login`만 남기고 새 `report-simple.js` 라우터를 마운트. 새 프론트(index.html + app.js)는 이름-선택/사장님-비번 로그인으로 `report_sess` 쿠키만 발급하며, court-booking/POS가 쓰는 `staff_token`은 전용 `login.html`(기존 username/password SSO)에서만 발급한다. 데이터는 새 `report_items` 테이블 하나.
 
@@ -125,8 +125,8 @@ const BOSS = 'boss123';
 
 function makeServer() {
   const db = new Database(':memory:');
-  db.exec(`CREATE TABLE staff (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, is_active INTEGER DEFAULT 1)`);
-  db.prepare("INSERT INTO staff (name) VALUES ('미가'),('바트')").run();
+  db.exec(`CREATE TABLE staff (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, role TEXT, is_active INTEGER DEFAULT 1)`);
+  db.prepare("INSERT INTO staff (name, role) VALUES ('미가','총매니저'),('바트','매니저'),('코치김','코치'),('직원박','직원')").run();
   const app = express();
   app.use(express.json());
   app.use(cookieParser());
@@ -143,7 +143,7 @@ function cookieOf(res) {
   return m ? `report_sess=${m[1]}` : '';
 }
 
-test('staff-list는 활성 직원 이름을 반환', async () => {
+test('staff-list는 매니저/총매니저만 반환(코치·직원 제외)', async () => {
   const { server, base } = makeServer();
   const res = await fetch(`${base}/staff-list`);
   const list = await res.json();
@@ -166,6 +166,13 @@ test('직원 이름 로그인 성공 → report_sess 쿠키 발급', async () =>
 test('없는 직원 로그인 → 401', async () => {
   const { server, base } = makeServer();
   const res = await fetch(`${base}/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name:'없는사람' }) });
+  assert.strictEqual(res.status, 401);
+  server.close();
+});
+
+test('매니저가 아닌 직원(코치) 이름 로그인 → 401', async () => {
+  const { server, base } = makeServer();
+  const res = await fetch(`${base}/login`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name:'코치김' }) });
   assert.strictEqual(res.status, 401);
   server.close();
 });
@@ -210,6 +217,8 @@ const PERIODS = ['today', 'tomorrow', 'week', 'month', 'year'];
 module.exports = function createReportRoutes(db, opts = {}) {
   const secret = opts.secret || 'staff-mgr-2026-secret';
   const bossPw = opts.bossPw || '';
+  const MANAGER_ROLES = opts.managerRoles || ['매니저', '총매니저']; // 매니저/총매니저만 사용
+  const roleIn = MANAGER_ROLES.map(() => '?').join(',');
   const router = express.Router();
 
   db.exec(`CREATE TABLE IF NOT EXISTS report_items (
@@ -227,7 +236,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
   const COOKIE = { path: '/staff-manager', maxAge: 2592000000, sameSite: 'Lax', httpOnly: true };
 
   router.get('/staff-list', (req, res) => {
-    res.json(db.prepare("SELECT id, name FROM staff WHERE is_active=1 ORDER BY name").all());
+    res.json(db.prepare(`SELECT id, name FROM staff WHERE is_active=1 AND role IN (${roleIn}) ORDER BY name`).all(...MANAGER_ROLES));
   });
 
   router.post('/login', (req, res) => {
@@ -238,7 +247,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
       res.cookie('report_sess', token, COOKIE);
       return res.json({ ok: true, isBoss: true });
     }
-    const st = db.prepare("SELECT id, name FROM staff WHERE name=? AND is_active=1").get(name);
+    const st = db.prepare(`SELECT id, name FROM staff WHERE name=? AND is_active=1 AND role IN (${roleIn})`).get(name, ...MANAGER_ROLES);
     if (!st) return res.status(401).json({ error: 'unknown_staff' });
     const token = jwt.sign({ staff_id: st.id, name: st.name, isBoss: false }, secret, { expiresIn: '30d' });
     res.cookie('report_sess', token, COOKIE);
@@ -276,7 +285,7 @@ Run:
 ```bash
 cd ~/.openclaw/workspace/staff-manager && node --test test/ 2>&1 | tail -15
 ```
-Expected: 5 tests PASS (staff-list, 이름 로그인, 없는 직원 401, 사장님 성공, 사장님 401).
+Expected: 6 tests PASS (staff-list 필터, 이름 로그인, 없는 직원 401, 코치 401, 사장님 성공, 사장님 401).
 
 - [ ] **Step 5: 커밋**
 
@@ -444,7 +453,7 @@ Run:
 ```bash
 cd ~/.openclaw/workspace/staff-manager && node --test test/ 2>&1 | tail -20
 ```
-Expected: 12 tests PASS, 0 fail.
+Expected: 13 tests PASS, 0 fail.
 
 - [ ] **Step 5: 커밋**
 
