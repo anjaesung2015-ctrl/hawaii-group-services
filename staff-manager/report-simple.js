@@ -88,7 +88,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
   router.patch('/items/:id', (req, res) => {
     const item = db.prepare("SELECT * FROM report_items WHERE id=?").get(req.params.id);
     if (!item) return res.status(404).json({ error: 'not_found' });
-    if (!req.rsess.isBoss && item.staff_id !== req.rsess.staff_id) return res.status(403).json({ error: 'forbidden' });
+    if (!req.rsess.isBoss && item.staff_id !== Number(req.rsess.staff_id)) return res.status(403).json({ error: 'forbidden' });
     const fields = []; const vals = [];
     const body = req.body || {};
     for (const k of ['title', 'memo', 'done']) if (k in body) { fields.push(k + '=?'); vals.push(k === 'done' ? (body[k] ? 1 : 0) : body[k]); }
@@ -102,7 +102,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
   router.delete('/items/:id', (req, res) => {
     const item = db.prepare("SELECT * FROM report_items WHERE id=?").get(req.params.id);
     if (!item) return res.status(404).json({ error: 'not_found' });
-    if (!req.rsess.isBoss && item.staff_id !== req.rsess.staff_id) return res.status(403).json({ error: 'forbidden' });
+    if (!req.rsess.isBoss && item.staff_id !== Number(req.rsess.staff_id)) return res.status(403).json({ error: 'forbidden' });
     db.prepare("DELETE FROM report_items WHERE id=?").run(req.params.id);
     res.json({ ok: true });
   });

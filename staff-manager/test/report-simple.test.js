@@ -150,4 +150,13 @@ test('직원: 항목 삭제', async () => {
   server.close();
 });
 
+test("직원은 남의 항목 삭제 불가 403", async () => {
+  const { server, base } = makeServer();
+  const post = await fetch(`${base}/items`, { method:"POST", headers:{"Content-Type":"application/json", cookie: staffCookie(1,"미가")}, body: JSON.stringify({ period:"today", item_date:"2026-08-06", title:"내꺼" }) });
+  const { id } = await post.json();
+  const del = await fetch(`${base}/items/${id}`, { method:"DELETE", headers:{ cookie: staffCookie(2,"바트") } });
+  assert.strictEqual(del.status, 403);
+  server.close();
+});
+
 module.exports = { makeServer, staffCookie, bossCookie, SECRET, BOSS };
