@@ -1,3 +1,8 @@
+// 옛 PWA 서비스워커 잔재 제거 (기존 118KB 앱 캐시가 새 앱을 가리는 것 방지)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+}
+
 // 상대 경로 API (nginx가 /staff-manager/ 프리픽스를 벗김)
 const API = 'api/report';
 const CHECK_PERIODS = ['today', 'tomorrow'];
@@ -33,8 +38,8 @@ async function loadStaffList() {
   const sel = $('#nameSel');
   const bsel = $('#bossStaffSel');
   for (const s of list) {
-    sel.insertAdjacentHTML('beforeend', `<option value="${s.name}">${s.name}</option>`);
-    bsel.insertAdjacentHTML('beforeend', `<option value="${s.id}">${s.name}</option>`);
+    sel.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`);
+    bsel.insertAdjacentHTML('beforeend', `<option value="${s.id}">${escapeHtml(s.name)}</option>`);
   }
 }
 async function doLogin(body) {

@@ -22,7 +22,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     updated_at TEXT
   )`);
 
-  const COOKIE = { path: '/staff-manager', maxAge: 2592000000, sameSite: 'Lax', httpOnly: true };
+  const COOKIE = { path: '/staff-manager', maxAge: 2592000000, sameSite: 'Lax', httpOnly: true, secure: true };
 
   router.get('/staff-list', (req, res) => {
     res.json(db.prepare(`SELECT id, name FROM staff WHERE is_active=1 AND role IN (${roleIn}) ORDER BY name`).all(...MANAGER_ROLES));
