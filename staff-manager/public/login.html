@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>직원 로그인</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#f5f5f5;display:flex;justify-content:center;align-items:center;height:100vh;margin:0}
+  form{background:#fff;padding:28px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);width:280px}
+  h1{font-size:18px;margin:0 0 16px}
+  input{width:100%;box-sizing:border-box;padding:10px;margin:6px 0;border:1px solid #ddd;border-radius:8px;font-size:15px}
+  button{width:100%;padding:11px;margin-top:8px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-size:15px;cursor:pointer}
+  .err{color:#dc2626;font-size:13px;min-height:16px;margin-top:6px}
+</style></head>
+<body>
+<form id="f">
+  <h1>직원 로그인</h1>
+  <input id="u" placeholder="아이디" autocomplete="username">
+  <input id="p" type="password" placeholder="비밀번호" autocomplete="current-password">
+  <button type="submit">로그인</button>
+  <div class="err" id="e"></div>
+</form>
+<script>
+// 상대 경로: /staff-manager/login 에서 로드되므로 ./api/login → /staff-manager/api/login
+const params = new URLSearchParams(location.search);
+const next = params.get('next') || '/staff-manager/';
+document.getElementById('f').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const e = document.getElementById('e'); e.textContent = '';
+  try {
+    const r = await fetch('./api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: document.getElementById('u').value, password: document.getElementById('p').value })
+    });
+    if (!r.ok) { e.textContent = '아이디 또는 비밀번호가 틀렸습니다'; return; }
+    const { token, user } = await r.json();
+    document.cookie = 'staff_token=' + token + ';path=/;max-age=2592000;SameSite=Lax';
+    document.cookie = 'staff_user=' + encodeURIComponent(JSON.stringify(user)) + ';path=/;max-age=2592000;SameSite=Lax';
+    location.href = next;
+  } catch (err) { e.textContent = '연결 오류'; }
+});
+</script>
+</body></html>
