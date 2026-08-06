@@ -136,7 +136,11 @@ function flashSaved() { const m = $('#savedMsg'); m.textContent = '저장됨'; s
 function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 // ---- 이벤트 바인딩 ----
-$('#staffLoginBtn').onclick = () => { const n = $('#nameSel').value; if (!n) { $('#loginErr').textContent = '이름을 선택하세요'; return; } doLogin({ name: n }); };
+$('#staffLoginBtn').onclick = () => {
+  const n = $('#nameSel').value;
+  if (!n) { $('#loginErr').textContent = '이름을 선택하세요'; return; }
+  doLogin({ name: n, password: $('#staffPw').value });
+};
 $('#bossLoginBtn').onclick = () => doLogin({ boss_pw: $('#bossPw').value });
 $('#logoutBtn').onclick = async () => { await api('/logout', { method: 'POST' }); location.reload(); };
 $('#bossStaffSel').onchange = (e) => { state.targetStaff = Number(e.target.value); render(); };
