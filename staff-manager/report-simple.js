@@ -56,7 +56,15 @@ module.exports = function createReportRoutes(db, opts = {}) {
   });
 
   const BIZ_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ulaanbaatar', year: 'numeric', month: '2-digit', day: '2-digit' });
-  const bizToday = () => BIZ_FMT.format(new Date());
+  const bizToday = opts.today || (() => BIZ_FMT.format(new Date()));
+
+  // 지난 날짜의 오늘/내일 기록은 직원이 못 고친다 (뒤늦게 만들어 넣는 것 방지).
+  // 주·월·연 자유메모는 기준일이 과거여도 계속 쓰는 칸이므로 잠그지 않는다.
+  function pastLocked(req, period, itemDate) {
+    if (req.rsess.isBoss) return false;
+    if (!DAILY.includes(period)) return false;
+    return String(itemDate) < bizToday();
+  }
 
   const LANGS = ['ko', 'mn'];
   function srcLang(s) {
@@ -436,6 +444,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     if (!item_date) return res.status(400).json({ error: 'item_date_required' });
     const sid = targetStaffId(req, req.body.staff_id);
     if (!sid) return res.status(400).json({ error: 'staff_id_required' });
+    if (pastLocked(req, period, item_date)) return res.status(403).json({ error: 'past_locked' });
     const r = db.prepare("INSERT INTO report_items (staff_id, period, item_date, title, memo) VALUES (?,?,?,?,?)")
       .run(sid, period, item_date, title || '', memo || '');
     res.json({ id: r.lastInsertRowid });
@@ -445,6 +454,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const item = db.prepare("SELECT * FROM report_items WHERE id=?").get(req.params.id);
     if (!item) return res.status(404).json({ error: 'not_found' });
     if (!req.rsess.isBoss && item.staff_id !== Number(req.rsess.staff_id)) return res.status(403).json({ error: 'forbidden' });
+    if (pastLocked(req, item.period, item.item_date)) return res.status(403).json({ error: 'past_locked' });
     const fields = []; const vals = [];
     const body = req.body || {};
     for (const k of ['title', 'memo', 'done']) if (k in body) { fields.push(k + '=?'); vals.push(k === 'done' ? (body[k] ? 1 : 0) : body[k]); }
@@ -461,6 +471,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     if (!req.rsess.isBoss && item.staff_id !== Number(req.rsess.staff_id)) return res.status(403).json({ error: 'forbidden' });
     // 사장님 지시는 받은 직원이 지울 수 없다 (완료 체크는 가능)
     if (!req.rsess.isBoss && item.from_boss) return res.status(403).json({ error: 'assigned_by_boss' });
+    if (pastLocked(req, item.period, item.item_date)) return res.status(403).json({ error: 'past_locked' });
     db.prepare("DELETE FROM report_items WHERE id=?").run(req.params.id);
     res.json({ ok: true });
   });

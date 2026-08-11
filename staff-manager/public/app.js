@@ -145,10 +145,12 @@ async function render() {
   const items = await r.json();
   const el = $('#content');
   if (CHECK_PERIODS.includes(period)) {
+    const locked = viewLocked();
     el.innerHTML = dayBarHtml() + items.map(renderCheckItem).join('') +
-      `<button class="add" id="addBtn">${t('addItem')}</button>`;
+      (locked ? `<div class="hint">🔒 ${t('pastLocked')}</div>`
+              : `<button class="add" id="addBtn">${t('addItem')}</button>`);
     bindDayBar();
-    $('#addBtn').onclick = addCheckItem;
+    if (!locked) $('#addBtn').onclick = addCheckItem;
     el.querySelectorAll('.item').forEach(bindCheckItem);
   } else {
     const memo = items[0]?.memo || '';
@@ -431,6 +433,13 @@ function firstDow(ym) {
 }
 function isAllMode() { return state.isBoss && state.targetStaff === ALL; }
 
+// 직원은 지난 날짜를 못 고친다 (서버에서도 막혀 있고, 화면에서도 미리 잠근다)
+function viewLocked() {
+  if (state.isBoss) return false;
+  if (!CHECK_PERIODS.includes(state.period)) return false;
+  return itemDateFor(state.period) < kst(0);
+}
+
 // 사람마다 고정된 색을 준다 (직원 목록 순서 기준 — 매번 같은 색)
 let COLOR_MAP = {};
 function colorOf(staffId) {
@@ -568,17 +577,20 @@ async function renderDay(date) {
 
 function renderCheckItem(it) {
   // 사장님이 내린 지시는 직원이 지울 수 없다 (완료 체크·메모는 가능)
-  const locked = it.from_boss && !state.isBoss;
+  // 지난 날짜는 직원이 아예 못 건드린다
+  const past = viewLocked();
+  const locked = past || (it.from_boss && !state.isBoss);
   return `<div class="item ${it.done ? 'done' : ''}${it.from_boss ? ' boss' : ''}" data-id="${it.id}">
-    <input type="checkbox" ${it.done ? 'checked' : ''}>
+    <input type="checkbox" ${it.done ? 'checked' : ''} ${past ? 'disabled' : ''}>
     ${it.from_boss ? `<span class="tag">${t('boss1')}</span>` : ''}
     <input class="ti" value="${escapeHtml(it.title || '')}" placeholder="${t('todo')}" ${locked ? 'readonly' : ''}>
-    <input class="memo" value="${escapeHtml(it.memo || '')}" placeholder="${t('memo')}">
+    <input class="memo" value="${escapeHtml(it.memo || '')}" placeholder="${t('memo')}" ${past ? 'readonly' : ''}>
     ${locked ? '' : '<button class="del">×</button>'}
   </div>`;
 }
 function bindCheckItem(node) {
   const id = node.dataset.id;
+  if (viewLocked()) return;                     // 지난 날짜는 아무것도 연결하지 않는다
   node.querySelector('input[type=checkbox]').onchange = (e) => patch(id, { done: e.target.checked }).then(render);
   const ti = node.querySelector('.ti');
   if (!ti.readOnly) ti.onblur = (e) => patch(id, { title: e.target.value });

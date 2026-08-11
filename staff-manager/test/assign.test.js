@@ -22,6 +22,7 @@ function makeServer() {
   app.use(cookieParser());
   app.use('/api/report', createReportRoutes(db, {
     secret: SECRET, bossPw: BOSS,
+    today: () => '2000-01-01',   // 지난-날짜 잠금이 끼어들지 않게 (잠금은 pastlock.test.js 가 검증)
     notify: async (staffId, text) => { notified.push({ staffId, text }); return true; },
   }));
   const server = app.listen(0);

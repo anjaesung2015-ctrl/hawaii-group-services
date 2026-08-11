@@ -20,7 +20,7 @@ function makeServer() {
   const app = express();
   app.use(express.json());
   app.use(cookieParser());
-  app.use('/api/report', createReportRoutes(db, { secret: SECRET, bossPw: BOSS }));
+  app.use('/api/report', createReportRoutes(db, { secret: SECRET, bossPw: BOSS, today: () => '2000-01-01' }));
   const server = app.listen(0);
   const base = `http://127.0.0.1:${server.address().port}/api/report`;
   return { db, server, base };
