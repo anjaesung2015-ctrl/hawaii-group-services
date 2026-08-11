@@ -784,6 +784,7 @@ async function renderStaffPanel() {
     rows.map(u => `<div class="strow ${u.is_active ? '' : 'off'}">
       <span class="nm">${escapeHtml(u.name)}</span>
       <button data-ren="${u.id}">${t('staffRename')}</button>
+      <button data-pw="${u.id}">${t('staffPwSet')}</button>
       <button data-act="${u.id}" data-to="${u.is_active ? 0 : 1}">${u.is_active ? t('staffQuit') : t('staffBack')}</button>
     </div>`).join('') +
     `<div style="margin-top:10px">
@@ -806,6 +807,25 @@ async function renderStaffPanel() {
       body: JSON.stringify({ is_active: Number(b.dataset.to) }) });
     await renderStaffPanel(); render();
   });
+  // 그 자리에서 새 비밀번호를 정한다 (사장님만 가능)
+  box.querySelectorAll('[data-pw]').forEach(b => b.onclick = () => {
+    const row = b.closest('.strow');
+    if (row.querySelector('.pwin')) { row.querySelector('.pwin').remove(); return; }
+    b.insertAdjacentHTML('beforebegin',
+      `<input class="pwin" type="text" placeholder="${t('newPassword')}" style="${inp};width:130px">`);
+    const el = row.querySelector('.pwin');
+    el.focus();
+    el.onkeydown = async (e) => {
+      if (e.key !== 'Enter') return;
+      const res = await api('/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staff_id: Number(b.dataset.pw), new_password: el.value }) });
+      if (!res.ok) { el.style.borderColor = '#dc2626'; return; }
+      el.style.borderColor = '#16a34a';
+      el.value = '';
+      el.placeholder = t('pwChanged');
+    };
+  });
+
   box.querySelectorAll('[data-ren]').forEach(b => b.onclick = async () => {
     const row = b.closest('.strow');
     const cur = row.querySelector('.nm').textContent;

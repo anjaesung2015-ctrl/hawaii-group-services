@@ -208,6 +208,32 @@ test('직원은 남의 기록을 못 고친다', async () => {
   server.close();
 });
 
+test('사장님이 대신 출근처리하면 현재 시각이 들어간다', async () => {
+  const { db, server, base } = makeServer();
+  const r = await post(base, '/mark', { staff_id: 2 }, boss());
+  assert.strictEqual(r.status, 200);
+  const row = db.prepare("SELECT * FROM report_attendance WHERE staff_id=2").get();
+  assert.strictEqual(row.check_in, '09:05', '빈 줄이 만들어짐');
+  server.close();
+});
+
+test('출근처리에 시각을 지정하면 그 시각이 들어간다', async () => {
+  const { db, server, base } = makeServer();
+  await post(base, '/mark', { staff_id: 2, check_in: '08:30', check_out: '17:00' }, boss());
+  const row = db.prepare("SELECT * FROM report_attendance WHERE staff_id=2").get();
+  assert.strictEqual(row.check_in, '08:30');
+  assert.strictEqual(row.check_out, '17:00');
+  server.close();
+});
+
+test('이미 출근한 사람에게 출근처리해도 원래 시각이 유지된다', async () => {
+  const { db, server, base } = makeServer();
+  await post(base, '/in', {}, staff(1, '미가'));
+  await post(base, '/mark', { staff_id: 1 }, boss());
+  assert.strictEqual(db.prepare("SELECT check_in FROM report_attendance WHERE staff_id=1").get().check_in, '09:05');
+  server.close();
+});
+
 test('엑셀(CSV) 내려받기 — 사장님만', async () => {
   const { db, server, base } = makeServer();
   db.prepare("INSERT INTO report_attendance (staff_id, work_date, check_in, check_out) VALUES (1,'2026-08-03','09:00','18:00')").run();

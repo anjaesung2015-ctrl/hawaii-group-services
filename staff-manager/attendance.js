@@ -195,9 +195,11 @@ module.exports = function createAttendance(db, opts = {}) {
   // 사장님이 대신 출근 처리 (직원이 깜빡했을 때)
   router.post('/mark', (req, res) => {
     if (!isBoss(req)) return res.status(403).json({ error: 'boss_only' });
-    const { staff_id, date, check_in, check_out } = req.body || {};
+    const { staff_id, date, check_out } = req.body || {};
     const d = date || now().date;
     if (!staff_id || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return res.status(400).json({ error: 'bad_request' });
+    // 시각을 안 주면 지금 시각으로 출근 처리한다 (빈 줄이 만들어지지 않도록)
+    const check_in = req.body?.check_in || now().time;
     db.prepare(`INSERT INTO report_attendance (staff_id, work_date, check_in, check_out, edited) VALUES (?,?,?,?,1)
       ON CONFLICT(staff_id, work_date) DO UPDATE SET check_in=COALESCE(excluded.check_in, report_attendance.check_in),
       check_out=COALESCE(excluded.check_out, report_attendance.check_out), edited=1`)
