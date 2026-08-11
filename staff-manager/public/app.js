@@ -474,6 +474,35 @@ async function toggleAlarmPanel() {
      <div class="hint">${t('alarmHelp')}</div>`;
   $('#alSave').onclick = saveAlarm;
   $('#alTest').onclick = testAlarm;
+  renderLinkRow(sid);
+}
+
+// 텔레그램 자동 연결 — chat ID를 손으로 넣지 않아도 된다
+async function renderLinkRow(sid) {
+  const box = document.createElement('div');
+  box.id = 'tgLink';
+  box.style.marginTop = '8px';
+  $('#alarmFields').appendChild(box);
+  const r = await api('/alarm/link' + (sid ? `?staff_id=${sid}` : ''));
+  if (!r.ok) return;
+  const d = await r.json();
+  const btn = 'padding:9px 12px;border:0;border-radius:8px;background:#0088cc;color:#fff;cursor:pointer;margin-right:6px';
+  if (!d.ready) { box.innerHTML = `<div class="hint">${t('tgOff')}</div>`; return; }
+  if (d.linked) {
+    box.innerHTML = `<span style="color:#16a34a;font-size:14px;margin-right:8px">✅ ${t('tgConnected')}</span>` +
+                    `<button id="tgOff" style="${btn};background:#6b7280">${t('tgDisconnect')}</button>`;
+    $('#tgOff').onclick = async () => { await api('/alarm/link', { method: 'DELETE' }); toggleAlarmPanel(); toggleAlarmPanel(); };
+    return;
+  }
+  box.innerHTML = `<button id="tgGo" style="${btn}">${t('tgConnect')}</button><span id="tgMsg" style="font-size:13px"></span>`;
+  $('#tgGo').onclick = async () => {
+    const res = await api('/alarm/link', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sid ? { staff_id: sid } : {}) });
+    if (!res.ok) { $('#tgMsg').textContent = t('alarmFailed'); return; }
+    const { url } = await res.json();
+    box.innerHTML = `<a href="${url}" target="_blank" rel="noopener" style="${btn};display:inline-block;text-decoration:none">${t('tgOpen')}</a>` +
+                    `<div class="hint">${t('tgGuide')}</div>`;
+  };
 }
 async function saveAlarm() {
   const sid = alarmTargetId();

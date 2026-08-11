@@ -46,6 +46,27 @@ const alarm = createAlarm(db, { secret: SECRET });
 app.use('/api/report', createReportRoutes(db, { secret: SECRET, bossPw: BOSS_PW, notify: alarm.notify }));
 app.use('/api/report/alarm', alarm.router);
 
+// ---- 직원 텔레그램 자동 연결 (업무보고 전용 봇) ----
+// REPORT_BOT_TOKEN 이 없으면 조용히 꺼진 상태로 둔다 — 기존 봇은 건드리지 않는다.
+const createBotLink = require('./bot-link');
+let botLink = null;
+(async () => {
+  const tk = process.env.REPORT_BOT_TOKEN;
+  if (!tk) { console.log('[link] REPORT_BOT_TOKEN 미설정 — 자동 연결 꺼짐'); return; }
+  let uname = process.env.REPORT_BOT_USERNAME || '';
+  if (!uname) {
+    try {
+      const me = await (await fetch(`https://api.telegram.org/bot${tk}/getMe`, { signal: AbortSignal.timeout(10000) })).json();
+      uname = me?.result?.username || '';
+    } catch (e) { console.error('[link] getMe 실패:', e.message); }
+  }
+  if (!uname) { console.error('[link] 봇 아이디를 못 얻어 자동 연결을 켜지 않습니다'); return; }
+  botLink = createBotLink(db, { secret: SECRET, botToken: tk, botUsername: uname });
+  app.use('/api/report/alarm', botLink.router);
+  await botLink.start();
+  console.log(`[link] 자동 연결 켜짐 (@${uname})`);
+})();
+
 const cron = require('node-cron');
 function nowParts() {
   const d = new Date();
