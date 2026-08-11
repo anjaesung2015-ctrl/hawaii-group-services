@@ -173,4 +173,49 @@ test('직원은 남의 항목 삭제 불가 403', async () => {
   server.close();
 });
 
+test('change-password: 현재 비번 맞으면 변경되고 새 비번으로 로그인 가능', async () => {
+  const { server, base } = makeServer();
+  const c = await login(base, { name: '미가', password: 'pw-miga' });
+  const cookie = (c.headers.get('set-cookie') || '').match(/report_sess=[^;]+/)[0];
+  const chg = await fetch(`${base}/change-password`, { method: 'POST', headers: { 'Content-Type': 'application/json', cookie }, body: JSON.stringify({ current: 'pw-miga', new_password: 'newpass1' }) });
+  assert.strictEqual(chg.status, 200);
+  const relog = await login(base, { name: '미가', password: 'newpass1' });
+  assert.strictEqual(relog.status, 200);
+  const oldlog = await login(base, { name: '미가', password: 'pw-miga' });
+  assert.strictEqual(oldlog.status, 401);
+  server.close();
+});
+
+test('change-password: 현재 비번 틀리면 401', async () => {
+  const { server, base } = makeServer();
+  const c = await login(base, { name: '미가', password: 'pw-miga' });
+  const cookie = (c.headers.get('set-cookie') || '').match(/report_sess=[^;]+/)[0];
+  const chg = await fetch(`${base}/change-password`, { method: 'POST', headers: { 'Content-Type': 'application/json', cookie }, body: JSON.stringify({ current: 'wrong', new_password: 'newpass1' }) });
+  assert.strictEqual(chg.status, 401);
+  server.close();
+});
+
+test('change-password: 세션 없으면 401', async () => {
+  const { server, base } = makeServer();
+  const chg = await fetch(`${base}/change-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current: 'pw-miga', new_password: 'newpass1' }) });
+  assert.strictEqual(chg.status, 401);
+  server.close();
+});
+
+test('reset-password: 사장님이 리셋하면 새 비번으로 로그인 가능', async () => {
+  const { server, base } = makeServer();
+  const reset = await fetch(`${base}/reset-password`, { method: 'POST', headers: { 'Content-Type': 'application/json', cookie: bossCookie() }, body: JSON.stringify({ staff_id: 2, new_password: 'batnew1' }) });
+  assert.strictEqual(reset.status, 200);
+  const relog = await login(base, { name: '바트', password: 'batnew1' });
+  assert.strictEqual(relog.status, 200);
+  server.close();
+});
+
+test('reset-password: 일반 직원은 403', async () => {
+  const { server, base } = makeServer();
+  const reset = await fetch(`${base}/reset-password`, { method: 'POST', headers: { 'Content-Type': 'application/json', cookie: staffCookie(1, '미가') }, body: JSON.stringify({ staff_id: 2, new_password: 'batnew1' }) });
+  assert.strictEqual(reset.status, 403);
+  server.close();
+});
+
 module.exports = { makeServer, staffCookie, bossCookie, SECRET, BOSS };

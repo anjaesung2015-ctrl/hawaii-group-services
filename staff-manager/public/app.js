@@ -143,10 +143,47 @@ $('#staffLoginBtn').onclick = () => {
 };
 $('#bossLoginBtn').onclick = () => doLogin({ boss_pw: $('#bossPw').value });
 $('#logoutBtn').onclick = async () => { await api('/logout', { method: 'POST' }); location.reload(); };
-$('#bossStaffSel').onchange = (e) => { state.targetStaff = Number(e.target.value); render(); };
+$('#bossStaffSel').onchange = (e) => { state.targetStaff = Number(e.target.value); $('#pwPanel').style.display = 'none'; render(); };
 $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => {
   $('#tabs').querySelector('.active').classList.remove('active');
   b.classList.add('active'); state.period = b.dataset.p; render();
 });
+
+// ---- 비밀번호 변경 ----
+function togglePwPanel() {
+  const panel = $('#pwPanel');
+  if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  const f = panel.querySelector('#pwFields');
+  const inp = 'padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-right:6px';
+  const btn = 'padding:10px 12px;border:0;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer';
+  if (state.isBoss) {
+    const name = $('#bossStaffSel').selectedOptions[0]?.textContent || '';
+    f.innerHTML = `<div class="hint">${escapeHtml(name)} 님 새 비밀번호 설정</div>
+      <input id="npw" type="text" placeholder="새 비밀번호(4자 이상)" style="${inp}">
+      <button id="pwSave" style="${btn}">저장</button>
+      <span id="pwMsg" style="font-size:13px;margin-left:8px"></span>`;
+    $('#pwSave').onclick = doBossReset;
+  } else {
+    f.innerHTML = `<input id="cpw" type="password" placeholder="현재 비밀번호" style="${inp}">
+      <input id="npw" type="password" placeholder="새 비밀번호(4자 이상)" style="${inp}">
+      <button id="pwSave" style="${btn}">변경</button>
+      <span id="pwMsg" style="font-size:13px;margin-left:8px"></span>`;
+    $('#pwSave').onclick = doChangePw;
+  }
+}
+async function doChangePw() {
+  const r = await api('/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current: $('#cpw').value, new_password: $('#npw').value }) });
+  const msg = $('#pwMsg');
+  if (r.ok) { msg.style.color = '#16a34a'; msg.textContent = '변경됨'; $('#cpw').value = ''; $('#npw').value = ''; }
+  else { msg.style.color = '#dc2626'; msg.textContent = r.status === 401 ? '현재 비번 틀림' : (r.status === 400 ? '4자 이상 입력' : '실패'); }
+}
+async function doBossReset() {
+  const r = await api('/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ staff_id: state.targetStaff, new_password: $('#npw').value }) });
+  const msg = $('#pwMsg');
+  if (r.ok) { msg.style.color = '#16a34a'; msg.textContent = '리셋 완료'; $('#npw').value = ''; }
+  else { msg.style.color = '#dc2626'; msg.textContent = r.status === 400 ? '4자 이상 입력' : '실패'; }
+}
+$('#pwBtn').onclick = togglePwPanel;
 
 loadStaffList();

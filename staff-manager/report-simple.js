@@ -112,5 +112,28 @@ module.exports = function createReportRoutes(db, opts = {}) {
     res.json({ ok: true });
   });
 
+  // 본인 비밀번호 변경 (현재 비번 확인 후)
+  router.post("/change-password", (req, res) => {
+    if (req.rsess.isBoss) return res.status(403).json({ error: "boss_uses_env" });
+    const { current, new_password } = req.body || {};
+    if (!new_password || String(new_password).length < 4) return res.status(400).json({ error: "weak_password" });
+    const u = db.prepare("SELECT id, pin_hash FROM report_users WHERE id=? AND is_active=1").get(req.rsess.staff_id);
+    if (!u || !bcrypt.compareSync(current || "", u.pin_hash)) return res.status(401).json({ error: "bad_current" });
+    db.prepare("UPDATE report_users SET pin_hash=? WHERE id=?").run(bcrypt.hashSync(String(new_password), 10), u.id);
+    res.json({ ok: true });
+  });
+
+  // 사장님이 직원 비번 리셋
+  router.post("/reset-password", (req, res) => {
+    if (!req.rsess.isBoss) return res.status(403).json({ error: "boss_only" });
+    const { staff_id, new_password } = req.body || {};
+    if (!staff_id) return res.status(400).json({ error: "staff_id_required" });
+    if (!new_password || String(new_password).length < 4) return res.status(400).json({ error: "weak_password" });
+    const u = db.prepare("SELECT id FROM report_users WHERE id=? AND is_active=1").get(staff_id);
+    if (!u) return res.status(404).json({ error: "not_found" });
+    db.prepare("UPDATE report_users SET pin_hash=? WHERE id=?").run(bcrypt.hashSync(String(new_password), 10), u.id);
+    res.json({ ok: true });
+  });
+
   return router;
 };
