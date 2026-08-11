@@ -267,7 +267,13 @@ module.exports = function createReportRoutes(db, opts = {}) {
     for (const row of all) {
       const base = /^\d{4}-\d{2}-\d{2}$/.test(String(row.item_date)) ? row.item_date : date;
       if (!extractDates((row.title || '') + ' ' + (row.memo || ''), base).includes(date)) continue;
-      byId.get(row.staff_id)?.mentions.push({ id: row.id, period: row.period, title: row.title, memo: row.memo });
+      // 여러 줄 메모는 이 날짜를 담은 줄만 보여준다 (메모 전체가 통째로 나오지 않도록)
+      const lines = ((row.title || '') + '\n' + (row.memo || '')).split('\n').filter(l => l.trim());
+      const hit = lines.find(l => extractDates(l, base).includes(date));
+      byId.get(row.staff_id)?.mentions.push({
+        id: row.id, period: row.period,
+        title: hit ? hit.trim() : row.title, memo: hit ? '' : row.memo,
+      });
     }
     res.json([...byId.values()]);
   });
