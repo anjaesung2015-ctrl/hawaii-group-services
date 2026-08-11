@@ -212,6 +212,47 @@ module.exports = function createReportRoutes(db, opts = {}) {
     res.json({ month, staffTotal: people.length, people, days });
   });
 
+  // ---- 직원 관리 (사장님 전용) ----
+  // 퇴사는 삭제가 아니라 비활성화다 — 그동안 쌓인 보고·근태 기록을 지우지 않기 위해서.
+  router.get('/staff', (req, res) => {
+    if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
+    res.json(db.prepare("SELECT id, name, is_active FROM report_users WHERE role='staff' ORDER BY is_active DESC, id").all());
+  });
+
+  router.post('/staff', (req, res) => {
+    if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
+    const name = String(req.body?.name || '').trim();
+    const password = String(req.body?.password || '');
+    if (!name) return res.status(400).json({ error: 'name_required' });
+    if (password.length < 4) return res.status(400).json({ error: 'weak_password' });
+    if (db.prepare("SELECT id FROM report_users WHERE name=?").get(name)) return res.status(409).json({ error: 'name_taken' });
+    const r = db.prepare("INSERT INTO report_users (name, pin_hash, is_active, role) VALUES (?,?,1,'staff')")
+      .run(name, bcrypt.hashSync(password, 10));
+    res.json({ ok: true, id: r.lastInsertRowid });
+  });
+
+  router.patch('/staff/:id', (req, res) => {
+    if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
+    const u = db.prepare("SELECT id, role FROM report_users WHERE id=?").get(req.params.id);
+    if (!u) return res.status(404).json({ error: 'not_found' });
+    if (u.role === 'boss') return res.status(403).json({ error: 'boss_row' });
+
+    const body = req.body || {};
+    const f = [], v = [];
+    if ('name' in body) {
+      const name = String(body.name || '').trim();
+      if (!name) return res.status(400).json({ error: 'name_required' });
+      const dup = db.prepare("SELECT id FROM report_users WHERE name=? AND id<>?").get(name, u.id);
+      if (dup) return res.status(409).json({ error: 'name_taken' });
+      f.push('name=?'); v.push(name);
+    }
+    if ('is_active' in body) { f.push('is_active=?'); v.push(body.is_active ? 1 : 0); }
+    if (!f.length) return res.status(400).json({ error: 'no_changes' });
+    v.push(u.id);
+    db.prepare("UPDATE report_users SET " + f.join(', ') + " WHERE id=?").run(...v);
+    res.json({ ok: true });
+  });
+
   // 직원 종합 현황 — 근무태도(근태) · 업무처리(할 일) · 지시이행을 한 달치로 모은다
   function scorecard(month) {
     const like = month + '-%';

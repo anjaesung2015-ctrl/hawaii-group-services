@@ -99,6 +99,10 @@
   .attbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
   .attbar button,.attbar input{padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;background:#fff}
   .attbar .go{background:#2563eb;color:#fff;border:0;cursor:pointer}
+  .strow{display:flex;align-items:center;gap:6px;padding:6px 0;font-size:14px;border-bottom:1px solid #ede9fe}
+  .strow .nm{flex:1}
+  .strow.off .nm{color:#9ca3af;text-decoration:line-through}
+  .strow button{padding:5px 9px;border:1px solid #d1d5db;background:#fff;border-radius:7px;font-size:12px;cursor:pointer}
   .sc{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:11px 13px;margin:8px 0}
   .sc h4{margin:0 0 8px;font-size:15px;display:flex;align-items:center;gap:8px}
   .sc .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}
@@ -143,6 +147,7 @@
       <span class="saved" id="savedMsg"></span>
       <button id="reloadBtn" type="button" title="새로고침">↻</button>
       <button class="langBtn" type="button">MN</button>
+      <button id="staffBtn" data-i18n="staffMgr">직원</button>
       <button id="alarmBtn" data-i18n="alarm">알람</button>
       <button id="pwBtn" data-i18n="changePw">비번변경</button>
       <button id="logoutBtn" data-i18n="logout">로그아웃</button>
@@ -152,6 +157,9 @@
     </div>
     <div id="alarmPanel" style="display:none;padding:10px 12px;background:#eff6ff;border-bottom:1px solid #cfe0fb;max-width:640px;margin:0 auto">
       <div id="alarmFields"></div>
+    </div>
+    <div id="staffPanel" style="display:none;padding:10px 12px;background:#f5f3ff;border-bottom:1px solid #ddd6fe;max-width:640px;margin:0 auto">
+      <div id="staffFields"></div>
     </div>
     <div class="tabs" id="tabs">
       <button data-p="today" class="active" data-i18n="today">오늘</button>

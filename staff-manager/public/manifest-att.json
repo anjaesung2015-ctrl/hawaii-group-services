@@ -1,0 +1,13 @@
+{
+  "name": "근태",
+  "short_name": "근태",
+  "start_url": "/staff-manager/attendance.html",
+  "scope": "/staff-manager/",
+  "display": "standalone",
+  "background_color": "#f5f6f8",
+  "theme_color": "#0f766e",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

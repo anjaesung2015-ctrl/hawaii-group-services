@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>근태</title>
+<link rel="manifest" href="manifest-att.json">
+<meta name="theme-color" content="#0f766e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="근태">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  *{box-sizing:border-box}
+  html,body{overscroll-behavior-y:contain}
+  body{font-family:system-ui,-apple-system,sans-serif;margin:0;background:#f5f6f8;color:#1f2937}
+  header{background:#0f766e;color:#fff;padding:14px 16px;display:flex;align-items:center;gap:8px}
+  header .grow{flex:1}
+  header button{padding:6px 10px;border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;border-radius:8px;font-size:13px;cursor:pointer}
+  main{padding:16px 14px 40px;max-width:520px;margin:0 auto}
+  #login{display:flex;flex-direction:column;gap:10px;max-width:320px;margin:50px auto}
+  #login select,#login input,#login button{padding:13px;border:1px solid #d1d5db;border-radius:10px;font-size:16px}
+  #login button{background:#0f766e;color:#fff;border:0;cursor:pointer}
+  .punch{display:flex;gap:12px;margin:6px 0 14px}
+  .punch button{flex:1;padding:34px 0;font-size:22px;font-weight:800;border:0;border-radius:16px;color:#fff;cursor:pointer}
+  .punch .in{background:#0f766e}
+  .punch .out{background:#6b7280}
+  .punch button:disabled{opacity:.35}
+  .box{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin:10px 0}
+  .big{font-size:26px;font-weight:700;letter-spacing:-.5px}
+  .k{font-size:12px;color:#9ca3af}
+  .msg{font-size:14px;min-height:22px;text-align:center;margin:8px 0;line-height:1.4}
+  .late{color:#dc2626}
+  .err{color:#dc2626;text-align:center;font-size:13px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  td,th{padding:6px 4px;border-bottom:1px solid #f1f3f5;text-align:left}
+  th{color:#9ca3af;font-weight:500;font-size:11px}
+</style></head>
+<body>
+  <div id="login">
+    <h2 style="text-align:center;margin:0 0 4px">근태</h2>
+    <select id="nameSel"><option value="">이름을 선택하세요</option></select>
+    <input id="pw" type="password" placeholder="비밀번호">
+    <button id="loginBtn">로그인</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+
+  <div id="app" style="display:none">
+    <header><strong id="who"></strong><span class="grow"></span>
+      <button id="reload">↻</button><button id="logout">로그아웃</button></header>
+    <main>
+      <div class="punch">
+        <button class="in" id="bIn">출근</button>
+        <button class="out" id="bOut">퇴근</button>
+      </div>
+      <div class="msg" id="msg"></div>
+      <div class="box">
+        <div class="k" id="todayLabel">오늘</div>
+        <div class="big" id="todayVal">—</div>
+        <div class="k" id="todaySub"></div>
+      </div>
+      <div class="box">
+        <div class="k">이번 달</div>
+        <div id="monthVal" class="big">—</div>
+        <table id="monthList"></table>
+      </div>
+    </main>
+  </div>
+
+<script>
+const API = 'api/report';
+const AT = API + '/attendance';
+const $ = (s) => document.querySelector(s);
+const hhmm = (m) => m == null ? '' : `${Math.floor(m/60)}시간 ${String(m%60).padStart(2,'0')}분`;
+
+async function loadNames() {
+  const r = await fetch(`${API}/staff-list`);
+  if (!r.ok) return;
+  for (const s of await r.json()) {
+    $('#nameSel').insertAdjacentHTML('beforeend', `<option>${s.name.replace(/[<>&"]/g, '')}</option>`);
+  }
+}
+
+async function doLogin() {
+  const name = $('#nameSel').value;
+  if (!name) { $('#loginErr').textContent = '이름을 선택하세요'; return; }
+  const r = await fetch(`${API}/login`, { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ name, password: $('#pw').value }) });
+  if (!r.ok) { $('#loginErr').textContent = '로그인 실패'; return; }
+  const d = await r.json();
+  enter(d.name || name);
+}
+
+function enter(name) {
+  $('#login').style.display = 'none';
+  $('#app').style.display = 'block';
+  $('#who').textContent = name;
+  refresh();
+}
+
+function pos() {
+  return new Promise((res) => {
+    if (!navigator.geolocation) return res(null);
+    navigator.geolocation.getCurrentPosition(
+      (p) => res({ lat:p.coords.latitude, lng:p.coords.longitude, acc:p.coords.accuracy }),
+      () => res(null), { enableHighAccuracy:true, timeout:10000, maximumAge:0 });
+  });
+}
+
+async function punch(kind) {
+  const m = $('#msg');
+  m.style.color = '#6b7280'; m.textContent = '위치 확인 중…';
+  const p = await pos();
+  const r = await fetch(`${AT}/${kind}`, { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(p || {}) });
+  if (r.ok) { m.style.color = '#16a34a'; m.textContent = kind === 'in' ? '출근했습니다' : '퇴근했습니다'; refresh(); return; }
+  const d = await r.json().catch(() => ({}));
+  m.style.color = '#dc2626';
+  if (d.error === 'out_of_range') m.textContent = `근무지에서 ${d.distance_m}m 떨어져 있습니다\n(허용 ${d.radius_m}m · GPS오차 ${d.accuracy_m}m)`;
+  else if (d.error === 'location_required') m.textContent = '위치 권한을 켜주세요';
+  else if (d.error === 'not_checked_in') m.textContent = '먼저 출근을 눌러주세요';
+  else m.textContent = '실패했습니다';
+}
+
+async function refresh() {
+  const [tr, mr] = await Promise.all([fetch(`${AT}/today`), fetch(`${AT}/month`)]);
+  if (tr.status === 401) { location.reload(); return; }
+  const t = await tr.json();
+  const me = (t.rows && t.rows[0]) || {};
+  $('#todayLabel').textContent = `오늘 ${t.date.slice(5).replace('-', '/')}`;
+  $('#todayVal').textContent = `${me.check_in || '—'}  ~  ${me.check_out || '—'}`;
+  $('#todaySub').innerHTML = me.minutes != null ? hhmm(me.minutes)
+    : (me.check_in ? '근무 중' : '아직 출근 전') + (me.late ? ' <span class="late">지각</span>' : '');
+  $('#bIn').disabled = !!me.check_in;
+  $('#bOut').disabled = !me.check_in || !!me.check_out;
+
+  if (mr.ok) {
+    const m = await mr.json();
+    const r0 = (m.rows && m.rows[0]) || { days:0, minutes:0, late:0, list:[] };
+    $('#monthVal').textContent = `${r0.days}일 · ${hhmm(r0.minutes)}` + (r0.late ? ` · 지각 ${r0.late}회` : '');
+    $('#monthList').innerHTML = '<tr><th>날짜</th><th>출근</th><th>퇴근</th></tr>' +
+      (r0.list || []).slice().reverse().map(a =>
+        `<tr><td>${a.work_date.slice(5)}</td><td>${a.check_in || '—'}</td><td>${a.check_out || '—'}</td></tr>`).join('');
+  }
+}
+
+$('#loginBtn').onclick = doLogin;
+$('#pw').onkeydown = (e) => { if (e.key === 'Enter') doLogin(); };
+$('#bIn').onclick = () => punch('in');
+$('#bOut').onclick = () => punch('out');
+$('#reload').onclick = refresh;
+$('#logout').onclick = async () => { await fetch(`${API}/logout`, { method:'POST' }); location.reload(); };
+document.addEventListener('visibilitychange', () => { if (!document.hidden && $('#app').style.display === 'block') refresh(); });
+
+(async function boot() {
+  await loadNames();
+  const r = await fetch(`${API}/me`);
+  if (r.ok) { const d = await r.json(); if (!d.isBoss) return enter(d.name || ''); }
+})();
+</script>
+</body></html>

@@ -60,6 +60,7 @@ function enterApp() {
   $('#appView').style.display = 'block';
   if (state.isBoss) {
     $('#whoami').textContent = t('boss');
+    $('#staffBtn').style.display = 'inline-block';
     const bsel = $('#bossStaffSel');
     // 사장님 본인 업무공간을 드롭다운 맨 위에 두고 기본 선택
     if (state.myId && !bsel.querySelector('option[data-me]')) {
@@ -73,6 +74,7 @@ function enterApp() {
     state.targetStaff = selVal(bsel.value);
   } else {
     $('#whoami').textContent = state.name;
+    $('#staffBtn').style.display = 'none';
     state.targetStaff = state.staffId;
   }
   render();
@@ -745,6 +747,63 @@ async function testAlarm() {
   else { m.style.color = '#dc2626'; m.textContent = r.status === 400 ? t('alarmNoChat') : t('alarmFailed'); }
 }
 $('#alarmBtn').onclick = toggleAlarmPanel;
+
+// ---- 직원 관리 (사장님 전용) ----
+async function toggleStaffPanel() {
+  const panel = $('#staffPanel');
+  if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  await renderStaffPanel();
+}
+async function renderStaffPanel() {
+  const box = $('#staffFields');
+  const r = await api('/staff');
+  if (!r.ok) { box.innerHTML = `<div class="hint">${t('pwBossEnv')}</div>`; return; }
+  const rows = await r.json();
+  const inp = 'padding:8px;border:1px solid #d1d5db;border-radius:8px;margin-right:6px';
+  const go = 'padding:8px 12px;border:0;border-radius:8px;background:#7c3aed;color:#fff;cursor:pointer';
+  box.innerHTML =
+    rows.map(u => `<div class="strow ${u.is_active ? '' : 'off'}">
+      <span class="nm">${escapeHtml(u.name)}</span>
+      <button data-ren="${u.id}">${t('staffRename')}</button>
+      <button data-act="${u.id}" data-to="${u.is_active ? 0 : 1}">${u.is_active ? t('staffQuit') : t('staffBack')}</button>
+    </div>`).join('') +
+    `<div style="margin-top:10px">
+       <input id="stName" placeholder="${t('staffName')}" style="${inp};width:110px">
+       <input id="stPw" placeholder="${t('staffPw')}" style="${inp};width:150px">
+       <button id="stAdd" style="${go}">${t('staffSave')}</button>
+       <span id="stMsg" style="font-size:13px;margin-left:6px"></span>
+     </div>
+     <div class="hint">${t('staffQuitNote')}</div>`;
+
+  $('#stAdd').onclick = async () => {
+    const msg = $('#stMsg');
+    const res = await api('/staff', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: $('#stName').value.trim(), password: $('#stPw').value }) });
+    if (res.ok) { msg.style.color = '#16a34a'; msg.textContent = t('staffAdded'); await renderStaffPanel(); loadStaffList(); }
+    else { msg.style.color = '#dc2626'; msg.textContent = res.status === 409 ? t('staffDup') : t('pwTooShort'); }
+  };
+  box.querySelectorAll('[data-act]').forEach(b => b.onclick = async () => {
+    await api(`/staff/${b.dataset.act}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: Number(b.dataset.to) }) });
+    await renderStaffPanel(); render();
+  });
+  box.querySelectorAll('[data-ren]').forEach(b => b.onclick = async () => {
+    const row = b.closest('.strow');
+    const cur = row.querySelector('.nm').textContent;
+    row.querySelector('.nm').innerHTML = `<input id="renIn" value="${escapeHtml(cur)}" style="${inp};width:110px">`;
+    const el = row.querySelector('#renIn');
+    el.focus();
+    el.onkeydown = async (e) => {
+      if (e.key !== 'Enter') return;
+      const res = await api(`/staff/${b.dataset.ren}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: el.value.trim() }) });
+      if (!res.ok) el.style.borderColor = '#dc2626';
+      else { await renderStaffPanel(); render(); }
+    };
+  });
+}
+$('#staffBtn').onclick = toggleStaffPanel;
 
 // ---- 새로고침 ----
 // 당겨서 새로고침은 꺼져 있으므로(실수로 앱을 벗어나는 걸 막느라) 대신 이 경로들을 쓴다.

@@ -78,6 +78,9 @@ cron.schedule('*/5 * * * *', async () => {
 });
 
 // 정적 파일 (index.html = 새 업무보고 앱)
+// 근태만 쓰는 사람을 위한 짧은 주소 (/staff-manager/attendance)
+app.get(['/attendance', '/attendance/'], (req, res) => res.sendFile(path.join(__dirname, 'public/attendance.html')));
+
 app.use(express.static(path.join(__dirname, 'public'), { etag: false }));
 
 app.listen(PORT, () => console.log(`Staff Manager (simple report) on port ${PORT}`));
