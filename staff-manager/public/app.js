@@ -477,6 +477,31 @@ async function testAlarm() {
 }
 $('#alarmBtn').onclick = toggleAlarmPanel;
 
+// ---- 새로고침 ----
+// 당겨서 새로고침은 꺼져 있으므로(실수로 앱을 벗어나는 걸 막느라) 대신 이 경로들을 쓴다.
+function isTyping() {
+  const el = document.activeElement;
+  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+}
+function appOpen() { return $('#appView').style.display === 'block'; }
+
+async function refreshNow() {
+  const b = $('#reloadBtn');
+  if (isTyping()) document.activeElement.blur();   // 입력 중이던 값을 먼저 저장시킨다
+  b.classList.add('spin');
+  await new Promise(r => setTimeout(r, 120));      // onblur 저장이 먼저 나가도록 잠깐 기다린다
+  try { await render(); } finally { setTimeout(() => b.classList.remove('spin'), 400); }
+}
+$('#reloadBtn').onclick = refreshNow;
+
+// 앱으로 돌아오면 최신 내용을 다시 불러온다 (입력 중이면 건드리지 않는다)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && appOpen() && !isTyping()) render();
+});
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted && appOpen() && !isTyping()) render();
+});
+
 // ---- 부팅: 살아있는 세션이 있으면 로그인 화면 건너뛰기 ----
 function applySession(d) {
   state.isBoss = d.isBoss;

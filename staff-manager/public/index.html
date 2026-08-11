@@ -28,6 +28,9 @@
   #loginView select,#loginView input,#loginView button{padding:12px;border:1px solid #d1d5db;border-radius:10px;font-size:15px}
   #loginView button{background:#2563eb;color:#fff;border:0;cursor:pointer}
   .saved{color:#16a34a;font-size:12px;margin-left:8px}
+  #reloadBtn{padding:6px 10px;font-size:16px;line-height:1;color:#374151}
+  #reloadBtn.spin{animation:sp .6s linear}
+  @keyframes sp{from{transform:rotate(0)}to{transform:rotate(360deg)}}
   .langBtn{padding:6px 11px!important;font-size:13px!important;background:#fff!important;color:#374151!important;border:1px solid #d1d5db!important;border-radius:8px;cursor:pointer;width:auto!important;align-self:flex-end}
   /* 직원 현황판 (읽기 전용) */
   .card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;margin:8px 0}
@@ -96,6 +99,7 @@
       <select id="bossStaffSel" style="display:none"></select>
       <span class="grow"></span>
       <span class="saved" id="savedMsg"></span>
+      <button id="reloadBtn" type="button" title="새로고침">↻</button>
       <button class="langBtn" type="button">MN</button>
       <button id="alarmBtn" data-i18n="alarm">알람</button>
       <button id="pwBtn" data-i18n="changePw">비번변경</button>
