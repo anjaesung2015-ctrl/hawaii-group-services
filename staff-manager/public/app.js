@@ -199,15 +199,22 @@ async function renderMonth() {
       } else if (info.total > 0) {
         badge = `${info.done}/${info.total}`;
         cls.push(info.done >= info.total ? 'full' : 'has');
-      } else if (notes) {
-        badge = '·' + notes;          // 글에서 찾아낸 일정만 있는 날
-        noteCls = ' note';
+      }
+      if (notes) {                    // 글에서 찾아낸 일정은 항상 '·N' 으로 함께 보인다
+        badge = badge ? badge + ' ·' + notes : '·' + notes;
+        if (!badge.includes('/')) noteCls = ' note';
         cls.push('has');
       }
-      if (info.total > 0 && notes) badge += ' ·' + notes;
     }
+    // 숫자 배지 대신 실제 글을 보여준다 (칸이 좁으니 2줄까지, 나머지는 +N)
+    const texts = (info && info.texts) || [];
+    const shown = texts.slice(0, 2).map(x =>
+      `<span class="ev${x.note ? ' note' : (x.done ? ' done' : '')}">${escapeHtml(x.t)}</span>`).join('');
+    const rest = (info ? (info.total + info.notes) : 0) - texts.slice(0, 2).length;
+    const more = rest > 0 ? `<span class="more">+${rest}</span>` : '';
     grid += `<div class="${cls.join(' ')}" data-d="${date}">` +
-            `<span class="dnum">${d}</span><span class="badge${noteCls}">${badge}</span></div>`;
+            `<span class="dnum">${d}</span>${shown}${more}` +
+            (allMode && badge ? `<span class="badge${noteCls}">${badge}</span>` : '') + `</div>`;
   }
 
   // 현황판 모드에는 '내 월간 메모'라는 게 없으므로 메모 칸을 띄우지 않는다

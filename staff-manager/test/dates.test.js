@@ -82,6 +82,32 @@ test('8월 15일~20일 처럼 뒤에 일만 써도 범위로 본다', async () =
   server.close();
 });
 
+test('8월11일 12일 처럼 나열하면 둘 다 걸린다', async () => {
+  const { db, server, base } = makeServer();
+  memo(db, 1, 'month', '2026-08-01', '8월11일 12일 인조잔디코트 바닥 흙작업');
+  const d = await cal(base, '2026-08');
+  assert.strictEqual(d.days['2026-08-11']?.notes, 1);
+  assert.strictEqual(d.days['2026-08-12']?.notes, 1, '뒤에 나열한 날짜가 빠짐');
+  server.close();
+});
+
+test('쉼표로 나열해도 전부 걸린다', async () => {
+  const { db, server, base } = makeServer();
+  memo(db, 1, 'month', '2026-08-01', '8월 11일, 12일, 15일 코트 작업');
+  const d = await cal(base, '2026-08');
+  for (const day of ['11', '12', '15']) assert.strictEqual(d.days['2026-08-' + day]?.notes, 1, day + '일 누락');
+  server.close();
+});
+
+test('3일간 같은 기간 표현은 날짜로 세지 않는다', async () => {
+  const { db, server, base } = makeServer();
+  memo(db, 1, 'month', '2026-08-01', '8월 5일 3일간 합숙 진행');
+  const d = await cal(base, '2026-08');
+  assert.strictEqual(d.days['2026-08-05']?.notes, 1);
+  assert.strictEqual(d.days['2026-08-03'], undefined, '3일간을 날짜로 잘못 읽음');
+  server.close();
+});
+
 test('일 없이 8월 이라고만 쓰면 달력에 안 걸린다', async () => {
   const { db, server, base } = makeServer();
   memo(db, 1, 'month', '2026-08-01', '8월 한국국제주니어 테니스대회 인솔');

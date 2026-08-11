@@ -43,11 +43,29 @@ function extractDates(text, defaultYear) {
     found.push(a);
     const nxt = hits[i + 1];
     if (!nxt) continue;
-    if (!/^\s*[~\-–—]\s*$/.test(str.slice(h.end, nxt.start))) continue;   // 물결/하이픈이면 범위
-    const b = nxt.kind === 'dayonly' ? ymd(h.y, h.m, nxt.d) : ymd(nxt.y, nxt.m, nxt.d);
-    if (!b || b <= a) continue;
-    for (let cur = addDays(a, 1), guard = 0; cur <= b && guard < 62; cur = addDays(cur, 1), guard++) found.push(cur);
-    i++;                                             // 범위 끝 토큰 소비
+    const gap = str.slice(h.end, nxt.start);
+
+    if (/^\s*[~\-–—]\s*$/.test(gap)) {                // 물결/하이픈이면 범위
+      const b = nxt.kind === 'dayonly' ? ymd(h.y, h.m, nxt.d) : ymd(nxt.y, nxt.m, nxt.d);
+      if (!b || b <= a) continue;
+      for (let cur = addDays(a, 1), guard = 0; cur <= b && guard < 62; cur = addDays(cur, 1), guard++) found.push(cur);
+      i++;                                            // 범위 끝 토큰 소비
+      continue;
+    }
+
+    // '8월 11일 12일 15일' 처럼 나열한 경우 — 같은 달의 날짜로 이어 붙인다
+    let cur = h, j = i + 1;
+    while (j < hits.length) {
+      const n2 = hits[j];
+      if (n2.kind !== 'dayonly') break;
+      if (!/^[\s,、·]*$/.test(str.slice(cur.end, n2.start))) break;
+      if (/^[간동째차후전]/.test(str.slice(n2.end))) break;   // '3일간', '2일 후' 등은 날짜가 아니다
+      const extra = ymd(h.y, h.m, n2.d);
+      if (!extra) break;
+      found.push(extra);
+      cur = n2; j++;
+    }
+    i = j - 1;
   }
   return [...new Set(found)];
 }

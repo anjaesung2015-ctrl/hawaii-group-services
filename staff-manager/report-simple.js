@@ -152,46 +152,46 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const month = String(req.query.month || '');
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return res.status(400).json({ error: 'bad_month' });
 
-    let sql = "SELECT item_date, staff_id, done FROM report_items WHERE period IN ('today','tomorrow') AND item_date LIKE ?";
-    const args = [month + '-%'];
+    // 사장님이 전체를 볼 때는 본인 일정도 달력에 함께 나와야 한다.
+    // 다만 '작성 인원 수'는 직원만 세므로 아래 staffIds 로 구분한다.
+    const staffIds = new Set(db.prepare("SELECT id FROM report_users WHERE is_active=1 AND role='staff'").all().map(r => r.id));
+    let scope = '', scopeArgs = [];
     if (req.rsess.isBoss) {
       const only = req.query.staff_id;
-      if (only) { sql += " AND staff_id=?"; args.push(Number(only)); }
-      else {
-        // 사장님 본인 행은 직원 합산에서 뺀다
-        sql += " AND staff_id IN (SELECT id FROM report_users WHERE is_active=1 AND role='staff')";
-      }
+      if (only) { scope = " AND staff_id=?"; scopeArgs = [Number(only)]; }
+      else scope = " AND staff_id IN (SELECT id FROM report_users WHERE is_active=1)";
     } else {
-      sql += " AND staff_id=?"; args.push(Number(req.rsess.staff_id));
+      scope = " AND staff_id=?"; scopeArgs = [Number(req.rsess.staff_id)];
     }
+    const sql = "SELECT item_date, staff_id, done, title, memo FROM report_items WHERE period IN ('today','tomorrow') AND item_date LIKE ?" + scope;
+    const args = [month + '-%', ...scopeArgs];
 
     const days = {};
     const seen = {};
     for (const row of db.prepare(sql).all(...args)) {
-      const d = days[row.item_date] || (days[row.item_date] = { total: 0, done: 0, staff: 0, notes: 0 });
+      const d = days[row.item_date] || (days[row.item_date] = { total: 0, done: 0, staff: 0, notes: 0, texts: [] });
       d.total++;
       if (row.done) d.done++;
+      const label = (row.title || row.memo || '').trim();
+      if (label && d.texts.length < 4) d.texts.push({ t: label.slice(0, 40), done: row.done ? 1 : 0 });
       const key = row.item_date + '#' + row.staff_id;
-      if (!seen[key]) { seen[key] = 1; d.staff++; }
+      if (!seen[key] && staffIds.has(row.staff_id)) { seen[key] = 1; d.staff++; }
     }
     // 모든 기간의 글에서 이 달에 해당하는 날짜를 찾아 함께 표시한다
-    let mSql = "SELECT item_date, staff_id, title, memo FROM report_items";
-    const mArgs = [];
-    if (req.rsess.isBoss) {
-      const only = req.query.staff_id;
-      if (only) { mSql += " WHERE staff_id=?"; mArgs.push(Number(only)); }
-      else mSql += " WHERE staff_id IN (SELECT id FROM report_users WHERE is_active=1 AND role='staff')";
-    } else { mSql += " WHERE staff_id=?"; mArgs.push(Number(req.rsess.staff_id)); }
+    const mSql = "SELECT item_date, staff_id, title, memo FROM report_items WHERE 1=1" + scope;
+    const mArgs = [...scopeArgs];
 
     for (const row of db.prepare(mSql).all(...mArgs)) {
       const year = Number(String(row.item_date).slice(0, 4)) || Number(month.slice(0, 4));
       const dates = extractDates((row.title || '') + ' ' + (row.memo || ''), year);
       for (const dt of dates) {
         if (dt.slice(0, 7) !== month) continue;
-        const d = days[dt] || (days[dt] = { total: 0, done: 0, staff: 0, notes: 0 });
+        const d = days[dt] || (days[dt] = { total: 0, done: 0, staff: 0, notes: 0, texts: [] });
         d.notes = (d.notes || 0) + 1;
+        const label = (row.title || row.memo || '').split('\n').find(l => l.trim()) || '';
+        if (label && d.texts.length < 4) d.texts.push({ t: label.trim().slice(0, 40), note: 1 });
         const key = dt + '#' + row.staff_id;
-        if (!seen[key]) { seen[key] = 1; d.staff++; }
+        if (!seen[key] && staffIds.has(row.staff_id)) { seen[key] = 1; d.staff++; }
       }
     }
 
