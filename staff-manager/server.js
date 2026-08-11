@@ -51,6 +51,10 @@ app.use('/api/report/alarm', alarm.router);
 
 // ---- 폰 알림(웹 푸시) ----
 app.use('/api/report/push', pushSvc.router);
+
+// ---- 근태 ----
+const createAttendance = require('./attendance');
+app.use('/api/report/attendance', createAttendance(db, { secret: SECRET }).router);
 if (!pushSvc.publicKey) console.log('[push] VAPID 키 없음 — 폰 알림 꺼짐');
 else console.log('[push] 폰 알림 켜짐');
 

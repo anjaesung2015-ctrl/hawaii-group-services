@@ -90,6 +90,7 @@ function qs(period) {
 
 async function render() {
   const period = state.period;
+  if (period === 'att') return renderAttendance();
   if (period === 'month') return renderMonth();
   if (state.isBoss && state.targetStaff === ALL) return renderOverview();
   const r = await api('/items' + qs(period));
@@ -208,6 +209,114 @@ function openAssign(btn, staffId, name) {
   };
   box.querySelector('[data-go]').onclick = go;
   input.onkeydown = (e) => { if (e.key === 'Enter') go(); };
+}
+
+// ---- 근태 ----
+const AT = '/attendance';
+function hhmm(mins) { return mins == null ? '' : `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, '0')}`; }
+
+function getPos() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+  });
+}
+
+async function punch(kind) {
+  const msg = $('#attMsg');
+  msg.textContent = '…';
+  const pos = await getPos();
+  const r = await api(`${AT}/${kind}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(pos || {}) });
+  if (r.ok) { msg.style.color = '#16a34a'; msg.textContent = t('attDone'); render(); return; }
+  const d = await r.json().catch(() => ({}));
+  msg.style.color = '#dc2626';
+  if (d.error === 'out_of_range') msg.textContent = t('attFar', { d: d.distance_m, r: d.radius_m });
+  else if (d.error === 'location_required') msg.textContent = t('attGpsFail');
+  else msg.textContent = t('alarmFailed');
+}
+
+async function renderAttendance() {
+  const el = $('#content');
+  const [tRes, mRes] = await Promise.all([api(`${AT}/today`), api(`${AT}/month`)]);
+  if (tRes.status === 401) { location.reload(); return; }
+  const today = await tRes.json();
+  const month = mRes.ok ? await mRes.json() : { rows: [] };
+  const boss = isAllMode();
+
+  let html = '';
+  if (!state.isBoss) {
+    const me = today.rows[0] || {};
+    html += `<div class="punch">
+      <button class="in" id="pIn" ${me.check_in ? 'disabled' : ''}>${t('attIn')}</button>
+      <button class="out" id="pOut" ${(!me.check_in || me.check_out) ? 'disabled' : ''}>${t('attOut')}</button>
+    </div><div id="attMsg" style="font-size:13px;min-height:18px"></div>`;
+    html += `<div class="attrow"><span class="nm">${t('attToday')}</span>` +
+      `<span class="tm">${me.check_in || '—'} ~ ${me.check_out || '—'}</span>` +
+      `<span class="rt">${me.minutes != null ? hhmm(me.minutes) : (me.check_in ? t('attWorking') : t('attNone'))}</span>` +
+      (me.late ? `<span class="lt">${t('attLate')}</span>` : '') + `</div>`;
+    const mine = month.rows[0];
+    if (mine) html += `<div class="hint">${t('attMonth')} · ${t('attSummary', { days: mine.days, hours: hhmm(mine.minutes), late: mine.late })}</div>`;
+    el.innerHTML = html;
+    $('#pIn').onclick = () => punch('in');
+    $('#pOut').onclick = () => punch('out');
+    return;
+  }
+
+  // 사장님 화면
+  const done = today.rows.filter(r => r.check_in).length;
+  html += `<div class="dayhead">${t('attToday')} ${today.date.slice(5)} — ${done}/${today.rows.length}</div>`;
+  html += today.rows.map(r => {
+    if (!r.check_in) return `<div class="attrow none"><span class="nm">${escapeHtml(r.name)}</span>` +
+      `<span class="tm">${t('attNone')}</span>` +
+      `<span class="rt"><button class="go" data-mark="${r.staff_id}" style="padding:4px 8px;border:0;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer">${t('attMark')}</button></span></div>`;
+    return `<div class="attrow"><span class="nm">${escapeHtml(r.name)}</span>` +
+      `<span class="tm">${r.check_in} ~ ${r.check_out || '—'}</span>` +
+      (r.late ? `<span class="lt">${t('attLate')}</span>` : '') +
+      `<span class="rt">${r.minutes != null ? hhmm(r.minutes) : t('attWorking')}</span></div>`;
+  }).join('');
+
+  html += `<div class="dayhead">${t('attMonth')} (${month.month || ''})</div>`;
+  html += month.rows.map(r => `<div class="attrow"><span class="nm">${escapeHtml(r.name)}</span>` +
+    `<span class="tm">${t('attSummary', { days: r.days, hours: hhmm(r.minutes), late: r.late })}</span></div>`).join('');
+
+  html += `<div class="attbar">
+    <a class="go" style="text-decoration:none;padding:8px 10px;border-radius:8px" href="${API}${AT}/export?month=${month.month || ''}">${t('attExport')}</a>
+    <span>${t('attStart')}</span><input id="attStart" type="time" value="${today.work_start || '09:00'}" style="width:110px">
+    <button class="go" id="attCfg">${t('alarmSave')}</button>
+    <span id="attMsg" style="font-size:13px"></span>
+  </div>`;
+  html += `<div class="attbar"><span>${t('attPlace')}</span><span id="placeInfo" class="hint"></span>
+    <button class="go" id="placeSet">${t('attSetHere')}</button></div>`;
+
+  el.innerHTML = html;
+  el.querySelectorAll('[data-mark]').forEach(b => b.onclick = async () => {
+    await api(`${AT}/mark`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staff_id: Number(b.dataset.mark) }) });
+    render();
+  });
+  $('#attCfg').onclick = async () => {
+    const r = await api(`${AT}/config`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ work_start: $('#attStart').value }) });
+    $('#attMsg').textContent = r.ok ? t('attSaved') : t('alarmFailed');
+    if (r.ok) render();
+  };
+  const pr = await api(`${AT}/place`);
+  const places = pr.ok ? await pr.json() : [];
+  $('#placeInfo').textContent = places.length
+    ? places.map(p => `${p.name} ${p.radius_m}m`).join(', ') : t('attNoPlace');
+  $('#placeSet').onclick = async () => {
+    const info = $('#placeInfo');
+    info.textContent = '…';
+    const pos = await getPos();
+    if (!pos) { info.textContent = t('attGpsFail'); return; }
+    const r = await api(`${AT}/place`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: '휘트니스', lat: pos.lat, lng: pos.lng, radius_m: 10 }) });
+    info.textContent = r.ok ? `휘트니스 10m (±${Math.round(pos.acc)}m)` : t('alarmFailed');
+  };
 }
 
 // ---- 월간 달력 ----

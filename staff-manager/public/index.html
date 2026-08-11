@@ -85,6 +85,20 @@
   .cal .cell.sel{outline:2px solid #2563eb;outline-offset:-2px}
   .cal .cell.sun .dnum{color:#dc2626}
   .dayhead{font-size:14px;font-weight:600;margin:14px 0 4px}
+  .punch{display:flex;gap:10px;margin:10px 0}
+  .punch button{flex:1;padding:22px 0;font-size:18px;font-weight:700;border:0;border-radius:12px;color:#fff;cursor:pointer}
+  .punch .in{background:#2563eb}
+  .punch .out{background:#6b7280}
+  .punch button:disabled{opacity:.4}
+  .attrow{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:9px 12px;margin:6px 0;font-size:14px}
+  .attrow .nm{font-weight:600;min-width:64px}
+  .attrow .tm{color:#374151}
+  .attrow .rt{margin-left:auto;font-size:12px;color:#6b7280}
+  .attrow.none{background:#fafafa;color:#9ca3af}
+  .attrow .lt{color:#dc2626;font-size:12px}
+  .attbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
+  .attbar button,.attbar input{padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;background:#fff}
+  .attbar .go{background:#2563eb;color:#fff;border:0;cursor:pointer}
   .cal .cell .badge.note{color:#7c3aed}
   .mention{background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:8px 10px;margin:6px 0;font-size:14px;line-height:1.45}
   .mention .from{display:block;font-size:11px;color:#9333ea;margin-bottom:2px}
@@ -135,6 +149,7 @@
       <button data-p="week" data-i18n="week">주간</button>
       <button data-p="month" data-i18n="month">월간</button>
       <button data-p="year" data-i18n="year">연간</button>
+      <button data-p="att" data-i18n="att">근태</button>
     </div>
     <main id="content"></main>
   </div>
