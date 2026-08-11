@@ -10,7 +10,7 @@ if ('serviceWorker' in navigator) {
 // 상대 경로 API (nginx가 /staff-manager/ 프리픽스를 벗김)
 const API = 'api/report';
 const CHECK_PERIODS = ['today', 'tomorrow'];
-const state = { isBoss: false, staffId: null, myId: null, name: '', targetStaff: null, period: 'today', calMonth: null, calDay: null };
+const state = { isBoss: false, staffId: null, myId: null, name: '', targetStaff: null, period: 'today', calMonth: null, calDay: null, dayOffset: 0 };
 
 const $ = (s) => document.querySelector(s);
 async function api(pathAndQuery, opts) {
@@ -34,7 +34,13 @@ function weekStart() {
 }
 function monthStart() { return kst().slice(0, 7) + '-01'; }
 function yearStart() { return kst().slice(0, 4) + '-01-01'; }
+// 오늘/내일 탭은 dayOffset 만큼 앞뒤로 옮겨 볼 수 있다 (지난 기록도 그대로 남아있다)
 function itemDateFor(period) {
+  if (period === 'today') return kst(state.dayOffset);
+  if (period === 'tomorrow') return kst(state.dayOffset + 1);
+  return itemDateBase(period);
+}
+function itemDateBase(period) {
   return { today: kst(0), tomorrow: kst(1), week: weekStart(), month: monthStart(), year: yearStart() }[period];
 }
 
@@ -107,6 +113,26 @@ function qs(period) {
   return '?' + p.toString();
 }
 
+function dayBarHtml() {
+  const p = state.period;
+  if (p !== 'today' && p !== 'tomorrow') return '';
+  const iso = itemDateFor(p);
+  const [y, m, d] = iso.split('-').map(Number);
+  const w = t('dow' + new Date(Date.UTC(y, m - 1, d)).getUTCDay());
+  const past = state.dayOffset !== 0;
+  return `<div class="daybar${past ? ' past' : ''}">` +
+    `<button data-day="-1">‹</button><span>${t('dayFmt', { m, d, w })}</span>` +
+    `<button data-day="1">›</button>` +
+    (past ? `<button class="back" data-day="0">${t('goToday')}</button>` : '') + `</div>`;
+}
+function bindDayBar() {
+  $('#content').querySelectorAll('[data-day]').forEach(b => b.onclick = () => {
+    const v = Number(b.dataset.day);
+    state.dayOffset = v === 0 ? 0 : state.dayOffset + v;
+    render();
+  });
+}
+
 async function render() {
   const period = state.period;
   if (!state.isBoss && BOSS_TABS.includes(period)) { state.period = 'today'; applyTabVisibility(); }
@@ -119,8 +145,9 @@ async function render() {
   const items = await r.json();
   const el = $('#content');
   if (CHECK_PERIODS.includes(period)) {
-    el.innerHTML = items.map(renderCheckItem).join('') +
+    el.innerHTML = dayBarHtml() + items.map(renderCheckItem).join('') +
       `<button class="add" id="addBtn">${t('addItem')}</button>`;
+    bindDayBar();
     $('#addBtn').onclick = addCheckItem;
     el.querySelectorAll('.item').forEach(bindCheckItem);
   } else {
@@ -138,7 +165,9 @@ async function renderOverview() {
   const r = await api(`/overview?period=${period}&date=${itemDateFor(period)}&lang=${LANG}`);
   if (r.status === 401) { location.reload(); return; }
   const rows = await r.json();
-  $('#content').innerHTML = overviewCards(rows, CHECK_PERIODS.includes(period)) || `<div class="empty">${t('noStaff')}</div>`;
+  $('#content').innerHTML = dayBarHtml() +
+    (overviewCards(rows, CHECK_PERIODS.includes(period)) || `<div class="empty">${t('noStaff')}</div>`);
+  bindDayBar();
   bindAssign($('#content'));
 }
 
