@@ -26,8 +26,14 @@ function addDays(iso, n) {
 module.exports = function createAlarm(db, opts = {}) {
   const secret = opts.secret || 'staff-mgr-2026-secret';
   const send = opts.send || telegramSend;
+  const pushTo = opts.pushTo || null;   // 폰 알림(웹 푸시) — 있으면 함께 보낸다
   const router = express.Router();
 
+  db.exec(`CREATE TABLE IF NOT EXISTS report_push (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id INTEGER NOT NULL,
+    endpoint TEXT NOT NULL UNIQUE, p256dh TEXT NOT NULL, auth TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now','localtime'))
+  )`);
   db.exec(`CREATE TABLE IF NOT EXISTS report_alarm (
     staff_id INTEGER PRIMARY KEY,
     chat_id TEXT,
@@ -80,25 +86,33 @@ module.exports = function createAlarm(db, opts = {}) {
   // ---- 발송 ----
   // date: 'YYYY-MM-DD', now: 'HH:MM'. 설정 시각이 지났고 오늘 아직 안 보냈으면 보낸다.
   async function tick(date, now) {
+    // 텔레그램이 없어도 폰 알림 구독이 있으면 보낸다
     const rows = db.prepare(`
       SELECT a.staff_id, a.chat_id, a.send_at, a.last_sent, u.name
       FROM report_alarm a JOIN report_users u ON u.id = a.staff_id
-      WHERE a.enabled=1 AND a.chat_id IS NOT NULL AND a.chat_id <> ''
+      WHERE a.enabled=1 AND (
+        (a.chat_id IS NOT NULL AND a.chat_id <> '')
+        OR EXISTS (SELECT 1 FROM report_push p WHERE p.staff_id = a.staff_id)
+      )
     `).all();
     let sent = 0;
     for (const r of rows) {
       if (r.last_sent === date) continue;
       if (String(now) < String(r.send_at || '09:00')) continue;
+      if (!r.chat_id) { /* 텔레그램 없이 폰 알림만 쓰는 사람 */ }
       const msg = buildMessage(r.staff_id, r.name, date);
       // 보낼 내용이 없어도 오늘 몫은 처리한 것으로 남겨 중복 시도를 막는다
       if (!msg) { db.prepare("UPDATE report_alarm SET last_sent=? WHERE staff_id=?").run(date, r.staff_id); continue; }
-      try {
-        await send(r.chat_id, msg);
-        db.prepare("UPDATE report_alarm SET last_sent=? WHERE staff_id=?").run(date, r.staff_id);
-        sent++;
-      } catch (e) {
-        console.error('[alarm] 발송 실패 staff', r.staff_id, e.message);   // 다음 tick에 다시 시도
+      let any = false;
+      if (r.chat_id) {
+        try { await send(r.chat_id, msg); any = true; }
+        catch (e) { console.error('[alarm] 텔레그램 실패 staff', r.staff_id, e.message); }
       }
+      if (pushTo) {
+        try { if (await pushTo(r.staff_id, { title: '오늘 업무', body: msg.replace(/<[^>]+>/g, '') })) any = true; }
+        catch (e) { console.error('[alarm] 폰 알림 실패 staff', r.staff_id, e.message); }
+      }
+      if (any) { db.prepare("UPDATE report_alarm SET last_sent=? WHERE staff_id=?").run(date, r.staff_id); sent++; }
     }
     return sent;
   }
@@ -149,9 +163,18 @@ module.exports = function createAlarm(db, opts = {}) {
 
   // 다른 기능(사장님 지시 등)이 특정 직원에게 즉시 알릴 때 쓴다
   async function notify(staffId, text) {
+    let ok = false;
     const row = db.prepare("SELECT chat_id FROM report_alarm WHERE staff_id=? AND enabled=1").get(staffId);
-    if (!row || !row.chat_id) throw new Error('chat_id 미등록');
-    return send(row.chat_id, text);
+    if (row && row.chat_id) {
+      try { await send(row.chat_id, text); ok = true; }
+      catch (e) { console.error('[notify] 텔레그램 실패:', e.message); }
+    }
+    if (pushTo) {
+      try { if (await pushTo(staffId, { title: '사장님 지시', body: text.replace(/^📌[^\n]*\n/, '') })) ok = true; }
+      catch (e) { console.error('[notify] 폰 알림 실패:', e.message); }
+    }
+    if (!ok) throw new Error('알림 보낼 곳 없음');
+    return true;
   }
 
   return { router, tick, buildMessage, notify };

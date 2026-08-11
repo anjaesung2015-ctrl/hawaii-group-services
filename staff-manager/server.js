@@ -40,11 +40,19 @@ app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'log
 // ===== 새 업무보고 API =====
 const createReportRoutes = require('./report-simple');
 // ---- 텔레그램 알람 (지시 알림에도 쓰이므로 먼저 만든다) ----
+const createPushEarly = require('./push');
+const pushSvc = createPushEarly(db, { secret: SECRET });
+
 const createAlarm = require('./alarm');
-const alarm = createAlarm(db, { secret: SECRET });
+const alarm = createAlarm(db, { secret: SECRET, pushTo: (id, msg) => pushSvc.sendTo(id, msg) });
 
 app.use('/api/report', createReportRoutes(db, { secret: SECRET, bossPw: BOSS_PW, notify: alarm.notify }));
 app.use('/api/report/alarm', alarm.router);
+
+// ---- 폰 알림(웹 푸시) ----
+app.use('/api/report/push', pushSvc.router);
+if (!pushSvc.publicKey) console.log('[push] VAPID 키 없음 — 폰 알림 꺼짐');
+else console.log('[push] 폰 알림 켜짐');
 
 
 const cron = require('node-cron');

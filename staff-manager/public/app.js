@@ -1,6 +1,10 @@
 // 옛 PWA 서비스워커 잔재 제거 (기존 118KB 앱 캐시가 새 앱을 가리는 것 방지)
+// 옛 PWA 서비스워커만 제거한다 (알림용 sw.js 는 남긴다)
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
+  navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => {
+    const u = (r.active || r.installing || r.waiting || {}).scriptURL || '';
+    if (!u.endsWith('/staff-manager/sw.js')) r.unregister();
+  })).catch(() => {});
 }
 
 // 상대 경로 API (nginx가 /staff-manager/ 프리픽스를 벗김)
@@ -474,6 +478,79 @@ async function toggleAlarmPanel() {
      <div class="hint">${t('alarmHelp')}</div>`;
   $('#alSave').onclick = saveAlarm;
   $('#alTest').onclick = testAlarm;
+  renderPushRow();
+}
+
+// ---- 폰 알림(웹 푸시) ----
+const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isStandalone = () => window.navigator.standalone === true ||
+  (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+
+function b64ToU8(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const s = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(s);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function renderPushRow() {
+  const box = document.createElement('div');
+  box.id = 'pushRow';
+  box.style.marginTop = '10px';
+  box.style.paddingTop = '8px';
+  box.style.borderTop = '1px solid #e5e7eb';
+  $('#alarmFields').appendChild(box);
+
+  const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  if (!supported) { box.innerHTML = `<div class="hint">${t('pushNo')}</div>`; return; }
+  // 아이폰은 홈 화면에 추가된 상태에서만 알림이 온다 (iOS 제약)
+  if (isIos() && !isStandalone()) {
+    box.innerHTML = `<div class="hint"><b>${t('pushNeedHome')}</b><br>${t('pushHowIos')}</div>`;
+    return;
+  }
+
+  const r = await api('/push');
+  if (!r.ok) return;
+  const d = await r.json();
+  if (!d.ready) return;
+  const btn = 'padding:9px 12px;border:0;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;margin-right:6px';
+
+  if (d.subscribed) {
+    box.innerHTML = `<span style="color:#16a34a;font-size:14px;margin-right:8px">🔔 ${t('pushOk')}</span>` +
+      `<button id="pTest" style="${btn};background:#6b7280">${t('pushTest')}</button>` +
+      `<button id="pOff" style="${btn};background:#6b7280">${t('pushOff')}</button>` +
+      `<span id="pMsg" style="font-size:13px;margin-left:4px"></span>`;
+    $('#pTest').onclick = async () => {
+      const rr = await api('/push/test', { method: 'POST' });
+      $('#pMsg').textContent = rr.ok ? t('pushSent') : t('alarmFailed');
+    };
+    $('#pOff').onclick = async () => {
+      const reg = await navigator.serviceWorker.getRegistration('/staff-manager/');
+      const sub = reg && await reg.pushManager.getSubscription();
+      if (sub) { await api('/push', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) }); await sub.unsubscribe(); }
+      else await api('/push', { method: 'DELETE' });
+      box.remove(); renderPushRow();
+    };
+    return;
+  }
+
+  box.innerHTML = `<button id="pOn" style="${btn}">🔔 ${t('pushOn')}</button><span id="pMsg" style="font-size:13px"></span>`;
+  $('#pOn').onclick = async () => {
+    const msg = $('#pMsg');
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') { msg.style.color = '#dc2626'; msg.textContent = t('pushDenied'); return; }
+      const reg = await navigator.serviceWorker.register('sw.js', { scope: '/staff-manager/' });
+      await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(d.publicKey) });
+      const res = await api('/push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sub.toJSON()) });
+      if (!res.ok) throw new Error('save failed');
+      box.remove(); renderPushRow();
+    } catch (e) {
+      msg.style.color = '#dc2626';
+      msg.textContent = t('alarmFailed');
+    }
+  };
 }
 
 async function saveAlarm() {

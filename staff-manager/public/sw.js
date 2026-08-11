@@ -1,34 +1,25 @@
-// SW v10 — HTML never cached, force update
-const CACHE = "sm-reports-v10";
+// 업무보고 알림 전용 서비스워커.
+// fetch 를 가로채지 않는다 — 예전처럼 옛 화면이 캐시에 갇히는 일이 없도록.
+self.addEventListener('install', (e) => self.skipWaiting());
+self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
-self.addEventListener("install", (e) => self.skipWaiting());
-
-self.addEventListener("activate", (e) => {
-  e.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
-      .then(() => clients.claim())
-  );
+self.addEventListener('push', (event) => {
+  let d = { title: '업무보고', body: '', url: '/staff-manager/' };
+  try { if (event.data) d = Object.assign(d, event.data.json()); } catch (e) { }
+  event.waitUntil(self.registration.showNotification(d.title, {
+    body: d.body,
+    icon: '/staff-manager/icon-192.png',
+    badge: '/staff-manager/icon-192.png',
+    data: { url: d.url },
+    vibrate: [200, 100, 200],
+  }));
 });
 
-self.addEventListener("message", (e) => {
-  if (e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
-});
-
-self.addEventListener("fetch", (e) => {
-  // API와 HTML은 항상 네트워크 (캐시 절대 안함)
-  if (e.request.url.includes("/api/")) return;
-  if (e.request.method !== "GET") return;
-  const accept = e.request.headers.get("accept") || "";
-  if (e.request.mode === "navigate" || accept.includes("text/html")) return;
-  // 이미지/폰트/icon만 캐시
-  e.respondWith(
-    caches.open(CACHE).then(async (cache) => {
-      const cached = await cache.match(e.request);
-      const fp = fetch(e.request).then((res) => {
-        if (res.ok) cache.put(e.request, res.clone());
-        return res;
-      }).catch(() => cached);
-      return cached || fp;
-    })
-  );
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/staff-manager/';
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    for (const c of list) if (c.url.includes('/staff-manager') && 'focus' in c) return c.focus();
+    return self.clients.openWindow(url);
+  }));
 });
