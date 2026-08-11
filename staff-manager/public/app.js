@@ -44,7 +44,7 @@ async function loadStaffList() {
 }
 async function doLogin(body) {
   const r = await api('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if (!r.ok) { $('#loginErr').textContent = '로그인 실패'; return; }
+  if (!r.ok) { $('#loginErr').textContent = t('loginFail'); return; }
   applySession(await r.json());
 }
 
@@ -52,14 +52,14 @@ function enterApp() {
   $('#loginView').style.display = 'none';
   $('#appView').style.display = 'block';
   if (state.isBoss) {
-    $('#whoami').textContent = '사장님';
+    $('#whoami').textContent = t('boss');
     const bsel = $('#bossStaffSel');
     // 사장님 본인 업무공간을 드롭다운 맨 위에 두고 기본 선택
     if (state.myId && !bsel.querySelector('option[data-me]')) {
-      bsel.insertAdjacentHTML('afterbegin', `<option data-me="1" value="${state.myId}">🏠 내 업무</option>`);
+      bsel.insertAdjacentHTML('afterbegin', `<option data-me="1" data-i18n="myWork" value="${state.myId}">${t('myWork')}</option>`);
     }
     if (!bsel.querySelector('option[data-all]')) {
-      bsel.insertAdjacentHTML('afterbegin', `<option data-all="1" value="${ALL}">👥 직원 현황</option>`);
+      bsel.insertAdjacentHTML('afterbegin', `<option data-all="1" data-i18n="allStaff" value="${ALL}">${t('allStaff')}</option>`);
     }
     bsel.value = ALL;  // 로그인하면 직원 현황판이 먼저
     bsel.style.display = 'inline-block';
@@ -90,14 +90,14 @@ async function render() {
   const el = $('#content');
   if (CHECK_PERIODS.includes(period)) {
     el.innerHTML = items.map(renderCheckItem).join('') +
-      `<button class="add" id="addBtn">+ 항목 추가</button>`;
+      `<button class="add" id="addBtn">${t('addItem')}</button>`;
     $('#addBtn').onclick = addCheckItem;
     el.querySelectorAll('.item').forEach(bindCheckItem);
   } else {
     const memo = items[0]?.memo || '';
     const id = items[0]?.id || '';
-    el.innerHTML = `<div class="hint">${{week:'이번 주',month:'이번 달',year:'올해'}[period]} 방향/목표를 자유롭게 적어두세요.</div>
-      <textarea class="free" id="freeMemo" data-id="${id}" placeholder="자유롭게 작성...">${escapeHtml(memo)}</textarea>`;
+    el.innerHTML = `<div class="hint">${t('freeHint_' + period)}</div>
+      <textarea class="free" id="freeMemo" data-id="${id}" placeholder="${t('freeWrite')}">${escapeHtml(memo)}</textarea>`;
     $('#freeMemo').onblur = saveFree;
   }
 }
@@ -114,31 +114,31 @@ async function renderOverview() {
     let head = '', body;
     if (isCheck) {
       if (!items.length) {
-        body = `<div class="empty">아직 작성 없음</div>`;
+        body = `<div class="empty">${t('noEntry')}</div>`;
       } else {
         const done = items.filter(i => i.done).length;
         const pct = Math.round(done / items.length * 100);
-        head = `<span class="cnt">${done}/${items.length} 완료</span>`;
+        head = `<span class="cnt">${t('doneCount', { done, total: items.length })}</span>`;
         body = `<div class="bar"><i style="width:${pct}%"></i></div>` + items.map(i => {
           const memo = i.memo ? ` <span class="m">· ${escapeHtml(i.memo)}</span>` : '';
           return `<div class="ov ${i.done ? 'done' : 'undone'}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
-                 `<span class="tx">${escapeHtml(i.title || '(제목 없음)')}${memo}</span></div>`;
+                 `<span class="tx">${escapeHtml(i.title || t('noTitle'))}${memo}</span></div>`;
         }).join('');
       }
     } else {
       const memo = items.map(i => i.memo).filter(Boolean).join('\n');
-      body = memo ? `<div class="freeview">${escapeHtml(memo)}</div>` : `<div class="empty">아직 작성 없음</div>`;
+      body = memo ? `<div class="freeview">${escapeHtml(memo)}</div>` : `<div class="empty">${t('noEntry')}</div>`;
     }
     return `<div class="card"><h3>${escapeHtml(row.name)}${head}</h3>${body}</div>`;
   }).join('');
-  $('#content').innerHTML = html || `<div class="empty">직원이 없습니다</div>`;
+  $('#content').innerHTML = html || `<div class="empty">${t('noStaff')}</div>`;
 }
 
 function renderCheckItem(it) {
   return `<div class="item ${it.done ? 'done' : ''}" data-id="${it.id}">
     <input type="checkbox" ${it.done ? 'checked' : ''}>
-    <input class="ti" value="${escapeHtml(it.title || '')}" placeholder="할 일">
-    <input class="memo" value="${escapeHtml(it.memo || '')}" placeholder="메모">
+    <input class="ti" value="${escapeHtml(it.title || '')}" placeholder="${t('todo')}">
+    <input class="memo" value="${escapeHtml(it.memo || '')}" placeholder="${t('memo')}">
     <button class="del">×</button>
   </div>`;
 }
@@ -172,13 +172,13 @@ function bodyWithStaff(body) {
   if (state.isBoss && state.targetStaff && state.targetStaff !== ALL) body.staff_id = state.targetStaff;
   return body;
 }
-function flashSaved() { const m = $('#savedMsg'); m.textContent = '저장됨'; setTimeout(() => m.textContent = '', 1200); }
+function flashSaved() { const m = $('#savedMsg'); m.textContent = t('saved'); setTimeout(() => m.textContent = '', 1200); }
 function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 // ---- 이벤트 바인딩 ----
 $('#staffLoginBtn').onclick = () => {
   const n = $('#nameSel').value;
-  if (!n) { $('#loginErr').textContent = '이름을 선택하세요'; return; }
+  if (!n) { $('#loginErr').textContent = t('selectName'); return; }
   doLogin({ name: n, password: $('#staffPw').value });
 };
 $('#bossLoginBtn').onclick = () => doLogin({ boss_pw: $('#bossPw').value });
@@ -199,23 +199,23 @@ function togglePwPanel() {
   const btn = 'padding:10px 12px;border:0;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer';
   if (state.isBoss) {
     if (state.targetStaff === ALL) {
-      f.innerHTML = '<div class="hint">비밀번호를 바꾸려면 위에서 직원을 먼저 선택하세요.</div>';
+      f.innerHTML = `<div class="hint">${t('pwPickStaff')}</div>`;
       return;
     }
     if (state.targetStaff === state.myId) {
-      f.innerHTML = '<div class="hint">사장님 비밀번호는 서버 설정(.env)에서 관리합니다.</div>';
+      f.innerHTML = `<div class="hint">${t('pwBossEnv')}</div>`;
       return;
     }
     const name = $('#bossStaffSel').selectedOptions[0]?.textContent || '';
-    f.innerHTML = `<div class="hint">${escapeHtml(name)} 님 새 비밀번호 설정</div>
-      <input id="npw" type="text" placeholder="새 비밀번호(4자 이상)" style="${inp}">
-      <button id="pwSave" style="${btn}">저장</button>
+    f.innerHTML = `<div class="hint">${escapeHtml(t('pwSetFor', { name }))}</div>
+      <input id="npw" type="text" placeholder="${t('newPassword')}" style="${inp}">
+      <button id="pwSave" style="${btn}">${t('save')}</button>
       <span id="pwMsg" style="font-size:13px;margin-left:8px"></span>`;
     $('#pwSave').onclick = doBossReset;
   } else {
-    f.innerHTML = `<input id="cpw" type="password" placeholder="현재 비밀번호" style="${inp}">
-      <input id="npw" type="password" placeholder="새 비밀번호(4자 이상)" style="${inp}">
-      <button id="pwSave" style="${btn}">변경</button>
+    f.innerHTML = `<input id="cpw" type="password" placeholder="${t('curPassword')}" style="${inp}">
+      <input id="npw" type="password" placeholder="${t('newPassword')}" style="${inp}">
+      <button id="pwSave" style="${btn}">${t('change')}</button>
       <span id="pwMsg" style="font-size:13px;margin-left:8px"></span>`;
     $('#pwSave').onclick = doChangePw;
   }
@@ -223,14 +223,14 @@ function togglePwPanel() {
 async function doChangePw() {
   const r = await api('/change-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current: $('#cpw').value, new_password: $('#npw').value }) });
   const msg = $('#pwMsg');
-  if (r.ok) { msg.style.color = '#16a34a'; msg.textContent = '변경됨'; $('#cpw').value = ''; $('#npw').value = ''; }
-  else { msg.style.color = '#dc2626'; msg.textContent = r.status === 401 ? '현재 비번 틀림' : (r.status === 400 ? '4자 이상 입력' : '실패'); }
+  if (r.ok) { msg.style.color = '#16a34a'; msg.textContent = t('pwChanged'); $('#cpw').value = ''; $('#npw').value = ''; }
+  else { msg.style.color = '#dc2626'; msg.textContent = r.status === 401 ? t('pwWrongCurrent') : (r.status === 400 ? t('pwTooShort') : t('pwFailed')); }
 }
 async function doBossReset() {
   const r = await api('/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ staff_id: state.targetStaff, new_password: $('#npw').value }) });
   const msg = $('#pwMsg');
-  if (r.ok) { msg.style.color = '#16a34a'; msg.textContent = '리셋 완료'; $('#npw').value = ''; }
-  else { msg.style.color = '#dc2626'; msg.textContent = r.status === 400 ? '4자 이상 입력' : '실패'; }
+  if (r.ok) { msg.style.color = '#16a34a'; msg.textContent = t('pwReset'); $('#npw').value = ''; }
+  else { msg.style.color = '#dc2626'; msg.textContent = r.status === 400 ? t('pwTooShort') : t('pwFailed'); }
 }
 $('#pwBtn').onclick = togglePwPanel;
 
@@ -242,7 +242,12 @@ function applySession(d) {
   state.name = d.name || '사장님';
   enterApp();
 }
+document.querySelectorAll('.langBtn').forEach(b => {
+  b.onclick = () => setLang(LANG === 'ko' ? 'mn' : 'ko');
+});
+
 async function boot() {
+  applyI18n();
   await loadStaffList();
   try {
     const r = await api('/me');

@@ -28,6 +28,7 @@
   #loginView select,#loginView input,#loginView button{padding:12px;border:1px solid #d1d5db;border-radius:10px;font-size:15px}
   #loginView button{background:#2563eb;color:#fff;border:0;cursor:pointer}
   .saved{color:#16a34a;font-size:12px;margin-left:8px}
+  .langBtn{padding:6px 11px!important;font-size:13px!important;background:#fff!important;color:#374151!important;border:1px solid #d1d5db!important;border-radius:8px;cursor:pointer;width:auto!important;align-self:flex-end}
   /* 직원 현황판 (읽기 전용) */
   .card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;margin:8px 0}
   .card h3{margin:0 0 8px;font-size:15px;display:flex;align-items:center;gap:8px}
@@ -44,13 +45,14 @@
 </style></head>
 <body>
   <div id="loginView">
-    <h2 style="text-align:center">업무보고</h2>
-    <select id="nameSel"><option value="">이름을 선택하세요</option></select>
-    <input id="staffPw" type="password" placeholder="비밀번호">
-    <button id="staffLoginBtn">로그인</button>
-    <div class="hint" style="text-align:center">— 또는 —</div>
-    <input id="bossPw" type="password" placeholder="사장님 비밀번호">
-    <button id="bossLoginBtn">사장님 로그인</button>
+    <button class="langBtn" type="button">MN</button>
+    <h2 style="text-align:center" data-i18n="appTitle">업무보고</h2>
+    <select id="nameSel"><option value="" data-i18n="selectName">이름을 선택하세요</option></select>
+    <input id="staffPw" type="password" data-i18n-ph="password" placeholder="비밀번호">
+    <button id="staffLoginBtn" data-i18n="login">로그인</button>
+    <div class="hint" style="text-align:center" data-i18n="or">— 또는 —</div>
+    <input id="bossPw" type="password" data-i18n-ph="bossPassword" placeholder="사장님 비밀번호">
+    <button id="bossLoginBtn" data-i18n="bossLogin">사장님 로그인</button>
     <div class="err" id="loginErr" style="color:#dc2626;text-align:center;font-size:13px"></div>
   </div>
 
@@ -60,20 +62,22 @@
       <select id="bossStaffSel" style="display:none"></select>
       <span class="grow"></span>
       <span class="saved" id="savedMsg"></span>
-      <button id="pwBtn">비번변경</button>
-      <button id="logoutBtn">로그아웃</button>
+      <button class="langBtn" type="button">MN</button>
+      <button id="pwBtn" data-i18n="changePw">비번변경</button>
+      <button id="logoutBtn" data-i18n="logout">로그아웃</button>
     </header>
     <div id="pwPanel" style="display:none;padding:10px 12px;background:#fffbe6;border-bottom:1px solid #f0e6c0;max-width:640px;margin:0 auto">
       <div id="pwFields"></div>
     </div>
     <div class="tabs" id="tabs">
-      <button data-p="today" class="active">오늘</button>
-      <button data-p="tomorrow">내일</button>
-      <button data-p="week">주간</button>
-      <button data-p="month">월간</button>
-      <button data-p="year">연간</button>
+      <button data-p="today" class="active" data-i18n="today">오늘</button>
+      <button data-p="tomorrow" data-i18n="tomorrow">내일</button>
+      <button data-p="week" data-i18n="week">주간</button>
+      <button data-p="month" data-i18n="month">월간</button>
+      <button data-p="year" data-i18n="year">연간</button>
     </div>
     <main id="content"></main>
   </div>
-  <script src="app.js"></script>
+  <script src="i18n.js"></script>
+<script src="app.js"></script>
 </body></html>
