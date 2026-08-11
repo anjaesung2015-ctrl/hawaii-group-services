@@ -45,12 +45,7 @@ async function loadStaffList() {
 async function doLogin(body) {
   const r = await api('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (!r.ok) { $('#loginErr').textContent = '로그인 실패'; return; }
-  const d = await r.json();
-  state.isBoss = d.isBoss;
-  state.staffId = d.staff_id || null;
-  state.myId = d.my_id || null;
-  state.name = d.name || '사장님';
-  enterApp();
+  applySession(await r.json());
 }
 
 function enterApp() {
@@ -197,4 +192,19 @@ async function doBossReset() {
 }
 $('#pwBtn').onclick = togglePwPanel;
 
-loadStaffList();
+// ---- 부팅: 살아있는 세션이 있으면 로그인 화면 건너뛰기 ----
+function applySession(d) {
+  state.isBoss = d.isBoss;
+  state.staffId = d.staff_id || null;
+  state.myId = d.my_id || null;
+  state.name = d.name || '사장님';
+  enterApp();
+}
+async function boot() {
+  await loadStaffList();
+  try {
+    const r = await api('/me');
+    if (r.ok) applySession(await r.json());
+  } catch (e) { /* 오프라인 등 — 로그인 화면 유지 */ }
+}
+boot();

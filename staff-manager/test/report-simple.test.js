@@ -268,4 +268,39 @@ test('reset-password 대상이 사장님 행이면 403', async () => {
   server.close();
 });
 
+test('me: 세션 없으면 401', async () => {
+  const { server, base } = makeServer();
+  const res = await fetch(`${base}/me`);
+  assert.strictEqual(res.status, 401);
+  server.close();
+});
+
+test('me: 직원 세션이면 본인 정보 반환', async () => {
+  const { server, base } = makeServer();
+  const res = await fetch(`${base}/me`, { headers: { cookie: staffCookie(1, '미가') } });
+  const d = await res.json();
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(d.isBoss, false);
+  assert.strictEqual(d.staff_id, 1);
+  assert.strictEqual(d.name, '미가');
+  server.close();
+});
+
+test('me: 사장님 세션이면 my_id 반환', async () => {
+  const { db, server, base } = makeServer();
+  const res = await fetch(`${base}/me`, { headers: { cookie: bossCookie() } });
+  const d = await res.json();
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(d.isBoss, true);
+  assert.strictEqual(d.my_id, bossId(db));
+  server.close();
+});
+
+test('me: 만료·위조 토큰이면 401', async () => {
+  const { server, base } = makeServer();
+  const res = await fetch(`${base}/me`, { headers: { cookie: 'report_sess=not-a-real-token' } });
+  assert.strictEqual(res.status, 401);
+  server.close();
+});
+
 module.exports = { makeServer, staffCookie, bossCookie, SECRET, BOSS };

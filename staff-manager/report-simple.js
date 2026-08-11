@@ -74,6 +74,12 @@ module.exports = function createReportRoutes(db, opts = {}) {
 
   router.use(requireSess);
 
+  // 세션 복원 — 앱을 벗어났다 돌아와도 다시 로그인하지 않도록
+  router.get('/me', (req, res) => {
+    if (req.rsess.isBoss) return res.json({ isBoss: true, my_id: bossRowId(), name: '사장님' });
+    res.json({ isBoss: false, staff_id: Number(req.rsess.staff_id), name: req.rsess.name || '' });
+  });
+
   router.get('/items', (req, res) => {
     const { period, date } = req.query;
     if (period && !PERIODS.includes(period)) return res.status(400).json({ error: 'bad_period' });
