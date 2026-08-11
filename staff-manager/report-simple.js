@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const PERIODS = ['today', 'tomorrow', 'week', 'month', 'year'];
 const DAILY = ['today', 'tomorrow'];   // 달력 한 칸에 들어가는 기간
 
-const { extractDates } = require('./dates');
+const { extractDates, stripLeadingDate } = require('./dates');
 
 module.exports = function createReportRoutes(db, opts = {}) {
   const secret = opts.secret || 'staff-mgr-2026-secret';
@@ -178,7 +178,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
       const d = days[row.item_date] || (days[row.item_date] = { total: 0, done: 0, staff: 0, notes: 0, texts: [] });
       d.total++;
       if (row.done) d.done++;
-      const label = (row.title || row.memo || '').trim();
+      const label = stripLeadingDate((row.title || row.memo || '').trim());
       if (label && d.texts.length < 4) d.texts.push({ t: label.slice(0, 40), done: row.done ? 1 : 0 });
       const key = row.item_date + '#' + row.staff_id;
       if (!seen[key] && staffIds.has(row.staff_id)) { seen[key] = 1; d.staff++; }
@@ -194,8 +194,11 @@ module.exports = function createReportRoutes(db, opts = {}) {
         if (dt.slice(0, 7) !== month) continue;
         const d = days[dt] || (days[dt] = { total: 0, done: 0, staff: 0, notes: 0, texts: [] });
         d.notes = (d.notes || 0) + 1;
-        const label = (row.title || row.memo || '').split('\n').find(l => l.trim()) || '';
-        if (label && d.texts.length < 4) d.texts.push({ t: label.trim().slice(0, 40), note: 1 });
+        // 여러 줄 중 이 날짜를 담은 줄을 골라 앞 날짜를 떼고 보여준다
+        const lines = ((row.title || '') + '\n' + (row.memo || '')).split('\n').filter(l => l.trim());
+        const hit = lines.find(l => extractDates(l, year).includes(dt)) || lines[0] || '';
+        const label = stripLeadingDate(hit.trim());
+        if (label && d.texts.length < 4) d.texts.push({ t: label.slice(0, 40), note: 1 });
         const key = dt + '#' + row.staff_id;
         if (!seen[key] && staffIds.has(row.staff_id)) { seen[key] = 1; d.staff++; }
       }

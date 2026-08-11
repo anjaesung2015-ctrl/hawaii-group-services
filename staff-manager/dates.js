@@ -70,4 +70,18 @@ function extractDates(text, defaultYear) {
   return [...new Set(found)];
 }
 
-module.exports = { extractDates, ymd, addDays };
+// 달력 칸에는 날짜가 이미 보이므로, 글 맨 앞의 날짜 표기를 떼고 내용만 남긴다.
+// '3일간', '2일 후' 같은 기간 표현과 '8시부터11시까지' 같은 시각은 건드리지 않는다.
+// 날짜만 있는 글은 지울 게 없으므로 원문 그대로 둔다.
+const ONE = '(?:\\d{4}[-./]\\d{1,2}[-./]\\d{1,2}|\\d{1,2}\\s*월\\s*\\d{1,2}\\s*일(?![간동째차후전])|\\d{1,2}/\\d{1,2}|\\d{1,2}\\s*일(?![간동째차후전]))';
+const LEADING_DATE = new RegExp('^\\s*' + ONE + '(?:\\s*[~\\-–—]\\s*' + ONE + '|[\\s,、·]+' + ONE + ')*', '');
+
+function stripLeadingDate(text) {
+  const str = String(text == null ? '' : text);
+  const m = str.match(LEADING_DATE);
+  if (!m) return str;
+  const rest = str.slice(m[0].length).replace(/^[\s,、·:：\-~]+/, '');
+  return rest ? rest : str;      // 날짜뿐이면 원문 유지
+}
+
+module.exports = { extractDates, ymd, addDays, stripLeadingDate };
