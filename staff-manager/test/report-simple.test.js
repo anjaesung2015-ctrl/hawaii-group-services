@@ -218,4 +218,54 @@ test('reset-password: 일반 직원은 403', async () => {
   server.close();
 });
 
+function bossId(db) { return db.prepare("SELECT id FROM report_users WHERE role='boss'").get().id; }
+
+test('staff-list에 사장님 행은 포함되지 않는다', async () => {
+  const { server, base } = makeServer();
+  const list = await (await fetch(`${base}/staff-list`)).json();
+  assert.ok(!list.some(s => s.name === '사장님'), '사장님이 직원 목록에 노출됨');
+  server.close();
+});
+
+test('사장님 로그인 응답에 본인 업무공간 my_id가 담긴다', async () => {
+  const { db, server, base } = makeServer();
+  const res = await login(base, { boss_pw: BOSS });
+  const body = await res.json();
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(body.isBoss, true);
+  assert.strictEqual(body.my_id, bossId(db));
+  server.close();
+});
+
+test('사장님은 본인 업무공간에 항목을 만들고 조회할 수 있다', async () => {
+  const { db, server, base } = makeServer();
+  const c = await login(base, { boss_pw: BOSS });
+  const cookie = (c.headers.get('set-cookie') || '').match(/report_sess=[^;]+/)[0];
+  const mine = bossId(db);
+  const add = await fetch(`${base}/items`, { method: 'POST', headers: { 'Content-Type': 'application/json', cookie }, body: JSON.stringify({ period: 'today', item_date: '2026-08-11', title: '은행 미팅', staff_id: mine }) });
+  assert.strictEqual(add.status, 200);
+  const list = await (await fetch(`${base}/items?period=today&date=2026-08-11&staff_id=${mine}`, { headers: { cookie } })).json();
+  assert.deepStrictEqual(list.map(i => i.title), ['은행 미팅']);
+  server.close();
+});
+
+test('직원은 사장님 항목을 조회·수정할 수 없다', async () => {
+  const { db, server, base } = makeServer();
+  const mine = bossId(db);
+  const r = db.prepare("INSERT INTO report_items (staff_id, period, item_date, title) VALUES (?,?,?,?)").run(mine, 'today', '2026-08-11', '사장님 비밀 업무');
+  const cookie = staffCookie(1, '미가');
+  const list = await (await fetch(`${base}/items?period=today&date=2026-08-11&staff_id=${mine}`, { headers: { cookie } })).json();
+  assert.deepStrictEqual(list, [], '직원이 사장님 항목을 조회함');
+  const patch = await fetch(`${base}/items/${r.lastInsertRowid}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', cookie }, body: JSON.stringify({ done: 1 }) });
+  assert.strictEqual(patch.status, 403);
+  server.close();
+});
+
+test('reset-password 대상이 사장님 행이면 403', async () => {
+  const { db, server, base } = makeServer();
+  const reset = await fetch(`${base}/reset-password`, { method: 'POST', headers: { 'Content-Type': 'application/json', cookie: bossCookie() }, body: JSON.stringify({ staff_id: bossId(db), new_password: 'hack1234' }) });
+  assert.strictEqual(reset.status, 403);
+  server.close();
+});
+
 module.exports = { makeServer, staffCookie, bossCookie, SECRET, BOSS };

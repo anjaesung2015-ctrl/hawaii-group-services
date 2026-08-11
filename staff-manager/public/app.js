@@ -6,7 +6,7 @@ if ('serviceWorker' in navigator) {
 // 상대 경로 API (nginx가 /staff-manager/ 프리픽스를 벗김)
 const API = 'api/report';
 const CHECK_PERIODS = ['today', 'tomorrow'];
-const state = { isBoss: false, staffId: null, name: '', targetStaff: null, period: 'today' };
+const state = { isBoss: false, staffId: null, myId: null, name: '', targetStaff: null, period: 'today' };
 
 const $ = (s) => document.querySelector(s);
 async function api(pathAndQuery, opts) {
@@ -48,6 +48,7 @@ async function doLogin(body) {
   const d = await r.json();
   state.isBoss = d.isBoss;
   state.staffId = d.staff_id || null;
+  state.myId = d.my_id || null;
   state.name = d.name || '사장님';
   enterApp();
 }
@@ -57,8 +58,14 @@ function enterApp() {
   $('#appView').style.display = 'block';
   if (state.isBoss) {
     $('#whoami').textContent = '사장님';
-    $('#bossStaffSel').style.display = 'inline-block';
-    state.targetStaff = Number($('#bossStaffSel').value);
+    const bsel = $('#bossStaffSel');
+    // 사장님 본인 업무공간을 드롭다운 맨 위에 두고 기본 선택
+    if (state.myId && !bsel.querySelector('option[data-me]')) {
+      bsel.insertAdjacentHTML('afterbegin', `<option data-me="1" value="${state.myId}">🏠 내 업무</option>`);
+      bsel.value = String(state.myId);
+    }
+    bsel.style.display = 'inline-block';
+    state.targetStaff = Number(bsel.value);
   } else {
     $('#whoami').textContent = state.name;
     state.targetStaff = state.staffId;
@@ -158,6 +165,10 @@ function togglePwPanel() {
   const inp = 'padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-right:6px';
   const btn = 'padding:10px 12px;border:0;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer';
   if (state.isBoss) {
+    if (state.targetStaff === state.myId) {
+      f.innerHTML = '<div class="hint">사장님 비밀번호는 서버 설정(.env)에서 관리합니다.</div>';
+      return;
+    }
     const name = $('#bossStaffSel').selectedOptions[0]?.textContent || '';
     f.innerHTML = `<div class="hint">${escapeHtml(name)} 님 새 비밀번호 설정</div>
       <input id="npw" type="text" placeholder="새 비밀번호(4자 이상)" style="${inp}">

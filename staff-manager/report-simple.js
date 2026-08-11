@@ -27,21 +27,28 @@ module.exports = function createReportRoutes(db, opts = {}) {
     updated_at TEXT
   )`);
 
+  // 사장님도 개인 업무공간을 갖는다: role='boss' 행 1개 (멱등)
+  const ucols = db.prepare("PRAGMA table_info(report_users)").all().map(c => c.name);
+  if (!ucols.includes('role')) db.exec("ALTER TABLE report_users ADD COLUMN role TEXT NOT NULL DEFAULT 'staff'");
+  db.prepare("INSERT INTO report_users (name, pin_hash, is_active, role) VALUES ('사장님','!',1,'boss') ON CONFLICT(name) DO NOTHING").run();
+  const bossRowId = () => db.prepare("SELECT id FROM report_users WHERE role='boss'").get()?.id || null;
+
   const COOKIE = { path: '/staff-manager', maxAge: 2592000000, sameSite: 'Lax', httpOnly: true, secure: true };
 
   router.get('/staff-list', (req, res) => {
-    res.json(db.prepare("SELECT id, name FROM report_users WHERE is_active=1 ORDER BY id").all());
+    res.json(db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all());
   });
 
   router.post('/login', (req, res) => {
     const { name, password, boss_pw } = req.body || {};
     if (boss_pw !== undefined) {
       if (!bossPw || boss_pw !== bossPw) return res.status(401).json({ error: 'bad_password' });
-      const token = jwt.sign({ isBoss: true }, secret, { expiresIn: '30d' });
+      const myId = bossRowId();
+      const token = jwt.sign({ isBoss: true, staff_id: myId }, secret, { expiresIn: '30d' });
       res.cookie('report_sess', token, COOKIE);
-      return res.json({ ok: true, isBoss: true });
+      return res.json({ ok: true, isBoss: true, my_id: myId, name: '사장님' });
     }
-    const u = db.prepare("SELECT id, name, pin_hash FROM report_users WHERE name=? AND is_active=1").get(name);
+    const u = db.prepare("SELECT id, name, pin_hash FROM report_users WHERE name=? AND is_active=1 AND role='staff' ").get(name);
     if (!u || !bcrypt.compareSync(password || '', u.pin_hash)) return res.status(401).json({ error: 'bad_login' });
     const token = jwt.sign({ staff_id: u.id, name: u.name, isBoss: false }, secret, { expiresIn: '30d' });
     res.cookie('report_sess', token, COOKIE);
@@ -61,7 +68,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
   }
 
   function targetStaffId(req, provided) {
-    if (req.rsess.isBoss) return provided ? Number(provided) : null;
+    if (req.rsess.isBoss) return provided ? Number(provided) : (Number(req.rsess.staff_id) || bossRowId());
     return req.rsess.staff_id;
   }
 
@@ -129,8 +136,9 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const { staff_id, new_password } = req.body || {};
     if (!staff_id) return res.status(400).json({ error: "staff_id_required" });
     if (!new_password || String(new_password).length < 4) return res.status(400).json({ error: "weak_password" });
-    const u = db.prepare("SELECT id FROM report_users WHERE id=? AND is_active=1").get(staff_id);
+    const u = db.prepare("SELECT id, role FROM report_users WHERE id=? AND is_active=1").get(staff_id);
     if (!u) return res.status(404).json({ error: "not_found" });
+    if (u.role === 'boss') return res.status(403).json({ error: "boss_row" });
     db.prepare("UPDATE report_users SET pin_hash=? WHERE id=?").run(bcrypt.hashSync(String(new_password), 10), u.id);
     res.json({ ok: true });
   });
