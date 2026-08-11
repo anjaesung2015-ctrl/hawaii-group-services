@@ -53,7 +53,18 @@ const I18N = {
     calTitle: '{y}년 {m}월',
     dayLabel: '{d}일',
     dow0: '일', dow1: '월', dow2: '화', dow3: '수', dow4: '목', dow5: '금', dow6: '토',
-    fromTab: '{tab}에 적음'
+    fromTab: '{tab}에 적음',
+    alarm: '알람',
+    alarmOn: '알람 켜기',
+    alarmTime: '보낼 시각',
+    alarmChat: '텔레그램 chat ID',
+    alarmHelp: '텔레그램에서 @Jaesung2026_bot 을 찾아 아무 말이나 보낸 뒤, 사장님께 chat ID를 받아 넣으세요.',
+    alarmSave: '저장',
+    alarmTest: '테스트 발송',
+    alarmSaved: '저장됨',
+    alarmSentOk: '보냈습니다',
+    alarmNoChat: 'chat ID를 먼저 넣으세요',
+    alarmFailed: '실패'
   },
   mn: {
     appTitle: 'Ажлын тайлан',
@@ -107,7 +118,18 @@ const I18N = {
     calTitle: '{y} оны {m} сар',
     dayLabel: '{d}-ний өдөр',
     dow0: 'Ня', dow1: 'Да', dow2: 'Мя', dow3: 'Лха', dow4: 'Пү', dow5: 'Ба', dow6: 'Бя',
-    fromTab: '{tab}-д бичсэн'
+    fromTab: '{tab}-д бичсэн',
+    alarm: 'Сэрүүлэг',
+    alarmOn: 'Сэрүүлэг асаах',
+    alarmTime: 'Илгээх цаг',
+    alarmChat: 'Telegram chat ID',
+    alarmHelp: 'Telegram-аас @Jaesung2026_bot-ыг олж мессеж бичээд, chat ID-гаа захирлаас аваад оруулна уу.',
+    alarmSave: 'Хадгалах',
+    alarmTest: 'Туршиж илгээх',
+    alarmSaved: 'Хадгаллаа',
+    alarmSentOk: 'Илгээлээ',
+    alarmNoChat: 'Эхлээд chat ID оруулна уу',
+    alarmFailed: 'Амжилтгүй'
   }
 };
 

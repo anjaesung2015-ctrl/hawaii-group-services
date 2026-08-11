@@ -41,6 +41,29 @@ app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'log
 const createReportRoutes = require('./report-simple');
 app.use('/api/report', createReportRoutes(db, { secret: SECRET, bossPw: BOSS_PW }));
 
+// ---- 텔레그램 아침 알람 ----
+const createAlarm = require('./alarm');
+const alarm = createAlarm(db, { secret: SECRET });
+app.use('/api/report/alarm', alarm.router);
+
+const cron = require('node-cron');
+function nowParts() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return {
+    date: `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`,
+    time: `${p(d.getHours())}:${p(d.getMinutes())}`,
+  };
+}
+// 5분마다 확인 — 설정 시각이 지났고 그날 아직 안 보낸 사람에게 보낸다 (재시작에도 안전)
+cron.schedule('*/5 * * * *', async () => {
+  const { date, time } = nowParts();
+  try {
+    const n = await alarm.tick(date, time);
+    if (n) console.log(`[alarm] ${date} ${time} — ${n}건 발송`);
+  } catch (e) { console.error('[alarm] tick 오류:', e.message); }
+});
+
 // 정적 파일 (index.html = 새 업무보고 앱)
 app.use(express.static(path.join(__dirname, 'public'), { etag: false }));
 

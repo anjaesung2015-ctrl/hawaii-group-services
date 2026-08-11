@@ -369,6 +369,55 @@ async function doBossReset() {
 }
 $('#pwBtn').onclick = togglePwPanel;
 
+// ---- 알람 설정 ----
+function alarmTargetId() {
+  if (!state.isBoss) return null;                       // 직원은 서버가 본인으로 강제
+  return state.targetStaff === ALL ? state.myId : state.targetStaff;
+}
+async function toggleAlarmPanel() {
+  const panel = $('#alarmPanel');
+  if (panel.style.display === 'block') { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  const sid = alarmTargetId();
+  const r = await api('/alarm' + (sid ? `?staff_id=${sid}` : ''));
+  const d = r.ok ? await r.json() : { chat_id: '', enabled: 0, send_at: '09:00' };
+  const inp = 'padding:9px;border:1px solid #d1d5db;border-radius:8px;margin-right:6px';
+  const btn = 'padding:9px 12px;border:0;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer;margin-right:6px';
+  $('#alarmFields').innerHTML =
+    `<div style="margin-bottom:6px">
+       <label style="font-size:14px"><input type="checkbox" id="alOn" ${d.enabled ? 'checked' : ''}> ${t('alarmOn')}</label>
+       <span style="margin-left:10px;font-size:14px">${t('alarmTime')}</span>
+       <input id="alAt" type="time" value="${escapeHtml(d.send_at || '09:00')}" style="${inp}">
+     </div>
+     <div style="margin-bottom:6px">
+       <input id="alChat" type="text" inputmode="numeric" placeholder="${t('alarmChat')}" value="${escapeHtml(d.chat_id || '')}" style="${inp};width:190px">
+       <button id="alSave" style="${btn}">${t('alarmSave')}</button>
+       <button id="alTest" style="${btn};background:#6b7280">${t('alarmTest')}</button>
+       <span id="alMsg" style="font-size:13px;margin-left:4px"></span>
+     </div>
+     <div class="hint">${t('alarmHelp')}</div>`;
+  $('#alSave').onclick = saveAlarm;
+  $('#alTest').onclick = testAlarm;
+}
+async function saveAlarm() {
+  const sid = alarmTargetId();
+  const body = { enabled: $('#alOn').checked ? 1 : 0, send_at: $('#alAt').value || '09:00', chat_id: $('#alChat').value.trim() };
+  if (sid) body.staff_id = sid;
+  const r = await api('/alarm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const m = $('#alMsg');
+  if (r.ok) { m.style.color = '#16a34a'; m.textContent = t('alarmSaved'); }
+  else { m.style.color = '#dc2626'; m.textContent = t('alarmFailed'); }
+}
+async function testAlarm() {
+  await saveAlarm();
+  const sid = alarmTargetId();
+  const r = await api('/alarm/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sid ? { staff_id: sid } : {}) });
+  const m = $('#alMsg');
+  if (r.ok) { m.style.color = '#16a34a'; m.textContent = t('alarmSentOk'); }
+  else { m.style.color = '#dc2626'; m.textContent = r.status === 400 ? t('alarmNoChat') : t('alarmFailed'); }
+}
+$('#alarmBtn').onclick = toggleAlarmPanel;
+
 // ---- 부팅: 살아있는 세션이 있으면 로그인 화면 건너뛰기 ----
 function applySession(d) {
   state.isBoss = d.isBoss;
