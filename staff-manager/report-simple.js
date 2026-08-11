@@ -158,14 +158,16 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const month = String(req.query.month || '');
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return res.status(400).json({ error: 'bad_month' });
 
-    // 사장님이 전체를 볼 때는 본인 일정도 달력에 함께 나와야 한다.
-    // 다만 '작성 인원 수'는 직원만 세므로 아래 staffIds 로 구분한다.
+    // 각자 자기 것만 본다.
+    //  - 직원          : 본인 것만
+    //  - 사장님 + 직원 지정 : 그 직원 것만
+    //  - 사장님 + 전체   : 직원들 것만 (사장님 개인 일정은 '내 업무'에서 따로 본다)
     const staffIds = new Set(db.prepare("SELECT id FROM report_users WHERE is_active=1 AND role='staff'").all().map(r => r.id));
     let scope = '', scopeArgs = [];
     if (req.rsess.isBoss) {
       const only = req.query.staff_id;
       if (only) { scope = " AND staff_id=?"; scopeArgs = [Number(only)]; }
-      else scope = " AND staff_id IN (SELECT id FROM report_users WHERE is_active=1)";
+      else scope = " AND staff_id IN (SELECT id FROM report_users WHERE is_active=1 AND role='staff')";
     } else {
       scope = " AND staff_id=?"; scopeArgs = [Number(req.rsess.staff_id)];
     }

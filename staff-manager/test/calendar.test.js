@@ -92,25 +92,35 @@ test('calendar: 사장님이 staff_id 없이 부르면 전 직원 합산 + 작�
   server.close();
 });
 
-test('calendar: 현황판(전체)에도 사장님 본인 일정이 나온다', async () => {
+test('calendar: 현황판(전체)에는 사장님 본인 일정이 안 나온다', async () => {
   const { db, server, base } = makeServer();
   const boss = db.prepare("SELECT id FROM report_users WHERE role='boss'").get().id;
   db.prepare("INSERT INTO report_items (staff_id, period, item_date, title, memo) VALUES (?,'month','2026-08-01','','8월 19일~20일 대회 인솔')").run(boss);
   add(db, 1, 'today', '2026-08-11', 'A', 0);
   const d = await (await cal(base, 'month=2026-08', bossCookie())).json();
-  assert.strictEqual(d.days['2026-08-19']?.notes, 1, '사장님 일정이 현황판 달력에서 빠짐');
+  assert.strictEqual(d.days['2026-08-19'], undefined, '사장님 개인 일정이 직원 현황판에 샘');
+  assert.strictEqual(d.days['2026-08-11'].total, 1, '직원 일정은 그대로 보여야 함');
+  server.close();
+});
+
+test('calendar: 사장님 본인 달력(내 업무)에서는 본인 일정이 보인다', async () => {
+  const { db, server, base } = makeServer();
+  const boss = db.prepare("SELECT id FROM report_users WHERE role='boss'").get().id;
+  db.prepare("INSERT INTO report_items (staff_id, period, item_date, title, memo) VALUES (?,'month','2026-08-01','','8월 19일~20일 대회 인솔')").run(boss);
+  const d = await (await cal(base, 'month=2026-08&staff_id=' + boss, bossCookie())).json();
+  assert.strictEqual(d.days['2026-08-19']?.notes, 1);
   assert.strictEqual(d.days['2026-08-20']?.notes, 1);
   server.close();
 });
 
-test('calendar: 현황판 작성 인원 수에는 사장님을 세지 않는다', async () => {
+test('calendar: 현황판 집계에 사장님 항목이 섞이지 않는다', async () => {
   const { db, server, base } = makeServer();
   const boss = db.prepare("SELECT id FROM report_users WHERE role='boss'").get().id;
   add(db, boss, 'today', '2026-08-11', '사장님 일', 0);
   add(db, 1, 'today', '2026-08-11', '미가 일', 0);
   const d = await (await cal(base, 'month=2026-08', bossCookie())).json();
-  assert.strictEqual(d.days['2026-08-11'].staff, 1, '사장님이 직원 인원수에 포함됨');
-  assert.strictEqual(d.days['2026-08-11'].total, 2, '사장님 항목이 집계에서 빠짐');
+  assert.strictEqual(d.days['2026-08-11'].staff, 1);
+  assert.strictEqual(d.days['2026-08-11'].total, 1, '사장님 항목이 직원 집계에 섞임');
   server.close();
 });
 
