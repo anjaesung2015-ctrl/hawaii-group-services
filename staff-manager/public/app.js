@@ -14,16 +14,19 @@ async function api(pathAndQuery, opts) {
   return r;
 }
 
-// ---- 날짜 헬퍼 (KST 기준) ----
-function kst(offsetDays = 0) {
-  const d = new Date(Date.now() + 9 * 3600000 + offsetDays * 86400000);
-  return d.toISOString().slice(0, 10);
+// ---- 날짜 헬퍼 (몽골 시간 Asia/Ulaanbaatar 기준) ----
+// 폰이 한국·다른 나라 시간으로 맞춰져 있어도 항상 몽골 날짜를 쓴다.
+// 서버 시간대와 텔레그램 알람도 같은 기준이라 자정 전후에 날짜가 어긋나지 않는다.
+const BIZ_TZ = 'Asia/Ulaanbaatar';
+const BIZ_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: BIZ_TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+function kst(offsetDays = 0) {   // 이름은 유지 — 호출부가 여러 곳
+  return BIZ_FMT.format(new Date(Date.now() + offsetDays * 86400000));
 }
 function weekStart() {
-  const d = new Date(Date.now() + 9 * 3600000);
-  const day = (d.getUTCDay() + 6) % 7; // 월요일 시작
-  d.setUTCDate(d.getUTCDate() - day);
-  return d.toISOString().slice(0, 10);
+  const [y, m, d] = kst().split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() - ((dt.getUTCDay() + 6) % 7));   // 월요일 시작
+  return dt.toISOString().slice(0, 10);
 }
 function monthStart() { return kst().slice(0, 7) + '-01'; }
 function yearStart() { return kst().slice(0, 4) + '-01-01'; }
