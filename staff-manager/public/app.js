@@ -331,6 +331,7 @@ async function renderAttendance() {
     <span id="attMsg" style="font-size:13px"></span>
   </div>`;
   html += `<div class="attbar"><span>${t('attPlace')}</span><span id="placeInfo" class="hint"></span>
+    <span>${t('attRadius')}</span><input id="attRad" type="number" min="5" max="2000" step="5" value="30" style="width:80px">
     <button class="go" id="placeSet">${t('attSetHere')}</button></div>`;
 
   el.innerHTML = html;
@@ -349,14 +350,16 @@ async function renderAttendance() {
   const places = pr.ok ? await pr.json() : [];
   $('#placeInfo').textContent = places.length
     ? places.map(p => `${p.name} ${p.radius_m}m`).join(', ') : t('attNoPlace');
+  if (places.length) $('#attRad').value = places[0].radius_m;
   $('#placeSet').onclick = async () => {
     const info = $('#placeInfo');
     info.textContent = '…';
     const pos = await getPos();
     if (!pos) { info.textContent = t('attGpsFail'); return; }
+    const rad = Math.max(5, Math.min(2000, Number($('#attRad').value) || 30));
     const r = await api(`${AT}/place`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: '휘트니스', lat: pos.lat, lng: pos.lng, radius_m: 10 }) });
-    info.textContent = r.ok ? `휘트니스 10m (±${Math.round(pos.acc)}m)` : t('alarmFailed');
+      body: JSON.stringify({ name: '휘트니스', lat: pos.lat, lng: pos.lng, radius_m: rad }) });
+    info.textContent = r.ok ? `휘트니스 ${rad}m (±${Math.round(pos.acc)}m)` : t('alarmFailed');
   };
 }
 

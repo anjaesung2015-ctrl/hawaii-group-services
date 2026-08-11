@@ -34,7 +34,7 @@ module.exports = function createAttendance(db, opts = {}) {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     lat REAL NOT NULL, lng REAL NOT NULL,
-    radius_m INTEGER NOT NULL DEFAULT 10,
+    radius_m INTEGER NOT NULL DEFAULT 30,
     created_at TEXT DEFAULT (datetime('now','localtime'))
   )`);
   db.exec(`CREATE TABLE IF NOT EXISTS report_config (k TEXT PRIMARY KEY, v TEXT)`);
@@ -80,7 +80,7 @@ module.exports = function createAttendance(db, opts = {}) {
     if (!isBoss(req)) return res.status(403).json({ error: 'boss_only' });
     const { name, lat, lng, radius_m } = req.body || {};
     if (!name || typeof lat !== 'number' || typeof lng !== 'number') return res.status(400).json({ error: 'bad_place' });
-    const r = Math.max(5, Math.min(2000, Number(radius_m) || 10));
+    const r = Math.max(5, Math.min(2000, Number(radius_m) || 30));
     db.prepare(`INSERT INTO report_place (name, lat, lng, radius_m) VALUES (?,?,?,?)
       ON CONFLICT(name) DO UPDATE SET lat=excluded.lat, lng=excluded.lng, radius_m=excluded.radius_m`)
       .run(String(name), lat, lng, r);
