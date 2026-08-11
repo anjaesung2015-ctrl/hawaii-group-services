@@ -6,7 +6,7 @@ if ('serviceWorker' in navigator) {
 // 상대 경로 API (nginx가 /staff-manager/ 프리픽스를 벗김)
 const API = 'api/report';
 const CHECK_PERIODS = ['today', 'tomorrow'];
-const state = { isBoss: false, staffId: null, myId: null, name: '', targetStaff: null, period: 'today' };
+const state = { isBoss: false, staffId: null, myId: null, name: '', targetStaff: null, period: 'today', calMonth: null, calDay: null };
 
 const $ = (s) => document.querySelector(s);
 async function api(pathAndQuery, opts) {
@@ -83,6 +83,7 @@ function qs(period) {
 
 async function render() {
   const period = state.period;
+  if (period === 'month') return renderMonth();
   if (state.isBoss && state.targetStaff === ALL) return renderOverview();
   const r = await api('/items' + qs(period));
   if (r.status === 401) { location.reload(); return; }
@@ -108,8 +109,11 @@ async function renderOverview() {
   const r = await api(`/overview?period=${period}&date=${itemDateFor(period)}&lang=${LANG}`);
   if (r.status === 401) { location.reload(); return; }
   const rows = await r.json();
-  const isCheck = CHECK_PERIODS.includes(period);
-  const html = rows.map(row => {
+  $('#content').innerHTML = overviewCards(rows, CHECK_PERIODS.includes(period)) || `<div class="empty">${t('noStaff')}</div>`;
+}
+
+function overviewCards(rows, isCheck) {
+  return rows.map(row => {
     const items = row.items || [];
     let head = '', body;
     if (isCheck) {
@@ -140,7 +144,116 @@ async function renderOverview() {
     }
     return `<div class="card"><h3>${escapeHtml(row.name)}${head}</h3>${body}</div>`;
   }).join('');
-  $('#content').innerHTML = html || `<div class="empty">${t('noStaff')}</div>`;
+}
+
+// ---- 월간 달력 ----
+const DOW = [0, 1, 2, 3, 4, 5, 6];   // 요일 이름은 사전에서 (dow0..dow6)
+function shiftMonth(ym, delta) {
+  let [y, m] = ym.split('-').map(Number);
+  m += delta;
+  while (m < 1) { m += 12; y--; }
+  while (m > 12) { m -= 12; y++; }
+  return y + '-' + String(m).padStart(2, '0');
+}
+function daysInMonth(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+function firstDow(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+}
+function isAllMode() { return state.isBoss && state.targetStaff === ALL; }
+
+async function renderMonth() {
+  if (!state.calMonth) state.calMonth = kst().slice(0, 7);
+  const ym = state.calMonth;
+  const allMode = isAllMode();
+  const sid = allMode ? null : (state.isBoss ? state.targetStaff : null);
+  const r = await api(`/calendar?month=${ym}` + (sid ? `&staff_id=${sid}` : ''));
+  if (r.status === 401) { location.reload(); return; }
+  const cal = await r.json();
+  const days = cal.days || {};
+  const today = kst();
+  const [yy, mm] = ym.split('-');
+
+  let grid = DOW.map(d => `<div class="dow">${t('dow' + d)}</div>`).join('');
+  const lead = firstDow(ym);
+  for (let i = 0; i < lead; i++) grid += `<div class="cell blank"></div>`;
+  for (let d = 1; d <= daysInMonth(ym); d++) {
+    const date = `${ym}-${String(d).padStart(2, '0')}`;
+    const info = days[date];
+    const cls = ['cell'];
+    if ((lead + d - 1) % 7 === 0) cls.push('sun');
+    if (date === today) cls.push('today');
+    if (date === state.calDay) cls.push('sel');
+    let badge = '';
+    if (info) {
+      if (allMode) {
+        badge = `${info.staff}/${cal.staffTotal}`;
+        cls.push(info.staff >= cal.staffTotal ? 'full' : 'has');
+      } else {
+        badge = `${info.done}/${info.total}`;
+        cls.push(info.done >= info.total ? 'full' : 'has');
+      }
+    }
+    grid += `<div class="${cls.join(' ')}" data-d="${date}">` +
+            `<span class="dnum">${d}</span><span class="badge">${badge}</span></div>`;
+  }
+
+  // 현황판 모드에는 '내 월간 메모'라는 게 없으므로 메모 칸을 띄우지 않는다
+  const memoBlock = allMode ? '' :
+    `<div class="dayhead">${t('freeHint_month')}</div><div id="monthMemo"></div>`;
+
+  $('#content').innerHTML =
+    `<div class="calbar"><button data-mv="-1">‹</button><span>${t('calTitle', { y: yy, m: Number(mm) })}</span><button data-mv="1">›</button></div>` +
+    `<div class="cal">${grid}</div><div id="dayView"></div>` + memoBlock;
+
+  $('#content').querySelectorAll('[data-mv]').forEach(b => b.onclick = () => {
+    state.calMonth = shiftMonth(state.calMonth, Number(b.dataset.mv));
+    state.calDay = null;
+    render();
+  });
+  $('#content').querySelectorAll('.cell[data-d]').forEach(c => c.onclick = () => {
+    state.calDay = (state.calDay === c.dataset.d) ? null : c.dataset.d;
+    render();
+  });
+
+  if (!allMode) await renderMonthMemo(ym);
+  if (state.calDay) await renderDay(state.calDay);
+}
+
+// 달력 아래 '이번 달 방향/목표' — 기존 월간 메모를 그대로 이어서 쓴다
+async function renderMonthMemo(ym) {
+  const box = $('#monthMemo');
+  if (!box) return;
+  const sid = state.isBoss ? state.targetStaff : null;
+  const r = await api(`/items?period=month&date=${ym}-01` + (sid ? `&staff_id=${sid}` : ''));
+  if (!r.ok) return;
+  const items = await r.json();
+  const memo = items[0]?.memo || '';
+  const id = items[0]?.id || '';
+  box.innerHTML = `<textarea class="free" id="freeMemo" data-id="${id}" data-date="${ym}-01" placeholder="${t('freeWrite')}">${escapeHtml(memo)}</textarea>`;
+  $('#freeMemo').onblur = saveFree;
+}
+
+// 날짜를 누르면 그날 업무가 달력 아래에 읽기 전용으로 펼쳐진다
+async function renderDay(date) {
+  const box = $('#dayView');
+  if (!box) return;
+  const label = `<div class="dayhead">${t('dayLabel', { d: Number(date.slice(8)) })}</div>`;
+  let rows;
+  if (isAllMode()) {
+    const r = await api(`/overview?periods=today,tomorrow&date=${date}&lang=${LANG}`);
+    rows = r.ok ? await r.json() : [];
+  } else {
+    const sid = state.isBoss ? state.targetStaff : state.staffId;
+    const r = await api(`/items?periods=today,tomorrow&date=${date}` + (state.isBoss ? `&staff_id=${sid}` : ''));
+    const items = r.ok ? await r.json() : [];
+    const who = state.isBoss ? ($('#bossStaffSel').selectedOptions[0]?.textContent || '') : state.name;
+    rows = [{ staff_id: sid, name: who, items }];
+  }
+  box.innerHTML = label + (overviewCards(rows, true) || `<div class="empty">${t('noEntry')}</div>`);
 }
 
 function renderCheckItem(it) {
@@ -166,10 +279,11 @@ async function addCheckItem() {
 async function saveFree(e) {
   const id = e.target.dataset.id;
   const memo = e.target.value;
+  const itemDate = e.target.dataset.date || itemDateFor(state.period);
   if (id) { await patch(id, { memo }); }
   else {
     const r = await api('/items', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(bodyWithStaff({ period: state.period, item_date: itemDateFor(state.period), memo })) });
+      body: JSON.stringify(bodyWithStaff({ period: state.period, item_date: itemDate, memo })) });
     const d = await r.json(); e.target.dataset.id = d.id;
   }
   flashSaved();
@@ -195,7 +309,7 @@ $('#logoutBtn').onclick = async () => { await api('/logout', { method: 'POST' })
 $('#bossStaffSel').onchange = (e) => { state.targetStaff = selVal(e.target.value); $('#pwPanel').style.display = 'none'; render(); };
 $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => {
   $('#tabs').querySelector('.active').classList.remove('active');
-  b.classList.add('active'); state.period = b.dataset.p; render();
+  b.classList.add('active'); state.period = b.dataset.p; state.calDay = null; render();
 });
 
 // ---- 비밀번호 변경 ----

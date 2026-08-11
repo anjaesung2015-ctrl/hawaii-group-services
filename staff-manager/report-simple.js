@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 const PERIODS = ['today', 'tomorrow', 'week', 'month', 'year'];
+const DAILY = ['today', 'tomorrow'];   // 달력 한 칸에 들어가는 기간
 
 module.exports = function createReportRoutes(db, opts = {}) {
   const secret = opts.secret || 'staff-mgr-2026-secret';
@@ -121,6 +122,15 @@ module.exports = function createReportRoutes(db, opts = {}) {
     catch (e) { return res.status(401).json({ error: 'session_expired' }); }
   }
 
+  // ?periods=today,tomorrow → ['today','tomorrow'] / 값이 잘못되면 null / 미지정이면 undefined
+  function periodsOf(req) {
+    const raw = req.query.periods;
+    if (raw === undefined) return undefined;
+    const list = String(raw).split(',').map(x => x.trim()).filter(Boolean);
+    if (!list.length || !list.every(x => PERIODS.includes(x))) return null;
+    return list;
+  }
+
   function targetStaffId(req, provided) {
     if (req.rsess.isBoss) return provided ? Number(provided) : (Number(req.rsess.staff_id) || bossRowId());
     return req.rsess.staff_id;
@@ -135,15 +145,50 @@ module.exports = function createReportRoutes(db, opts = {}) {
   });
 
   // 사장님 전용 직원 현황판 — 활성 직원 전원을 항목과 함께 한 번에 반환
+  // 달력용 날짜별 집계 — 오늘/내일 항목만 센다 (주·월·연 자유메모는 제외)
+  router.get('/calendar', (req, res) => {
+    const month = String(req.query.month || '');
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return res.status(400).json({ error: 'bad_month' });
+
+    let sql = "SELECT item_date, staff_id, done FROM report_items WHERE period IN ('today','tomorrow') AND item_date LIKE ?";
+    const args = [month + '-%'];
+    if (req.rsess.isBoss) {
+      const only = req.query.staff_id;
+      if (only) { sql += " AND staff_id=?"; args.push(Number(only)); }
+      else {
+        // 사장님 본인 행은 직원 합산에서 뺀다
+        sql += " AND staff_id IN (SELECT id FROM report_users WHERE is_active=1 AND role='staff')";
+      }
+    } else {
+      sql += " AND staff_id=?"; args.push(Number(req.rsess.staff_id));
+    }
+
+    const days = {};
+    const seen = {};
+    for (const row of db.prepare(sql).all(...args)) {
+      const d = days[row.item_date] || (days[row.item_date] = { total: 0, done: 0, staff: 0 });
+      d.total++;
+      if (row.done) d.done++;
+      const key = row.item_date + '#' + row.staff_id;
+      if (!seen[key]) { seen[key] = 1; d.staff++; }
+    }
+    const staffTotal = db.prepare("SELECT COUNT(*) n FROM report_users WHERE is_active=1 AND role='staff'").get().n;
+    res.json({ month, staffTotal, days });
+  });
+
   router.get('/overview', async (req, res) => {
     if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
     const { period, date } = req.query;
-    if (!PERIODS.includes(period)) return res.status(400).json({ error: 'bad_period' });
+    const many = periodsOf(req);
+    if (many === null) return res.status(400).json({ error: 'bad_period' });
+    const wanted = many || (PERIODS.includes(period) ? [period] : null);
+    if (!wanted) return res.status(400).json({ error: 'bad_period' });
     if (!date) return res.status(400).json({ error: 'date_required' });
     const staff = db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all();
     const items = db.prepare(
-      "SELECT id, staff_id, title, memo, done FROM report_items WHERE period=? AND item_date=? ORDER BY id"
-    ).all(period, date);
+      "SELECT id, staff_id, title, memo, done FROM report_items WHERE period IN (" +
+      wanted.map(() => '?').join(',') + ") AND item_date=? ORDER BY id"
+    ).all(...wanted, date);
     const byStaff = new Map(staff.map(s => [s.id, []]));
     for (const it of items) if (byStaff.has(it.staff_id)) byStaff.get(it.staff_id).push(it);
     const rows = staff.map(s => ({ staff_id: s.id, name: s.name, items: byStaff.get(s.id) }));
@@ -170,10 +215,13 @@ module.exports = function createReportRoutes(db, opts = {}) {
   router.get('/items', (req, res) => {
     const { period, date } = req.query;
     if (period && !PERIODS.includes(period)) return res.status(400).json({ error: 'bad_period' });
+    const many = periodsOf(req);
+    if (many === null) return res.status(400).json({ error: 'bad_period' });
     const sid = targetStaffId(req, req.query.staff_id);
     if (!sid) return res.status(400).json({ error: 'staff_id_required' });
     let sql = "SELECT * FROM report_items WHERE staff_id=?"; const p = [sid];
-    if (period) { sql += " AND period=?"; p.push(period); }
+    if (many) { sql += " AND period IN (" + many.map(() => '?').join(',') + ")"; p.push(...many); }
+    else if (period) { sql += " AND period=?"; p.push(period); }
     if (date) { sql += " AND item_date=?"; p.push(date); }
     sql += " ORDER BY id";
     res.json(db.prepare(sql).all(...p));
