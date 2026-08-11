@@ -64,7 +64,17 @@
   .cal .cell{align-items:stretch;padding:3px 4px}
   .cal .cell .dnum{align-self:center}
   .cal .cell .ev{font-size:9.5px;line-height:1.25;margin-top:2px;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:3px;padding:1px 3px;background:#eef2ff;color:#3730a3}
-  .cal .cell .ev.done{background:#f0fdf4;color:#15803d;text-decoration:line-through}
+  /* 사람별 색 — 현황판에서 누구 일인지 한눈에 */
+  .ev.c0{background:#dbeafe;color:#1e40af}
+  .ev.c1{background:#dcfce7;color:#166534}
+  .ev.c2{background:#fef3c7;color:#92400e}
+  .ev.c3{background:#fce7f3;color:#9d174d}
+  .ev.c4{background:#e0e7ff;color:#3730a3}
+  .ev.c5{background:#ccfbf1;color:#115e59}
+  .cal .cell .ev.note{border-left:3px solid currentColor;padding-left:3px}
+  .legend{display:flex;flex-wrap:wrap;gap:6px;padding:8px 2px 2px;font-size:11px}
+  .legend span{border-radius:4px;padding:1px 6px}
+  .cal .cell .ev.done{text-decoration:line-through;opacity:.55}
   .cal .cell .ev.note{background:#faf5ff;color:#7c3aed}
   .cal .cell .more{font-size:9px;color:#9ca3af;line-height:1.2}
   @media (max-width:420px){ .cal .cell .ev{font-size:9px} }

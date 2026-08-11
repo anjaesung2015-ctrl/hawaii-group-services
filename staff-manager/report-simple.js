@@ -181,7 +181,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
       d.total++;
       if (row.done) d.done++;
       const label = stripLeadingDate((row.title || row.memo || '').trim());
-      if (label && d.texts.length < 4) d.texts.push({ t: label.slice(0, 40), done: row.done ? 1 : 0 });
+      if (label && d.texts.length < 4) d.texts.push({ t: label.slice(0, 40), done: row.done ? 1 : 0, s: row.staff_id });
       const key = row.item_date + '#' + row.staff_id;
       if (!seen[key] && staffIds.has(row.staff_id)) { seen[key] = 1; d.staff++; }
     }
@@ -202,14 +202,14 @@ module.exports = function createReportRoutes(db, opts = {}) {
         const lines = ((row.title || '') + '\n' + (row.memo || '')).split('\n').filter(l => l.trim());
         const hit = lines.find(l => extractDates(l, base).includes(dt)) || lines[0] || '';
         const label = stripLeadingDate(hit.trim());
-        if (label && d.texts.length < 4) d.texts.push({ t: label.slice(0, 40), note: 1 });
+        if (label && d.texts.length < 4) d.texts.push({ t: label.slice(0, 40), note: 1, s: row.staff_id });
         const key = dt + '#' + row.staff_id;
         if (!seen[key] && staffIds.has(row.staff_id)) { seen[key] = 1; d.staff++; }
       }
     }
 
-    const staffTotal = db.prepare("SELECT COUNT(*) n FROM report_users WHERE is_active=1 AND role='staff'").get().n;
-    res.json({ month, staffTotal, days });
+    const people = db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all();
+    res.json({ month, staffTotal: people.length, people, days });
   });
 
   // 사장님 지시 — 그 직원의 '오늘 할 일'로 바로 들어가고 텔레그램으로 알린다

@@ -229,6 +229,17 @@ function firstDow(ym) {
 }
 function isAllMode() { return state.isBoss && state.targetStaff === ALL; }
 
+// 사람마다 고정된 색을 준다 (직원 목록 순서 기준 — 매번 같은 색)
+let COLOR_MAP = {};
+function colorOf(staffId) {
+  if (staffId == null) return 4;
+  return COLOR_MAP[staffId] != null ? COLOR_MAP[staffId] : 4;
+}
+function buildColorMap(people) {
+  COLOR_MAP = {};
+  (people || []).forEach((p, i) => { COLOR_MAP[p.id] = i % 6; });
+}
+
 async function renderMonth() {
   if (!state.calMonth) state.calMonth = kst().slice(0, 7);
   const ym = state.calMonth;
@@ -237,6 +248,7 @@ async function renderMonth() {
   const r = await api(`/calendar?month=${ym}` + (sid ? `&staff_id=${sid}` : ''));
   if (r.status === 401) { location.reload(); return; }
   const cal = await r.json();
+  buildColorMap(cal.people);
   const days = cal.days || {};
   const today = kst();
   const [yy, mm] = ym.split('-');
@@ -269,8 +281,12 @@ async function renderMonth() {
     }
     // 숫자 배지 대신 실제 글을 보여준다 (칸이 좁으니 2줄까지, 나머지는 +N)
     const texts = (info && info.texts) || [];
-    const shown = texts.slice(0, 2).map(x =>
-      `<span class="ev${x.note ? ' note' : (x.done ? ' done' : '')}">${escapeHtml(x.t)}</span>`).join('');
+    const shown = texts.slice(0, 2).map(x => {
+      const cls = ['ev', 'c' + colorOf(x.s)];
+      if (x.note) cls.push('note');
+      if (x.done) cls.push('done');
+      return `<span class="${cls.join(' ')}">${escapeHtml(x.t)}</span>`;
+    }).join('');
     const rest = (info ? (info.total + info.notes) : 0) - texts.slice(0, 2).length;
     const more = rest > 0 ? `<span class="more">+${rest}</span>` : '';
     grid += `<div class="${cls.join(' ')}" data-d="${date}">` +
@@ -282,9 +298,14 @@ async function renderMonth() {
   const memoBlock = allMode ? '' :
     `<div class="dayhead">${t('freeHint_month')}</div><div id="monthMemo"></div>`;
 
+  const legend = allMode && cal.people?.length
+    ? `<div class="legend">` + cal.people.map(p =>
+        `<span class="ev c${colorOf(p.id)}">${escapeHtml(p.name)}</span>`).join('') + `</div>`
+    : '';
+
   $('#content').innerHTML =
     `<div class="calbar"><button data-mv="-1">‹</button><span>${t('calTitle', { y: yy, m: Number(mm) })}</span><button data-mv="1">›</button></div>` +
-    `<div class="cal">${grid}</div><div id="dayView"></div>` + memoBlock;
+    `<div class="cal">${grid}</div>${legend}<div id="dayView"></div>` + memoBlock;
 
   $('#content').querySelectorAll('[data-mv]').forEach(b => b.onclick = () => {
     state.calMonth = shiftMonth(state.calMonth, Number(b.dataset.mv));
