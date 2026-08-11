@@ -188,15 +188,17 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const mArgs = [...scopeArgs];
 
     for (const row of db.prepare(mSql).all(...mArgs)) {
-      const year = Number(String(row.item_date).slice(0, 4)) || Number(month.slice(0, 4));
-      const dates = extractDates((row.title || '') + ' ' + (row.memo || ''), year);
+      // 요일 표현('토요일')은 그 글이 속한 주를 기준으로 풀어야 하므로 날짜를 통째로 넘긴다
+      const base = /^\d{4}-\d{2}-\d{2}$/.test(String(row.item_date))
+        ? row.item_date : (month + '-01');
+      const dates = extractDates((row.title || '') + ' ' + (row.memo || ''), base);
       for (const dt of dates) {
         if (dt.slice(0, 7) !== month) continue;
         const d = days[dt] || (days[dt] = { total: 0, done: 0, staff: 0, notes: 0, texts: [] });
         d.notes = (d.notes || 0) + 1;
         // 여러 줄 중 이 날짜를 담은 줄을 골라 앞 날짜를 떼고 보여준다
         const lines = ((row.title || '') + '\n' + (row.memo || '')).split('\n').filter(l => l.trim());
-        const hit = lines.find(l => extractDates(l, year).includes(dt)) || lines[0] || '';
+        const hit = lines.find(l => extractDates(l, base).includes(dt)) || lines[0] || '';
         const label = stripLeadingDate(hit.trim());
         if (label && d.texts.length < 4) d.texts.push({ t: label.slice(0, 40), note: 1 });
         const key = dt + '#' + row.staff_id;
@@ -263,8 +265,8 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const byId = new Map(people.map(p => [p.id, { staff_id: p.id, name: p.name, items: [], mentions: [] }]));
     for (const it of items) byId.get(it.staff_id)?.items.push(it);
     for (const row of all) {
-      const year = Number(String(row.item_date).slice(0, 4)) || Number(date.slice(0, 4));
-      if (!extractDates((row.title || '') + ' ' + (row.memo || ''), year).includes(date)) continue;
+      const base = /^\d{4}-\d{2}-\d{2}$/.test(String(row.item_date)) ? row.item_date : date;
+      if (!extractDates((row.title || '') + ' ' + (row.memo || ''), base).includes(date)) continue;
       byId.get(row.staff_id)?.mentions.push({ id: row.id, period: row.period, title: row.title, memo: row.memo });
     }
     res.json([...byId.values()]);

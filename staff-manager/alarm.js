@@ -51,9 +51,9 @@ module.exports = function createAlarm(db, opts = {}) {
 
     const mentions = [];
     for (const row of db.prepare("SELECT period, item_date, title, memo FROM report_items WHERE staff_id=?").all(staffId)) {
-      const year = Number(String(row.item_date).slice(0, 4)) || Number(date.slice(0, 4));
+      const base = /^\d{4}-\d{2}-\d{2}$/.test(String(row.item_date)) ? row.item_date : date;
       const text = (row.title || '') + ' ' + (row.memo || '');
-      if (extractDates(text, year).includes(tomorrow)) {
+      if (extractDates(text, base).includes(tomorrow)) {
         mentions.push({ period: row.period, text: [row.title, row.memo].filter(Boolean).join(' · ') });
       }
     }
