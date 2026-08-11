@@ -135,8 +135,10 @@ function overviewCards(rows, isCheck) {
           const orig = (i.title_tr || i.memo_tr)
             ? `<div class="src">🌐 ${escapeHtml(i.title || '')}${i.memo ? ' · ' + escapeHtml(i.memo) : ''}</div>` : '';
           const tag = i.from_boss ? `<span class="tag">${t('boss1')}</span>` : '';
+          // 사장님이 내린 지시는 여기서 바로 지울 수 있다 (직원이 적은 건 건드리지 않는다)
+          const del = (state.isBoss && i.from_boss) ? `<button class="ovdel" data-del="${i.id}">×</button>` : '';
           return `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
-                 `<span class="tx">${tag}${title}${memo}${orig}</span></div>`;
+                 `<span class="tx">${tag}${title}${memo}${orig}</span>${del}</div>`;
         }).join('');
       }
     } else {
@@ -153,10 +155,24 @@ function overviewCards(rows, isCheck) {
   }).join('');
 }
 
-// 카드의 '+ 지시' 버튼을 살린다 (카드를 다시 그릴 때마다 호출)
+// 카드의 '+ 지시' / 지시 삭제 버튼을 살린다 (카드를 다시 그릴 때마다 호출)
 function bindAssign(scope) {
-  (scope || document).querySelectorAll('[data-asg]').forEach(b => {
+  const root = scope || document;
+  root.querySelectorAll('[data-asg]').forEach(b => {
     b.onclick = () => openAssign(b, Number(b.dataset.asg), b.dataset.name);
+  });
+  // 읽기 전용 화면이라 실수로 눌릴 수 있으니 두 번 눌러야 지워진다
+  root.querySelectorAll('[data-del]').forEach(b => {
+    b.onclick = async () => {
+      if (!b.classList.contains('ask')) {
+        b.classList.add('ask');
+        b.textContent = t('delAsk');
+        setTimeout(() => { if (b.isConnected) { b.classList.remove('ask'); b.textContent = '×'; } }, 3000);
+        return;
+      }
+      const r = await api(`/items/${b.dataset.del}`, { method: 'DELETE' });
+      if (r.ok) render();
+    };
   });
 }
 function openAssign(btn, staffId, name) {
@@ -310,7 +326,8 @@ async function renderDay(date) {
     const list = items.map(i =>
       `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
       `<span class="tx">${i.from_boss ? `<span class="tag">${t('boss1')}</span>` : ''}${escapeHtml(i.title || t('noTitle'))}` +
-      (i.memo ? ` <span class="m">· ${escapeHtml(i.memo)}</span>` : '') + `</span></div>`).join('');
+      (i.memo ? ` <span class="m">· ${escapeHtml(i.memo)}</span>` : '') + `</span>` +
+      ((state.isBoss && i.from_boss) ? `<button class="ovdel" data-del="${i.id}">×</button>` : '') + `</div>`).join('');
     const notes = mentions.map(m =>
       `<div class="mention"><span class="from">${t('fromTab', { tab: t(m.period) })}</span>` +
       escapeHtml([m.title, m.memo].filter(Boolean).join(' · ')) + `</div>`).join('');
