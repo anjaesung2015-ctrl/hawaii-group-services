@@ -55,9 +55,26 @@ async function doLogin(body) {
   applySession(await r.json());
 }
 
+const BOSS_TABS = ['att', 'score'];   // 근태·종합은 사장님 화면에만
+
+function applyTabVisibility() {
+  $('#tabs').querySelectorAll('button').forEach(b => {
+    b.style.display = (!state.isBoss && BOSS_TABS.includes(b.dataset.p)) ? 'none' : '';
+  });
+  // 감춰진 탭이 선택돼 있으면 오늘로 되돌린다
+  if (!state.isBoss && BOSS_TABS.includes(state.period)) {
+    state.period = 'today';
+    const act = $('#tabs').querySelector('.active');
+    if (act) act.classList.remove('active');
+    const t0 = $('#tabs').querySelector('[data-p="today"]');
+    if (t0) t0.classList.add('active');
+  }
+}
+
 function enterApp() {
   $('#loginView').style.display = 'none';
   $('#appView').style.display = 'block';
+  applyTabVisibility();
   if (state.isBoss) {
     $('#whoami').textContent = t('boss');
     $('#staffBtn').style.display = 'inline-block';
@@ -92,8 +109,9 @@ function qs(period) {
 
 async function render() {
   const period = state.period;
-  if (period === 'score') return renderScore();
-  if (period === 'att') return renderAttendance();
+  if (!state.isBoss && BOSS_TABS.includes(period)) { state.period = 'today'; applyTabVisibility(); }
+  if (state.period === 'score') return renderScore();
+  if (state.period === 'att') return renderAttendance();
   if (period === 'month') return renderMonth();
   if (state.isBoss && state.targetStaff === ALL) return renderOverview();
   const r = await api('/items' + qs(period));
