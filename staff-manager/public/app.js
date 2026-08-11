@@ -105,7 +105,7 @@ async function render() {
 // 직원 현황판 — 읽기 전용. 고치려면 드롭다운에서 그 직원을 선택한다.
 async function renderOverview() {
   const period = state.period;
-  const r = await api(`/overview?period=${period}&date=${itemDateFor(period)}`);
+  const r = await api(`/overview?period=${period}&date=${itemDateFor(period)}&lang=${LANG}`);
   if (r.status === 401) { location.reload(); return; }
   const rows = await r.json();
   const isCheck = CHECK_PERIODS.includes(period);
@@ -120,14 +120,23 @@ async function renderOverview() {
         const pct = Math.round(done / items.length * 100);
         head = `<span class="cnt">${t('doneCount', { done, total: items.length })}</span>`;
         body = `<div class="bar"><i style="width:${pct}%"></i></div>` + items.map(i => {
-          const memo = i.memo ? ` <span class="m">· ${escapeHtml(i.memo)}</span>` : '';
+          const title = escapeHtml(i.title_tr || i.title || t('noTitle'));
+          const memoTx = i.memo_tr || i.memo;
+          const memo = memoTx ? ` <span class="m">· ${escapeHtml(memoTx)}</span>` : '';
+          // 번역된 글에는 원문을 작게 함께 보여준다 (기계번역이라 확인이 필요)
+          const orig = (i.title_tr || i.memo_tr)
+            ? `<div class="src">🌐 ${escapeHtml(i.title || '')}${i.memo ? ' · ' + escapeHtml(i.memo) : ''}</div>` : '';
           return `<div class="ov ${i.done ? 'done' : 'undone'}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
-                 `<span class="tx">${escapeHtml(i.title || t('noTitle'))}${memo}</span></div>`;
+                 `<span class="tx">${title}${memo}${orig}</span></div>`;
         }).join('');
       }
     } else {
       const memo = items.map(i => i.memo).filter(Boolean).join('\n');
-      body = memo ? `<div class="freeview">${escapeHtml(memo)}</div>` : `<div class="empty">${t('noEntry')}</div>`;
+      const memoTr = items.map(i => i.memo_tr || i.memo).filter(Boolean).join('\n');
+      body = memo
+        ? `<div class="freeview">${escapeHtml(memoTr)}</div>` +
+          (memoTr !== memo ? `<div class="src">🌐 ${escapeHtml(memo)}</div>` : '')
+        : `<div class="empty">${t('noEntry')}</div>`;
     }
     return `<div class="card"><h3>${escapeHtml(row.name)}${head}</h3>${body}</div>`;
   }).join('');

@@ -33,6 +33,60 @@ module.exports = function createReportRoutes(db, opts = {}) {
   db.prepare("INSERT INTO report_users (name, pin_hash, is_active, role) VALUES ('사장님','!',1,'boss') ON CONFLICT(name) DO NOTHING").run();
   const bossRowId = () => db.prepare("SELECT id FROM report_users WHERE role='boss'").get()?.id || null;
 
+  // ---- 업무 내용 번역 (현황판 전용) — 결과는 DB에 캐시해 같은 문장을 다시 부르지 않는다 ----
+  db.exec(`CREATE TABLE IF NOT EXISTS report_tr (
+    src TEXT NOT NULL,
+    target TEXT NOT NULL,
+    out TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    PRIMARY KEY (src, target)
+  )`);
+
+  const TR_URL = opts.translateUrl || 'http://127.0.0.1:6011/api/translate';
+  const rawTranslate = opts.translate || (async (text, from, to) => {
+    const resp = await fetch(TR_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, from, to }), signal: AbortSignal.timeout(8000)
+    });
+    if (!resp.ok) throw new Error('translator ' + resp.status);
+    return (await resp.json()).translated;
+  });
+
+  const LANGS = ['ko', 'mn'];
+  function srcLang(s) {
+    if (/[가-힣]/.test(s)) return 'ko';
+    if (/[\u0400-\u04FF]/.test(s)) return 'mn';   // 키릴 = 몽골어
+    return null;                                    // 숫자·기호·영문만 → 번역 불필요
+  }
+
+  const getTr = db.prepare("SELECT out FROM report_tr WHERE src=? AND target=?");
+  const putTr = db.prepare("INSERT OR REPLACE INTO report_tr (src, target, out) VALUES (?,?,?)");
+
+  // 서로 다른 문장만 한 번씩 번역한다. 실패한 문장은 결과에서 빠지고 원문이 그대로 보인다.
+  async function translateAll(texts, to) {
+    const out = new Map();
+    const todo = [];
+    for (const s of new Set(texts)) {
+      const from = srcLang(s);
+      if (!from || from === to) continue;
+      const hit = getTr.get(s, to);
+      if (hit) { out.set(s, hit.out); continue; }
+      todo.push({ s, from });
+    }
+    const LIMIT = 5;   // 번역기를 한꺼번에 때리지 않는다
+    for (let i = 0; i < todo.length; i += LIMIT) {
+      await Promise.all(todo.slice(i, i + LIMIT).map(async ({ s, from }) => {
+        try {
+          const t = String((await rawTranslate(s, from, to)) || '').trim();
+          if (!t) return;
+          putTr.run(s, to, t);
+          out.set(s, t);
+        } catch (e) { /* 번역 실패 — 원문을 그대로 보여준다 */ }
+      }));
+    }
+    return out;
+  }
+
   const COOKIE = { path: '/staff-manager', maxAge: 2592000000, sameSite: 'Lax', httpOnly: true, secure: true };
 
   router.get('/staff-list', (req, res) => {
@@ -81,7 +135,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
   });
 
   // 사장님 전용 직원 현황판 — 활성 직원 전원을 항목과 함께 한 번에 반환
-  router.get('/overview', (req, res) => {
+  router.get('/overview', async (req, res) => {
     if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
     const { period, date } = req.query;
     if (!PERIODS.includes(period)) return res.status(400).json({ error: 'bad_period' });
@@ -92,7 +146,25 @@ module.exports = function createReportRoutes(db, opts = {}) {
     ).all(period, date);
     const byStaff = new Map(staff.map(s => [s.id, []]));
     for (const it of items) if (byStaff.has(it.staff_id)) byStaff.get(it.staff_id).push(it);
-    res.json(staff.map(s => ({ staff_id: s.id, name: s.name, items: byStaff.get(s.id) })));
+    const rows = staff.map(s => ({ staff_id: s.id, name: s.name, items: byStaff.get(s.id) }));
+
+    // 화면 언어와 다른 언어로 적힌 글에 번역문(title_tr/memo_tr)을 덧붙인다. 원문은 그대로 둔다.
+    const lang = req.query.lang;
+    if (LANGS.includes(lang)) {
+      try {
+        const texts = [];
+        for (const row of rows) for (const it of row.items) {
+          if (it.title) texts.push(it.title);
+          if (it.memo) texts.push(it.memo);
+        }
+        const tr = await translateAll(texts, lang);
+        for (const row of rows) for (const it of row.items) {
+          if (it.title && tr.has(it.title)) it.title_tr = tr.get(it.title);
+          if (it.memo && tr.has(it.memo)) it.memo_tr = tr.get(it.memo);
+        }
+      } catch (e) { /* 번역 전체 실패 — 원문 그대로 내려보낸다 */ }
+    }
+    res.json(rows);
   });
 
   router.get('/items', (req, res) => {
