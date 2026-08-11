@@ -5,6 +5,61 @@ const bcrypt = require('bcryptjs');
 const PERIODS = ['today', 'tomorrow', 'week', 'month', 'year'];
 const DAILY = ['today', 'tomorrow'];   // 달력 한 칸에 들어가는 기간
 
+// ---- 글 속 날짜 인식 ----
+// 지원: 2026-08-15 / 2026.8.15 / 8월 15일 / 8/15 / 범위(8/15~8/20, 8월 15일~20일)
+// 일부러 지원 안 함: '8월'처럼 일이 없는 것(달 전체를 칠하지 않는다), 9:30 같은 시각, 100/5 같은 비율
+const DATE_TOKEN = new RegExp(
+  '(\\d{4})[-./](\\d{1,2})[-./](\\d{1,2})' +          // 1,2,3 : 연-월-일
+  '|(\\d{1,2})\\s*월\\s*(\\d{1,2})\\s*일' +          // 4,5   : M월 D일
+  '|(?<![\\d:/.])(\\d{1,2})/(\\d{1,2})(?![\\d:/.])' +  // 6,7   : M/D
+  '|(\\d{1,2})\\s*일',                                   // 8     : D일 (범위 뒤쪽에서만 씀)
+  'g');
+
+function ymd(y, m, d) {
+  if (!(m >= 1 && m <= 12) || !(d >= 1 && d <= 31)) return null;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null;  // 2/30 같은 유령날짜
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function addDays(iso, n) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + n));
+  return dt.toISOString().slice(0, 10);
+}
+
+// 글에서 날짜를 뽑는다. 연도가 없으면 defaultYear 를 쓴다.
+function extractDates(text, defaultYear) {
+  if (!text) return [];
+  const found = [];
+  const hits = [];
+  DATE_TOKEN.lastIndex = 0;
+  let m;
+  while ((m = DATE_TOKEN.exec(String(text))) !== null) {
+    if (m[1]) hits.push({ kind: 'full', y: +m[1], m: +m[2], d: +m[3], start: m.index, end: m.index + m[0].length });
+    else if (m[4]) hits.push({ kind: 'md', y: defaultYear, m: +m[4], d: +m[5], start: m.index, end: m.index + m[0].length });
+    else if (m[6]) hits.push({ kind: 'md', y: defaultYear, m: +m[6], d: +m[7], start: m.index, end: m.index + m[0].length });
+    else hits.push({ kind: 'dayonly', d: +m[8], start: m.index, end: m.index + m[0].length });
+  }
+  const str = String(text);
+  for (let i = 0; i < hits.length; i++) {
+    const h = hits[i];
+    if (h.kind === 'dayonly') continue;              // 홀로 있는 'D일'은 무시
+    const a = ymd(h.y, h.m, h.d);
+    if (!a) continue;
+    found.push(a);
+    // 바로 뒤가 물결/하이픈이면 범위로 본다
+    const nxt = hits[i + 1];
+    if (!nxt) continue;
+    if (!/^\s*[~\-–—]\s*$/.test(str.slice(h.end, nxt.start))) continue;
+    const b = nxt.kind === 'dayonly' ? ymd(h.y, h.m, nxt.d) : ymd(nxt.y ?? h.y, nxt.m ?? h.m, nxt.d);
+    if (!b || b <= a) continue;
+    for (let cur = addDays(a, 1), guard = 0; cur <= b && guard < 62; cur = addDays(cur, 1), guard++) found.push(cur);
+    i++;                                             // 범위 끝 토큰은 소비
+  }
+  return [...new Set(found)];
+}
+
 module.exports = function createReportRoutes(db, opts = {}) {
   const secret = opts.secret || 'staff-mgr-2026-secret';
   const bossPw = opts.bossPw || '';
@@ -166,14 +221,71 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const days = {};
     const seen = {};
     for (const row of db.prepare(sql).all(...args)) {
-      const d = days[row.item_date] || (days[row.item_date] = { total: 0, done: 0, staff: 0 });
+      const d = days[row.item_date] || (days[row.item_date] = { total: 0, done: 0, staff: 0, notes: 0 });
       d.total++;
       if (row.done) d.done++;
       const key = row.item_date + '#' + row.staff_id;
       if (!seen[key]) { seen[key] = 1; d.staff++; }
     }
+    // 모든 기간의 글에서 이 달에 해당하는 날짜를 찾아 함께 표시한다
+    let mSql = "SELECT item_date, staff_id, title, memo FROM report_items";
+    const mArgs = [];
+    if (req.rsess.isBoss) {
+      const only = req.query.staff_id;
+      if (only) { mSql += " WHERE staff_id=?"; mArgs.push(Number(only)); }
+      else mSql += " WHERE staff_id IN (SELECT id FROM report_users WHERE is_active=1 AND role='staff')";
+    } else { mSql += " WHERE staff_id=?"; mArgs.push(Number(req.rsess.staff_id)); }
+
+    for (const row of db.prepare(mSql).all(...mArgs)) {
+      const year = Number(String(row.item_date).slice(0, 4)) || Number(month.slice(0, 4));
+      const dates = extractDates((row.title || '') + ' ' + (row.memo || ''), year);
+      for (const dt of dates) {
+        if (dt.slice(0, 7) !== month) continue;
+        const d = days[dt] || (days[dt] = { total: 0, done: 0, staff: 0, notes: 0 });
+        d.notes = (d.notes || 0) + 1;
+        const key = dt + '#' + row.staff_id;
+        if (!seen[key]) { seen[key] = 1; d.staff++; }
+      }
+    }
+
     const staffTotal = db.prepare("SELECT COUNT(*) n FROM report_users WHERE is_active=1 AND role='staff'").get().n;
     res.json({ month, staffTotal, days });
+  });
+
+  // 하루 상세 — 그날 항목 + 그날이 글에서 언급된 것
+  router.get('/day', (req, res) => {
+    const date = String(req.query.date || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'bad_date' });
+
+    let people;
+    if (req.rsess.isBoss) {
+      const only = req.query.staff_id;
+      people = only
+        ? db.prepare("SELECT id, name FROM report_users WHERE id=?").all(Number(only))
+        : db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all();
+    } else {
+      people = db.prepare("SELECT id, name FROM report_users WHERE id=?").all(Number(req.rsess.staff_id));
+    }
+    const ids = people.map(p => p.id);
+    if (!ids.length) return res.json([]);
+    const ph = ids.map(() => '?').join(',');
+
+    const items = db.prepare(
+      "SELECT id, staff_id, title, memo, done FROM report_items WHERE period IN ('today','tomorrow') AND item_date=? AND staff_id IN (" + ph + ") ORDER BY id"
+    ).all(date, ...ids);
+
+    const all = db.prepare(
+      "SELECT id, staff_id, period, item_date, title, memo FROM report_items WHERE staff_id IN (" + ph + ") ORDER BY id"
+    ).all(...ids);
+
+    const byId = new Map(people.map(p => [p.id, { staff_id: p.id, name: p.name, items: [], mentions: [] }]));
+    for (const it of items) byId.get(it.staff_id)?.items.push(it);
+    for (const row of all) {
+      const year = Number(String(row.item_date).slice(0, 4)) || Number(date.slice(0, 4));
+      if (!extractDates((row.title || '') + ' ' + (row.memo || ''), year).includes(date)) continue;
+      byId.get(row.staff_id)?.mentions.push({ id: row.id, period: row.period, title: row.title, memo: row.memo });
+    }
+    res.json([...byId.values()]);
   });
 
   router.get('/overview', async (req, res) => {

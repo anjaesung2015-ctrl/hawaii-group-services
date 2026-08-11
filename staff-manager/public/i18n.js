@@ -52,7 +52,8 @@ const I18N = {
 
     calTitle: '{y}년 {m}월',
     dayLabel: '{d}일',
-    dow0: '일', dow1: '월', dow2: '화', dow3: '수', dow4: '목', dow5: '금', dow6: '토'
+    dow0: '일', dow1: '월', dow2: '화', dow3: '수', dow4: '목', dow5: '금', dow6: '토',
+    fromTab: '{tab}에 적음'
   },
   mn: {
     appTitle: 'Ажлын тайлан',
@@ -105,7 +106,8 @@ const I18N = {
 
     calTitle: '{y} оны {m} сар',
     dayLabel: '{d}-ний өдөр',
-    dow0: 'Ня', dow1: 'Да', dow2: 'Мя', dow3: 'Лха', dow4: 'Пү', dow5: 'Ба', dow6: 'Бя'
+    dow0: 'Ня', dow1: 'Да', dow2: 'Мя', dow3: 'Лха', dow4: 'Пү', dow5: 'Ба', dow6: 'Бя',
+    fromTab: '{tab}-д бичсэн'
   }
 };
 

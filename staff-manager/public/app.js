@@ -187,18 +187,24 @@ async function renderMonth() {
     if ((lead + d - 1) % 7 === 0) cls.push('sun');
     if (date === today) cls.push('today');
     if (date === state.calDay) cls.push('sel');
-    let badge = '';
+    let badge = '', noteCls = '';
     if (info) {
+      const notes = info.notes || 0;
       if (allMode) {
         badge = `${info.staff}/${cal.staffTotal}`;
         cls.push(info.staff >= cal.staffTotal ? 'full' : 'has');
-      } else {
+      } else if (info.total > 0) {
         badge = `${info.done}/${info.total}`;
         cls.push(info.done >= info.total ? 'full' : 'has');
+      } else if (notes) {
+        badge = '·' + notes;          // 글에서 찾아낸 일정만 있는 날
+        noteCls = ' note';
+        cls.push('has');
       }
+      if (info.total > 0 && notes) badge += ' ·' + notes;
     }
     grid += `<div class="${cls.join(' ')}" data-d="${date}">` +
-            `<span class="dnum">${d}</span><span class="badge">${badge}</span></div>`;
+            `<span class="dnum">${d}</span><span class="badge${noteCls}">${badge}</span></div>`;
   }
 
   // 현황판 모드에는 '내 월간 메모'라는 게 없으므로 메모 칸을 띄우지 않는다
@@ -242,18 +248,24 @@ async function renderDay(date) {
   const box = $('#dayView');
   if (!box) return;
   const label = `<div class="dayhead">${t('dayLabel', { d: Number(date.slice(8)) })}</div>`;
-  let rows;
-  if (isAllMode()) {
-    const r = await api(`/overview?periods=today,tomorrow&date=${date}&lang=${LANG}`);
-    rows = r.ok ? await r.json() : [];
-  } else {
-    const sid = state.isBoss ? state.targetStaff : state.staffId;
-    const r = await api(`/items?periods=today,tomorrow&date=${date}` + (state.isBoss ? `&staff_id=${sid}` : ''));
-    const items = r.ok ? await r.json() : [];
-    const who = state.isBoss ? ($('#bossStaffSel').selectedOptions[0]?.textContent || '') : state.name;
-    rows = [{ staff_id: sid, name: who, items }];
-  }
-  box.innerHTML = label + (overviewCards(rows, true) || `<div class="empty">${t('noEntry')}</div>`);
+  const sid = (!isAllMode() && state.isBoss) ? state.targetStaff : null;
+  const r = await api(`/day?date=${date}` + (sid ? `&staff_id=${sid}` : ''));
+  const rows = r.ok ? await r.json() : [];
+  const html = rows.map(row => {
+    const items = row.items || [], mentions = row.mentions || [];
+    if (!items.length && !mentions.length) return '';
+    const done = items.filter(i => i.done).length;
+    const head = items.length ? `<span class="cnt">${t('doneCount', { done, total: items.length })}</span>` : '';
+    const list = items.map(i =>
+      `<div class="ov ${i.done ? 'done' : 'undone'}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
+      `<span class="tx">${escapeHtml(i.title || t('noTitle'))}` +
+      (i.memo ? ` <span class="m">· ${escapeHtml(i.memo)}</span>` : '') + `</span></div>`).join('');
+    const notes = mentions.map(m =>
+      `<div class="mention"><span class="from">${t('fromTab', { tab: t(m.period) })}</span>` +
+      escapeHtml([m.title, m.memo].filter(Boolean).join(' · ')) + `</div>`).join('');
+    return `<div class="card"><h3>${escapeHtml(row.name)}${head}</h3>${list}${notes}</div>`;
+  }).join('');
+  box.innerHTML = label + (html || `<div class="empty">${t('noEntry')}</div>`);
 }
 
 function renderCheckItem(it) {
