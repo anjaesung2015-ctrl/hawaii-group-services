@@ -57,10 +57,13 @@ function enterApp() {
     // 사장님 본인 업무공간을 드롭다운 맨 위에 두고 기본 선택
     if (state.myId && !bsel.querySelector('option[data-me]')) {
       bsel.insertAdjacentHTML('afterbegin', `<option data-me="1" value="${state.myId}">🏠 내 업무</option>`);
-      bsel.value = String(state.myId);
     }
+    if (!bsel.querySelector('option[data-all]')) {
+      bsel.insertAdjacentHTML('afterbegin', `<option data-all="1" value="${ALL}">👥 직원 현황</option>`);
+    }
+    bsel.value = ALL;  // 로그인하면 직원 현황판이 먼저
     bsel.style.display = 'inline-block';
-    state.targetStaff = Number(bsel.value);
+    state.targetStaff = selVal(bsel.value);
   } else {
     $('#whoami').textContent = state.name;
     state.targetStaff = state.staffId;
@@ -69,6 +72,8 @@ function enterApp() {
 }
 
 // ---- 렌더 ----
+const ALL = 'all';  // 직원 현황판 모드
+function selVal(v) { return v === ALL ? ALL : Number(v); }
 function currentStaffId() { return state.isBoss ? state.targetStaff : state.staffId; }
 function qs(period) {
   const p = new URLSearchParams({ period, date: itemDateFor(period) });
@@ -78,6 +83,7 @@ function qs(period) {
 
 async function render() {
   const period = state.period;
+  if (state.isBoss && state.targetStaff === ALL) return renderOverview();
   const r = await api('/items' + qs(period));
   if (r.status === 401) { location.reload(); return; }
   const items = await r.json();
@@ -94,6 +100,38 @@ async function render() {
       <textarea class="free" id="freeMemo" data-id="${id}" placeholder="자유롭게 작성...">${escapeHtml(memo)}</textarea>`;
     $('#freeMemo').onblur = saveFree;
   }
+}
+
+// 직원 현황판 — 읽기 전용. 고치려면 드롭다운에서 그 직원을 선택한다.
+async function renderOverview() {
+  const period = state.period;
+  const r = await api(`/overview?period=${period}&date=${itemDateFor(period)}`);
+  if (r.status === 401) { location.reload(); return; }
+  const rows = await r.json();
+  const isCheck = CHECK_PERIODS.includes(period);
+  const html = rows.map(row => {
+    const items = row.items || [];
+    let head = '', body;
+    if (isCheck) {
+      if (!items.length) {
+        body = `<div class="empty">아직 작성 없음</div>`;
+      } else {
+        const done = items.filter(i => i.done).length;
+        const pct = Math.round(done / items.length * 100);
+        head = `<span class="cnt">${done}/${items.length} 완료</span>`;
+        body = `<div class="bar"><i style="width:${pct}%"></i></div>` + items.map(i => {
+          const memo = i.memo ? ` <span class="m">· ${escapeHtml(i.memo)}</span>` : '';
+          return `<div class="ov ${i.done ? 'done' : 'undone'}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
+                 `<span class="tx">${escapeHtml(i.title || '(제목 없음)')}${memo}</span></div>`;
+        }).join('');
+      }
+    } else {
+      const memo = items.map(i => i.memo).filter(Boolean).join('\n');
+      body = memo ? `<div class="freeview">${escapeHtml(memo)}</div>` : `<div class="empty">아직 작성 없음</div>`;
+    }
+    return `<div class="card"><h3>${escapeHtml(row.name)}${head}</h3>${body}</div>`;
+  }).join('');
+  $('#content').innerHTML = html || `<div class="empty">직원이 없습니다</div>`;
 }
 
 function renderCheckItem(it) {
@@ -131,7 +169,7 @@ function patch(id, body) {
   return api(`/items/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(flashSaved);
 }
 function bodyWithStaff(body) {
-  if (state.isBoss && state.targetStaff) body.staff_id = state.targetStaff;
+  if (state.isBoss && state.targetStaff && state.targetStaff !== ALL) body.staff_id = state.targetStaff;
   return body;
 }
 function flashSaved() { const m = $('#savedMsg'); m.textContent = '저장됨'; setTimeout(() => m.textContent = '', 1200); }
@@ -145,7 +183,7 @@ $('#staffLoginBtn').onclick = () => {
 };
 $('#bossLoginBtn').onclick = () => doLogin({ boss_pw: $('#bossPw').value });
 $('#logoutBtn').onclick = async () => { await api('/logout', { method: 'POST' }); location.reload(); };
-$('#bossStaffSel').onchange = (e) => { state.targetStaff = Number(e.target.value); $('#pwPanel').style.display = 'none'; render(); };
+$('#bossStaffSel').onchange = (e) => { state.targetStaff = selVal(e.target.value); $('#pwPanel').style.display = 'none'; render(); };
 $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => {
   $('#tabs').querySelector('.active').classList.remove('active');
   b.classList.add('active'); state.period = b.dataset.p; render();
@@ -160,6 +198,10 @@ function togglePwPanel() {
   const inp = 'padding:10px;border:1px solid #d1d5db;border-radius:8px;margin-right:6px';
   const btn = 'padding:10px 12px;border:0;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer';
   if (state.isBoss) {
+    if (state.targetStaff === ALL) {
+      f.innerHTML = '<div class="hint">비밀번호를 바꾸려면 위에서 직원을 먼저 선택하세요.</div>';
+      return;
+    }
     if (state.targetStaff === state.myId) {
       f.innerHTML = '<div class="hint">사장님 비밀번호는 서버 설정(.env)에서 관리합니다.</div>';
       return;

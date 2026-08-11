@@ -80,6 +80,21 @@ module.exports = function createReportRoutes(db, opts = {}) {
     res.json({ isBoss: false, staff_id: Number(req.rsess.staff_id), name: req.rsess.name || '' });
   });
 
+  // 사장님 전용 직원 현황판 — 활성 직원 전원을 항목과 함께 한 번에 반환
+  router.get('/overview', (req, res) => {
+    if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
+    const { period, date } = req.query;
+    if (!PERIODS.includes(period)) return res.status(400).json({ error: 'bad_period' });
+    if (!date) return res.status(400).json({ error: 'date_required' });
+    const staff = db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all();
+    const items = db.prepare(
+      "SELECT id, staff_id, title, memo, done FROM report_items WHERE period=? AND item_date=? ORDER BY id"
+    ).all(period, date);
+    const byStaff = new Map(staff.map(s => [s.id, []]));
+    for (const it of items) if (byStaff.has(it.staff_id)) byStaff.get(it.staff_id).push(it);
+    res.json(staff.map(s => ({ staff_id: s.id, name: s.name, items: byStaff.get(s.id) })));
+  });
+
   router.get('/items', (req, res) => {
     const { period, date } = req.query;
     if (period && !PERIODS.includes(period)) return res.status(400).json({ error: 'bad_period' });

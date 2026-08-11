@@ -303,4 +303,54 @@ test('me: 만료·위조 토큰이면 401', async () => {
   server.close();
 });
 
+function addItem(db, staff_id, date, title, done, period) {
+  return db.prepare("INSERT INTO report_items (staff_id, period, item_date, title, done) VALUES (?,?,?,?,?)")
+    .run(staff_id, period || 'today', date, title, done || 0).lastInsertRowid;
+}
+
+test('overview: 활성 직원 전원 반환, 항목 0건 직원도 포함', async () => {
+  const { db, server, base } = makeServer();
+  addItem(db, 1, '2026-08-11', '코트 청소', 1);
+  const rows = await (await fetch(`${base}/overview?period=today&date=2026-08-11`, { headers: { cookie: bossCookie() } })).json();
+  assert.deepStrictEqual(rows.map(r => r.name), ['미가', '바트']);
+  assert.deepStrictEqual(rows.find(r => r.name === '바트').items, []);
+  server.close();
+});
+
+test('overview: 사장님 행은 포함되지 않는다', async () => {
+  const { db, server, base } = makeServer();
+  addItem(db, bossId(db), '2026-08-11', '사장님 개인 업무', 0);
+  const rows = await (await fetch(`${base}/overview?period=today&date=2026-08-11`, { headers: { cookie: bossCookie() } })).json();
+  assert.ok(!rows.some(r => r.name === '사장님'));
+  server.close();
+});
+
+test('overview: 항목이 사람별로 정확히 묶인다', async () => {
+  const { db, server, base } = makeServer();
+  addItem(db, 1, '2026-08-11', '미가-A', 1);
+  addItem(db, 1, '2026-08-11', '미가-B', 0);
+  addItem(db, 2, '2026-08-11', '바트-A', 0);
+  addItem(db, 1, '2026-08-12', '다른날', 0);
+  const rows = await (await fetch(`${base}/overview?period=today&date=2026-08-11`, { headers: { cookie: bossCookie() } })).json();
+  const miga = rows.find(r => r.name === '미가');
+  assert.deepStrictEqual(miga.items.map(i => i.title), ['미가-A', '미가-B']);
+  assert.strictEqual(miga.items.filter(i => i.done).length, 1);
+  assert.deepStrictEqual(rows.find(r => r.name === '바트').items.map(i => i.title), ['바트-A']);
+  server.close();
+});
+
+test('overview: 직원 세션은 403', async () => {
+  const { server, base } = makeServer();
+  const res = await fetch(`${base}/overview?period=today&date=2026-08-11`, { headers: { cookie: staffCookie(1, '미가') } });
+  assert.strictEqual(res.status, 403);
+  server.close();
+});
+
+test('overview: 잘못된 period는 400', async () => {
+  const { server, base } = makeServer();
+  const res = await fetch(`${base}/overview?period=nope&date=2026-08-11`, { headers: { cookie: bossCookie() } });
+  assert.strictEqual(res.status, 400);
+  server.close();
+});
+
 module.exports = { makeServer, staffCookie, bossCookie, SECRET, BOSS };
