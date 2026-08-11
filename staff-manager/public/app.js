@@ -90,6 +90,7 @@ function qs(period) {
 
 async function render() {
   const period = state.period;
+  if (period === 'score') return renderScore();
   if (period === 'att') return renderAttendance();
   if (period === 'month') return renderMonth();
   if (state.isBoss && state.targetStaff === ALL) return renderOverview();
@@ -209,6 +210,46 @@ function openAssign(btn, staffId, name) {
   };
   box.querySelector('[data-go]').onclick = go;
   input.onkeydown = (e) => { if (e.key === 'Enter') go(); };
+}
+
+// ---- 직원 종합 현황 ----
+async function renderScore() {
+  const el = $('#content');
+  if (!state.isBoss) { el.innerHTML = `<div class="empty">${t('noEntry')}</div>`; return; }
+  const month = (state.calMonth || kst().slice(0, 7));
+  const r = await api(`/scorecard?month=${month}`);
+  if (r.status === 401) { location.reload(); return; }
+  if (!r.ok) { el.innerHTML = `<div class="empty">${t('scNone')}</div>`; return; }
+  const d = await r.json();
+
+  const hh = (m) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+  const cards = d.rows.map(x => {
+    const rate = x.taskRate;
+    const color = rate == null ? '#d1d5db' : (rate >= 80 ? '#22c55e' : rate >= 50 ? '#f59e0b' : '#ef4444');
+    const empty = !x.tasks && !x.workDays && !x.assigned;
+    return `<div class="sc">
+      <h4><span class="ev c${colorOf(x.staff_id)}" style="padding:2px 8px">${escapeHtml(x.name)}</span>` +
+      (rate == null ? '' : `<span class="rate" style="color:${color}">${rate}%</span>`) + `</h4>` +
+      (empty ? `<div class="empty">${t('scNone')}</div>` : `<div class="grid">
+        <div><div class="k">${t('scReport')}</div><div class="v">${x.reportDays}<small>일</small></div></div>
+        <div><div class="k">${t('scTask')}</div><div class="v">${x.tasksDone}<small>/${x.tasks}</small></div></div>
+        <div><div class="k">${t('scAsg')}</div><div class="v">${x.assignedDone}<small>/${x.assigned}</small></div></div>
+        <div><div class="k">${t('scWork')}</div><div class="v">${x.workDays}<small>일 ${hh(x.workMinutes)}</small></div></div>
+      </div>
+      <div class="bar"><i style="width:${rate || 0}%;background:${color}"></i></div>` +
+      (x.late ? `<div class="k warn" style="margin-top:6px">${t('scLate')} ${x.late}회</div>` : '')) + `</div>`;
+  }).join('');
+
+  const [y, m] = month.split('-');
+  el.innerHTML =
+    `<div class="calbar"><button data-mv="-1">‹</button><span>${t('scTitle', { m: Number(m) })}</span><button data-mv="1">›</button></div>` +
+    (cards || `<div class="empty">${t('noStaff')}</div>`) +
+    `<div class="attbar"><a class="go" style="text-decoration:none;padding:8px 10px;border-radius:8px" href="${API}/scorecard/export?month=${month}">${t('scExport')}</a></div>`;
+
+  el.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => {
+    state.calMonth = shiftMonth(month, Number(b.dataset.mv));
+    render();
+  });
 }
 
 // ---- 근태 ----

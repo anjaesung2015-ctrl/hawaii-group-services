@@ -212,6 +212,64 @@ module.exports = function createReportRoutes(db, opts = {}) {
     res.json({ month, staffTotal: people.length, people, days });
   });
 
+  // 직원 종합 현황 — 근무태도(근태) · 업무처리(할 일) · 지시이행을 한 달치로 모은다
+  function scorecard(month) {
+    const like = month + '-%';
+    const people = db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all();
+    const ws = db.prepare("SELECT v FROM report_config WHERE k='work_start'").get()?.v || '09:00';
+    const toMin = (t) => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
+    const wsMin = toMin(ws);
+
+    return people.map(p => {
+      const items = db.prepare(
+        "SELECT item_date, done, from_boss FROM report_items WHERE staff_id=? AND period IN ('today','tomorrow') AND item_date LIKE ?"
+      ).all(p.id, like);
+      const days = new Set(items.map(i => i.item_date));
+      const tasks = items.length;
+      const tasksDone = items.filter(i => i.done).length;
+      const asg = items.filter(i => i.from_boss);
+
+      let workDays = 0, workMinutes = 0, late = 0;
+      for (const a of db.prepare("SELECT check_in, check_out FROM report_attendance WHERE staff_id=? AND work_date LIKE ?").all(p.id, like)) {
+        workDays++;
+        if (a.check_in && a.check_out) workMinutes += Math.max(0, toMin(a.check_out) - toMin(a.check_in));
+        if (a.check_in && toMin(a.check_in) > wsMin) late++;
+      }
+
+      return {
+        staff_id: p.id, name: p.name,
+        reportDays: days.size,
+        tasks, tasksDone,
+        taskRate: tasks ? Math.round(tasksDone / tasks * 100) : null,
+        assigned: asg.length, assignedDone: asg.filter(i => i.done).length,
+        workDays, workMinutes, late,
+      };
+    });
+  }
+
+  router.get('/scorecard', (req, res) => {
+    if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
+    const month = String(req.query.month || '');
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return res.status(400).json({ error: 'bad_month' });
+    res.json({ month, rows: scorecard(month) });
+  });
+
+  router.get('/scorecard/export', (req, res) => {
+    if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
+    const month = String(req.query.month || '');
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return res.status(400).json({ error: 'bad_month' });
+    const esc = (x) => `"${String(x ?? '').replace(/"/g, '""')}"`;
+    const hhmm = (m) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+    const lines = ['이름,보고작성일수,할일,완료,완료율(%),지시받음,지시완료,근무일수,근무시간,지각'];
+    for (const r of scorecard(month)) {
+      lines.push([r.name, r.reportDays, r.tasks, r.tasksDone, r.taskRate ?? '',
+        r.assigned, r.assignedDone, r.workDays, hhmm(r.workMinutes), r.late].map(esc).join(','));
+    }
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="staff-summary-${month}.csv"`);
+    res.send('\ufeff' + lines.join('\r\n'));
+  });
+
   // 사장님 지시 — 그 직원의 '오늘 할 일'로 바로 들어가고 텔레그램으로 알린다
   router.post('/assign', async (req, res) => {
     if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });

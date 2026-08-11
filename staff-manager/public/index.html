@@ -99,6 +99,16 @@
   .attbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
   .attbar button,.attbar input{padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;background:#fff}
   .attbar .go{background:#2563eb;color:#fff;border:0;cursor:pointer}
+  .sc{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:11px 13px;margin:8px 0}
+  .sc h4{margin:0 0 8px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .sc .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center}
+  .sc .k{font-size:11px;color:#9ca3af}
+  .sc .v{font-size:15px;font-weight:600;color:#1f2937;line-height:1.3}
+  .sc .v small{font-size:11px;color:#9ca3af;font-weight:400}
+  .sc .rate{margin-left:auto;font-size:12px;font-weight:600}
+  .sc .bar{height:6px;background:#eef0f3;border-radius:3px;overflow:hidden;margin-top:9px}
+  .sc .bar i{display:block;height:100%}
+  .sc .warn{color:#dc2626}
   .cal .cell .badge.note{color:#7c3aed}
   .mention{background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:8px 10px;margin:6px 0;font-size:14px;line-height:1.45}
   .mention .from{display:block;font-size:11px;color:#9333ea;margin-bottom:2px}
@@ -150,6 +160,7 @@
       <button data-p="month" data-i18n="month">월간</button>
       <button data-p="year" data-i18n="year">연간</button>
       <button data-p="att" data-i18n="att">근태</button>
+      <button data-p="score" data-i18n="score">종합</button>
     </div>
     <main id="content"></main>
   </div>
