@@ -39,11 +39,11 @@ app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'log
 
 // ===== 새 업무보고 API =====
 const createReportRoutes = require('./report-simple');
-app.use('/api/report', createReportRoutes(db, { secret: SECRET, bossPw: BOSS_PW }));
-
-// ---- 텔레그램 아침 알람 ----
+// ---- 텔레그램 알람 (지시 알림에도 쓰이므로 먼저 만든다) ----
 const createAlarm = require('./alarm');
 const alarm = createAlarm(db, { secret: SECRET });
+
+app.use('/api/report', createReportRoutes(db, { secret: SECRET, bossPw: BOSS_PW, notify: alarm.notify }));
 app.use('/api/report/alarm', alarm.router);
 
 const cron = require('node-cron');

@@ -55,6 +55,9 @@ module.exports = function createReportRoutes(db, opts = {}) {
     return (await resp.json()).translated;
   });
 
+  const BIZ_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ulaanbaatar', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const bizToday = () => BIZ_FMT.format(new Date());
+
   const LANGS = ['ko', 'mn'];
   function srcLang(s) {
     if (/[가-힣]/.test(s)) return 'ko';
@@ -89,6 +92,9 @@ module.exports = function createReportRoutes(db, opts = {}) {
     }
     return out;
   }
+
+  const icols = db.prepare("PRAGMA table_info(report_items)").all().map(c => c.name);
+  if (!icols.includes('from_boss')) db.exec("ALTER TABLE report_items ADD COLUMN from_boss INTEGER NOT NULL DEFAULT 0");
 
   const COOKIE = { path: '/staff-manager', maxAge: 2592000000, sameSite: 'Lax', httpOnly: true, secure: true };
 
@@ -199,6 +205,32 @@ module.exports = function createReportRoutes(db, opts = {}) {
     res.json({ month, staffTotal, days });
   });
 
+  // 사장님 지시 — 그 직원의 '오늘 할 일'로 바로 들어가고 텔레그램으로 알린다
+  router.post('/assign', async (req, res) => {
+    if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
+    const { staff_id, title, memo } = req.body || {};
+    const text = String(title || '').trim();
+    if (!text) return res.status(400).json({ error: 'title_required' });
+    const date = String(req.body?.date || bizToday());
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'bad_date' });
+    const who = db.prepare("SELECT id, name FROM report_users WHERE id=? AND is_active=1").get(Number(staff_id));
+    if (!who) return res.status(404).json({ error: 'staff_not_found' });
+
+    const r = db.prepare(
+      "INSERT INTO report_items (staff_id, period, item_date, title, memo, from_boss) VALUES (?,'today',?,?,?,1)"
+    ).run(who.id, date, text, String(memo || '').trim());
+
+    // 알림은 실패해도 지시는 남는다
+    let notified = false;
+    if (opts.notify) {
+      try {
+        await opts.notify(who.id, `📌 사장님 지시 (${date.slice(5).replace('-', '/')})\n${text}` + (memo ? `\n${memo}` : ''));
+        notified = true;
+      } catch (e) { console.error('[assign] 알림 실패 staff', who.id, e.message); }
+    }
+    res.json({ ok: true, id: r.lastInsertRowid, notified });
+  });
+
   // 하루 상세 — 그날 항목 + 그날이 글에서 언급된 것
   router.get('/day', (req, res) => {
     const date = String(req.query.date || '');
@@ -218,7 +250,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const ph = ids.map(() => '?').join(',');
 
     const items = db.prepare(
-      "SELECT id, staff_id, title, memo, done FROM report_items WHERE period IN ('today','tomorrow') AND item_date=? AND staff_id IN (" + ph + ") ORDER BY id"
+      "SELECT id, staff_id, title, memo, done, from_boss FROM report_items WHERE period IN ('today','tomorrow') AND item_date=? AND staff_id IN (" + ph + ") ORDER BY id"
     ).all(date, ...ids);
 
     const all = db.prepare(
@@ -245,7 +277,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     if (!date) return res.status(400).json({ error: 'date_required' });
     const staff = db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all();
     const items = db.prepare(
-      "SELECT id, staff_id, title, memo, done FROM report_items WHERE period IN (" +
+      "SELECT id, staff_id, title, memo, done, from_boss FROM report_items WHERE period IN (" +
       wanted.map(() => '?').join(',') + ") AND item_date=? ORDER BY id"
     ).all(...wanted, date);
     const byStaff = new Map(staff.map(s => [s.id, []]));
@@ -315,6 +347,8 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const item = db.prepare("SELECT * FROM report_items WHERE id=?").get(req.params.id);
     if (!item) return res.status(404).json({ error: 'not_found' });
     if (!req.rsess.isBoss && item.staff_id !== Number(req.rsess.staff_id)) return res.status(403).json({ error: 'forbidden' });
+    // 사장님 지시는 받은 직원이 지울 수 없다 (완료 체크는 가능)
+    if (!req.rsess.isBoss && item.from_boss) return res.status(403).json({ error: 'assigned_by_boss' });
     db.prepare("DELETE FROM report_items WHERE id=?").run(req.params.id);
     res.json({ ok: true });
   });

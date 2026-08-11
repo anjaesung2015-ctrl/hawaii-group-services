@@ -113,6 +113,7 @@ async function renderOverview() {
   if (r.status === 401) { location.reload(); return; }
   const rows = await r.json();
   $('#content').innerHTML = overviewCards(rows, CHECK_PERIODS.includes(period)) || `<div class="empty">${t('noStaff')}</div>`;
+  bindAssign($('#content'));
 }
 
 function overviewCards(rows, isCheck) {
@@ -133,8 +134,9 @@ function overviewCards(rows, isCheck) {
           // 번역된 글에는 원문을 작게 함께 보여준다 (기계번역이라 확인이 필요)
           const orig = (i.title_tr || i.memo_tr)
             ? `<div class="src">🌐 ${escapeHtml(i.title || '')}${i.memo ? ' · ' + escapeHtml(i.memo) : ''}</div>` : '';
-          return `<div class="ov ${i.done ? 'done' : 'undone'}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
-                 `<span class="tx">${title}${memo}${orig}</span></div>`;
+          const tag = i.from_boss ? `<span class="tag">${t('boss1')}</span>` : '';
+          return `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
+                 `<span class="tx">${tag}${title}${memo}${orig}</span></div>`;
         }).join('');
       }
     } else {
@@ -145,8 +147,47 @@ function overviewCards(rows, isCheck) {
           (memoTr !== memo ? `<div class="src">🌐 ${escapeHtml(memo)}</div>` : '')
         : `<div class="empty">${t('noEntry')}</div>`;
     }
-    return `<div class="card"><h3>${escapeHtml(row.name)}${head}</h3>${body}</div>`;
+    const asg = (state.isBoss && row.staff_id !== state.myId)
+      ? `<button class="asgBtn" data-asg="${row.staff_id}" data-name="${escapeHtml(row.name)}">${t('assign')}</button>` : '';
+    return `<div class="card"><h3>${escapeHtml(row.name)}${head}</h3>${body}${asg}</div>`;
   }).join('');
+}
+
+// 카드의 '+ 지시' 버튼을 살린다 (카드를 다시 그릴 때마다 호출)
+function bindAssign(scope) {
+  (scope || document).querySelectorAll('[data-asg]').forEach(b => {
+    b.onclick = () => openAssign(b, Number(b.dataset.asg), b.dataset.name);
+  });
+}
+function openAssign(btn, staffId, name) {
+  if (btn.nextElementSibling && btn.nextElementSibling.classList.contains('asgBox')) {
+    btn.nextElementSibling.remove();
+    const m = btn.parentElement.querySelector('.asgMsg'); if (m) m.remove();
+    return;
+  }
+  btn.insertAdjacentHTML('afterend',
+    `<div class="asgBox"><input type="text" placeholder="${t('assignWhat')}">` +
+    `<button data-go="1">${t('assignSend')}</button></div><div class="asgMsg"></div>`);
+  const box = btn.nextElementSibling;
+  const msg = box.nextElementSibling;
+  const input = box.querySelector('input');
+  input.focus();
+  const go = async () => {
+    const title = input.value.trim();
+    if (!title) return;
+    const date = (state.period === 'month' && state.calDay) ? state.calDay : itemDateFor('today');
+    const r = await api('/assign', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staff_id: staffId, title, date }) });
+    if (r.ok) {
+      const d = await r.json();
+      msg.style.color = d.notified ? '#16a34a' : '#b45309';
+      msg.textContent = d.notified ? t('assignOk') : t('assignOkNoTg');
+      input.value = '';
+      setTimeout(render, 900);
+    } else { msg.style.color = '#dc2626'; msg.textContent = t('assignFail'); }
+  };
+  box.querySelector('[data-go]').onclick = go;
+  input.onkeydown = (e) => { if (e.key === 'Enter') go(); };
 }
 
 // ---- 월간 달력 ----
@@ -267,31 +308,39 @@ async function renderDay(date) {
     const done = items.filter(i => i.done).length;
     const head = items.length ? `<span class="cnt">${t('doneCount', { done, total: items.length })}</span>` : '';
     const list = items.map(i =>
-      `<div class="ov ${i.done ? 'done' : 'undone'}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
-      `<span class="tx">${escapeHtml(i.title || t('noTitle'))}` +
+      `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
+      `<span class="tx">${i.from_boss ? `<span class="tag">${t('boss1')}</span>` : ''}${escapeHtml(i.title || t('noTitle'))}` +
       (i.memo ? ` <span class="m">· ${escapeHtml(i.memo)}</span>` : '') + `</span></div>`).join('');
     const notes = mentions.map(m =>
       `<div class="mention"><span class="from">${t('fromTab', { tab: t(m.period) })}</span>` +
       escapeHtml([m.title, m.memo].filter(Boolean).join(' · ')) + `</div>`).join('');
-    return `<div class="card"><h3>${escapeHtml(row.name)}${head}</h3>${list}${notes}</div>`;
+    const asg = (state.isBoss && row.staff_id !== state.myId)
+      ? `<button class="asgBtn" data-asg="${row.staff_id}" data-name="${escapeHtml(row.name)}">${t('assign')}</button>` : '';
+    return `<div class="card"><h3>${escapeHtml(row.name)}${head}</h3>${list}${notes}${asg}</div>`;
   }).join('');
   box.innerHTML = label + (html || `<div class="empty">${t('noEntry')}</div>`);
+  bindAssign(box);
 }
 
 function renderCheckItem(it) {
-  return `<div class="item ${it.done ? 'done' : ''}" data-id="${it.id}">
+  // 사장님이 내린 지시는 직원이 지울 수 없다 (완료 체크·메모는 가능)
+  const locked = it.from_boss && !state.isBoss;
+  return `<div class="item ${it.done ? 'done' : ''}${it.from_boss ? ' boss' : ''}" data-id="${it.id}">
     <input type="checkbox" ${it.done ? 'checked' : ''}>
-    <input class="ti" value="${escapeHtml(it.title || '')}" placeholder="${t('todo')}">
+    ${it.from_boss ? `<span class="tag">${t('boss1')}</span>` : ''}
+    <input class="ti" value="${escapeHtml(it.title || '')}" placeholder="${t('todo')}" ${locked ? 'readonly' : ''}>
     <input class="memo" value="${escapeHtml(it.memo || '')}" placeholder="${t('memo')}">
-    <button class="del">×</button>
+    ${locked ? '' : '<button class="del">×</button>'}
   </div>`;
 }
 function bindCheckItem(node) {
   const id = node.dataset.id;
   node.querySelector('input[type=checkbox]').onchange = (e) => patch(id, { done: e.target.checked }).then(render);
-  node.querySelector('.ti').onblur = (e) => patch(id, { title: e.target.value });
+  const ti = node.querySelector('.ti');
+  if (!ti.readOnly) ti.onblur = (e) => patch(id, { title: e.target.value });
   node.querySelector('.memo').onblur = (e) => patch(id, { memo: e.target.value });
-  node.querySelector('.del').onclick = () => api(`/items/${id}`, { method: 'DELETE' }).then(render);
+  const del = node.querySelector('.del');
+  if (del) del.onclick = () => api(`/items/${id}`, { method: 'DELETE' }).then(render);
 }
 async function addCheckItem() {
   await api('/items', { method: 'POST', headers: { 'Content-Type': 'application/json' },

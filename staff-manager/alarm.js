@@ -147,5 +147,12 @@ module.exports = function createAlarm(db, opts = {}) {
     }
   });
 
-  return { router, tick, buildMessage };
+  // 다른 기능(사장님 지시 등)이 특정 직원에게 즉시 알릴 때 쓴다
+  async function notify(staffId, text) {
+    const row = db.prepare("SELECT chat_id FROM report_alarm WHERE staff_id=? AND enabled=1").get(staffId);
+    if (!row || !row.chat_id) throw new Error('chat_id 미등록');
+    return send(row.chat_id, text);
+  }
+
+  return { router, tick, buildMessage, notify };
 };
