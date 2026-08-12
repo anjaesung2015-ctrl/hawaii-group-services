@@ -106,6 +106,31 @@ module.exports = function createReportRoutes(db, opts = {}) {
 
   const COOKIE = { path: '/staff-manager', maxAge: 2592000000, sameSite: 'Lax', httpOnly: true, secure: true };
 
+  // ---- 로그인 실패 기록 ----
+  // nginx 로그엔 요청 본문이 없어 "누가" 못 들어왔는지 알 수 없다. 이름·사유·IP를 남긴다.
+  // 비밀번호는 절대 남기지 않는다.
+  const logLine = opts.log || (line => console.log(line));
+  const STAMP_FMT = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Ulaanbaatar', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  });
+  const stamp = () => STAMP_FMT.format(new Date()).replace('T', ' ');
+
+  function clientIp(req) {
+    // X-Real-IP 우선: nginx가 $remote_addr 로 덮어쓰므로 위조 불가.
+    // X-Forwarded-For 는 클라이언트가 임의로 보낼 수 있어 차선책.
+    const real = req.headers['x-real-ip'];
+    if (real) return String(real).split(',')[0].trim();
+    const xff = req.headers['x-forwarded-for'];
+    if (xff) return String(xff).split(',')[0].trim();
+    return req.ip || req.socket?.remoteAddress || '-';
+  }
+  function logLoginFail(req, reason, name) {
+    // 이름은 사용자 입력 — 줄바꿈으로 가짜 로그 줄을 못 만들게 자른다
+    const who = String(name ?? '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 40) || '-';
+    logLine(`${stamp()} [login] 실패 reason=${reason} name=${who} ip=${clientIp(req)}`);
+  }
+
   router.get('/staff-list', (req, res) => {
     res.json(db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all());
   });
@@ -113,14 +138,24 @@ module.exports = function createReportRoutes(db, opts = {}) {
   router.post('/login', (req, res) => {
     const { name, password, boss_pw } = req.body || {};
     if (boss_pw !== undefined) {
-      if (!bossPw || boss_pw !== bossPw) return res.status(401).json({ error: 'bad_password' });
+      if (!bossPw || boss_pw !== bossPw) {
+        logLoginFail(req, 'boss_password', '사장님');
+        return res.status(401).json({ error: 'bad_password' });
+      }
       const myId = bossRowId();
       const token = jwt.sign({ isBoss: true, staff_id: myId }, secret, { expiresIn: '30d' });
       res.cookie('report_sess', token, COOKIE);
       return res.json({ ok: true, isBoss: true, my_id: myId, name: '사장님' });
     }
     const u = db.prepare("SELECT id, name, pin_hash FROM report_users WHERE name=? AND is_active=1 AND role='staff' ").get(name);
-    if (!u || !bcrypt.compareSync(password || '', u.pin_hash)) return res.status(401).json({ error: 'bad_login' });
+    if (!u) {   // 없는 이름 / 퇴사(비활성) / 사장님 계정으로 시도
+      logLoginFail(req, 'unknown_name', name);
+      return res.status(401).json({ error: 'bad_login' });
+    }
+    if (!bcrypt.compareSync(password || '', u.pin_hash)) {
+      logLoginFail(req, 'bad_password', u.name);
+      return res.status(401).json({ error: 'bad_login' });
+    }
     const token = jwt.sign({ staff_id: u.id, name: u.name, isBoss: false }, secret, { expiresIn: '30d' });
     res.cookie('report_sess', token, COOKIE);
     res.json({ ok: true, isBoss: false, staff_id: u.id, name: u.name });
