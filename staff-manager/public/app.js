@@ -55,10 +55,26 @@ async function loadStaffList() {
     bsel.insertAdjacentHTML('beforeend', `<option value="${s.id}">${escapeHtml(s.name)}</option>`);
   }
 }
-async function doLogin(body) {
-  const r = await api('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if (!r.ok) { $('#loginErr').textContent = t('loginFail'); return; }
-  applySession(await r.json());
+// 요청이 나가 있는 동안 버튼을 잠근다.
+// 응답이 늦는데 화면이 아무 반응도 없으면 안 눌린 줄 알고 다시 누르게 되고,
+// 그러면 같은 로그인 시도가 서버에 여러 번 찍힌다(2026-08-13 실제로 그랬다).
+let loginBusy = false;
+async function doLogin(body, btn) {
+  if (loginBusy) return;
+  loginBusy = true;
+  $('#loginErr').textContent = '';
+  const label = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = t('loggingIn'); }
+  try {
+    const r = await api('/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) { $('#loginErr').textContent = t('loginFail'); return; }
+    applySession(await r.json());
+  } catch (e) {
+    $('#loginErr').textContent = t('loginFail');   // 전파 끊김 등 — 버튼이 잠긴 채 남지 않게 한다
+  } finally {
+    loginBusy = false;
+    if (btn) { btn.disabled = false; btn.textContent = label; }
+  }
 }
 
 const BOSS_TABS = ['att', 'score'];   // 근태·종합은 사장님 화면에만
@@ -629,9 +645,9 @@ function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;
 $('#staffLoginBtn').onclick = () => {
   const n = $('#nameSel').value;
   if (!n) { $('#loginErr').textContent = t('selectName'); return; }
-  doLogin({ name: n, password: $('#staffPw').value });
+  doLogin({ name: n, password: $('#staffPw').value }, $('#staffLoginBtn'));
 };
-$('#bossLoginBtn').onclick = () => doLogin({ boss_pw: $('#bossPw').value });
+$('#bossLoginBtn').onclick = () => doLogin({ boss_pw: $('#bossPw').value }, $('#bossLoginBtn'));
 $('#logoutBtn').onclick = async () => { await api('/logout', { method: 'POST' }); location.reload(); };
 $('#bossStaffSel').onchange = (e) => { state.targetStaff = selVal(e.target.value); $('#pwPanel').style.display = 'none'; render(); };
 $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => {

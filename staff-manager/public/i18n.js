@@ -10,6 +10,7 @@ const I18N = {
     bossPassword: '사장님 비밀번호',
     bossLogin: '사장님 로그인',
     loginFail: '로그인 실패',
+    loggingIn: '확인 중…',
 
     boss: '사장님',
     myWork: '🏠 내 업무',
@@ -139,6 +140,7 @@ const I18N = {
     bossPassword: 'Захирлын нууц үг',
     bossLogin: 'Захирал нэвтрэх',
     loginFail: 'Нэвтрэхэд алдаа гарлаа',
+    loggingIn: 'Шалгаж байна…',
 
     boss: 'Захирал',
     myWork: '🏠 Миний ажил',
