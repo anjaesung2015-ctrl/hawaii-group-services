@@ -66,6 +66,12 @@ module.exports = function createReportRoutes(db, opts = {}) {
     return String(itemDate) < bizToday();
   }
 
+  // 오늘/내일은 결국 '그 날짜 하루치 할 일'이다. 날짜로 볼 때는 둘을 함께 본다.
+  // (어제 '내일 할 일'로 적어둔 것이 그날이 되면 오늘 탭에서 사라지던 문제)
+  function dailyExpand(period) {
+    return DAILY.includes(period) ? DAILY.slice() : [period];
+  }
+
   const LANGS = ['ko', 'mn'];
   function srcLang(s) {
     if (/[가-힣]/.test(s)) return 'ko';
@@ -427,7 +433,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const { period, date } = req.query;
     const many = periodsOf(req);
     if (many === null) return res.status(400).json({ error: 'bad_period' });
-    const wanted = many || (PERIODS.includes(period) ? [period] : null);
+    const wanted = many || (PERIODS.includes(period) ? dailyExpand(period) : null);
     if (!wanted) return res.status(400).json({ error: 'bad_period' });
     if (!date) return res.status(400).json({ error: 'date_required' });
     const staff = db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all();
@@ -467,7 +473,11 @@ module.exports = function createReportRoutes(db, opts = {}) {
     if (!sid) return res.status(400).json({ error: 'staff_id_required' });
     let sql = "SELECT * FROM report_items WHERE staff_id=?"; const p = [sid];
     if (many) { sql += " AND period IN (" + many.map(() => '?').join(',') + ")"; p.push(...many); }
-    else if (period) { sql += " AND period=?"; p.push(period); }
+    else if (period) {
+      // 날짜를 함께 준 경우에만 오늘+내일을 묶는다 (날짜 없이 부르면 예전처럼 한 기간만).
+      const w = date ? dailyExpand(period) : [period];
+      sql += " AND period IN (" + w.map(() => '?').join(',') + ")"; p.push(...w);
+    }
     if (date) { sql += " AND item_date=?"; p.push(date); }
     sql += " ORDER BY id";
     res.json(db.prepare(sql).all(...p));
