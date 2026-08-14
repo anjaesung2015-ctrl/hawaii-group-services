@@ -50,6 +50,14 @@ module.exports = function createAlarm(db, opts = {}) {
       "SELECT title, memo, done FROM report_items WHERE staff_id=? AND period IN ('today','tomorrow') AND item_date=? ORDER BY id"
     ).all(staffId, date);
 
+    // 앱 오늘 탭과 같은 기준 — 못 끝낸 지난 할 일도 함께 알려준다
+    const carried = db.prepare(
+      "SELECT title, memo, done, item_date FROM report_items WHERE staff_id=?" +
+      " AND period IN ('today','tomorrow') AND done=0 AND item_date < ?" +
+      " AND (COALESCE(title,'') <> '' OR COALESCE(memo,'') <> '') ORDER BY item_date, id"
+    ).all(staffId, date);
+    const allToday = [...carried, ...todays];
+
     // 내일 걸린 것: 내일 날짜 항목 + 어느 글에든 내일 날짜가 적힌 것
     const tomorrowItems = db.prepare(
       "SELECT title, memo FROM report_items WHERE staff_id=? AND period IN ('today','tomorrow') AND item_date=? ORDER BY id"
@@ -64,16 +72,18 @@ module.exports = function createAlarm(db, opts = {}) {
       }
     }
 
-    if (!todays.length && !tomorrowItems.length && !mentions.length) return null;
+    if (!allToday.length && !tomorrowItems.length && !mentions.length) return null;
 
     const lines = [`<b>${name}</b> — ${date.slice(5).replace('-', '/')} 업무`];
-    if (todays.length) {
+    if (allToday.length) {
       lines.push('', '오늘 할 일');
-      for (const it of todays) {
-        lines.push(`${it.done ? '✅' : '⬜'} ${it.title || '(제목 없음)'}${it.memo ? ' · ' + it.memo : ''}`);
+      for (const it of allToday) {
+        // 이월된 것은 언제 적은 건지 날짜를 붙인다
+        const from = it.item_date ? ` [${it.item_date.slice(5).replace('-', '/')}]` : '';
+        lines.push(`${it.done ? '✅' : '⬜'} ${it.title || '(제목 없음)'}${it.memo ? ' · ' + it.memo : ''}${from}`);
       }
-      const done = todays.filter(i => i.done).length;
-      lines.push(`(${done}/${todays.length} 완료)`);
+      const done = allToday.filter(i => i.done).length;
+      lines.push(`(${done}/${allToday.length} 완료)`);
     }
     if (tomorrowItems.length || mentions.length) {
       lines.push('', '내일 예정');

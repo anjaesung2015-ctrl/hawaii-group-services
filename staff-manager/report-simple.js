@@ -72,6 +72,19 @@ module.exports = function createReportRoutes(db, opts = {}) {
     return DAILY.includes(period) ? DAILY.slice() : [period];
   }
 
+  // 못 끝낸 할 일은 완료 체크할 때까지 오늘 탭에 계속 따라온다 (이월).
+  // 원래 날짜(item_date)는 건드리지 않는다 — 지난 기록이 바뀌면 안 되니까.
+  // 오늘을 볼 때만 얹는다. ‹ › 로 지난 날짜를 넘겨볼 때는 그날 것만 보여야 한다.
+  function carryOver(sids, date) {
+    if (!date || date !== bizToday() || !sids.length) return [];
+    return db.prepare(
+      "SELECT * FROM report_items WHERE staff_id IN (" + sids.map(() => '?').join(',') + ")" +
+      " AND period IN ('today','tomorrow') AND done=0 AND item_date < ?" +
+      " AND (COALESCE(title,'') <> '' OR COALESCE(memo,'') <> '')" +
+      " ORDER BY item_date, id"
+    ).all(...sids, date);
+  }
+
   const LANGS = ['ko', 'mn'];
   function srcLang(s) {
     if (/[가-힣]/.test(s)) return 'ko';
@@ -438,10 +451,13 @@ module.exports = function createReportRoutes(db, opts = {}) {
     if (!date) return res.status(400).json({ error: 'date_required' });
     const staff = db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all();
     const items = db.prepare(
-      "SELECT id, staff_id, title, memo, done, from_boss FROM report_items WHERE period IN (" +
+      "SELECT id, staff_id, item_date, title, memo, done, from_boss FROM report_items WHERE period IN (" +
       wanted.map(() => '?').join(',') + ") AND item_date=? ORDER BY id"
     ).all(...wanted, date);
     const byStaff = new Map(staff.map(s => [s.id, []]));
+    if (period === 'today' && !many) {
+      for (const it of carryOver(staff.map(s => s.id), date)) byStaff.get(it.staff_id).push(it);
+    }
     for (const it of items) if (byStaff.has(it.staff_id)) byStaff.get(it.staff_id).push(it);
     const rows = staff.map(s => ({ staff_id: s.id, name: s.name, items: byStaff.get(s.id) }));
 
@@ -480,7 +496,9 @@ module.exports = function createReportRoutes(db, opts = {}) {
     }
     if (date) { sql += " AND item_date=?"; p.push(date); }
     sql += " ORDER BY id";
-    res.json(db.prepare(sql).all(...p));
+    const rows = db.prepare(sql).all(...p);
+    const carried = (period === 'today' && !many) ? carryOver([sid], date) : [];
+    res.json([...carried, ...rows]);
   });
 
   router.post('/items', (req, res) => {
@@ -499,9 +517,12 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const item = db.prepare("SELECT * FROM report_items WHERE id=?").get(req.params.id);
     if (!item) return res.status(404).json({ error: 'not_found' });
     if (!req.rsess.isBoss && item.staff_id !== Number(req.rsess.staff_id)) return res.status(403).json({ error: 'forbidden' });
-    if (pastLocked(req, item.period, item.item_date)) return res.status(403).json({ error: 'past_locked' });
-    const fields = []; const vals = [];
     const body = req.body || {};
+    // 이월된 지난 할 일은 완료 체크만 열어둔다 — 끝내야 오늘 목록에서 내려가니까.
+    // 제목·메모 수정과 삭제는 그대로 막는다 (뒤늦게 기록을 바꾸는 것 방지).
+    const onlyDone = Object.keys(body).length > 0 && Object.keys(body).every(k => k === 'done');
+    if (!onlyDone && pastLocked(req, item.period, item.item_date)) return res.status(403).json({ error: 'past_locked' });
+    const fields = []; const vals = [];
     for (const k of ['title', 'memo', 'done']) if (k in body) { fields.push(k + '=?'); vals.push(k === 'done' ? (body[k] ? 1 : 0) : body[k]); }
     if (!fields.length) return res.status(400).json({ error: 'no_changes' });
     fields.push("updated_at=datetime('now','localtime')");

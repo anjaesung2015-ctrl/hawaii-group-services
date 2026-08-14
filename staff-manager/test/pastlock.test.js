@@ -43,11 +43,19 @@ test('직원은 지난 날짜에 항목을 추가할 수 없다', async () => {
   server.close();
 });
 
-test('직원은 지난 날짜 항목을 수정할 수 없다', async () => {
+test('직원은 지난 날짜 항목의 글을 고칠 수 없다', async () => {
   const { db, server, base } = makeServer();
   const id = put(db, 'today', YESTERDAY, '어제 일');
-  const r = await patchItem(base, id, { done: 1 }, staff());
-  assert.strictEqual(r.status, 403);
+  assert.strictEqual((await patchItem(base, id, { title: '몰래 수정' }, staff())).status, 403);
+  assert.strictEqual((await patchItem(base, id, { memo: '몰래 메모' }, staff())).status, 403);
+  server.close();
+});
+
+// 못 끝낸 일은 오늘 탭으로 따라오므로(이월) 완료 체크만은 열어둔다.
+test('직원은 지난 날짜 항목을 완료 체크할 수 있다', async () => {
+  const { db, server, base } = makeServer();
+  const id = put(db, 'today', YESTERDAY, '어제 일');
+  assert.strictEqual((await patchItem(base, id, { done: 1 }, staff())).status, 200);
   server.close();
 });
 

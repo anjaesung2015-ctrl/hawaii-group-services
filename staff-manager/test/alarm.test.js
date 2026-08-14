@@ -107,7 +107,17 @@ test('설정 시각이 지나면 보내고, 같은 날 두 번은 안 보낸다'
   await alarm.tick('2026-08-11', '09:05');
   assert.strictEqual(sent.length, 1, '같은 날 두 번 발송됨');
   await alarm.tick('2026-08-12', '09:00');
-  assert.strictEqual(sent.length, 1, '12일엔 할 일이 없으니 안 보내야 함');
+  assert.strictEqual(sent.length, 2, '11일에 못 끝낸 일이 남아 12일에도 알려준다');
+  assert.match(sent[1].text, /코트 청소/);
+  server.close();
+});
+
+test('지난 할 일을 다 끝냈으면 다음 날엔 안 보낸다', async () => {
+  const { db, server, sent, alarm } = makeServer();
+  todo(db, 1, '2026-08-11', '코트 청소', 1);
+  db.prepare("INSERT INTO report_alarm (staff_id, chat_id, enabled, send_at) VALUES (1,'111',1,'09:00')").run();
+  await alarm.tick('2026-08-12', '09:00');
+  assert.strictEqual(sent.length, 0);
   server.close();
 });
 

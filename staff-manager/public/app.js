@@ -40,6 +40,10 @@ function itemDateFor(period) {
   if (period === 'tomorrow') return kst(state.dayOffset + 1);
   return itemDateBase(period);
 }
+function dayTag(iso) {                                    // '2026-08-13' → '8/13'
+  const [, m, d] = String(iso).split('-');
+  return `${Number(m)}/${Number(d)}`;
+}
 function itemDateBase(period) {
   return { today: kst(0), tomorrow: kst(1), week: weekStart(), month: monthStart(), year: yearStart() }[period];
 }
@@ -207,7 +211,8 @@ function overviewCards(rows, isCheck) {
           // 번역된 글에는 원문을 작게 함께 보여준다 (기계번역이라 확인이 필요)
           const orig = (i.title_tr || i.memo_tr)
             ? `<div class="src">🌐 ${escapeHtml(i.title || '')}${i.memo ? ' · ' + escapeHtml(i.memo) : ''}</div>` : '';
-          const tag = i.from_boss ? `<span class="tag">${t('boss1')}</span>` : '';
+          const tag = (i.from_boss ? `<span class="tag">${t('boss1')}</span>` : '') +
+            ((i.item_date && i.item_date !== itemDateFor(state.period)) ? `<span class="from">${dayTag(i.item_date)}</span>` : '');
           // 사장님이 내린 지시는 여기서 바로 지울 수 있다 (직원이 적은 건 건드리지 않는다)
           const del = (state.isBoss && i.from_boss) ? `<button class="ovdel" data-del="${i.id}">×</button>` : '';
           return `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
@@ -595,12 +600,16 @@ function renderCheckItem(it) {
   // 사장님이 내린 지시는 직원이 지울 수 없다 (완료 체크·메모는 가능)
   // 지난 날짜는 직원이 아예 못 건드린다
   const past = viewLocked();
-  const locked = past || (it.from_boss && !state.isBoss);
-  return `<div class="item ${it.done ? 'done' : ''}${it.from_boss ? ' boss' : ''}" data-id="${it.id}">
+  // 못 끝내서 따라온 지난 할 일 — 완료 체크만 되고, 글은 지난 기록이라 직원은 못 고친다
+  const carried = it.item_date && it.item_date !== itemDateFor(state.period);
+  const frozen = past || (carried && !state.isBoss);
+  const locked = frozen || (it.from_boss && !state.isBoss);
+  return `<div class="item ${it.done ? 'done' : ''}${it.from_boss ? ' boss' : ''}${carried ? ' carry' : ''}" data-id="${it.id}">
     <input type="checkbox" ${it.done ? 'checked' : ''} ${past ? 'disabled' : ''}>
+    ${carried ? `<span class="from">${dayTag(it.item_date)}</span>` : ''}
     ${it.from_boss ? `<span class="tag">${t('boss1')}</span>` : ''}
     <input class="ti" value="${escapeHtml(it.title || '')}" placeholder="${t('todo')}" ${locked ? 'readonly' : ''}>
-    <input class="memo" value="${escapeHtml(it.memo || '')}" placeholder="${t('memo')}" ${past ? 'readonly' : ''}>
+    <input class="memo" value="${escapeHtml(it.memo || '')}" placeholder="${t('memo')}" ${frozen ? 'readonly' : ''}>
     ${locked ? '' : '<button class="del">×</button>'}
   </div>`;
 }
@@ -610,7 +619,8 @@ function bindCheckItem(node) {
   node.querySelector('input[type=checkbox]').onchange = (e) => patch(id, { done: e.target.checked }).then(render);
   const ti = node.querySelector('.ti');
   if (!ti.readOnly) ti.onblur = (e) => patch(id, { title: e.target.value });
-  node.querySelector('.memo').onblur = (e) => patch(id, { memo: e.target.value });
+  const mm = node.querySelector('.memo');
+  if (!mm.readOnly) mm.onblur = (e) => patch(id, { memo: e.target.value });
   const del = node.querySelector('.del');
   if (del) del.onclick = () => api(`/items/${id}`, { method: 'DELETE' }).then(render);
 }
