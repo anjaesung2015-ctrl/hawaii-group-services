@@ -1,43 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
-const path = require('path');
-const vm = require('vm');
-
-// 브라우저가 없으니 DOM만 흉내 내서 app.js를 그대로 실행하고 렌더 함수를 돌려본다.
-// (이월 항목이 화면에 어떻게 그려지는지 — 날짜 꼬리표·수정 잠금 — 를 지킨다)
-function loadApp() {
-  const dir = path.join(__dirname, '..', 'public');
-  const el = {
-    innerHTML: '', value: '', textContent: '', checked: false, readOnly: false, disabled: false,
-    dataset: {}, style: {}, classList: { add() {}, remove() {}, contains: () => false },
-    addEventListener() {}, removeEventListener() {}, focus() {}, remove() {}, setAttribute() {}, appendChild() {},
-    querySelector: () => el, querySelectorAll: () => [],
-  };
-  const ctx = {
-    console, Intl, Date, Math, JSON, URLSearchParams, Promise, setTimeout, clearTimeout,
-    document: {
-      querySelector: () => el, querySelectorAll: () => [], getElementById: () => el,
-      createElement: () => el, addEventListener() {}, body: el, documentElement: el,
-    },
-    navigator: { language: 'ko' },
-    localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
-    location: { reload() {}, href: '', pathname: '/staff-manager/' },
-    fetch: async () => ({ ok: false, status: 401, json: async () => ({}) }),
-    addEventListener() {}, removeEventListener() {}, alert() {}, scrollTo() {},
-    matchMedia: () => ({ matches: false, addEventListener() {} }),
-  };
-  ctx.window = ctx;
-  vm.createContext(ctx);
-  for (const f of ['i18n.js', 'app.js']) {
-    vm.runInContext(fs.readFileSync(path.join(dir, f), 'utf8'), ctx, { filename: f });
-  }
-  // app.js의 state/renderCheckItem 은 const 선언이라 전역 객체에 안 붙는다 — 꺼내서 물려준다.
-  for (const name of ['state', 'renderCheckItem', 'itemDateFor']) {
-    ctx[name] = vm.runInContext(name, ctx);
-  }
-  return ctx;
-}
+// DOM 흉내 하네스는 test/apphost.js 한 벌을 함께 쓴다.
+// (여기서는 이월 항목이 화면에 어떻게 그려지는지 — 날짜 꼬리표·수정 잠금 — 를 지킨다)
+const { loadApp } = require('./apphost');
 
 const BIZ = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ulaanbaatar', year: 'numeric', month: '2-digit', day: '2-digit' });
 const day = (off = 0) => BIZ.format(new Date(Date.now() + off * 86400000));

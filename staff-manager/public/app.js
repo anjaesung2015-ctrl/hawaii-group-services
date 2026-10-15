@@ -81,7 +81,7 @@ async function doLogin(body, btn) {
   }
 }
 
-const BOSS_TABS = ['att', 'score'];   // 근태·종합은 사장님 화면에만
+const BOSS_TABS = ['hist', 'att', 'score'];   // 기록·근태·종합은 사장님 화면에만
 
 function applyTabVisibility() {
   $('#tabs').querySelectorAll('button').forEach(b => {
@@ -158,6 +158,7 @@ async function render() {
   if (!state.isBoss && BOSS_TABS.includes(period)) { state.period = 'today'; applyTabVisibility(); }
   if (state.period === 'score') return renderScore();
   if (state.period === 'att') return renderAttendance();
+  if (state.period === 'hist') return renderHistory();
   if (period === 'month') return renderMonth();
   if (state.isBoss && state.targetStaff === ALL) return renderOverview();
   const r = await api('/items' + qs(period));
@@ -282,6 +283,44 @@ function openAssign(btn, staffId, name) {
   };
   box.querySelector('[data-go]').onclick = go;
   input.onkeydown = (e) => { if (e.key === 'Enter') go(); };
+}
+
+// ---- 지난 기록 모아보기 (읽기 전용) ----
+// 완료 체크를 하면 그 일은 오늘 목록에서 내려간다. 기록은 적은 날짜에 남아 있으니
+// 한 달치를 날짜별로 되짚어 볼 곳이 필요하다. 고칠 일이 있으면 그 날짜의 '오늘' 탭에서 고친다.
+async function renderHistory() {
+  const el = $('#content');
+  const month = state.calMonth || kst().slice(0, 7);
+  const allMode = isAllMode();
+  const sid = allMode ? null : currentStaffId();
+  const r = await api(`/history?month=${month}` + (sid ? `&staff_id=${sid}` : ''));
+  if (r.status === 401) { location.reload(); return; }
+  const d = r.ok ? await r.json() : { rows: [] };
+  buildColorMap(d.people);                     // 사람 색을 달력 범례와 같게
+  const [y, m] = month.split('-');
+  el.innerHTML =
+    `<div class="calbar"><button data-mv="-1">‹</button><span>${t('calTitle', { y, m: Number(m) })}</span><button data-mv="1">›</button></div>` +
+    (historyCards(d.rows, allMode) || `<div class="empty">${t('scNone')}</div>`);
+  el.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => {
+    state.calMonth = shiftMonth(month, Number(b.dataset.mv));
+    render();
+  });
+}
+
+function historyCards(rows, allMode) {
+  return (rows || []).map(row => {
+    const [y, m, d] = row.date.split('-').map(Number);
+    const w = t('dow' + new Date(Date.UTC(y, m - 1, d)).getUTCDay());
+    const head = `${t('dayFmt', { m, d, w })}<span class="cnt">${t('doneCount', { done: row.done, total: row.total })}</span>`;
+    const list = (row.items || []).map(i => {
+      // 전체 보기일 때만 이름을 붙인다 (한 사람만 볼 때는 같은 이름이 줄마다 반복될 뿐)
+      const who = allMode ? `<span class="ev c${colorOf(i.staff_id)}">${escapeHtml(i.name || '')}</span> ` : '';
+      return `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
+        `<span class="tx">${who}${i.from_boss ? `<span class="tag">${t('boss1')}</span>` : ''}${escapeHtml(i.title || t('noTitle'))}` +
+        (i.memo ? ` <span class="m">· ${escapeHtml(i.memo)}</span>` : '') + `</span></div>`;
+    }).join('');
+    return `<div class="card"><h3>${head}</h3>${list}</div>`;
+  }).join('');
 }
 
 // ---- 직원 종합 현황 ----

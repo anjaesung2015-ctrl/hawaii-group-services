@@ -441,6 +441,51 @@ module.exports = function createReportRoutes(db, opts = {}) {
     res.json([...byId.values()]);
   });
 
+  // ---- 지난 기록 모아보기 ----
+  // 끝낸 일은 오늘 목록에서 내려간다(이월이 멈춘다). 그래도 그동안 무엇을 했는지는 남아 있어야 하니
+  // 한 달치를 날짜별로 묶어 최신 날짜부터 내려보낸다. 읽기 전용 — 여기서는 아무것도 고치지 않는다.
+  // 이월은 적용하지 않는다. 기록은 적은 날짜(item_date)에 그대로 있어야 한다.
+  router.get('/history', (req, res) => {
+    const month = String(req.query.month || '');
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return res.status(400).json({ error: 'bad_month' });
+
+    // 전체 보기에는 사장님 본인도 넣는다 — 정작 사장님 기록이 빠지면 이 화면의 뜻이 없다.
+    // role='boss' 가 0, 'staff' 가 1이라 사장님이 맨 앞에 온다.
+    let people;
+    if (req.rsess.isBoss) {
+      const only = req.query.staff_id;
+      people = only
+        ? db.prepare("SELECT id, name FROM report_users WHERE id=?").all(Number(only))
+        : db.prepare("SELECT id, name FROM report_users WHERE is_active=1 ORDER BY role='staff', id").all();
+    } else {
+      people = db.prepare("SELECT id, name FROM report_users WHERE id=?").all(Number(req.rsess.staff_id));
+    }
+    // 사람별 색을 달력 범례와 똑같이 맞추려고 활성 직원 목록을 함께 준다
+    const staffList = db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all();
+    const ids = people.map(p => p.id);
+    if (!ids.length) return res.json({ month, people: staffList, rows: [] });
+    const names = new Map(people.map(p => [p.id, p.name]));
+
+    // 제목·메모가 둘 다 빈 항목은 기록이 아니다 — '+ 항목 추가'만 누르고 둔 빈 줄.
+    const items = db.prepare(
+      "SELECT id, staff_id, item_date, title, memo, done, from_boss FROM report_items" +
+      " WHERE period IN ('today','tomorrow') AND item_date LIKE ? AND staff_id IN (" + ids.map(() => '?').join(',') + ")" +
+      " AND (COALESCE(title,'') <> '' OR COALESCE(memo,'') <> '')" +
+      " ORDER BY item_date DESC, id"
+    ).all(month + '-%', ...ids);
+
+    const rows = [];
+    const byDate = new Map();
+    for (const it of items) {
+      let row = byDate.get(it.item_date);
+      if (!row) { row = { date: it.item_date, total: 0, done: 0, items: [] }; byDate.set(it.item_date, row); rows.push(row); }
+      row.total++;
+      if (it.done) row.done++;
+      row.items.push({ ...it, name: names.get(it.staff_id) || '' });
+    }
+    res.json({ month, people: staffList, rows });
+  });
+
   router.get('/overview', async (req, res) => {
     if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
     const { period, date } = req.query;
