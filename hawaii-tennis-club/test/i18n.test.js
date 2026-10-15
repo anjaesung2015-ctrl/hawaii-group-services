@@ -97,3 +97,44 @@ test('화면 자원·API 경로가 모두 상대 경로다', () => {
   assert.match(read('js/ui.js'), /fetch\(`api\$\{path\}`/, 'API 호출이 상대 경로가 아니다');
   assert.match(read('js/app.js'), /register\('sw\.js'/, '서비스워커 등록이 상대 경로가 아니다');
 });
+
+// 사전을 스크립트로 여러 번 고쳐 넣다 보면 한국어 칸에 몽골어가(또는 반대로) 섞이기 쉽다.
+test('한국어 칸에 키릴 문자가, 몽골어 칸에 한글이 섞이지 않았다', async () => {
+  const { DICT } = await import('../public/js/i18n.js');
+  const HANGUL = /[가-힣]/, CYRILLIC = /[\u0400-\u04FF]/;
+  const bad = [];
+  for (const [k, v] of Object.entries(DICT.ko)) {
+    if (Array.isArray(v)) continue;
+    if (CYRILLIC.test(v) && !HANGUL.test(v)) bad.push(`ko.${k} = ${v}`);
+  }
+  for (const [k, v] of Object.entries(DICT.mn)) {
+    if (Array.isArray(v)) continue;
+    if (HANGUL.test(v)) bad.push(`mn.${k} = ${v}`);
+  }
+  assert.deepStrictEqual(bad, [], '언어가 섞인 칸');
+});
+
+test('두 언어가 같은 것을 가리킨다 (뜻이 어긋난 칸이 없는지 — 알려진 함정)', async () => {
+  const { DICT } = await import('../public/js/i18n.js');
+  // 게시판을 'Чат'(채팅)으로 적어 두었던 적이 있다. 뜻이 다르면 안 된다.
+  assert.strictEqual(DICT.ko.tabBoard, '게시판');
+  assert.strictEqual(DICT.mn.tabBoard, 'Самбар');
+  // 휴회 제도는 폐지했다 — 어느 언어에도 '휴면/түр хүлээлгэ' 가 남아선 안 된다
+  const all = [...Object.values(DICT.ko), ...Object.values(DICT.mn)].flat().join(' ');
+  assert.ok(!/휴면|휴회/.test(all), '폐지된 휴회 표현이 남아있다');
+  assert.ok(!/түр хүлээлгэ/i.test(all), '폐지된 휴회 표현(몽골어)이 남아있다');
+});
+
+// 짧은 조각('+ хүн тохоох', 'саяхан', 'жишээ: …')은 한국어도 소문자 느낌이라 그냥 둔다.
+// 마침표로 끝나는 '문장'만 대문자로 시작하는지 본다.
+test('몽골어 문장은 대문자로 시작한다 (한국어와 톤 맞추기)', async () => {
+  const { DICT } = await import('../public/js/i18n.js');
+  const bad = [];
+  for (const [k, v] of Object.entries(DICT.mn)) {
+    if (Array.isArray(v) || !v) continue;
+    if (!/[.!?]$/.test(String(v).trim())) continue;          // 문장이 아니면 넘어간다
+    const first = String(v).replace(/^[^\p{L}]+/u, '')[0];   // 이모지·기호는 건너뛴다
+    if (first && /\p{Ll}/u.test(first) && /[Ѐ-ӿ]/.test(first)) bad.push(k + ' = ' + v);
+  }
+  assert.deepStrictEqual(bad, [], '소문자로 시작하는 몽골어 문장');
+});
