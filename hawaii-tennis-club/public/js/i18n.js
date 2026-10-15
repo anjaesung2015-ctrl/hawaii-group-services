@@ -87,6 +87,7 @@ export const DICT = {
     agoDay: '{n} өдрийн өмнө',
 
     repeat: 'Давтах (хэд хоногийг нэг дор)',
+    repeatAuto: '🪄 Гарчгаас {days} гарагийг уншлаа',
     repeatFrom: 'Хугацаа (эхлэх)',
     repeatTo: 'Хугацаа (дуусах)',
     repeatPreview: '{n} хуваарь бүртгэгдэнэ',
@@ -199,6 +200,7 @@ export const DICT = {
     agoDay: '{n}일 전',
 
     repeat: '반복 등록 (여러 날 한 번에)',
+    repeatAuto: '🪄 제목에서 {days}요일을 찾아 자동으로 골랐습니다',
     repeatFrom: '기간 시작',
     repeatTo: '기간 끝',
     repeatPreview: '{n}개 일정이 등록됩니다',

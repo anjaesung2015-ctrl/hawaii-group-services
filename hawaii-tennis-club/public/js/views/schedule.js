@@ -1,6 +1,7 @@
 // 일정 — 관리자가 등록하고 회원은 참석/불참/미정을 고른다.
 import { api, esc, toast, openModal, today, $$ } from '../ui.js';
 import { t, fmtDate, kindLabel } from '../i18n.js';
+import { weekdaysFromText, nextDateFor } from '../weekdays.js';
 
 const KINDS = ['regular', 'event', 'tournament'];
 
@@ -131,6 +132,7 @@ function repeatBlock() {
         </div>
         <div class="hint" data-rep-info></div>
       </div>
+      <div class="hint auto-note" data-rep-auto></div>
     </div>`;
 }
 
@@ -206,6 +208,10 @@ export function eventForm(e, state, refresh) {
   const info = form.querySelector('[data-rep-info]');
   const dateField = form.querySelector('[name="event_date"]');
 
+  const titleEl = form.querySelector('[name="title"]');
+  const autoNote = form.querySelector('[data-rep-auto]');
+  let touched = false;                 // 사람이 직접 요일을 건드렸으면 더 이상 자동으로 바꾸지 않는다
+
   const update = () => {
     const days = [...picked];
     const list = repeatDates(fromEl.value, toEl.value, days);
@@ -215,6 +221,43 @@ export function eventForm(e, state, refresh) {
     // 반복을 켜면 날짜 한 칸은 쓰지 않으므로 흐리게 둔다
     if (dateField) dateField.disabled = onBox.checked;
   };
+
+  const paint = () => {
+    form.querySelectorAll('[data-day]').forEach(b => {
+      b.classList.toggle('on', picked.has(Number(b.dataset.day)));
+    });
+  };
+
+  // 제목에 '수요일'·'화목'·'лхагва' 같은 말이 있으면 반복 요일을 알아서 집어준다
+  const autoFromTitle = () => {
+    if (touched) return;
+    const days = weekdaysFromText(titleEl.value);
+    if (!days.length) {
+      if (autoNote) autoNote.textContent = '';
+      return;
+    }
+    picked.clear();
+    for (const d of days) picked.add(d);
+    paint();
+
+    if (!onBox.checked) {            // 반복을 자동으로 켜 준다
+      onBox.checked = true;
+      body.hidden = false;
+    }
+    if (!fromEl.value || !toEl.value) {
+      const start = nextDateFor(days[0], dateField?.value || today());
+      fromEl.value = start;
+      const [y, mo, d] = start.split('-').map(Number);
+      toEl.value = new Date(Date.UTC(y, mo - 1, d + 42)).toISOString().slice(0, 10);   // 6주
+    }
+    // 반복을 끄더라도 날짜가 맞게 바뀌어 있도록
+    if (dateField && days.length === 1) dateField.value = nextDateFor(days[0], today());
+    if (autoNote) autoNote.textContent = t('repeatAuto', { days: days.map(d => t('dow')[d]).join('·') });
+    update();
+  };
+
+  titleEl.oninput = autoFromTitle;
+  autoFromTitle();                    // 제목이 이미 적혀 있는 경우(복사해 넣었을 때)
 
   onBox.onchange = () => {
     body.hidden = !onBox.checked;
@@ -231,6 +274,8 @@ export function eventForm(e, state, refresh) {
   };
 
   form.querySelectorAll('[data-day]').forEach(b => b.onclick = () => {
+    touched = true;                   // 직접 고르기 시작했으면 제목을 더 이상 따라가지 않는다
+    if (autoNote) autoNote.textContent = '';
     const d = Number(b.dataset.day);
     if (picked.has(d)) { picked.delete(d); b.classList.remove('on'); }
     else { picked.add(d); b.classList.add('on'); }

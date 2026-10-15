@@ -510,6 +510,7 @@ main {
   cursor: pointer;
 }
 .rep-day.on { background: var(--court); border-color: var(--court); color: #fff; }
+.rep .auto-note { color: var(--court-dark); font-weight: 650; padding-top: 6px; }
 .rep [data-rep-info] { margin-top: 8px; font-weight: 650; color: var(--court-dark); }
 .field input:disabled { background: #f1f4f2; color: var(--muted); }
 
