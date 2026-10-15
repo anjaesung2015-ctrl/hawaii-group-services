@@ -108,15 +108,16 @@ test('일반 회원은 명단을 고칠 수 없다', async () => {
 });
 
 // 일정·공지는 작성자(member)를 참조한다. 그냥 지우면 외래키가 막아 500이 난다.
-test('공지·일정을 쓴 관리자도 지울 수 있다 (글은 남고 작성자 표시만 사라진다)', async () => {
+test('공지·일정을 쓴 운영진도 지울 수 있다 (글은 남고 작성자 표시만 사라진다)', async () => {
   const app = makeApp();
-  const a = await loginAs(app.base, '99000000', '1234');
-  await a.call('/notices', { method: 'POST', body: { title: '공지', body: 'b' } });
-  await a.call('/events', { method: 'POST', body: { title: '모임', kind: 'regular', event_date: '2026-11-01', start_time: '19:00', end_time: '21:00' } });
-  // 관리자가 둘이어야 마지막 관리자 보호에 걸리지 않는다
-  await a.call(`/members/${app.memberId}`, { method: 'PATCH', body: { role: 'admin' } });
+  const owner = await loginAs(app.base, '99000000', '1234');
+  // 운영진 한 명을 만들고 그 사람이 공지·일정을 쓴다 (오너 자신은 지울 수 없으므로)
+  await owner.call(`/members/${app.memberId}`, { method: 'PATCH', body: { role: 'admin' } });
+  const staff = await loginAs(app.base, '88110044', '1111');
+  await staff.call('/notices', { method: 'POST', body: { title: '공지', body: 'b' } });
+  await staff.call('/events', { method: 'POST', body: { title: '모임', kind: 'regular', event_date: '2026-11-01', start_time: '19:00', end_time: '21:00' } });
 
-  const r = await a.call(`/members/${app.adminId}`, { method: 'DELETE' });
+  const r = await owner.call(`/members/${app.memberId}`, { method: 'DELETE' });
   assert.strictEqual(r.status, 200, JSON.stringify(r.data));
   assert.strictEqual(app.db.prepare('SELECT COUNT(*) c FROM notice').get().c, 1, '공지는 남아야 한다');
   assert.strictEqual(app.db.prepare('SELECT COUNT(*) c FROM event').get().c, 1, '일정도 남아야 한다');

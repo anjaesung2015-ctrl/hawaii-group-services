@@ -55,6 +55,9 @@ function makeApp(opts = {}) {
                              VALUES ('Батбаяр','88110044',?,'member','intermediate','active','2026-03-10')`)
     .run(dbmod.hashPin('1111'));
 
+  // 운영(server.js)과 같게 — 첫 관리자를 오너로 삼는다
+  dbmod.ensureOwner(db);
+
   let closed = false;
   const made = {
     db, dbmod, base, server, dir, notify, sent,

@@ -27,7 +27,7 @@ module.exports = function officerRoutes(db, auth) {
     })));
   });
 
-  router.put('/:role', auth.requireAdmin, (req, res) => {
+  router.put('/:role', auth.requireOwner, (req, res) => {
     const role = req.params.role;
     if (!ROLES.has(role)) return res.status(404).json({ error: 'not_found' });
 

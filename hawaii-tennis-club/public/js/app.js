@@ -55,7 +55,8 @@ function showApp() {
   $('#appView').hidden = false;
   $('#topClub').textContent = state.settings.club_name;
   $('#topWho').textContent = `${state.me.name}${state.me.title ? ` · ${state.me.title}` : ''}`;
-  $$('.admin-only').forEach(el => { el.hidden = state.me.role !== 'admin'; });
+  $$('.admin-only').forEach(el => { el.hidden = !(state.me.role === 'admin' || state.me.is_owner); });
+  $$('.owner-only').forEach(el => { el.hidden = !state.me.is_owner; });
   const tab = (location.hash || '#home').slice(1);
   state.tab = VIEWS[tab] ? tab : 'home';
   render();
@@ -131,7 +132,7 @@ $('#logoutBtn').onclick = async () => {
   showLogin();
 };
 
-$('#rulesBtn').onclick = () => { sheet.hidden = true; openRules({ canEdit: state.me?.role === 'admin' }); };
+$('#rulesBtn').onclick = () => { sheet.hidden = true; openRules({ canEdit: !!state.me?.is_owner }); };
 
 $('#pushBtn').onclick = () => { sheet.hidden = true; openPushPanel(); };
 

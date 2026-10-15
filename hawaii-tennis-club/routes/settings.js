@@ -8,7 +8,7 @@ module.exports = function settingRoutes(db, auth) {
   // 로그인 화면에도 클럽 이름을 띄우므로 읽기는 열어둔다 (비밀이 아니다)
   router.get('/', (req, res) => res.json(getSettings(db)));
 
-  router.put('/', auth.requireAdmin, (req, res) => {
+  router.put('/', auth.requireOwner, (req, res) => {
     const b = req.body || {};
     const patch = {};
     if ('club_name' in b) {

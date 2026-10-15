@@ -17,7 +17,7 @@ module.exports = function docRoutes(db, auth) {
   });
 
   // 개정 (부칙 제2조 — 임원 회의 제안, 클럽 오너 승인). 고치면 판 번호가 1 올라간다.
-  router.put('/rules', auth.requireAdmin, (req, res) => {
+  router.put('/rules', auth.requireOwner, (req, res) => {
     const lang = LANGS.includes(req.body?.lang) ? req.body.lang : null;
     const body = String(req.body?.body || '').trim();
     if (!lang) return res.status(400).json({ error: 'bad_lang' });

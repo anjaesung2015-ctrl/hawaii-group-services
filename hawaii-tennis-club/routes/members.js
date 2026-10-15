@@ -7,10 +7,10 @@ module.exports = function memberRoutes(db, auth) {
 
   // 명단 — 일반 회원에게는 이름·레벨만 보여준다 (전화번호는 관리자만)
   router.get('/', (req, res) => {
-    const rows = db.prepare(`SELECT id, name, phone, role, title, level, status, joined_at, memo
-                             FROM member ORDER BY status='dormant', name`).all();
-    if (req.me.role === 'admin') return res.json(rows);
-    res.json(rows.map(m => ({ id: m.id, name: m.name, level: m.level, status: m.status, role: m.role, title: m.title })));
+    const rows = db.prepare(`SELECT id, name, phone, role, title, level, status, joined_at, memo, is_owner
+                             FROM member ORDER BY is_owner DESC, role='member', status='dormant', name`).all();
+    if (req.me.role === 'admin' || req.me.is_owner) return res.json(rows);
+    res.json(rows.map(m => ({ id: m.id, name: m.name, level: m.level, status: m.status, role: m.role, title: m.title, is_owner: m.is_owner })));
   });
 
   router.post('/', auth.requireAdmin, (req, res) => {
@@ -66,6 +66,8 @@ module.exports = function memberRoutes(db, auth) {
     if ('memo' in b) { f.push('memo=?'); v.push(String(b.memo || '').trim() || null); }
     if ('joined_at' in b && /^\d{4}-\d{2}-\d{2}$/.test(b.joined_at)) { f.push('joined_at=?'); v.push(b.joined_at); }
     if ('role' in b) {
+      // 운영진 권한을 주고 거두는 것은 오너만 (사장님이 직접 권한을 준 사람만 운영진이 된다)
+      if (!req.me.is_owner) return res.status(403).json({ error: 'owner_only' });
       const role = b.role === 'admin' ? 'admin' : 'member';
       // 관리자가 한 명도 없는 상태를 만들 수는 없다 (아무도 못 들어가는 앱이 된다)
       if (role === 'member' && m.role === 'admin' && lastAdmin(db, m.id)) {
@@ -89,9 +91,11 @@ module.exports = function memberRoutes(db, auth) {
     res.json({ ok: true });
   });
 
-  router.delete('/:id', auth.requireAdmin, (req, res) => {
+  // 회원 삭제는 오너만 (회칙 제31조 — 제명은 클럽 오너 최종 결정)
+  router.delete('/:id', auth.requireOwner, (req, res) => {
     const m = db.prepare('SELECT * FROM member WHERE id=?').get(req.params.id);
     if (!m) return res.status(404).json({ error: 'not_found' });
+    if (m.is_owner) return res.status(409).json({ error: 'cannot_delete_owner' });
     if (m.role === 'admin' && lastAdmin(db, m.id)) return res.status(409).json({ error: 'last_admin' });
 
     // 지우면 그 사람의 회비·참석 기록도 함께 사라진다. 기록을 남기려면 '휴면'으로 돌린다.

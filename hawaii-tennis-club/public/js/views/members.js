@@ -6,7 +6,8 @@ import { orgBlock, bindOrg } from './org.js';
 const LEVELS = ['newbie', 'beginner', 'intermediate', 'advanced'];
 
 export async function renderMembers(el, state) {
-  const isAdmin = state.me.role === 'admin';
+  const isAdmin = state.me.role === 'admin' || state.me.is_owner;   // 운영진
+  const isOwner = !!state.me.is_owner;                               // 사장님
   const [list, join, org] = await Promise.all([
     api('/members'),
     isAdmin ? api('/join').catch(() => ({ count: 0, rows: [] })) : Promise.resolve({ count: 0, rows: [] }),
@@ -25,9 +26,9 @@ export async function renderMembers(el, state) {
     ${isAdmin ? `<div class="fab-row" style="margin-top:12px"><button class="btn btn-primary" style="width:100%" data-new>+ ${esc(t('newMember'))}</button></div>` : ''}
     <div class="section-head"><h2>${esc(t('memberList'))}</h2></div>
     <div class="card">
-      ${list.length ? list.map(m => row(m, isAdmin)).join('') : `<div class="empty">${esc(t('membersN', { n: 0 }))}</div>`}
+      ${list.length ? list.map(m => row(m, isAdmin, isOwner)).join('') : `<div class="empty">${esc(t('membersN', { n: 0 }))}</div>`}
     </div>
-    ${isAdmin ? `<div class="hint">${esc(t('stDormant'))} = ${esc(t('unpaid'))} ✕ · ${esc(t('del'))} ⚠</div>` : ''}`;
+    ${isOwner ? `<div class="hint">${esc(t('ownerNote'))}</div>` : (isAdmin ? `<div class="hint">${esc(t('adminNote'))}</div>` : '')}`;
 
   const add = el.querySelector('[data-new]');
   if (add) add.onclick = () => memberForm(null, state, () => renderMembers(el, state));
@@ -80,13 +81,13 @@ function joinBlock(join) {
     </div>`;
 }
 
-function row(m, isAdmin) {
+function row(m, isAdmin, isOwner) {
   const dormant = m.status === 'dormant';
   return `
     <div class="member-row" ${isAdmin ? `data-member="${m.id}" style="cursor:pointer"` : ''}>
       <div class="avatar ${dormant ? 'dormant' : ''}">${esc(String(m.name || '?').slice(0, 1))}</div>
       <div class="who">
-        <b>${esc(m.name)}${m.role === 'admin' ? ` <span class="pill gold">${esc(m.title || t('admin'))}</span>` : ''}</b>
+        <b>${esc(m.name)}${m.is_owner ? ` <span class="pill solid">👑 ${esc(t('roleOwner'))}</span>` : (m.role === 'admin' ? ` <span class="pill gold">${esc(m.title || t('admin'))}</span>` : '')}</b>
         <small>${esc(levelLabel(m.level))}${isAdmin && m.phone ? ` · ${esc(m.phone)}` : ''}${isAdmin && m.joined_at ? ` · ${esc(m.joined_at)}` : ''}</small>
       </div>
       ${dormant ? `<span class="pill grey">${esc(t('stDormant'))}</span>` : ''}
@@ -106,14 +107,16 @@ function memberForm(m, state, refresh) {
       { name: 'joined_at', label: t('joinedAt'), type: 'date', value: m?.joined_at || today() },
       { name: 'status', label: t('status'), type: 'select', value: m?.status || 'active',
         options: [{ value: 'active', label: t('stActive') }, { value: 'dormant', label: t('stDormant') }] },
-      { name: 'role', label: t('role'), type: 'select', value: m?.role || 'member',
-        options: [{ value: 'member', label: t('member') }, { value: 'admin', label: t('admin') }] },
+      // 운영진 권한을 주고 거두는 것은 오너만 — 다른 사람 화면에는 이 칸이 아예 없다
+      ...(state.me.is_owner ? [{ name: 'role', label: t('role'), type: 'select', value: m?.role || 'member',
+        options: [{ value: 'member', label: t('member') }, { value: 'admin', label: t('adminGive') }] }] : []),
       { name: 'title', label: t('titleRole'), value: m?.title || '', placeholder: '대표 / 코치' },
       { name: 'memo', label: t('memo'), value: m?.memo || '' },
     ],
     extra: isNew ? `<div class="hint">${esc(t('pin4'))}</div>`
       : `<button type="button" class="btn btn-sm" style="width:100%;margin-top:4px" data-pin>${esc(t('resetPin'))}</button>`,
-    onDelete: isNew ? null : async () => {
+    // 삭제는 오너만 (회칙 제31조 — 제명은 클럽 오너 최종 결정)
+    onDelete: (isNew || !state.me.is_owner || m.is_owner) ? null : async () => {
       await api(`/members/${m.id}`, { method: 'DELETE' });
       toast(t('deleted'));
       refresh();

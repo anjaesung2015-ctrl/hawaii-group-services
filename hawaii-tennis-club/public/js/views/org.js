@@ -16,7 +16,7 @@ export async function orgBlock(state) {
   let rows = [];
   try { rows = await api('/officers'); } catch (e) { return ''; }
   const by = new Map(rows.map(r => [r.role, r]));
-  const isAdmin = state.me.role === 'admin';
+  const isAdmin = !!state.me.is_owner;   // 조직도 편집은 오너만 (회칙 제14조③·제16조)
 
   const slot = (role) => {
     const o = by.get(role) || {};

@@ -195,6 +195,9 @@ function migrate(db) {
 
   // 회칙 동의 — 언제, 어느 판(version)에 동의했는지
   const mcols = db.prepare('PRAGMA table_info(member)').all().map(c => c.name);
+  // 오너(사장님) 표시 — role 의 CHECK 제약을 건드리지 않으려고 별도 칸으로 둔다.
+  // 오너는 운영진 권한을 주고 회수하며, 회칙 수정·조직도·회비 금액·회원 삭제를 혼자 한다.
+  if (!mcols.includes('is_owner')) db.exec('ALTER TABLE member ADD COLUMN is_owner INTEGER NOT NULL DEFAULT 0');
   if (!mcols.includes('rules_agreed_at')) db.exec('ALTER TABLE member ADD COLUMN rules_agreed_at TEXT');
   if (!mcols.includes('rules_version')) db.exec('ALTER TABLE member ADD COLUMN rules_version INTEGER');
   const jcols = db.prepare('PRAGMA table_info(join_request)').all().map(c => c.name);
@@ -248,6 +251,16 @@ function ensureFirstAdmin(db, { name, phone, pin } = {}) {
   return admin;
 }
 
+// 오너가 아무도 없으면 가장 먼저 만들어진 관리자를 오너로 삼는다 (부팅 때 한 번).
+function ensureOwner(db) {
+  const has = db.prepare('SELECT COUNT(*) c FROM member WHERE is_owner=1').get().c;
+  if (has) return null;
+  const first = db.prepare("SELECT id, name FROM member WHERE role='admin' ORDER BY id LIMIT 1").get();
+  if (!first) return null;
+  db.prepare('UPDATE member SET is_owner=1 WHERE id=?').run(first.id);
+  return first;
+}
+
 const hashPin = (pin) => bcrypt.hashSync(String(pin), 10);
 const checkPin = (pin, hash) => bcrypt.compareSync(String(pin ?? ''), hash);
 
@@ -281,7 +294,7 @@ function setSettings(db, patch) {
 }
 
 module.exports = {
-  open, migrate, ensureFirstAdmin, getSettings, setSettings,
+  open, migrate, ensureFirstAdmin, ensureOwner, getSettings, setSettings,
   hashPin, checkPin, normalizePhone, validPhone, validPin,
   today, thisMonth, UB,
   LEVELS, EVENT_KINDS, ANSWERS, METHODS, DUE_KINDS, DEFAULTS, DB_PATH,

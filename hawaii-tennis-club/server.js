@@ -4,7 +4,7 @@ const path = require('path');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 
-const { open, ensureFirstAdmin, getSettings } = require('./lib/db');
+const { open, ensureFirstAdmin, ensureOwner, getSettings } = require('./lib/db');
 const { createAuth } = require('./lib/auth');
 const { createNotifier } = require('./lib/notify');
 const { createJobs } = require('./lib/jobs');
@@ -16,6 +16,7 @@ const auth = createAuth(db);
 const notify = createNotifier(db);
 const jobs = createJobs(db, notify);
 const firstAdmin = ensureFirstAdmin(db);
+const newOwner = ensureOwner(db);   // 오너가 없으면 첫 관리자를 오너로
 
 const app = express();
 app.set('trust proxy', 1);
@@ -61,6 +62,7 @@ const server = app.listen(PORT, () => {
   console.log(`  🎾 ${s.club_name}`);
   console.log(`  ➜  http://localhost:${PORT}`);
   console.log(`     월회비 ${s.monthly_fee.toLocaleString()}${s.currency} · 입회비 ${s.joining_fee.toLocaleString()}${s.currency}`);
+  if (newOwner) console.log(`  👑 오너: ${newOwner.name} (권한 부여·회칙 수정은 이 계정만 가능)`);
   if (firstAdmin) {
     console.log('');
     console.log('  ───────── 첫 관리자 계정을 만들었습니다 ─────────');

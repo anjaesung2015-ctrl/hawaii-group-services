@@ -63,7 +63,7 @@ function createAuth(db) {
     if (token) {
       try {
         const p = jwt.verify(token, secret);
-        const m = db.prepare('SELECT id, name, phone, role, title, level, status, joined_at FROM member WHERE id=?').get(p.id);
+        const m = db.prepare('SELECT id, name, phone, role, title, level, status, joined_at, is_owner FROM member WHERE id=?').get(p.id);
         // 탈퇴(삭제)한 사람의 쿠키는 더 이상 통하지 않는다
         if (m) req.me = m;
       } catch (e) { /* 만료·위조 — 로그인 안 된 것으로 본다 */ }
@@ -74,11 +74,17 @@ function createAuth(db) {
   const requireMember = (req, res, next) =>
     req.me ? next() : res.status(401).json({ error: 'login_required' });
 
+  // 운영진(오너 포함) — 가입 승인, 일정·공지·회비 관리
   const requireAdmin = (req, res, next) =>
-    req.me ? (req.me.role === 'admin' ? next() : res.status(403).json({ error: 'admin_only' }))
+    req.me ? ((req.me.role === 'admin' || req.me.is_owner) ? next() : res.status(403).json({ error: 'admin_only' }))
            : res.status(401).json({ error: 'login_required' });
 
-  return { sign, setCookie, clearCookie, attach, requireMember, requireAdmin, lockedFor, noteFail, clearFails, COOKIE };
+  // 오너만 — 권한 주기/회수, 회칙 수정, 조직도, 회비 금액, 회원 삭제
+  const requireOwner = (req, res, next) =>
+    req.me ? (req.me.is_owner ? next() : res.status(403).json({ error: 'owner_only' }))
+           : res.status(401).json({ error: 'login_required' });
+
+  return { sign, setCookie, clearCookie, attach, requireMember, requireAdmin, requireOwner, lockedFor, noteFail, clearFails, COOKIE };
 }
 
 module.exports = { createAuth, COOKIE, FAIL_LIMIT };

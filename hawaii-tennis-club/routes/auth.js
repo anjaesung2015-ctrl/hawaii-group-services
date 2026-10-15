@@ -67,4 +67,5 @@ module.exports = function authRoutes(db, auth) {
 const publicMe = (m) => ({
   id: m.id, name: m.name, phone: m.phone, role: m.role,
   title: m.title, level: m.level, status: m.status, joined_at: m.joined_at,
+  is_owner: !!m.is_owner,
 });
