@@ -5,6 +5,7 @@ import { renderHome } from './views/home.js';
 import { renderSchedule } from './views/schedule.js';
 import { renderBoard } from './views/board.js';
 import { openPushPanel } from './views/push.js';
+import { openRules, askAgreeIfNeeded } from './views/rules.js';
 import { renderDues } from './views/dues.js';
 import { renderNotices } from './views/notices.js';
 import { renderMembers } from './views/members.js';
@@ -71,7 +72,10 @@ $('#loginForm').onsubmit = async (e) => {
     const r = await api('/auth/login', { method: 'POST', body: { phone: $('#loginPhone').value, pin: $('#loginPin').value } });
     state.me = r.me;
     state.settings = await api('/settings');
+    const me = await api('/auth/me').catch(() => ({}));
+    state.rules_agreed = me.rules_agreed;
     showApp();
+    askAgreeIfNeeded(state);
   } catch (e2) {
     err.textContent = e2.message === 'too_many_tries' ? t('loginLocked', { s: e2.data?.retry_after || 60 })
       : e2.message === 'dormant' ? t('loginDormant')
@@ -95,16 +99,24 @@ $('#joinBtn').onclick = () => {
       { name: 'level', label: t('level'), type: 'select', value: 'beginner',
         options: LEVELS.map(l => ({ value: l, label: t({ newbie: 'lvNewbie', beginner: 'lvBeginner', intermediate: 'lvIntermediate', advanced: 'lvAdvanced' }[l]) })) },
     ],
-    extra: `<div class="hint">${t('joinHint')}</div>`,
+    extra: `<div class="hint">${t('joinHint')}</div>
+      <label class="rl-agree"><input type="checkbox" name="agree"><span>${t('rulesAgreeCheck')}</span></label>
+      <button type="button" class="btn btn-sm" style="width:100%" data-see-rules>${t('rulesSee')}</button>`,
     saveLabel: t('joinSend'),
-    onSave: async (v) => {
+    onSave: async (v, form) => {
       if (!v.name) return t('required');
       if (!/^\d{4}$/.test(v.pin)) return t('pin4');
-      await api('/join', { method: 'POST', body: v });
+      // 회칙에 동의해야 신청된다 (제6조7)
+      if (!form.querySelector('[name="agree"]').checked) return t('rulesAgreeCheck');
+      await api('/join', { method: 'POST', body: { ...v, agree: true } });
       toast(t('joinDone'));
       $('#loginPhone').value = v.phone;
     },
   });
+
+  // 신청 화면에서 회칙을 열어볼 수 있다 (로그인 전에도 읽힌다)
+  const see = document.querySelector('[data-see-rules]');
+  if (see) see.onclick = () => openRules();
 };
 
 // ---------- 상단 메뉴 ----------
@@ -118,6 +130,8 @@ $('#logoutBtn').onclick = async () => {
   await api('/auth/logout', { method: 'POST' }).catch(() => {});
   showLogin();
 };
+
+$('#rulesBtn').onclick = () => { sheet.hidden = true; openRules({ canEdit: state.me?.role === 'admin' }); };
 
 $('#pushBtn').onclick = () => { sheet.hidden = true; openPushPanel(); };
 
@@ -185,7 +199,9 @@ async function boot() {
   try {
     const r = await api('/auth/me');          // 쿠키가 살아있으면 로그인 화면을 건너뛴다
     state.me = r.me;
+    state.rules_agreed = r.rules_agreed;
     showApp();
+    askAgreeIfNeeded(state);                  // 아직 회칙에 동의하지 않았으면 한 번 받는다
   } catch (e) {
     showLogin();
   }

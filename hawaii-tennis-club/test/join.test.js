@@ -3,7 +3,8 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { makeApp, client, loginAs } = require('./helper');
 
-const req = (over = {}) => ({ name: 'Сарнай', phone: '95556677', pin: '2468', level: 'beginner', ...over });
+// 2026-10-16부터 회칙 동의(agree)가 있어야 신청된다 (회칙 제6조7)
+const req = (over = {}) => ({ name: 'Сарнай', phone: '95556677', pin: '2468', level: 'beginner', agree: true, ...over });
 
 test('로그인 없이 가입 신청할 수 있다', async () => {
   const app = makeApp();

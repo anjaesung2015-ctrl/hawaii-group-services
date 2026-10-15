@@ -445,6 +445,71 @@ main {
 .seg button.on { background: var(--court-dark); border-color: var(--court-dark); color: #fff; }
 .fab-row { margin: 4px 0 2px; }
 
+/* 회칙 */
+.rl-meta { font-size: 12px; color: var(--muted); margin: -6px 2px 10px; }
+.rl-body {
+  max-height: 58vh;
+  overflow-y: auto;
+  border: 1px solid var(--hair);
+  border-radius: 12px;
+  padding: 14px 15px;
+  background: #fbfcfb;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.rl-chapter {
+  margin: 16px 0 8px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--court);
+  font-weight: 750;
+  font-size: 14.5px;
+  color: var(--court-dark);
+}
+.rl-body > .rl-chapter:first-child { margin-top: 0; }
+.rl-article { margin-top: 11px; font-weight: 700; color: var(--ink); }
+.rl-line { color: var(--ink-soft); }
+.rl-gap { height: 7px; }
+.rl-agree {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 8px;
+  padding: 12px;
+  border: 1px solid var(--court);
+  border-radius: 12px;
+  background: var(--court-tint);
+  font-weight: 650;
+  font-size: 14px;
+  cursor: pointer;
+}
+.rl-agree input { width: 21px; height: 21px; flex-shrink: 0; }
+
+/* 조직도 */
+.org { padding: 16px 12px; }
+.org-row { display: flex; gap: 7px; justify-content: center; flex-wrap: wrap; }
+.org-link { width: 2px; height: 14px; background: var(--hair); margin: 0 auto; }
+.org-label { font-size: 11px; color: var(--muted); letter-spacing: .06em; text-align: center; margin: 16px 0 7px; }
+.org-slot {
+  flex: 1 1 30%;
+  min-width: 96px;
+  max-width: 180px;
+  border: 1px solid var(--hair);
+  border-radius: 11px;
+  padding: 9px 8px;
+  text-align: center;
+  background: #fff;
+}
+.org-slot.tap { cursor: pointer; }
+.org-slot.tap:active { transform: scale(.98); }
+.org-slot.empty { background: #fafcfb; border-style: dashed; }
+.org-row:first-child .org-slot { background: linear-gradient(135deg, #1b7a4b, #0f5132); border: 0; max-width: 240px; }
+.org-row:first-child .org-role { color: rgba(255,255,255,.8); }
+.org-row:first-child .org-name { color: #fff; }
+.org-role { font-size: 10.5px; color: var(--muted); letter-spacing: .02em; }
+.org-name { font-size: 14px; font-weight: 700; margin-top: 2px; color: var(--ink); }
+.org-slot.empty .org-name { color: var(--muted); font-weight: 500; font-size: 12.5px; }
+.org-note { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
 /* 폰 알림 패널 */
 .push-on { font-weight: 700; color: var(--court-dark); font-size: 15px; margin-bottom: 4px; }
 

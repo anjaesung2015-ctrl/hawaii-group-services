@@ -34,7 +34,21 @@ module.exports = function authRoutes(db, auth) {
   // 앱을 다시 열었을 때 로그인 화면을 건너뛰기 위한 확인
   router.get('/me', (req, res) => {
     if (!req.me) return res.status(401).json({ error: 'login_required' });
-    res.json({ me: publicMe(req.me) });
+    const r = db.prepare('SELECT rules_agreed_at, rules_version FROM member WHERE id=?').get(req.me.id);
+    const now = db.prepare("SELECT version FROM doc WHERE key='rules' AND lang='ko'").get()?.version || 1;
+    res.json({
+      me: publicMe(req.me),
+      // 아직 동의하지 않았거나, 회칙이 개정된 뒤로 동의가 없으면 한 번 받는다
+      rules_agreed: !!r?.rules_agreed_at && (r.rules_version || 0) >= now,
+      rules_version: now,
+    });
+  });
+
+  // 회칙 동의 (제6조7 서명 대신 — 기존 회원도 한 번 받는다)
+  router.post('/agree-rules', auth.requireMember, (req, res) => {
+    const v = db.prepare("SELECT version FROM doc WHERE key='rules' AND lang='ko'").get()?.version || 1;
+    db.prepare("UPDATE member SET rules_agreed_at=datetime('now','localtime'), rules_version=? WHERE id=?").run(v, req.me.id);
+    res.json({ ok: true, rules_version: v });
   });
 
   // 본인 PIN 변경 (지금 PIN을 확인한 뒤)

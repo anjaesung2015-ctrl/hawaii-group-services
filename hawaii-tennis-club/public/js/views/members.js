@@ -1,14 +1,16 @@
 // 회원 명단 — 관리자는 추가·수정·삭제·PIN 재설정, 회원은 이름과 레벨만 본다.
 import { api, esc, toast, openModal, today, errText, $$ } from '../ui.js';
 import { t, levelLabel } from '../i18n.js';
+import { orgBlock, bindOrg } from './org.js';
 
 const LEVELS = ['newbie', 'beginner', 'intermediate', 'advanced'];
 
 export async function renderMembers(el, state) {
   const isAdmin = state.me.role === 'admin';
-  const [list, join] = await Promise.all([
+  const [list, join, org] = await Promise.all([
     api('/members'),
     isAdmin ? api('/join').catch(() => ({ count: 0, rows: [] })) : Promise.resolve({ count: 0, rows: [] }),
+    orgBlock(state),
   ]);
   const active = list.filter(m => m.status !== 'dormant');
 
@@ -19,6 +21,7 @@ export async function renderMembers(el, state) {
       ${isAdmin ? `<div class="stat ${join.count ? 'warn' : ''}"><b>${join.count}</b><span>${esc(t('joinPending'))}</span></div>` : ''}
     </div>
     ${isAdmin ? joinBlock(join) : ''}
+    ${org}
     ${isAdmin ? `<div class="fab-row" style="margin-top:12px"><button class="btn btn-primary" style="width:100%" data-new>+ ${esc(t('newMember'))}</button></div>` : ''}
     <div class="section-head"><h2>${esc(t('memberList'))}</h2></div>
     <div class="card">
@@ -28,6 +31,7 @@ export async function renderMembers(el, state) {
 
   const add = el.querySelector('[data-new]');
   if (add) add.onclick = () => memberForm(null, state, () => renderMembers(el, state));
+  bindOrg(el, state, () => renderMembers(el, state));
 
   // 가입 신청 승인 · 거절
   $$('[data-approve]', el).forEach(b => b.onclick = async () => {

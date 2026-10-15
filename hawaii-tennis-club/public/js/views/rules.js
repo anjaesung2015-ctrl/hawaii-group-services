@@ -1,0 +1,71 @@
+// 회칙 — 회원은 읽고, 관리자는 고친다(부칙 제2조). 가입 신청 화면에서도 열린다(로그인 전).
+import { api, esc, toast, openModal, errText, $ } from '../ui.js';
+import { t, LANG } from '../i18n.js';
+
+// 장 제목(■)과 조문(제N조 / N дугаар зүйл)만 굵게 — 긴 글을 눈으로 따라가기 쉽게
+function render(body) {
+  return esc(body)
+    .split('\n')
+    .map(line => {
+      if (/^■/.test(line)) return `<div class="rl-chapter">${line.replace(/^■\s*/, '')}</div>`;
+      if (/^(제\s*\d+조|\d+\s*(дугаар|дүгээр)\s*зүйл)/.test(line)) return `<div class="rl-article">${line}</div>`;
+      if (!line.trim()) return '<div class="rl-gap"></div>';
+      return `<div class="rl-line">${line}</div>`;
+    })
+    .join('');
+}
+
+export async function openRules({ canEdit = false, onAgree = null } = {}) {
+  let d;
+  try { d = await api(`/docs/rules?lang=${LANG}`); }
+  catch (e) { toast(errText(e), true); return; }
+
+  const m = openModal({
+    title: t('rulesTitle'),
+    fields: [],
+    extra: `
+      <div class="rl-meta">
+        ${esc(t('rulesVersion', { v: d.version }))} · ${esc(String(d.updated_at).slice(0, 10))}
+        ${d.lang !== LANG ? ` · ${esc(t('rulesOnlyKo'))}` : ''}
+      </div>
+      <div class="rl-body">${render(d.body)}</div>
+      ${onAgree ? `<label class="rl-agree"><input type="checkbox" data-agree><span>${esc(t('rulesAgreeCheck'))}</span></label>` : ''}
+      ${canEdit ? `<button type="button" class="btn btn-sm" style="width:100%;margin-top:12px" data-edit>${esc(t('rulesEdit'))}</button>` : ''}`,
+    saveLabel: onAgree ? t('rulesAgreeBtn') : t('close'),
+    onSave: async () => {
+      if (!onAgree) return;
+      if (!m.form.querySelector('[data-agree]').checked) return t('rulesAgreeCheck');
+      await onAgree();
+    },
+  });
+
+  const edit = m.form.querySelector('[data-edit]');
+  if (edit) edit.onclick = () => { m.close(); editRules(d); };
+}
+
+// 개정 — 긴 글이라 통째로 고친다. 저장하면 판 번호가 1 올라간다.
+function editRules(d) {
+  openModal({
+    title: `${t('rulesEdit')} (${d.lang === 'mn' ? 'Монгол' : '한국어'})`,
+    fields: [{ name: 'body', label: t('rulesTitle'), type: 'textarea', value: d.body }],
+    extra: `<div class="hint">${esc(t('rulesEditHint'))}</div>`,
+    onSave: async (v) => {
+      if (!v.body || v.body.length < 50) return t('required');
+      const r = await api('/docs/rules', { method: 'PUT', body: { lang: d.lang, body: v.body } });
+      toast(t('rulesSaved', { v: r.version }));
+    },
+  });
+}
+
+// 아직 동의하지 않은 회원에게 로그인 직후 한 번 띄운다
+export async function askAgreeIfNeeded(state) {
+  if (state.rules_agreed) return;
+  await openRules({
+    canEdit: false,
+    onAgree: async () => {
+      await api('/auth/agree-rules', { method: 'POST' });
+      state.rules_agreed = true;
+      toast(t('rulesAgreed'));
+    },
+  });
+}

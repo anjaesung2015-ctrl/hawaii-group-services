@@ -107,6 +107,27 @@ function migrate(db) {
       v TEXT NOT NULL
     );
 
+    -- 회칙 등 클럽 문서. 언어마다 한 줄. 고치면 version 이 올라간다(동의 받은 판을 구분하기 위해).
+    CREATE TABLE IF NOT EXISTS doc (
+      key        TEXT NOT NULL,
+      lang       TEXT NOT NULL CHECK (lang IN ('ko','mn')),
+      body       TEXT NOT NULL,
+      version    INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      updated_by INTEGER REFERENCES member(id),
+      PRIMARY KEY (key, lang)
+    );
+
+    -- 조직도 (회칙 제14조). 회원을 지정하거나, 회원이 아닌 분은 이름만 적는다(명예회장·고문).
+    CREATE TABLE IF NOT EXISTS officer (
+      role        TEXT PRIMARY KEY,
+      member_id   INTEGER REFERENCES member(id) ON DELETE SET NULL,
+      person_name TEXT,
+      note        TEXT,
+      sort        INTEGER NOT NULL DEFAULT 0,
+      updated_at  TEXT
+    );
+
     -- 폰 알림 구독 — 한 사람이 폰·PC 여러 대를 등록할 수 있다(기기마다 endpoint 하나).
     CREATE TABLE IF NOT EXISTS push_sub (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -172,9 +193,44 @@ function migrate(db) {
   const cols = db.prepare('PRAGMA table_info(event)').all().map(c => c.name);
   if (!cols.includes('reminded_at')) db.exec('ALTER TABLE event ADD COLUMN reminded_at TEXT');
 
+  // 회칙 동의 — 언제, 어느 판(version)에 동의했는지
+  const mcols = db.prepare('PRAGMA table_info(member)').all().map(c => c.name);
+  if (!mcols.includes('rules_agreed_at')) db.exec('ALTER TABLE member ADD COLUMN rules_agreed_at TEXT');
+  if (!mcols.includes('rules_version')) db.exec('ALTER TABLE member ADD COLUMN rules_version INTEGER');
+  const jcols = db.prepare('PRAGMA table_info(join_request)').all().map(c => c.name);
+  if (!jcols.includes('agreed_at')) db.exec('ALTER TABLE join_request ADD COLUMN agreed_at TEXT');
+  if (!jcols.includes('agreed_version')) db.exec('ALTER TABLE join_request ADD COLUMN agreed_version INTEGER');
+
   const put = db.prepare('INSERT INTO setting (k, v) VALUES (?, ?) ON CONFLICT(k) DO NOTHING');
   for (const [k, v] of Object.entries(DEFAULTS)) put.run(k, v);
+
+  // 회칙 처음 내용 (비어 있을 때만 — 앱에서 고친 내용을 덮어쓰지 않는다)
+  const { KO, MN } = require('./rules-text');
+  const putDoc = db.prepare("INSERT INTO doc (key, lang, body) VALUES ('rules', ?, ?) ON CONFLICT(key, lang) DO NOTHING");
+  putDoc.run('ko', KO);
+  putDoc.run('mn', MN);
+
+  // 조직도 자리 (회칙 제14조) — 사람은 비어 있고 자리만 먼저 만들어 둔다
+  const putOfficer = db.prepare('INSERT INTO officer (role, sort) VALUES (?,?) ON CONFLICT(role) DO NOTHING');
+  OFFICER_ROLES.forEach((r, i) => putOfficer.run(r.role, i));
 }
+
+// 회칙 제14조의 직책. slots = 그 자리에 몇 명까지.
+const OFFICER_ROLES = [
+  { role: 'owner',     group: 'owner',    slots: 1 },
+  { role: 'president', group: 'exec',     slots: 1 },
+  { role: 'vice1',     group: 'exec',     slots: 1 },
+  { role: 'vice2',     group: 'exec',     slots: 1 },
+  { role: 'manager1',  group: 'exec',     slots: 1 },
+  { role: 'manager2',  group: 'exec',     slots: 1 },
+  { role: 'match',     group: 'exec',     slots: 1 },
+  { role: 'event',     group: 'exec',     slots: 1 },
+  { role: 'external',  group: 'exec',     slots: 1 },
+  { role: 'honorary',  group: 'honorary', slots: 1 },
+  { role: 'advisor1',  group: 'honorary', slots: 1 },
+  { role: 'advisor2',  group: 'honorary', slots: 1 },
+  { role: 'advisor3',  group: 'honorary', slots: 1 },
+];
 
 // 첫 실행이면 관리자(대표) 한 명을 만든다. 이미 관리자가 있으면 아무것도 하지 않는다.
 function ensureFirstAdmin(db, { name, phone, pin } = {}) {
@@ -229,4 +285,5 @@ module.exports = {
   hashPin, checkPin, normalizePhone, validPhone, validPin,
   today, thisMonth, UB,
   LEVELS, EVENT_KINDS, ANSWERS, METHODS, DUE_KINDS, DEFAULTS, DB_PATH,
+  OFFICER_ROLES,
 };

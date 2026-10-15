@@ -42,6 +42,8 @@ function makeApp(opts = {}) {
   app.use('/api/notices', require('../routes/notices')(db, auth, notify));
   app.use('/api/posts', require('../routes/posts')(db, auth, notify));
   app.use('/api/push', require('../routes/push')(db, auth, notify));
+  app.use('/api/docs', require('../routes/docs')(db, auth));
+  app.use('/api/officers', require('../routes/officers')(db, auth));
 
   const server = app.listen(0);
   const base = `http://127.0.0.1:${server.address().port}/api`;

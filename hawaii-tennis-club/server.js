@@ -33,6 +33,8 @@ app.use('/api/dues', require('./routes/dues')(db, auth));
 app.use('/api/notices', require('./routes/notices')(db, auth, notify));
 app.use('/api/posts', require('./routes/posts')(db, auth, notify));   // 자유게시판
 app.use('/api/push', require('./routes/push')(db, auth, notify));    // 폰 알림
+app.use('/api/docs', require('./routes/docs')(db, auth));            // 회칙 (읽기는 누구나)
+app.use('/api/officers', require('./routes/officers')(db, auth));    // 조직도
 
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 

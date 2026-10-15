@@ -31,6 +31,8 @@ module.exports = function joinRoutes(db, auth, notify) {
     if (!name) return res.status(400).json({ error: 'name_required' });
     if (!validPhone(phone)) return res.status(400).json({ error: 'bad_phone' });
     if (!validPin(pin)) return res.status(400).json({ error: 'pin_4_digits' });
+    // 회칙에 동의해야 신청할 수 있다 (제6조7)
+    if (!b.agree) return res.status(400).json({ error: 'agree_required' });
     if (tooMany(req)) return res.status(429).json({ error: 'too_many_requests' });
 
     // 이미 회원인 번호 / 이미 신청해 둔 번호
@@ -39,8 +41,10 @@ module.exports = function joinRoutes(db, auth, notify) {
       return res.status(409).json({ error: 'already_requested' });
     }
 
-    const r = db.prepare(`INSERT INTO join_request (name, phone, pin_hash, level, memo) VALUES (?,?,?,?,?)`)
-      .run(name, phone, hashPin(pin), level, memo);
+    const rulesVersion = db.prepare("SELECT version FROM doc WHERE key='rules' AND lang='ko'").get()?.version || 1;
+    const r = db.prepare(`INSERT INTO join_request (name, phone, pin_hash, level, memo, agreed_at, agreed_version)
+                          VALUES (?,?,?,?,?, datetime('now','localtime'), ?)`)
+      .run(name, phone, hashPin(pin), level, memo, rulesVersion);
     res.json({ ok: true, id: r.lastInsertRowid });
 
     // 승인해 줄 사람(관리자)에게만 알린다
@@ -72,9 +76,9 @@ module.exports = function joinRoutes(db, auth, notify) {
 
     const { joining_fee } = getSettings(db);
     const approve = db.transaction(() => {
-      const m = db.prepare(`INSERT INTO member (name, phone, pin_hash, role, level, status, joined_at, memo)
-                            VALUES (?,?,?,'member',?,'active',?,?)`)
-        .run(q.name, q.phone, q.pin_hash, q.level, today(), q.memo);
+      const m = db.prepare(`INSERT INTO member (name, phone, pin_hash, role, level, status, joined_at, memo, rules_agreed_at, rules_version)
+                            VALUES (?,?,?,'member',?,'active',?,?,?,?)`)
+        .run(q.name, q.phone, q.pin_hash, q.level, today(), q.memo, q.agreed_at, q.agreed_version);
       // 입회비 미납 한 줄을 세워 둔다 (손으로 넣은 회원과 같은 처리)
       if (joining_fee > 0) {
         db.prepare(`INSERT INTO due (member_id, kind, period, amount) VALUES (?,'joining',?,?)

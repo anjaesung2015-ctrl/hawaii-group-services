@@ -168,7 +168,7 @@ test('가입 신청은 관리자에게만 간다', async () => {
 
   app.sent.length = 0;
   const c = client(app.base);
-  await c.call('/join', { method: 'POST', body: { name: 'Сарнай', phone: '95556677', pin: '2468' } });
+  await c.call('/join', { method: 'POST', body: { name: 'Сарнай', phone: '95556677', pin: '2468', agree: true } });
   await app.settle();
 
   assert.strictEqual(app.sent.length, 1);
