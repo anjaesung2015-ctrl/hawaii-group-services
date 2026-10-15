@@ -131,6 +131,25 @@ test('기록 — 직원은 staff_id를 넘겨도 본인 것만 본다', async ()
   server.close();
 });
 
+test('기록 — 직원도 자기 기록을 본다 (완료한 것까지)', async () => {
+  const { db, server, base } = makeServer();
+  item(db, 1, '2026-10-09', '끝낸 일', 1);
+  item(db, 1, '2026-10-14', '남은 일', 0);
+  const d = await (await hist(base, 'month=2026-10', staffSess(1, '미가'))).json();
+  assert.deepStrictEqual(d.rows.map(r => r.date), ['2026-10-14', '2026-10-09']);
+  assert.strictEqual(d.rows[1].items[0].done, 1);
+  server.close();
+});
+
+test('기록 — 직원 응답에는 다른 사람 명단이 없다', async () => {
+  const { db, server, base } = makeServer();
+  item(db, 1, '2026-10-09', '미가 일', 0);
+  const d = await (await hist(base, 'month=2026-10', staffSess(1, '미가'))).json();
+  assert.deepStrictEqual(d.people, []);
+  assert.deepStrictEqual([...new Set(d.rows[0].items.map(i => i.name))], ['미가']);
+  server.close();
+});
+
 test('기록 — 기록이 없는 달은 빈 목록', async () => {
   const { server, base, bossId } = makeServer();
   const r = await hist(base, 'month=2026-10', bossSess(bossId));
@@ -169,6 +188,12 @@ const ROWS = [{
     { id: 2, staff_id: 1, name: '미가', title: '효소표 정리', memo: '', done: 0, from_boss: 1 },
   ],
 }];
+
+test('화면 — 기록 탭은 직원 화면에서도 보인다', () => {
+  const ctx = loadApp();
+  assert.ok(!ctx.BOSS_TABS.includes('hist'), '기록은 사장님 전용이 아니다');
+  assert.ok(ctx.BOSS_TABS.includes('att') && ctx.BOSS_TABS.includes('score'), '근태·종합은 사장님 전용');
+});
 
 test('화면 — 날짜 머리글과 완료 집계가 보인다', () => {
   const ctx = loadApp();

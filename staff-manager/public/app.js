@@ -81,7 +81,8 @@ async function doLogin(body, btn) {
   }
 }
 
-const BOSS_TABS = ['hist', 'att', 'score'];   // 기록·근태·종합은 사장님 화면에만
+// 기록은 직원도 자기 것만 본다 (서버가 본인으로 강제). 근태·종합은 사장님 화면에만.
+const BOSS_TABS = ['att', 'score'];
 
 function applyTabVisibility() {
   $('#tabs').querySelectorAll('button').forEach(b => {

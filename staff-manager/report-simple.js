@@ -460,8 +460,11 @@ module.exports = function createReportRoutes(db, opts = {}) {
     } else {
       people = db.prepare("SELECT id, name FROM report_users WHERE id=?").all(Number(req.rsess.staff_id));
     }
-    // 사람별 색을 달력 범례와 똑같이 맞추려고 활성 직원 목록을 함께 준다
-    const staffList = db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all();
+    // 사람별 색을 달력 범례와 똑같이 맞추려고 활성 직원 목록을 함께 준다.
+    // 직원 화면은 이름 뱃지를 쓰지 않으니(본인 것만 본다) 남의 명단을 내려보내지 않는다.
+    const staffList = req.rsess.isBoss
+      ? db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all()
+      : [];
     const ids = people.map(p => p.id);
     if (!ids.length) return res.json({ month, people: staffList, rows: [] });
     const names = new Map(people.map(p => [p.id, p.name]));
