@@ -3,7 +3,7 @@ import { api, esc, toast, openModal, errText, $ } from '../ui.js';
 import { t, LANG } from '../i18n.js';
 
 // 장 제목(■)과 조문(제N조 / N дугаар зүйл)만 굵게 — 긴 글을 눈으로 따라가기 쉽게
-function render(body) {
+export function renderRules(body) {
   return esc(body)
     .split('\n')
     .map(line => {
@@ -28,7 +28,7 @@ export async function openRules({ canEdit = false, onAgree = null } = {}) {
         ${esc(t('rulesVersion', { v: d.version }))} · ${esc(String(d.updated_at).slice(0, 10))}
         ${d.lang !== LANG ? ` · ${esc(t('rulesOnlyKo'))}` : ''}
       </div>
-      <div class="rl-body">${render(d.body)}</div>
+      <div class="rl-body">${renderRules(d.body)}</div>
       ${onAgree ? `<label class="rl-agree"><input type="checkbox" data-agree><span>${esc(t('rulesAgreeCheck'))}</span></label>` : ''}
       ${canEdit ? `<button type="button" class="btn btn-sm" style="width:100%;margin-top:12px" data-edit>${esc(t('rulesEdit'))}</button>` : ''}`,
     saveLabel: onAgree ? t('rulesAgreeBtn') : t('close'),

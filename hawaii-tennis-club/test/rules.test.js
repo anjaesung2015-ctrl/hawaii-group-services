@@ -236,3 +236,47 @@ test('로그인하지 않으면 조직도를 볼 수 없다', async () => {
   assert.strictEqual((await client(app.base).call('/officers')).status, 401);
   app.close();
 });
+
+// ---- 화면에 어떻게 그려지는가 (폰에서 보이는 모습) ----
+
+test('화면 — 장 제목과 조문이 굵게, 빈 줄은 간격으로 바뀐다', async () => {
+  const { renderRules } = await import('../public/js/views/rules.js');
+  const { KO } = require('../lib/rules-text');
+  const html = renderRules(KO);
+
+  // 제1장~제7장 + 부칙 = 8개
+  assert.strictEqual((html.match(/class="rl-chapter"/g) || []).length, 8, '장 제목 개수');
+  // 제1조~제31조 + 부칙 제1~3조 = 34개
+  assert.strictEqual((html.match(/class="rl-article"/g) || []).length, 34, '조문 개수');
+  assert.ok((html.match(/class="rl-line"/g) || []).length > 100, '본문 줄이 너무 적다');
+  assert.ok(html.includes('<div class="rl-chapter">제1장 총칙</div>'), '■ 기호는 떼고 보여준다');
+  assert.ok(html.includes('<div class="rl-article">제31조 (징계)</div>'));
+  assert.ok(!html.includes('■'), '■ 기호가 화면에 남아있다');
+});
+
+test('화면 — 몽골어 조문도 굵게 잡힌다', async () => {
+  const { renderRules } = await import('../public/js/views/rules.js');
+  const { MN } = require('../lib/rules-text');
+  const html = renderRules(MN);
+  assert.strictEqual((html.match(/class="rl-chapter"/g) || []).length, 8);
+  assert.ok((html.match(/class="rl-article"/g) || []).length >= 31, '몽골어 조문 개수: ' + (html.match(/class="rl-article"/g) || []).length);
+  assert.ok(html.includes('6 дугаар зүйл (Элсэх журам)'));
+});
+
+test('화면 — 회칙에 꺾쇠가 들어와도 그대로 글자로 보인다 (코드로 실행되지 않는다)', async () => {
+  const { renderRules } = await import('../public/js/views/rules.js');
+  const html = renderRules('제1조 (명칭) <script>alert(1)</script> & "인용"');
+  assert.ok(!html.includes('<script>'), '꺾쇠가 살아있다');
+  assert.ok(html.includes('&lt;script&gt;'));
+  assert.ok(html.includes('&amp;') && html.includes('&quot;'));
+});
+
+test('화면 — 바뀐 규정이 화면 조각에도 그대로 들어간다', async () => {
+  const { renderRules } = await import('../public/js/views/rules.js');
+  const { KO } = require('../lib/rules-text');
+  const html = renderRules(KO);
+  assert.ok(html.includes('기존 회원의 추천을 받은 경우: 2회'));
+  assert.ok(html.includes('클럽 정원은 40명으로 한다'));
+  assert.ok(html.includes('2026년 11월 1일'));
+  assert.ok(!/휴회|41/.test(html));
+});
