@@ -1,0 +1,4 @@
+{
+  "type": "module",
+  "//": "브라우저는 <script type=module> 로 읽지만, Node(테스트)도 이 폴더를 ES 모듈로 읽게 표시해 둔다."
+}

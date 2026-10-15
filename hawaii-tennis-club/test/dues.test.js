@@ -1,0 +1,160 @@
+// 회비 — 관리자 현황표·체크, 회원은 본인 것만
+const test = require('node:test');
+const assert = require('node:assert');
+const { makeApp, loginAs } = require('./helper');
+const { thisMonth } = require('../lib/db');
+
+test('기본 금액은 월회비 200,000₮ · 입회비 300,000₮', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const s = (await a.call('/settings')).data;
+  assert.strictEqual(s.monthly_fee, 200000);
+  assert.strictEqual(s.joining_fee, 300000);
+  app.close();
+});
+
+test('관리자가 설정에서 금액을 바꿀 수 있다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const s = (await a.call('/settings', { method: 'PUT', body: { monthly_fee: 250000, joining_fee: 350000 } })).data;
+  assert.strictEqual(s.monthly_fee, 250000);
+  assert.strictEqual((await a.call('/dues/grid')).data.monthly_fee, 250000);
+  app.close();
+});
+
+test('회원은 금액을 바꿀 수 없다', async () => {
+  const app = makeApp();
+  const m = await loginAs(app.base, '88110044', '1111');
+  assert.strictEqual((await m.call('/settings', { method: 'PUT', body: { monthly_fee: 1 } })).status, 403);
+  app.close();
+});
+
+test('현황표에 활동 회원 전원이 처음엔 미납으로 나온다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const g = (await a.call('/dues/grid')).data;
+  assert.strictEqual(g.rows.length, 2);
+  assert.ok(g.rows.every(r => r.monthly.paid === false));
+  assert.strictEqual(g.summary.unpaid, 2);
+  assert.strictEqual(g.summary.collected, 0);
+  assert.strictEqual(g.summary.expected, 400000);
+  app.close();
+});
+
+test('체크하면 완납 — 납부일과 방법이 남는다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const r = await a.call('/dues/mark', {
+    method: 'PUT',
+    body: { member_id: app.memberId, kind: 'monthly', period: thisMonth(), paid: true, method: 'transfer', paid_at: '2026-10-07', note: '10월분' },
+  });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.data.paid_at, '2026-10-07');
+  assert.strictEqual(r.data.method, 'transfer');
+  assert.strictEqual(r.data.note, '10월분');
+
+  const g = (await a.call('/dues/grid')).data;
+  const row = g.rows.find(x => x.member_id === app.memberId);
+  assert.strictEqual(row.monthly.paid, true);
+  assert.strictEqual(g.summary.paid, 1);
+  assert.strictEqual(g.summary.collected, 200000);
+  app.close();
+});
+
+test('같은 체크를 두 번 보내도 줄이 하나만 생긴다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const body = { member_id: app.memberId, kind: 'monthly', period: thisMonth(), paid: true, method: 'cash' };
+  await a.call('/dues/mark', { method: 'PUT', body });
+  await a.call('/dues/mark', { method: 'PUT', body });
+  const c = app.db.prepare("SELECT COUNT(*) c FROM due WHERE member_id=? AND kind='monthly'").get(app.memberId).c;
+  assert.strictEqual(c, 1);
+  app.close();
+});
+
+test('미납으로 되돌릴 수 있다 (잘못 체크했을 때)', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const base = { member_id: app.memberId, kind: 'monthly', period: thisMonth() };
+  await a.call('/dues/mark', { method: 'PUT', body: { ...base, paid: true, method: 'cash' } });
+  const back = await a.call('/dues/mark', { method: 'PUT', body: { ...base, paid: false } });
+  assert.strictEqual(back.data.paid_at, null);
+  assert.strictEqual((await a.call('/dues/grid')).data.summary.paid, 0);
+  app.close();
+});
+
+test('이번 달 미납자 목록 — 완납하면 빠진다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  let u = (await a.call('/dues/unpaid')).data;
+  assert.strictEqual(u.count, 2);
+
+  await a.call('/dues/mark', { method: 'PUT', body: { member_id: app.memberId, paid: true, method: 'qpay' } });
+  u = (await a.call('/dues/unpaid')).data;
+  assert.strictEqual(u.count, 1);
+  assert.ok(!u.rows.some(r => r.member_id === app.memberId));
+  app.close();
+});
+
+test('휴면 회원에게는 월회비를 매기지 않는다', async () => {
+  const app = makeApp();
+  app.db.prepare("UPDATE member SET status='dormant' WHERE id=?").run(app.memberId);
+  const a = await loginAs(app.base, '99000000', '1234');
+  assert.strictEqual((await a.call('/dues/grid')).data.rows.length, 1);
+  assert.strictEqual((await a.call('/dues/unpaid')).data.count, 1);
+  app.close();
+});
+
+test('다른 달은 섞이지 않는다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  await a.call('/dues/mark', { method: 'PUT', body: { member_id: app.memberId, period: '2026-07', paid: true, method: 'cash' } });
+  assert.strictEqual((await a.call('/dues/grid?month=2026-07')).data.summary.paid, 1);
+  assert.strictEqual((await a.call('/dues/grid?month=2026-08')).data.summary.paid, 0);
+  app.close();
+});
+
+test('잘못된 달을 주면 이번 달로 본다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  assert.strictEqual((await a.call('/dues/grid?month=2026-13')).data.month, thisMonth());
+  app.close();
+});
+
+test('회원은 본인 내역만 본다 (현황표·미납목록은 403)', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  await a.call('/dues/mark', { method: 'PUT', body: { member_id: app.memberId, paid: true, method: 'cash' } });
+  await a.call('/dues/mark', { method: 'PUT', body: { member_id: app.adminId, paid: true, method: 'cash' } });
+
+  const m = await loginAs(app.base, '88110044', '1111');
+  assert.strictEqual((await m.call('/dues/grid')).status, 403);
+  assert.strictEqual((await m.call('/dues/unpaid')).status, 403);
+  assert.strictEqual((await m.call('/dues/mark', { method: 'PUT', body: { member_id: app.adminId, paid: false } })).status, 403);
+
+  const mine = (await m.call('/dues/me')).data;
+  assert.strictEqual(mine.length, 1, '남의 줄이 섞였다');
+  app.close();
+});
+
+test('회원을 새로 넣으면 입회비 미납 한 줄이 선다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const r = await a.call('/members', { method: 'POST', body: { name: 'Сарнай', phone: '95556677', pin: '1111', joined_at: '2026-10-02' } });
+  const due = app.db.prepare("SELECT * FROM due WHERE member_id=? AND kind='joining'").get(r.data.id);
+  assert.ok(due, '입회비 줄이 없다');
+  assert.strictEqual(due.amount, 300000);
+  assert.strictEqual(due.paid_at, null);
+  assert.strictEqual(due.period, '2026-10');
+  app.close();
+});
+
+test('금액을 바꿔도 이미 기록한 납부 줄의 금액은 그대로다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  await a.call('/dues/mark', { method: 'PUT', body: { member_id: app.memberId, paid: true, method: 'cash' } });
+  await a.call('/settings', { method: 'PUT', body: { monthly_fee: 250000 } });
+  const row = (await a.call('/dues/grid')).data.rows.find(r => r.member_id === app.memberId);
+  assert.strictEqual(row.monthly.amount, 200000, '지난 기록이 바뀌면 안 된다');
+  app.close();
+});

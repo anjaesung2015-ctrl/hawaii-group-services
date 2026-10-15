@@ -1,0 +1,24 @@
+{
+  "name": "hawaii-tennis-club",
+  "version": "1.0.0",
+  "description": "Hawaii Tennis Club — 회원 전용 웹앱 (일정·회비·공지·회원)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js",
+    "seed:reset": "node seed.js --reset",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "better-sqlite3": "^13.0.3",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "web-push": "^3.6.7"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true
+}

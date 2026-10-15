@@ -1,0 +1,13 @@
+node_modules/
+
+# 데이터와 사진은 저장소에 넣지 않는다 (백업은 폴더를 직접 복사)
+data/
+uploads/
+
+# 세션 비밀키
+.secret
+.env
+
+npm-debug.log*
+.DS_Store
+Thumbs.db
