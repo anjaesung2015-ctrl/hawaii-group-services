@@ -315,7 +315,7 @@ function historyCards(rows, allMode) {
     const head = `${t('dayFmt', { m, d, w })}<span class="cnt">${t('doneCount', { done: row.done, total: row.total })}</span>`;
     const list = (row.items || []).map(i => {
       // 전체 보기일 때만 이름을 붙인다 (한 사람만 볼 때는 같은 이름이 줄마다 반복될 뿐)
-      const who = allMode ? `<span class="ev c${colorOf(i.staff_id)}">${escapeHtml(i.name || '')}</span> ` : '';
+      const who = allMode ? `<span class="ev ${colorClass(i.staff_id)}">${escapeHtml(i.name || '')}</span>` : '';
       return `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
         `<span class="tx">${who}${i.from_boss ? `<span class="tag">${t('boss1')}</span>` : ''}${escapeHtml(i.title || t('noTitle'))}` +
         (i.memo ? ` <span class="m">· ${escapeHtml(i.memo)}</span>` : '') + `</span></div>`;
@@ -506,6 +506,10 @@ let COLOR_MAP = {};
 function colorOf(staffId) {
   if (staffId == null) return 4;
   return COLOR_MAP[staffId] != null ? COLOR_MAP[staffId] : 4;
+}
+// 직원 목록에 없는 사람(=사장님)은 직원 6색과 겹치지 않는 자기 색을 쓴다
+function colorClass(staffId) {
+  return COLOR_MAP[staffId] != null ? 'c' + COLOR_MAP[staffId] : 'cboss';
 }
 function buildColorMap(people) {
   COLOR_MAP = {};

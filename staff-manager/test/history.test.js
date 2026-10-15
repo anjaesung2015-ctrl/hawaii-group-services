@@ -223,6 +223,21 @@ test('화면 — 전체 모드에서는 누구 일인지 이름이 붙는다', (
   assert.ok(!ctx.historyCards(ROWS, false).includes('미가'), '한 사람만 볼 때는 이름을 반복하지 않는다');
 });
 
+test('화면 — 사장님 이름 뱃지는 직원 색과 겹치지 않는다', () => {
+  const ctx = loadApp();
+  ctx.buildColorMap([{ id: 1, name: '미가' }, { id: 5, name: '적승' }]);
+  const html = ctx.historyCards(ROWS, true);
+  assert.match(html, /<span class="ev cboss">사장님<\/span>/, '사장님은 전용 색: ' + html);
+  assert.match(html, /<span class="ev c0">미가<\/span>/, '직원은 목록 순서 색');
+});
+
+test('화면 — 이름 뱃지에 스타일이 걸려 있다 (.ov .ev)', () => {
+  const css = require('fs').readFileSync(require('path').join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  // .ev 의 여백·모서리는 달력 칸(.cal .cell .ev)에만 걸려 있어서 기록 화면용 규칙이 따로 필요하다
+  assert.match(css, /\.ov \.ev\{/, '.ov .ev 규칙이 없으면 뱃지가 여백 없이 큼직하게 나온다');
+  assert.match(css, /\.ev\.cboss\{/, '사장님 전용 색 규칙');
+});
+
 test('화면 — 읽기 전용: 입력칸도 삭제 버튼도 없다', () => {
   const ctx = loadApp();
   const html = ctx.historyCards(ROWS, true);

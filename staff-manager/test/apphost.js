@@ -5,7 +5,8 @@ const path = require('path');
 const vm = require('vm');
 
 // app.js의 함수들은 const 선언이라 전역 객체에 안 붙는다 — 꺼내서 물려준다.
-const EXPORTED = ['state', 'renderCheckItem', 'itemDateFor', 'historyCards', 'overviewCards', 'BOSS_TABS'];
+const EXPORTED = ['state', 'renderCheckItem', 'itemDateFor', 'historyCards', 'overviewCards',
+  'BOSS_TABS', 'buildColorMap', 'colorClass'];
 
 function loadApp() {
   const dir = path.join(__dirname, '..', 'public');
