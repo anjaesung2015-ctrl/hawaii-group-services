@@ -1,6 +1,11 @@
-// 회칙 — 회원은 읽고, 관리자는 고친다(부칙 제2조). 가입 신청 화면에서도 열린다(로그인 전).
-import { api, esc, toast, openModal, errText, $ } from '../ui.js';
-import { t, LANG } from '../i18n.js';
+// Club rules — members read, the owner edits (rules appendix art. 2).
+// The app itself is in English, but the rules document is written in Korean and Mongolian,
+// so this screen has its own language picker. Also opens from the application form (before login).
+import { api, esc, toast, openModal, errText, $$ } from '../ui.js';
+import { t } from '../i18n.js';
+
+const DOC_LANGS = [['ko', 'rulesLangKo'], ['mn', 'rulesLangMn']];
+let lastLang = 'ko';            // 마지막으로 본 언어를 기억한다
 
 // 장 제목(■)과 조문(제N조 / N дугаар зүйл)만 굵게 — 긴 글을 눈으로 따라가기 쉽게
 export function renderRules(body) {
@@ -15,18 +20,23 @@ export function renderRules(body) {
     .join('');
 }
 
-export async function openRules({ canEdit = false, onAgree = null } = {}) {
+export async function openRules({ canEdit = false, onAgree = null, lang = null } = {}) {
+  const docLang = lang || lastLang;
   let d;
-  try { d = await api(`/docs/rules?lang=${LANG}`); }
+  try { d = await api(`/docs/rules?lang=${docLang}`); }
   catch (e) { toast(errText(e), true); return; }
+  lastLang = d.lang;
+
+  const picker = DOC_LANGS.map(([code, key]) =>
+    `<button type="button" class="rl-lang${code === d.lang ? ' on' : ''}" data-doc-lang="${code}">${esc(t(key))}</button>`).join('');
 
   const m = openModal({
     title: t('rulesTitle'),
     fields: [],
     extra: `
-      <div class="rl-meta">
-        ${esc(t('rulesVersion', { v: d.version }))} · ${esc(String(d.updated_at).slice(0, 10))}
-        ${d.lang !== LANG ? ` · ${esc(t('rulesOnlyKo'))}` : ''}
+      <div class="rl-top">
+        <div class="rl-langs">${picker}</div>
+        <div class="rl-meta">${esc(t('rulesVersion', { v: d.version }))} · ${esc(String(d.updated_at).slice(0, 10))}</div>
       </div>
       <div class="rl-body">${renderRules(d.body)}</div>
       ${onAgree ? `<label class="rl-agree"><input type="checkbox" data-agree><span>${esc(t('rulesAgreeCheck'))}</span></label>` : ''}
@@ -39,6 +49,13 @@ export async function openRules({ canEdit = false, onAgree = null } = {}) {
     },
   });
 
+  // 언어를 바꾸면 그 언어의 원문으로 다시 띄운다
+  $$('[data-doc-lang]', m.form).forEach(b => b.onclick = () => {
+    if (b.dataset.docLang === d.lang) return;
+    m.close();
+    openRules({ canEdit, onAgree, lang: b.dataset.docLang });
+  });
+
   const edit = m.form.querySelector('[data-edit]');
   if (edit) edit.onclick = () => { m.close(); editRules(d); };
 }
@@ -46,7 +63,7 @@ export async function openRules({ canEdit = false, onAgree = null } = {}) {
 // 개정 — 긴 글이라 통째로 고친다. 저장하면 판 번호가 1 올라간다.
 function editRules(d) {
   openModal({
-    title: `${t('rulesEdit')} (${d.lang === 'mn' ? 'Монгол' : '한국어'})`,
+    title: `${t('rulesEdit')} (${d.lang === 'mn' ? t('rulesLangMn') : t('rulesLangKo')})`,
     fields: [{ name: 'body', label: t('rulesTitle'), type: 'textarea', value: d.body }],
     extra: `<div class="hint">${esc(t('rulesEditHint'))}</div>`,
     onSave: async (v) => {

@@ -123,6 +123,28 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 .btn-sm { padding: 7px 11px; font-size: 13px; border-radius: 10px; }
 .err { color: var(--danger); font-size: 13px; min-height: 18px; margin: 10px 0 0; }
 
+.lang-seg {
+  display: inline-flex;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 16px;
+  background: #fff;
+}
+.lang-seg button {
+  border: 0;
+  background: none;
+  padding: 7px 13px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+}
+.lang-seg button.on { background: var(--court); color: #fff; }
+.lang-seg.ghost { margin: 0; border-color: rgba(255,255,255,.35); background: rgba(255,255,255,.12); }
+.lang-seg.ghost button { color: rgba(255,255,255,.75); }
+.lang-seg.ghost button.on { background: #fff; color: var(--court-dark); }
+
 .lang-btn {
   margin-top: 16px;
   padding: 7px 14px;
@@ -446,7 +468,11 @@ main {
 .fab-row { margin: 4px 0 2px; }
 
 /* 회칙 */
-.rl-meta { font-size: 12px; color: var(--muted); margin: -6px 2px 10px; }
+.rl-top { display: flex; align-items: center; gap: 10px; margin: -4px 2px 10px; }
+.rl-langs { display: inline-flex; border: 1px solid var(--hair); border-radius: 999px; overflow: hidden; }
+.rl-lang { border: 0; background: none; padding: 5px 12px; font-size: 12.5px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.rl-lang.on { background: var(--court); color: #fff; }
+.rl-meta { font-size: 12px; color: var(--muted); margin-left: auto; }
 .rl-body {
   max-height: 58vh;
   overflow-y: auto;
@@ -512,6 +538,16 @@ main {
 
 /* 폰 알림 패널 */
 .push-on { font-weight: 700; color: var(--court-dark); font-size: 15px; margin-bottom: 4px; }
+
+/* 기계 번역문 아래에 붙는 원문 */
+.src {
+  color: #9fb0a8;
+  font-size: 12px;
+  line-height: 1.45;
+  margin-top: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 
 /* 자유게시판 */
 .post { padding: 13px 14px; }

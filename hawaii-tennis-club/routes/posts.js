@@ -8,12 +8,12 @@ const MAX_BODY = 2000;
 const MAX_COMMENT = 500;
 const PAGE = 20;
 
-module.exports = function postRoutes(db, auth, notify) {
+module.exports = function postRoutes(db, auth, notify, tr) {
   const router = express.Router();
   router.use(auth.requireMember);
 
   // 목록 — 최신 글부터. ?before=<id> 로 그보다 오래된 글을 이어 받는다.
-  router.get('/', (req, res) => {
+  router.get('/', async (req, res) => {
     const before = Number(req.query.before) || 0;
     const limit = Math.min(50, Math.max(1, Number(req.query.limit) || PAGE));
     const rows = db.prepare(`
@@ -26,10 +26,12 @@ module.exports = function postRoutes(db, auth, notify) {
       ${before ? 'WHERE p.id < ?' : ''}
       ORDER BY p.id DESC LIMIT ?`).all(...(before ? [req.me.id, before, limit] : [req.me.id, limit]));
 
-    res.json({ rows: withPhotos(db, rows), has_more: rows.length === limit });
+    const out = withPhotos(db, rows);
+    if (tr && req.query.lang) await tr.attach(out, ['body'], String(req.query.lang));
+    res.json({ rows: out, has_more: rows.length === limit });
   });
 
-  router.get('/:id', (req, res) => {
+  router.get('/:id', async (req, res) => {
     const p = db.prepare(`
       SELECT p.id, p.member_id, p.body, p.created_at, p.updated_at, m.name AS author, m.level,
              (SELECT COUNT(*) FROM post_like l WHERE l.post_id = p.id) AS likes,
@@ -42,7 +44,12 @@ module.exports = function postRoutes(db, auth, notify) {
       FROM comment c JOIN member m ON m.id = c.member_id
       WHERE c.post_id=? ORDER BY c.id`).all(p.id);
 
-    res.json({ ...withPhotos(db, [p])[0], comments });
+    const one = withPhotos(db, [p])[0];
+    if (tr && req.query.lang) {
+      const lang = String(req.query.lang);
+      await Promise.all([tr.attach([one], ['body'], lang), tr.attach(comments, ['body'], lang)]);
+    }
+    res.json({ ...one, comments });
   });
 
   router.post('/', (req, res) => {

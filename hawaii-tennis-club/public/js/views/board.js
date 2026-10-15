@@ -1,9 +1,9 @@
 // 자유게시판 — 회원끼리 글·사진·댓글·좋아요.
-import { api, esc, toast, openModal, pickPhoto, errText, $, $$ } from '../ui.js';
+import { api, esc, toast, openModal, pickPhoto, errText, trText, origHtml, $, $$ } from '../ui.js';
 import { t, timeAgo } from '../i18n.js';
 
 export async function renderBoard(el, state) {
-  const d = await api('/posts');
+  const d = await api('/posts?lang=en');
   state.boardMore = d.has_more ? d.rows[d.rows.length - 1].id : null;
 
   el.innerHTML = `
@@ -17,7 +17,7 @@ export async function renderBoard(el, state) {
   const more = el.querySelector('[data-more]');
   if (more) more.onclick = async () => {
     more.disabled = true;
-    const next = await api(`/posts?before=${state.boardMore}`);
+    const next = await api(`/posts?lang=en&before=${state.boardMore}`);
     el.querySelector('[data-list]').insertAdjacentHTML('beforeend', next.rows.map(p => postCard(p, state)).join(''));
     state.boardMore = next.has_more && next.rows.length ? next.rows[next.rows.length - 1].id : null;
     if (!state.boardMore) more.remove(); else more.disabled = false;
@@ -42,7 +42,7 @@ export function postCard(p, state) {
         ${mine ? `<button class="btn btn-sm" data-edit="${p.id}">${esc(t('edit'))}</button>` : ''}
         ${canDelete ? `<button class="btn btn-sm btn-danger" data-del="${p.id}">${esc(t('del'))}</button>` : ''}
       </div>
-      ${p.body ? `<div class="post-body">${esc(p.body)}</div>` : ''}
+      ${p.body ? `<div class="post-body">${esc(trText(p, 'body').text)}</div>${origHtml(trText(p, 'body').orig)}` : ''}
       ${photos ? `<div class="post-photos ${(p.photos.length > 1) ? 'multi' : ''}">${photos}</div>` : ''}
       <div class="post-foot">
         <button class="react ${p.liked ? 'on' : ''}" data-like="${p.id}" data-on="${p.liked ? 1 : 0}">
@@ -92,7 +92,7 @@ export function bindPosts(el, state, refresh) {
 
 // 글 하나 + 댓글
 async function openPost(id, state, refresh) {
-  const p = await api(`/posts/${id}`);
+  const p = await api(`/posts/${id}?lang=en`);
   const canDel = (c) => c.member_id === state.me.id || state.me.role === 'admin';
 
   const m = openModal({
@@ -100,7 +100,7 @@ async function openPost(id, state, refresh) {
     fields: [],
     extra: `
       <div class="hint" style="margin:-8px 2px 8px">${esc(timeAgo(p.created_at))}</div>
-      ${p.body ? `<div class="post-body">${esc(p.body)}</div>` : ''}
+      ${p.body ? `<div class="post-body">${esc(trText(p, 'body').text)}</div>${origHtml(trText(p, 'body').orig)}` : ''}
       ${(p.photos || []).map(src => `<img class="post-photo" src="${esc(src)}" style="width:100%;margin-top:8px;border-radius:12px" alt="">`).join('')}
       <div class="section-head" style="margin:16px 2px 8px"><h2>${esc(t('comments'))} · ${p.comments.length}</h2></div>
       <div data-comments>
@@ -108,7 +108,7 @@ async function openPost(id, state, refresh) {
           <div class="cmt">
             <div class="cmt-top"><b>${esc(c.author)}</b><small>${esc(timeAgo(c.created_at))}</small>
               ${canDel(c) ? `<button class="cmt-del" data-cdel="${c.id}">×</button>` : ''}</div>
-            <div>${esc(c.body)}</div>
+            <div>${esc(trText(c, 'body').text)}</div>${origHtml(trText(c, 'body').orig)}
           </div>`).join('') : `<div class="empty">${esc(t('noComments'))}</div>`}
       </div>
       <div class="cmt-write">

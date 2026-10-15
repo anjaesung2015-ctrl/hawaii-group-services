@@ -1,5 +1,5 @@
 // 일정 — 관리자가 등록하고 회원은 참석/불참/미정을 고른다.
-import { api, esc, toast, openModal, today, $$ } from '../ui.js';
+import { api, esc, toast, openModal, today, trText, origHtml, $$ } from '../ui.js';
 import { t, fmtDate, kindLabel } from '../i18n.js';
 import { weekdaysFromText, nextDateFor } from '../weekdays.js';
 
@@ -7,7 +7,7 @@ const KINDS = ['regular', 'event', 'tournament'];
 
 export async function renderSchedule(el, state) {
   const past = state.schedulePast === true;
-  const list = await api(`/events${past ? '?past=1' : ''}`);
+  const list = await api(`/events?lang=en${past ? '&past=1' : ''}`);
 
   el.innerHTML = `
     <div class="seg">
@@ -40,12 +40,12 @@ export function eventCard(e, { rsvp = true } = {}) {
           <b>${d}</b><span>${esc(t('dow')[dowIdx])}</span>
         </div>
         <div style="flex:1;min-width:0">
-          <h3>${esc(e.title)}</h3>
+          <h3>${esc(trText(e, 'title').text)}</h3>
           <div class="meta">${e.start_time}–${e.end_time} · ${esc(t('courtsN', { n: e.courts }))}</div>
         </div>
         <span class="pill ${kindPill}">${esc(kindLabel(e.kind))}</span>
       </div>
-      ${e.memo ? `<div class="memo">${esc(e.memo)}</div>` : ''}
+      ${e.memo ? `<div class="memo">${esc(trText(e, 'memo').text)}</div>${origHtml(trText(e, 'memo').orig)}` : ''}
       <div class="counts">
         <span>${esc(t('yes'))} <b>${e.counts.yes}</b></span>
         <span>${esc(t('maybe'))} <b>${e.counts.maybe}</b></span>
@@ -77,7 +77,7 @@ export function bindEventCards(el, state, refresh) {
 
 // 상세 — 참석 명단까지
 export async function openEvent(id, state, refresh) {
-  const e = await api(`/events/${id}`);
+  const e = await api(`/events/${id}?lang=en`);
   const group = (key) => {
     const people = e.roster[key];
     if (!people.length) return '';
@@ -87,14 +87,14 @@ export async function openEvent(id, state, refresh) {
   const any = e.roster.yes.length + e.roster.maybe.length + e.roster.no.length;
 
   const m = openModal({
-    title: e.title,
+    title: trText(e, 'title').text,
     fields: [],
     extra: `
       <div class="meta" style="margin:-6px 2px 10px">
         ${esc(fmtDate(e.event_date))} · ${e.start_time}–${e.end_time} · ${esc(t('courtsN', { n: e.courts }))}
         · <span class="pill ${e.kind === 'tournament' ? 'gold' : ''}">${esc(kindLabel(e.kind))}</span>
       </div>
-      ${e.memo ? `<div class="memo" style="margin-bottom:8px">${esc(e.memo)}</div>` : ''}
+      ${e.memo ? `<div class="memo" style="margin-bottom:8px">${esc(trText(e, 'memo').text)}</div>${origHtml(trText(e, 'memo').orig)}` : ''}
       ${rsvpRow(e)}
       <div class="roster">${any ? ['yes', 'maybe', 'no'].map(group).join('') : `<div class="empty">${esc(t('noAnswerYet'))}</div>`}</div>
       ${state.me.role === 'admin' ? `<button type="button" class="btn btn-sm" style="margin-top:14px" data-edit>${esc(t('editEvent'))}</button>` : ''}`,

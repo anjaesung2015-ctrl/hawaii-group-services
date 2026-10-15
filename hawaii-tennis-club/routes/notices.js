@@ -2,15 +2,17 @@
 const express = require('express');
 const { savePhoto, removePhoto } = require('../lib/photos');
 
-module.exports = function noticeRoutes(db, auth, notify) {
+module.exports = function noticeRoutes(db, auth, notify, tr) {
   const router = express.Router();
   router.use(auth.requireMember);
 
   // 고정 공지가 먼저, 그다음 최신 순
-  router.get('/', (req, res) => {
+  router.get('/', async (req, res) => {
     const rows = db.prepare(`SELECT n.*, m.name AS author
                              FROM notice n LEFT JOIN member m ON m.id = n.created_by
                              ORDER BY n.pinned DESC, n.created_at DESC, n.id DESC`).all();
+    // 화면 언어로 번역한 title_tr·body_tr 을 덧붙인다 (원문은 그대로 둔다)
+    if (tr && req.query.lang) await tr.attach(rows, ['title', 'body'], String(req.query.lang));
     res.json(rows);
   });
 

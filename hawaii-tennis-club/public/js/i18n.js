@@ -1,359 +1,201 @@
-// 화면 문구 — 몽골어(기본) / 한국어.
-// 문구를 추가할 때는 두 언어 모두에 같은 키를 넣는다. test/i18n.test.js 가 빠진 키를 잡는다.
+// Screen text — English only.
+// 2026-10-16: the Korean/Mongolian pair was dropped on the owner's request. One language,
+// so the two can no longer disagree with each other. Member-written text (notices, posts,
+// events) is machine-translated into English and shown next to the original — lib/translate.js.
+// The club rules stay in Korean and Mongolian (that document is written in both);
+// the rules screen has its own language picker.
 export const DICT = {
-  mn: {
-    memberOnly: 'Гишүүдэд зориулсан',
-    phone: 'Утасны дугаар', pin: 'ПИН (4 орон)', login: 'Нэвтрэх', logout: 'Гарах',
-    loginFail: 'Дугаар эсвэл ПИН буруу', loginLocked: '{s} секундын дараа дахин оролдоно уу',
-    loginDormant: 'Таны гишүүнчлэл дууссан байна. Админтай холбогдоно уу.',
-    loggingIn: 'Шалгаж байна…',
+  en: {
+    memberOnly: 'Members only',
+    phone: 'Phone number', pin: 'PIN (4 digits)', login: 'Log in', logout: 'Log out',
+    loginFail: 'Phone number or PIN is wrong', loginLocked: 'Too many tries — wait {s} seconds',
+    loginDormant: 'This membership has ended. Please contact an officer.',
+    loggingIn: 'Checking…',
 
-    tabHome: 'Үндсэн', tabSchedule: 'Хуваарь', tabDues: 'Хураамж', tabNotices: 'Мэдэгдэл', tabMembers: 'Гишүүд',
+    tabHome: 'Home', tabSchedule: 'Schedule', tabDues: 'Dues', tabNotices: 'Notices', tabMembers: 'Members',
+    tabBoard: 'Board',
 
-    changePin: 'ПИН солих', settings: 'Тохиргоо', cancel: 'Болих', save: 'Хадгалах',
-    add: 'Нэмэх', edit: 'Засах', del: 'Устгах', close: 'Хаах', confirmDelete: 'Устгах уу?',
-    saved: 'Хадгаллаа', deleted: 'Устгалаа', failed: 'Амжилтгүй', required: 'Шаардлагатай',
-    admin: 'Админ', member: 'Гишүүн', adminOnly: 'Зөвхөн админ',
+    changePin: 'Change PIN', settings: 'Settings', cancel: 'Cancel', save: 'Save',
+    add: 'Add', edit: 'Edit', del: 'Delete', close: 'Close', confirmDelete: 'Delete this?',
+    saved: 'Saved', deleted: 'Deleted', failed: 'Something went wrong', required: 'Required',
+    admin: 'Officer', member: 'Member', adminOnly: 'Officers only',
 
-    upcoming: 'Дараагийн хуваарь', noUpcoming: 'Ойртож байгаа хуваарь алга',
-    pinnedNotice: 'Бэхэлсэн мэдэгдэл', myDues: 'Миний хураамж', quickUnpaid: 'Энэ сар төлөөгүй',
-    greetMorning: 'Сайн байна уу', today: 'Өнөөдөр',
+    upcoming: 'Coming up', noUpcoming: 'Nothing coming up',
+    pinnedNotice: 'Pinned notice', myDues: 'My dues', quickUnpaid: 'Unpaid this month',
+    greetMorning: 'Hello', today: 'Today',
 
-    schedule: 'Хуваарь', newEvent: 'Хуваарь нэмэх', editEvent: 'Хуваарь засах',
-    kindRegular: 'Тогтмол цугларалт', kindEvent: 'Арга хэмжээ', kindTournament: 'Тэмцээн',
-    title: 'Гарчиг', kind: 'Төрөл', date: 'Өдөр', startTime: 'Эхлэх', endTime: 'Дуусах',
-    courts: 'Кортын тоо', memo: 'Тэмдэглэл', upcomingTab: 'Ойрын', pastTab: 'Өнгөрсөн',
-    courtsN: '{n} корт', noEvents: 'Хуваарь алга', endBeforeStart: 'Дуусах цаг эхлэхээсээ хойно байх ёстой',
-    yes: 'Ирнэ', no: 'Ирэхгүй', maybe: 'Шийдээгүй',
-    attendCount: 'Ирэх {n}', roster: 'Нэрс', noAnswerYet: 'Хэн ч хариулаагүй', myAnswer: 'Миний хариу',
+    schedule: 'Schedule', newEvent: 'New event', editEvent: 'Edit event',
+    kindRegular: 'Club Night', kindEvent: 'Event', kindTournament: 'Tournament',
+    title: 'Title', kind: 'Type', date: 'Date', startTime: 'Start', endTime: 'End',
+    courts: 'Courts', memo: 'Note', upcomingTab: 'Upcoming', pastTab: 'Past',
+    courtsN: '{n} courts', noEvents: 'No events', endBeforeStart: 'End time is before the start time',
+    yes: 'Going', no: 'Not going', maybe: 'Maybe',
+    attendCount: '{n} going', roster: 'Who is coming', noAnswerYet: 'No answers yet', myAnswer: 'My answer',
 
-    dues: 'Хураамж', monthlyFee: 'Сарын хураамж', joiningFee: 'Элсэх хураамж',
-    paid: 'Төлсөн', unpaid: 'Төлөөгүй', paidAt: 'Төлсөн өдөр', method: 'Хэлбэр',
-    cash: 'Бэлэн', transfer: 'Банкны шилжүүлэг', qpay: 'QPay',
-    duesGrid: 'Гишүүдийн төлбөр', unpaidList: 'Төлөөгүй гишүүд', allPaid: 'Бүгд төлсөн 🎉',
-    collected: 'Хураасан', expected: 'Төлөх ёстой', members: 'Гишүүн',
-    myDuesEmpty: 'Хураамжийн бүртгэл алга', joiningLabel: 'Элсэх хураамж',
-    markPaid: 'Төлсөн болгох', markUnpaid: 'Төлөөгүй болгох',
+    dues: 'Dues', monthlyFee: 'Monthly dues', joiningFee: 'Joining fee',
+    paid: 'Paid', unpaid: 'Unpaid', paidAt: 'Paid on', method: 'How',
+    cash: 'Cash', transfer: 'Bank transfer', qpay: 'QPay',
+    duesGrid: 'Member payments', unpaidList: 'Not paid yet', allPaid: 'Everyone has paid 🎉',
+    collected: 'Collected', expected: 'Expected', members: 'Members',
+    myDuesEmpty: 'No dues records yet', joiningLabel: 'Joining fee',
+    markPaid: 'Mark as paid', markUnpaid: 'Mark as unpaid',
 
-    notices: 'Мэдэгдэл', newNotice: 'Мэдэгдэл бичих', editNotice: 'Мэдэгдэл засах',
-    body: 'Агуулга', photo: 'Зураг', pinTop: 'Дээр бэхлэх', pinned: 'Бэхэлсэн',
-    noNotices: 'Мэдэгдэл алга', photoPick: 'Зураг сонгох', photoRemove: 'Зургийг хасах',
-    photoTooBig: 'Зураг хэт том', readOnly: 'Зөвхөн админ бичнэ',
+    notices: 'Notices', newNotice: 'New notice', editNotice: 'Edit notice',
+    body: 'Message', photo: 'Photo', pinTop: 'Pin to top', pinned: 'Pinned',
+    noNotices: 'No notices', photoPick: 'Choose photo', photoRemove: 'Remove photo',
+    photoTooBig: 'Photo is too large', readOnly: 'Only officers can post here',
 
-    memberList: 'Гишүүд', newMember: 'Гишүүн нэмэх', editMember: 'Гишүүн засах',
-    name: 'Нэр', level: 'Түвшин', joinedAt: 'Элссэн өдөр', status: 'Байдал', role: 'Эрх',
-    lvNewbie: 'Шинэ', lvBeginner: 'Анхан', lvIntermediate: 'Дунд', lvAdvanced: 'Дээд',
-    stActive: 'Идэвхтэй', stDormant: 'Гарсан',
-    membersN: '{n} гишүүн', activeN: 'Идэвхтэй {n}', phoneTaken: 'Ийм дугаар бүртгэлтэй байна',
-    badPhone: 'Утасны дугаар 8 орон байх ёстой', pin4: 'ПИН 4 орон байх ёстой',
-    resetPin: 'ПИН шинэчлэх', newPin: 'Шинэ ПИН', firstPin: 'Анхны ПИН: {pin}',
-    lastAdmin: 'Хамгийн сүүлийн админыг хасч болохгүй',
-    currentPin: 'Одоогийн ПИН', pinChanged: 'ПИН солигдлоо', badCurrentPin: 'Одоогийн ПИН буруу',
-    clubName: 'Клубын нэр', titleRole: 'Албан тушаал',
+    memberList: 'Member list', newMember: 'Add member', editMember: 'Edit member',
+    name: 'Name', level: 'Level', joinedAt: 'Joined', status: 'Status', role: 'Role',
+    lvNewbie: 'New', lvBeginner: 'Beginner', lvIntermediate: 'Intermediate', lvAdvanced: 'Advanced',
+    stActive: 'Active', stDormant: 'Left',
+    membersN: '{n} members', activeN: '{n} active', phoneTaken: 'That phone number is already registered',
+    badPhone: 'Phone number must be 8 digits', pin4: 'PIN must be 4 digits',
+    resetPin: 'Reset PIN', newPin: 'New PIN', firstPin: 'First PIN: {pin}',
+    lastAdmin: 'The last officer cannot be changed',
+    currentPin: 'Current PIN', pinChanged: 'PIN changed', badCurrentPin: 'Current PIN is wrong',
+    clubName: 'Club name', titleRole: 'Position',
 
-    rulesTitle: 'Клубын дүрэм',
-    rulesVersion: '{v} дэх хувилбар',
-    rulesSee: 'Дүрмийг харах',
-    rulesAgreeCheck: 'Дүрмийг уншсан, зөвшөөрч байна',
-    rulesAgreeBtn: 'Зөвшөөрөх',
-    rulesAgreed: 'Зөвшөөрлөө. Баярлалаа!',
-    rulesEdit: 'Дүрэм засах',
-    rulesEditHint: 'Хадгалахад хувилбарын дугаар 1-ээр нэмэгдэнэ. Гишүүдэд дахин зөвшөөрөл асууна.',
-    rulesSaved: 'Хадгаллаа ({v} дэх хувилбар)',
-    rulesOnlyKo: 'Монгол хувилбар бэлэн болоогүй',
-    orgTitle: 'Бүтэц (удирдлага)',
-    orgHonorary: 'Хүндэт албан тушаал',
-    orgAssign: '+ хүн тохоох',
-    orgPickMember: 'Гишүүнээс сонгох',
-    orgNotMember: '— сонгоогүй —',
-    orgNameOnly: 'Гишүүн бус бол нэрийг бичих',
-    orgNameOnlyHint: 'жишээ: Хүндэт дарга',
-    orgHint: 'Гишүүнээс сонговол нэр нь өөрчлөгдөхөд дагаж шинэчлэгдэнэ.',
-    role_owner: 'Клубын эзэн · Ахлах дасгалжуулагч',
-    role_president: 'Дарга',
-    role_vice1: 'Орлогч дарга 1',
-    role_vice2: 'Орлогч дарга 2',
-    role_manager1: 'Нарийн бичгийн дарга 1',
-    role_manager2: 'Нарийн бичгийн дарга 2',
-    role_match: 'Тэмцээний менежер',
-    role_event: 'Арга хэмжээний менежер',
-    role_external: 'Хамтын ажиллагааны менежер',
-    role_honorary: 'Хүндэт дарга',
-    role_advisor1: 'Зөвлөх 1',
-    role_advisor2: 'Зөвлөх 2',
-    role_advisor3: 'Зөвлөх 3',
+    roleOwner: 'Owner',
+    adminGive: 'Officer (give rights)',
+    ownerOnly: 'Only the club owner can do this',
+    cannotDeleteOwner: 'The club owner cannot be deleted',
+    ownerNote: 'Giving or taking rights, editing the rules, the org chart, dues amounts and deleting members — owner only.',
+    adminNote: 'Officer rights: approve members, post events and notices, mark dues.',
 
-    roleOwner: 'Эзэн',
-    adminGive: 'Удирдлага (эрх өгөх)',
-    ownerOnly: 'Үүнийг зөвхөн клубын эзэн хийж чадна',
-    cannotDeleteOwner: 'Клубын эзнийг устгаж болохгүй',
-    ownerNote: 'Эрх өгөх/авах, дүрэм засах, бүтэц, хураамжийн хэмжээ, гишүүн устгах — зөвхөн эзэн.',
-    adminNote: 'Удирдлагын эрх: элсэлт батлах, хуваарь, мэдэгдэл, хураамж бүртгэх.',
+    rulesTitle: 'Club rules',
+    rulesVersion: 'version {v}',
+    rulesSee: 'Read the rules',
+    rulesAgreeCheck: 'I have read and agree to the club rules',
+    rulesAgreeBtn: 'I agree',
+    rulesAgreed: 'Thank you',
+    rulesEdit: 'Edit rules',
+    rulesEditHint: 'Saving raises the version number and asks every member to agree again.',
+    rulesSaved: 'Saved (version {v})',
+    rulesOnlyKo: 'this language is not ready yet',
+    rulesLangKo: '한국어',
+    rulesLangMn: 'Монгол',
 
-    pushTitle: 'Утасны мэдэгдэл',
-    pushWhat: 'Шинэ мэдэгдэл, шинэ бичлэг, сэтгэгдэл, хуваарь болон хураамжийн сануулга утсанд ирнэ.',
-    pushTurnOn: 'Мэдэгдэл асаах',
-    pushOn: 'Мэдэгдэл асаалттай',
-    pushOff: 'Унтраах',
-    pushOffDone: 'Унтраалаа',
-    pushTest: 'Туршиж үзэх',
-    pushSent: 'Илгээлээ',
-    pushDenied: 'Утасны тохиргооноос мэдэгдлийг зөвшөөрнө үү',
-    pushNo: 'Энэ хөтөч мэдэгдэл дэмжихгүй',
-    pushNeedHome: 'iPhone дээр эхлээд үндсэн дэлгэцэд нэмэх шаардлагатай',
-    pushHowIos: 'Safari доод талын Share → Add to Home Screen → дүрсээр нь дахин нээнэ үү',
-    pushOtherDevice: 'Өөр {n} төхөөрөмж дээр асаалттай',
-    pushNoDevice: 'Асаалттай төхөөрөмж алга',
-    loading: 'Ачаалж байна…',
+    orgTitle: 'Officers',
+    orgHonorary: 'Honorary',
+    orgAssign: '+ assign',
+    orgPickMember: 'Pick from members',
+    orgNotMember: '— not set —',
+    orgNameOnly: 'Not a member? Type a name',
+    orgNameOnlyHint: 'e.g. honorary chairman',
+    orgHint: 'If you pick a member, the chart follows their name when it changes.',
+    role_owner: 'Club Owner · Head Coach',
+    role_president: 'Chairman',
+    role_vice1: 'Vice Chairman 1',
+    role_vice2: 'Vice Chairman 2',
+    role_manager1: 'Secretary 1',
+    role_manager2: 'Secretary 2',
+    role_match: 'Match Director',
+    role_event: 'Event Director',
+    role_external: 'Partnerships Director',
+    role_honorary: 'Honorary Chairman',
+    role_advisor1: 'Advisor 1',
+    role_advisor2: 'Advisor 2',
+    role_advisor3: 'Advisor 3',
 
-    tabBoard: 'Самбар',
-    newPost: 'Шинэ бичлэг',
-    editPost: 'Бичлэг засах',
-    postWhat: 'Юу болсон бэ?',
-    postEmpty: 'Юм бичих эсвэл зураг нэмнэ үү',
-    noPosts: 'Бичлэг алга',
-    comments: 'Сэтгэгдэл',
-    noComments: 'Сэтгэгдэл алга',
-    commentWrite: 'Сэтгэгдэл бичих…',
-    send: 'Илгээх',
-    more: 'Цааш нь',
-    edited: 'Зассан',
-    editBodyOnly: 'Зөвхөн бичвэрийг засна (зураг хасахыг бол бичлэгийг устгаад дахин оруулна уу)',
-    photoMax: 'Хамгийн их 4',
-    agoNow: 'саяхан',
-    agoMin: '{n} минутын өмнө',
-    agoHour: '{n} цагийн өмнө',
-    agoDay: '{n} өдрийн өмнө',
+    pushTitle: 'Phone notifications',
+    pushWhat: 'New notices, new posts and comments, new events and dues reminders come to your phone.',
+    pushTurnOn: 'Turn on notifications',
+    pushOn: 'Notifications are on',
+    pushOff: 'Turn off',
+    pushOffDone: 'Turned off',
+    pushTest: 'Send a test',
+    pushSent: 'Sent',
+    pushDenied: 'Please allow notifications in your phone settings',
+    pushNo: 'This browser does not support notifications',
+    pushNeedHome: 'On iPhone you must add the app to the home screen first',
+    pushHowIos: 'Safari → Share button → Add to Home Screen → open it from the icon',
+    pushOtherDevice: 'On for {n} other device(s)',
+    pushNoDevice: 'No device is turned on',
+    loading: 'Loading…',
 
-    repeat: 'Давтах (хэд хоногийг нэг дор)',
-    repeatAuto: '🪄 Гарчгаас {days} гарагийг тодрууллаа',
-    repeatFrom: 'Хугацаа (эхлэх)',
-    repeatTo: 'Хугацаа (дуусах)',
-    repeatPreview: '{n} хуваарь бүртгэгдэнэ',
-    repeatNoDays: 'Гарагаа сонгоно уу',
-    repeatNone: 'Тохирох өдөр алга',
-    repeatBadRange: 'Хугацаа буруу',
-    bulkDone: '{n} хуваарь бүртгэлээ',
-    bulkDoneSkip: '{n} бүртгэлээ ({s} аль хэдийн байсан)',
-    repeatTooMany: 'Хэт олон хуваарь (120-аас дээш)',
+    newPost: 'New post',
+    editPost: 'Edit post',
+    postWhat: 'What happened?',
+    postEmpty: 'Write something or add a photo',
+    noPosts: 'No posts yet',
+    comments: 'Comments',
+    noComments: 'No comments',
+    commentWrite: 'Write a comment…',
+    send: 'Send',
+    more: 'More',
+    edited: 'edited',
+    editBodyOnly: 'Only the text is edited (to change photos, delete the post and write it again)',
+    photoMax: 'up to 4',
+    agoNow: 'just now',
+    agoMin: '{n} min ago',
+    agoHour: '{n} h ago',
+    agoDay: '{n} d ago',
+    showOriginal: 'original',
 
-    joinRequest: 'Гишүүнээр бүртгүүлэх',
-    joinHint: 'Хүсэлт илгээвэл админ зөвшөөрсний дараа нэвтэрч орно. ПИН-ээ өөрөө сонгоно уу.',
-    joinSend: 'Хүсэлт илгээх',
-    joinDone: 'Хүсэлт илгээгдлээ. Админ зөвшөөрөхийг хүлээнэ үү.',
-    joinPending: 'Гишүүнчлэлийн хүсэлт',
-    joinNone: 'Хүсэлт алга',
-    joinApprove: 'Зөвшөөрөх',
-    joinReject: 'Татгалзах',
-    joinApproved: '{name} гишүүн болов',
-    joinRejected: 'Татгалзлаа',
-    alreadyMember: 'Энэ дугаар бүртгэлтэй байна',
-    alreadyRequested: 'Та аль хэдийн хүсэлт илгээсэн байна',
-    tooManyRequests: 'Хэт олон хүсэлт. Дараа дахин оролдоно уу.',
+    repeat: 'Repeat (several dates at once)',
+    repeatAuto: '🪄 Found {days} in the title',
+    repeatFrom: 'From',
+    repeatTo: 'To',
+    repeatPreview: '{n} events will be created',
+    repeatNoDays: 'Pick the days of the week',
+    repeatNone: 'No matching dates',
+    repeatBadRange: 'Check the date range',
+    bulkDone: 'Created {n} events',
+    bulkDoneSkip: 'Created {n} ({s} already existed)',
+    repeatTooMany: 'More than 120 at once — shorten the range',
 
-    dow: ['Ня', 'Да', 'Мя', 'Лха', 'Пү', 'Ба', 'Бя'],
-  },
-  ko: {
-    memberOnly: '회원 전용',
-    phone: '전화번호', pin: 'PIN (4자리)', login: '로그인', logout: '로그아웃',
-    loginFail: '전화번호 또는 PIN이 맞지 않습니다', loginLocked: '{s}초 후에 다시 시도해 주세요',
-    loginDormant: '탈퇴 처리된 회원입니다. 관리자에게 문의해 주세요.',
-    loggingIn: '확인 중…',
+    joinRequest: 'Apply for membership',
+    joinHint: 'After you apply, an officer approves it and then you can log in. Choose your own PIN.',
+    joinSend: 'Send application',
+    joinDone: 'Application sent. Please wait for an officer to approve it.',
+    joinPending: 'Applications',
+    joinNone: 'No applications',
+    joinApprove: 'Approve',
+    joinReject: 'Reject',
+    joinApproved: '{name} is now a member',
+    joinRejected: 'Rejected',
+    alreadyMember: 'That phone number is already registered',
+    alreadyRequested: 'You have already applied',
+    tooManyRequests: 'Too many applications. Please try again later.',
 
-    tabHome: '홈', tabSchedule: '일정', tabDues: '회비', tabNotices: '공지', tabMembers: '회원',
-
-    changePin: 'PIN 변경', settings: '설정', cancel: '취소', save: '저장',
-    add: '추가', edit: '수정', del: '삭제', close: '닫기', confirmDelete: '삭제할까요?',
-    saved: '저장했습니다', deleted: '삭제했습니다', failed: '실패했습니다', required: '필수',
-    admin: '관리자', member: '회원', adminOnly: '관리자만',
-
-    upcoming: '다가오는 일정', noUpcoming: '다가오는 일정이 없습니다',
-    pinnedNotice: '고정 공지', myDues: '내 회비', quickUnpaid: '이번 달 미납',
-    greetMorning: '안녕하세요', today: '오늘',
-
-    schedule: '일정', newEvent: '일정 등록', editEvent: '일정 수정',
-    kindRegular: '정기모임', kindEvent: '행사', kindTournament: '대회',
-    title: '제목', kind: '종류', date: '날짜', startTime: '시작', endTime: '종료',
-    courts: '코트 수', memo: '메모', upcomingTab: '다가오는', pastTab: '지난',
-    courtsN: '코트 {n}면', noEvents: '일정이 없습니다', endBeforeStart: '종료 시간이 시작보다 빠릅니다',
-    yes: '참석', no: '불참', maybe: '미정',
-    attendCount: '참석 {n}명', roster: '명단', noAnswerYet: '아직 아무도 답하지 않았습니다', myAnswer: '내 응답',
-
-    dues: '회비', monthlyFee: '월회비', joiningFee: '입회비',
-    paid: '완납', unpaid: '미납', paidAt: '납부일', method: '방법',
-    cash: '현금', transfer: '계좌이체', qpay: 'QPay',
-    duesGrid: '회원 납부 현황', unpaidList: '미납자', allPaid: '전원 완납 🎉',
-    collected: '수납', expected: '예정', members: '회원',
-    myDuesEmpty: '회비 내역이 없습니다', joiningLabel: '입회비',
-    markPaid: '완납으로', markUnpaid: '미납으로',
-
-    notices: '공지', newNotice: '공지 작성', editNotice: '공지 수정',
-    body: '내용', photo: '사진', pinTop: '상단 고정', pinned: '고정',
-    noNotices: '공지가 없습니다', photoPick: '사진 선택', photoRemove: '사진 빼기',
-    photoTooBig: '사진이 너무 큽니다', readOnly: '관리자만 작성합니다',
-
-    memberList: '회원 명단', newMember: '회원 추가', editMember: '회원 수정',
-    name: '이름', level: '레벨', joinedAt: '가입일', status: '상태', role: '권한',
-    lvNewbie: '입문', lvBeginner: '초급', lvIntermediate: '중급', lvAdvanced: '상급',
-    stActive: '활동', stDormant: '탈퇴',
-    membersN: '{n}명', activeN: '활동 {n}명', phoneTaken: '이미 등록된 전화번호입니다',
-    badPhone: '전화번호는 8자리입니다', pin4: 'PIN은 4자리 숫자입니다',
-    resetPin: 'PIN 재설정', newPin: '새 PIN', firstPin: '첫 PIN: {pin}',
-    lastAdmin: '마지막 관리자는 바꿀 수 없습니다',
-    currentPin: '현재 PIN', pinChanged: 'PIN을 바꿨습니다', badCurrentPin: '현재 PIN이 맞지 않습니다',
-    clubName: '클럽 이름', titleRole: '직책',
-
-    rulesTitle: '클럽 회칙',
-    rulesVersion: '{v}판',
-    rulesSee: '회칙 보기',
-    rulesAgreeCheck: '회칙을 읽었고 동의합니다',
-    rulesAgreeBtn: '동의합니다',
-    rulesAgreed: '동의해 주셔서 감사합니다',
-    rulesEdit: '회칙 수정',
-    rulesEditHint: '저장하면 판 번호가 1 올라가고, 회원들에게 다시 동의를 받습니다.',
-    rulesSaved: '저장했습니다 ({v}판)',
-    rulesOnlyKo: '몽골어판은 아직 없습니다',
-    orgTitle: '조직도 (임원)',
-    orgHonorary: '명예직',
-    orgAssign: '+ 사람 지정',
-    orgPickMember: '회원에서 고르기',
-    orgNotMember: '— 고르지 않음 —',
-    orgNameOnly: '회원이 아니면 이름만 적기',
-    orgNameOnlyHint: '예: 명예회장님 성함',
-    orgHint: '회원으로 고르면 그 사람 이름이 바뀔 때 조직도도 함께 바뀝니다.',
-    role_owner: '클럽 오너 · 헤드코치',
-    role_president: '회장',
-    role_vice1: '부회장 1',
-    role_vice2: '부회장 2',
-    role_manager1: '총무 1',
-    role_manager2: '총무 2',
-    role_match: '경기이사',
-    role_event: '행사이사',
-    role_external: '대외협력이사',
-    role_honorary: '명예회장',
-    role_advisor1: '고문 1',
-    role_advisor2: '고문 2',
-    role_advisor3: '고문 3',
-
-    roleOwner: '오너',
-    adminGive: '운영진 (권한 주기)',
-    ownerOnly: '클럽 오너만 할 수 있습니다',
-    cannotDeleteOwner: '클럽 오너는 삭제할 수 없습니다',
-    ownerNote: '권한 주기·회수, 회칙 수정, 조직도, 회비 금액, 회원 삭제는 오너(사장님)만 할 수 있습니다.',
-    adminNote: '운영진 권한: 가입 승인, 일정·공지 작성, 회비 체크.',
-
-    pushTitle: '폰 알림',
-    pushWhat: '새 공지, 게시판 새 글과 댓글, 새 일정, 회비 안내가 폰으로 옵니다.',
-    pushTurnOn: '알림 켜기',
-    pushOn: '알림 켜짐',
-    pushOff: '끄기',
-    pushOffDone: '껐습니다',
-    pushTest: '테스트 보내기',
-    pushSent: '보냈습니다',
-    pushDenied: '폰 설정에서 알림을 허용해 주세요',
-    pushNo: '이 브라우저는 알림을 지원하지 않습니다',
-    pushNeedHome: '아이폰은 먼저 홈 화면에 추가해야 알림이 옵니다',
-    pushHowIos: '사파리 아래 공유 버튼 → 홈 화면에 추가 → 홈 화면 아이콘으로 다시 열기',
-    pushOtherDevice: '다른 기기 {n}대에서 켜져 있습니다',
-    pushNoDevice: '켜진 기기가 없습니다',
-    loading: '불러오는 중…',
-
-    tabBoard: '게시판',
-    newPost: '글쓰기',
-    editPost: '글 수정',
-    postWhat: '무슨 일이 있었나요?',
-    postEmpty: '내용을 쓰거나 사진을 넣어주세요',
-    noPosts: '아직 글이 없습니다',
-    comments: '댓글',
-    noComments: '댓글이 없습니다',
-    commentWrite: '댓글 쓰기…',
-    send: '보내기',
-    more: '더 보기',
-    edited: '수정됨',
-    editBodyOnly: '글만 고칩니다 (사진을 바꾸려면 글을 지우고 다시 올려주세요)',
-    photoMax: '최대 4장',
-    agoNow: '방금',
-    agoMin: '{n}분 전',
-    agoHour: '{n}시간 전',
-    agoDay: '{n}일 전',
-
-    repeat: '반복 등록 (여러 날 한 번에)',
-    repeatAuto: '🪄 제목에서 {days}요일을 찾아 자동으로 골랐습니다',
-    repeatFrom: '기간 시작',
-    repeatTo: '기간 끝',
-    repeatPreview: '{n}개 일정이 등록됩니다',
-    repeatNoDays: '요일을 골라주세요',
-    repeatNone: '해당하는 날짜가 없습니다',
-    repeatBadRange: '기간을 확인해 주세요',
-    bulkDone: '{n}개 일정을 등록했습니다',
-    bulkDoneSkip: '{n}개 등록 ({s}개는 이미 있어 건너뜀)',
-    repeatTooMany: '한 번에 120개를 넘을 수 없습니다. 기간을 줄여주세요',
-
-    joinRequest: '가입 신청',
-    joinHint: '신청하면 관리자 승인 후 로그인할 수 있습니다. PIN은 직접 정해 주세요.',
-    joinSend: '신청하기',
-    joinDone: '신청했습니다. 관리자 승인을 기다려 주세요.',
-    joinPending: '가입 신청',
-    joinNone: '신청 없음',
-    joinApprove: '승인',
-    joinReject: '거절',
-    joinApproved: '{name} 님을 회원으로 등록했습니다',
-    joinRejected: '거절했습니다',
-    alreadyMember: '이미 등록된 전화번호입니다',
-    alreadyRequested: '이미 신청하셨습니다',
-    tooManyRequests: '신청이 너무 많습니다. 나중에 다시 시도해 주세요.',
-
-    dow: ['일', '월', '화', '수', '목', '금', '토'],
+    dow: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    months: ['January', 'February', 'March', 'April', 'May', 'June',
+             'July', 'August', 'September', 'October', 'November', 'December'],
   },
 };
 
-const KEY = 'htc_lang';
-export let LANG = detect();
-
-function detect() {
-  try {
-    const saved = localStorage.getItem(KEY);
-    if (saved === 'mn' || saved === 'ko') return saved;
-    // 폰이 한국어면 한국어, 그 밖에는 몽골어(클럽 기본)
-    const langs = [navigator.language, ...(navigator.languages || [])].filter(Boolean).map(String);
-    return langs.some(l => l.toLowerCase().startsWith('ko')) ? 'ko' : 'mn';
-  } catch (e) { return 'mn'; }
-}
+export const LANG = 'en';
 
 export function t(key, vars) {
-  let s = DICT[LANG]?.[key] ?? DICT.mn[key] ?? key;
+  let s = DICT.en[key] ?? key;
   if (Array.isArray(s)) return s;
   if (vars) for (const k in vars) s = String(s).split(`{${k}}`).join(vars[k]);
   return s;
 }
 
-export function setLang(l) {
-  LANG = l === 'ko' ? 'ko' : 'mn';
-  try { localStorage.setItem(KEY, LANG); } catch (e) {}
-  applyStatic();
-  document.documentElement.lang = LANG;
-}
-
-export const otherLang = () => (LANG === 'mn' ? 'ko' : 'mn');
-
-// data-i18n 이 붙은 정적 문구를 현재 언어로 바꾼다
+// Fills every element marked with data-i18n.
 export function applyStatic() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
-  document.querySelectorAll('[data-lang-toggle]').forEach(b => { b.textContent = LANG === 'mn' ? '한국어' : 'Монгол'; });
-  document.documentElement.lang = LANG;
+  document.documentElement.lang = 'en';
 }
 
-// 2026-10-18 → '10/18 (Ба)' 식으로. 요일 이름은 언어에 따라 바뀐다.
+export const fmtMoney = (n) => Number(n || 0).toLocaleString('en-US');
+
+// '2026-10-18' → 'Oct 18 (Sun)'
 export function fmtDate(iso) {
   const [y, m, d] = String(iso).split('-').map(Number);
   const dow = t('dow')[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
-  return `${m}/${d} (${dow})`;
+  return `${t('months')[m - 1].slice(0, 3)} ${d} (${dow})`;
 }
-export const fmtMoney = (n) => Number(n || 0).toLocaleString('en-US');
+export const fmtMonth = (ym) => {
+  const [y, m] = String(ym).split('-').map(Number);
+  return `${t('months')[m - 1]} ${y}`;
+};
 
-// '2026-10-15 19:40:12' → '3시간 전'.
-// 서버가 적는 시각은 울란바토르 벽시계라 폰 시간대와 다를 수 있다.
-// 지금 시각도 같은 벽시계로 구해 둘을 같은 기준(UTC인 척)으로 빼면 차이는 정확하다.
+// '2026-10-15 19:40:12' → '3 h ago'.
+// The server writes Ulaanbaatar wall-clock time. We read "now" on the same wall clock,
+// so subtracting the two is accurate no matter where the phone is set.
 const UB_NOW = new Intl.DateTimeFormat('sv-SE', {
   timeZone: 'Asia/Ulaanbaatar', year: 'numeric', month: '2-digit', day: '2-digit',
   hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
@@ -370,12 +212,9 @@ export function timeAgo(stamp) {
   if (sec < 86400) return t('agoHour', { n: Math.floor(sec / 3600) });
   const days = Math.floor(sec / 86400);
   if (days <= 7) return t('agoDay', { n: days });
-  return String(stamp).slice(0, 10);   // 오래된 글은 날짜로
+  return String(stamp).slice(0, 10);
 }
-export const fmtMonth = (ym) => {
-  const [y, m] = String(ym).split('-').map(Number);
-  return LANG === 'ko' ? `${y}년 ${m}월` : `${y} оны ${m} сар`;
-};
+
 export const levelLabel = (lv) => t({ newbie: 'lvNewbie', beginner: 'lvBeginner', intermediate: 'lvIntermediate', advanced: 'lvAdvanced' }[lv] || 'lvBeginner');
 export const kindLabel = (k) => t({ regular: 'kindRegular', event: 'kindEvent', tournament: 'kindTournament' }[k] || 'kindEvent');
 export const methodLabel = (m) => (m ? t(m) : '');

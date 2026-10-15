@@ -7,6 +7,7 @@ const cookieParser = require('cookie-parser');
 const { open, ensureFirstAdmin, ensureOwner, getSettings } = require('./lib/db');
 const { createAuth } = require('./lib/auth');
 const { createNotifier } = require('./lib/notify');
+const { createTranslator } = require('./lib/translate');
 const { createJobs } = require('./lib/jobs');
 
 const PORT = Number(process.env.PORT || 3000);
@@ -14,6 +15,7 @@ const PORT = Number(process.env.PORT || 3000);
 const db = open();
 const auth = createAuth(db);
 const notify = createNotifier(db);
+const tr = createTranslator(db);     // 회원이 쓴 글을 영어로 번역해 함께 보여준다
 const jobs = createJobs(db, notify);
 const firstAdmin = ensureFirstAdmin(db);
 const newOwner = ensureOwner(db);   // 오너가 없으면 첫 관리자를 오너로
@@ -29,10 +31,10 @@ app.use('/api/auth', require('./routes/auth')(db, auth));
 app.use('/api/join', require('./routes/join')(db, auth, notify));     // 가입 신청 (신청은 누구나, 승인은 관리자)
 app.use('/api/settings', require('./routes/settings')(db, auth));
 app.use('/api/members', require('./routes/members')(db, auth));
-app.use('/api/events', require('./routes/events')(db, auth, notify));
+app.use('/api/events', require('./routes/events')(db, auth, notify, tr));
 app.use('/api/dues', require('./routes/dues')(db, auth));
-app.use('/api/notices', require('./routes/notices')(db, auth, notify));
-app.use('/api/posts', require('./routes/posts')(db, auth, notify));   // 자유게시판
+app.use('/api/notices', require('./routes/notices')(db, auth, notify, tr));
+app.use('/api/posts', require('./routes/posts')(db, auth, notify, tr));   // 자유게시판
 app.use('/api/push', require('./routes/push')(db, auth, notify));    // 폰 알림
 app.use('/api/docs', require('./routes/docs')(db, auth));            // 회칙 (읽기는 누구나)
 app.use('/api/officers', require('./routes/officers')(db, auth));    // 조직도

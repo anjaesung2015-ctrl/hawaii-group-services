@@ -1,13 +1,13 @@
 // 홈 — 다가오는 일정 3개, 고정 공지, 내 회비(관리자는 이번 달 미납자).
-import { api, esc, thisMonth } from '../ui.js';
+import { api, esc, thisMonth, trText, origHtml } from '../ui.js';
 import { t, fmtMonth, fmtMoney } from '../i18n.js';
 import { eventCard, bindEventCards } from './schedule.js';
 
 export async function renderHome(el, state) {
   const isAdmin = state.me.role === 'admin';
   const [events, notices, money, join] = await Promise.all([
-    api('/events/upcoming?limit=3'),
-    api('/notices'),
+    api('/events/upcoming?limit=3&lang=en'),
+    api('/notices?lang=en'),
     isAdmin ? api(`/dues/unpaid?month=${thisMonth()}`) : api('/dues/me'),
     isAdmin ? api('/join').catch(() => ({ count: 0 })) : Promise.resolve({ count: 0 }),
   ]);
@@ -34,8 +34,8 @@ export async function renderHome(el, state) {
       <div class="section-head"><h2>${esc(t('pinnedNotice'))}</h2></div>
       ${pinned.map(n => `
         <div class="card pinned">
-          <h3>📌 ${esc(n.title)}</h3>
-          <div class="notice-body">${esc(n.body.length > 140 ? n.body.slice(0, 140) + '…' : n.body)}</div>
+          <h3>📌 ${esc(trText(n, 'title').text)}</h3>
+          <div class="notice-body">${esc((() => { const b = trText(n, 'body').text; return b.length > 140 ? b.slice(0, 140) + '…' : b; })())}</div>
         </div>`).join('')}` : ''}
 
     <div class="section-head"><h2>${esc(t('upcoming'))}</h2></div>

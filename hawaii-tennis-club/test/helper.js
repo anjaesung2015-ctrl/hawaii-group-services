@@ -15,6 +15,7 @@ function makeApp(opts = {}) {
   const dbmod = require('../lib/db');
   const { createAuth } = require('../lib/auth');
   const { createNotifier } = require('../lib/notify');
+  const { createTranslator } = require('../lib/translate');
 
   const db = dbmod.open();
   const auth = createAuth(db);
@@ -29,6 +30,9 @@ function makeApp(opts = {}) {
     },
   });
 
+  // 번역은 밖으로 나가지 않게 가짜 번역기를 쓴다 ('[en] 원문')
+  const tr = createTranslator(db, { budgetMs: 2000, translate: async (text) => '[en] ' + text });
+
   const app = express();
   app.use(express.json({ limit: '6mb' }));
   app.use(cookieParser());
@@ -37,10 +41,10 @@ function makeApp(opts = {}) {
   app.use('/api/join', require('../routes/join')(db, auth, notify));
   app.use('/api/settings', require('../routes/settings')(db, auth));
   app.use('/api/members', require('../routes/members')(db, auth));
-  app.use('/api/events', require('../routes/events')(db, auth, notify));
+  app.use('/api/events', require('../routes/events')(db, auth, notify, tr));
   app.use('/api/dues', require('../routes/dues')(db, auth));
-  app.use('/api/notices', require('../routes/notices')(db, auth, notify));
-  app.use('/api/posts', require('../routes/posts')(db, auth, notify));
+  app.use('/api/notices', require('../routes/notices')(db, auth, notify, tr));
+  app.use('/api/posts', require('../routes/posts')(db, auth, notify, tr));
   app.use('/api/push', require('../routes/push')(db, auth, notify));
   app.use('/api/docs', require('../routes/docs')(db, auth));
   app.use('/api/officers', require('../routes/officers')(db, auth));
@@ -60,7 +64,7 @@ function makeApp(opts = {}) {
 
   let closed = false;
   const made = {
-    db, dbmod, base, server, dir, notify, sent,
+    db, dbmod, base, server, dir, notify, sent, tr,
     // 응답을 보낸 뒤 나가는 알림을 기다린다 (라우트가 res.json 뒤에 보내므로)
     settle: () => new Promise(r => setTimeout(r, 30)),
     adminId: admin.lastInsertRowid,

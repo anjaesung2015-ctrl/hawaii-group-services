@@ -1,9 +1,9 @@
 // 공지 — 관리자가 쓰고(사진 1장·상단 고정) 회원은 읽는다.
-import { api, esc, toast, openModal, pickPhoto, $$ } from '../ui.js';
+import { api, esc, toast, openModal, pickPhoto, trText, origHtml, $$ } from '../ui.js';
 import { t } from '../i18n.js';
 
 export async function renderNotices(el, state) {
-  const list = await api('/notices');
+  const list = await api('/notices?lang=en');
   el.innerHTML = `
     ${state.me.role === 'admin'
       ? `<div class="fab-row"><button class="btn btn-primary" style="width:100%" data-new>+ ${esc(t('newNotice'))}</button></div>`
@@ -26,12 +26,13 @@ function noticeCard(n, state) {
     <div class="card ${n.pinned ? 'pinned' : ''}">
       <div class="card-row">
         <div style="flex:1;min-width:0">
-          <h3>${n.pinned ? '📌 ' : ''}${esc(n.title)}</h3>
+          <h3>${n.pinned ? '📌 ' : ''}${esc(trText(n, 'title').text)}</h3>
           <div class="meta">${esc(n.author || '')} · ${esc(String(n.created_at).slice(0, 10))}</div>
         </div>
         ${state.me.role === 'admin' ? `<button class="btn btn-sm" data-edit-notice="${n.id}">${esc(t('edit'))}</button>` : ''}
       </div>
-      <div class="notice-body">${esc(n.body)}</div>
+      <div class="notice-body">${esc(trText(n, 'body').text)}</div>
+      ${origHtml(trText(n, 'body').orig)}
       ${n.photo ? `<img class="notice-photo" src="${esc(photoSrc(n.photo))}" alt="" loading="lazy">` : ''}
     </div>`;
 }

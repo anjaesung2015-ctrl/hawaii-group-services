@@ -131,6 +131,17 @@ function fieldHtml(f) {
   return `<label class="field">${label}<input ${attrs}></label>`;
 }
 
+// 회원이 쓴 글은 서버가 영어로 번역해 '칸_tr' 로 함께 보낸다.
+// 번역문을 크게, 원문을 작게 아래에 둔다 — 기계 번역이라 원문 확인이 필요하다.
+export function trText(row, field) {
+  const orig = row?.[field];
+  const en = row?.[field + '_tr'];
+  return { text: en || orig || '', orig: en ? orig : null };
+}
+export function origHtml(orig) {
+  return orig ? `<div class="src">🌐 ${esc(orig)}</div>` : '';
+}
+
 // 서버가 돌려준 코드를 사람 말로
 const ERRORS = {
   phone_taken: 'phoneTaken', bad_phone: 'badPhone', pin_4_digits: 'pin4',

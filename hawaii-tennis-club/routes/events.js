@@ -4,29 +4,33 @@ const { today, EVENT_KINDS, ANSWERS } = require('../lib/db');
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
-module.exports = function eventRoutes(db, auth, notify) {
+module.exports = function eventRoutes(db, auth, notify, tr) {
   const router = express.Router();
   router.use(auth.requireMember);
 
   // 다가오는 일정 — 홈 화면이 쓴다 (오늘 것도 포함)
-  router.get('/upcoming', (req, res) => {
+  router.get('/upcoming', async (req, res) => {
     const limit = Math.min(20, Math.max(1, Number(req.query.limit) || 3));
     const rows = db.prepare(`SELECT * FROM event WHERE event_date >= ?
                              ORDER BY event_date, start_time LIMIT ?`).all(today(), limit);
-    res.json(rows.map(e => withCounts(db, e, req.me.id)));
+    const out = rows.map(e => withCounts(db, e, req.me.id));
+    if (tr && req.query.lang) await tr.attach(out, ['title', 'memo'], String(req.query.lang));
+    res.json(out);
   });
 
   // 목록 — 기본은 오늘부터. ?past=1 이면 지난 일정을 최근 것부터.
-  router.get('/', (req, res) => {
+  router.get('/', async (req, res) => {
     const past = req.query.past === '1';
     const rows = past
       ? db.prepare('SELECT * FROM event WHERE event_date < ? ORDER BY event_date DESC, start_time DESC LIMIT 60').all(today())
       : db.prepare('SELECT * FROM event WHERE event_date >= ? ORDER BY event_date, start_time').all(today());
-    res.json(rows.map(e => withCounts(db, e, req.me.id)));
+    const out = rows.map(e => withCounts(db, e, req.me.id));
+    if (tr && req.query.lang) await tr.attach(out, ['title', 'memo'], String(req.query.lang));
+    res.json(out);
   });
 
   // 하나 자세히 — 참석/불참/미정 명단까지
-  router.get('/:id', (req, res) => {
+  router.get('/:id', async (req, res) => {
     const e = db.prepare('SELECT * FROM event WHERE id=?').get(req.params.id);
     if (!e) return res.status(404).json({ error: 'not_found' });
     const people = db.prepare(`SELECT r.answer, m.id, m.name, m.level
@@ -34,7 +38,9 @@ module.exports = function eventRoutes(db, auth, notify) {
                                WHERE r.event_id=? ORDER BY r.answer, m.name`).all(e.id);
     const roster = { yes: [], no: [], maybe: [] };
     for (const p of people) roster[p.answer].push({ id: p.id, name: p.name, level: p.level });
-    res.json({ ...withCounts(db, e, req.me.id), roster });
+    const one = withCounts(db, e, req.me.id);
+    if (tr && req.query.lang) await tr.attach([one], ['title', 'memo'], String(req.query.lang));
+    res.json({ ...one, roster });
   });
 
   router.post('/', auth.requireAdmin, (req, res) => {

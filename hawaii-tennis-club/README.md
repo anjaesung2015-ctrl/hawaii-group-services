@@ -8,7 +8,8 @@
 - 서버: Node.js + Express
 - 데이터: SQLite 파일 하나 (`data/club.db`)
 - 화면: 순수 HTML / CSS / JavaScript (프레임워크 없음)
-- 언어: 몽골어(기본) / 한국어 — 화면 오른쪽 위 버튼으로 전환
+- 언어: **영어 하나**. 회원이 쓴 글(공지·게시판·일정)은 **영어로 자동 번역**해 원문과 함께 보여줍니다
+- 회칙만 한국어·몽골어 원문 그대로 (회칙 화면에서 언어 선택)
 - PWA: 홈 화면에 추가하면 주소창 없이 독립 앱처럼 열립니다
 
 ---
@@ -334,7 +335,7 @@ node -e "const{open,hashPin}=require('./lib/db');const db=open();db.prepare(\"UP
 
 ```bash
 npm start              # 서버 실행
-npm test               # 테스트 177개 실행
+npm test               # 테스트 189개 실행
 npm run seed           # 샘플 데이터 넣기 (있는 건 건너뜀)
 npm run seed:reset     # 전부 지우고 샘플 다시 넣기  ⚠ 실제 데이터도 지워집니다
 node backup.js         # 백업
@@ -365,6 +366,7 @@ hawaii-tennis-club/
 │   ├─ auth.js            로그인 세션(쿠키) · 권한 · 연속 실패 잠금
 │   ├─ photos.js          사진 저장·삭제 (공지·게시판 공용)
 │   ├─ notify.js          폰 알림 발송 (웹 푸시)
+│   ├─ translate.js       회원 글 자동 번역 (영어) + 캐시
 │   ├─ rules-text.js      회칙 원문 (한국어·몽골어, 처음 내용)
 │   └─ jobs.js            하루 전·회비 미납 자동 알림 (10분마다 확인)
 ├─ routes/
@@ -390,7 +392,7 @@ hawaii-tennis-club/
 │   │   └─ views/         home · schedule · board · dues · notices · members · rules · org · push
 │   ├─ manifest.json      PWA 설정
 │   └─ sw.js              서비스워커 (껍데기 캐시)
-├─ test/                  테스트 177개
+├─ test/                  테스트 189개
 ├─ data/                  club.db (자동 생성 · 백업 대상)
 └─ uploads/               공지 사진 (자동 생성 · 백업 대상)
 ```
@@ -399,7 +401,7 @@ hawaii-tennis-club/
 
 ## 9. 확인한 것
 
-- 테스트 **177개 전부 통과** (`npm test`) — 로그인·권한·일정·참석·회비·공지·명단·다국어·상대경로
+- 테스트 **189개 전부 통과** (`npm test`) — 로그인·권한·일정·참석·회비·공지·명단·다국어·상대경로
 - 실서버(HTTPS) 확인: 관리자/회원 로그인, 세션 복원, 일정 참석 응답, 회비 완납 체크와 미납자 집계,
   공지 작성(한글·몽골어), 정적 파일·PWA 아이콘, `/club/`·`/booking` 리다이렉트
 - 권한 분리는 화면에서 숨기는 것만이 아니라 **서버에서 막는지** 확인했습니다

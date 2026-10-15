@@ -1,6 +1,6 @@
 // 앱 시작 — 로그인 확인, 탭 전환, 상단 메뉴.
 import { $, $$, api, esc, toast, openModal, errText } from './ui.js';
-import { t, setLang, otherLang, applyStatic } from './i18n.js';
+import { t, applyStatic } from './i18n.js';
 import { renderHome } from './views/home.js';
 import { renderSchedule } from './views/schedule.js';
 import { renderBoard } from './views/board.js';
@@ -172,11 +172,6 @@ $('#settingsBtn').onclick = () => {
 
 // ---------- 탭 · 언어 · 뒤로가기 ----------
 $$('#tabbar button').forEach(b => b.onclick = () => goTab(b.dataset.tab));
-
-$$('[data-lang-toggle]').forEach(b => b.onclick = () => {
-  setLang(otherLang());
-  if (state.me) render();
-});
 
 window.addEventListener('popstate', (e) => {
   const tab = e.state?.tab || (location.hash || '#home').slice(1);
