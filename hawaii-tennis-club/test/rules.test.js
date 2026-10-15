@@ -31,9 +31,14 @@ test('바뀐 규정이 들어있다 — 게스트 2회(추천 시), 휴회 제�
   assert.match(ko, /추천을 받은 경우: 2회/);
   assert.match(ko, /추천 없이 본인이 신청하는 경우: 4회/);
   assert.ok(!/휴회/.test(ko), '휴회 조항이 남아있다');
+  // 정원 40명 — 쓰이지 않는 '41명 이상' 조항은 지웠다
+  assert.match(ko, /클럽 정원은 40명/);
+  assert.ok(!/41/.test(ko), '41명 조항이 남아있다');
 
   const mn = (await c.call('/docs/rules?lang=mn')).data.body;
   assert.match(mn, /2 удаа/);
+  assert.match(mn, /гишүүний тоо 40/);
+  assert.ok(!/41/.test(mn), '몽골어에 41 조항이 남아있다');
   app.close();
 });
 
