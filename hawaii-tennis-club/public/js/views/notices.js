@@ -35,6 +35,14 @@ export async function renderNotices(el, state) {
   const re = el.querySelector('[data-edit-rules]');
   if (re) re.onclick = () => editRulesNow(() => renderNotices(el, state));
 
+  // 홈 카드에서 눌러 왔으면 그 공지로 내려간다
+  if (state.focusNotice) {
+    const id = state.focusNotice;
+    state.focusNotice = null;
+    // 탭을 그린 뒤 맨 위로 올리는 동작(app.js render)이 끝난 다음에 내려간다
+    setTimeout(() => document.getElementById(`notice-${id}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 30);
+  }
+
   const add = el.querySelector('[data-new]');
   if (add) add.onclick = () => noticeForm(null, state, () => renderNotices(el, state));
   $$('[data-edit-notice]', el).forEach(b => b.onclick = async () => {
@@ -48,13 +56,13 @@ const photoSrc = (p) => String(p || '').replace(/^\/+/, '');
 
 function noticeCard(n, state) {
   return `
-    <div class="card ${n.pinned ? 'pinned' : ''}">
+    <div class="card ${n.pinned ? 'pinned' : ''}" id="notice-${n.id}">
       <div class="card-row">
         <div style="flex:1;min-width:0">
           <h3>${n.pinned ? '📌 ' : ''}${esc(trText(n, 'title').text)}</h3>
           <div class="meta">${esc(n.author || '')} · ${esc(String(n.created_at).slice(0, 10))}</div>
         </div>
-        ${state.me.role === 'admin' ? `<button class="btn btn-sm" data-edit-notice="${n.id}">${esc(t('edit'))}</button>` : ''}
+        ${state.me.role === 'admin' ? `<button class="btn btn-sm" data-edit-notice="${n.id}">✏️ ${esc(t('edit'))}</button>` : ''}
       </div>
       <div class="notice-body">${esc(trText(n, 'body').text)}</div>
       ${origHtml(trText(n, 'body').orig)}
@@ -62,7 +70,8 @@ function noticeCard(n, state) {
     </div>`;
 }
 
-function noticeForm(n, state, refresh) {
+// 홈 화면 공지 카드에서도 바로 고칠 수 있게 내보낸다
+export function noticeForm(n, state, refresh) {
   const isNew = !n;
   let photoData = null;       // 새로 고른 사진 (data:URL)
   let removePhoto = false;
@@ -100,6 +109,8 @@ function noticeForm(n, state, refresh) {
       refresh();
     },
   });
+
+  m.form.querySelector('textarea[name="body"]').classList.add('long-edit');   // 긴 공지도 폰에서 고치기 쉽게
 
   const preview = m.form.querySelector('[data-preview]');
   m.form.querySelector('[data-pick]').onclick = async () => {

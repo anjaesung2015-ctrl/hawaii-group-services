@@ -98,7 +98,8 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--court); background: #fff; }
 .field textarea { min-height: 110px; resize: vertical; }
-.field textarea.rules-edit { min-height: 58vh; font-size: 14px; line-height: 1.5; }
+.field textarea.rules-edit, .field textarea.long-edit { min-height: 50vh; font-size: 14px; line-height: 1.5; }
+.field textarea.rules-edit { min-height: 58vh; }
 .field-row { display: flex; gap: 10px; }
 .field-row .field { flex: 1; }
 
@@ -654,3 +655,4 @@ main {
 .ndots { display: flex; justify-content: center; gap: 6px; margin: 8px 0 4px; }
 .ndots i { width: 6px; height: 6px; border-radius: 3px; background: var(--hair); transition: width .2s, background .2s; }
 .ndots i.on { width: 16px; background: var(--court); }
+.card[id^="notice-"] { scroll-margin-top: 76px; }

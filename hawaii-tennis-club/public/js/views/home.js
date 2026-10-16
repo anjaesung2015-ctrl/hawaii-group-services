@@ -2,6 +2,7 @@
 import { api, esc, thisMonth, trText, origHtml } from '../ui.js';
 import { t, fmtMonth, fmtMoney } from '../i18n.js';
 import { eventCard, bindEventCards } from './schedule.js';
+import { noticeForm } from './notices.js';
 
 export async function renderHome(el, state) {
   const isAdmin = state.me.role === 'admin';
@@ -34,8 +35,11 @@ export async function renderHome(el, state) {
         <button class="btn btn-sm btn-ghost" data-go-notices>${esc(t('seeAll'))} →</button></div>
       <div class="nslider" data-nslider>
         ${recent.map(n => `
-          <div class="card tap nslide${n.pinned ? ' pinned' : ''}">
-            <h3>${n.pinned ? '📌 ' : ''}${esc(trText(n, 'title').text)}</h3>
+          <div class="card tap nslide${n.pinned ? ' pinned' : ''}" data-nid="${n.id}">
+            <div class="card-row" style="align-items:flex-start">
+              <h3 style="flex:1;min-width:0">${n.pinned ? '📌 ' : ''}${esc(trText(n, 'title').text)}</h3>
+              ${isAdmin ? `<button class="btn btn-sm" data-edit-nid="${n.id}" aria-label="edit">✏️</button>` : ''}
+            </div>
             <div class="notice-body">${esc(trText(n, 'body').text)}</div>
             <div class="meta">${esc(String(n.created_at).slice(0, 10))}</div>
           </div>`).join('')}
@@ -55,12 +59,19 @@ export async function renderHome(el, state) {
   const go = el.querySelector('[data-go-members]');
   if (go) go.onclick = () => document.querySelector('#tabbar [data-tab="members"]')?.click();
 
-  bindSlider(el);
+  bindSlider(el, state);
+
+  // 관리자 — 홈 카드의 ✏️ 로 그 자리에서 고친다
+  el.querySelectorAll('[data-edit-nid]').forEach(b => b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const n = recent.find(x => String(x.id) === b.dataset.editNid);
+    if (n) noticeForm(n, state, () => renderHome(el, state));
+  }));
 }
 
 // 공지 카드 — 손가락으로 옆으로 넘긴다(스크롤 스냅). 컴퓨터에선 마우스로 끌어도 넘어간다.
 // 누르면 공지 탭으로. 끌다가 놓은 건 누른 걸로 치지 않는다.
-function bindSlider(el) {
+function bindSlider(el, state) {
   const toNotices = () => document.querySelector('#tabbar [data-tab="notices"]')?.click();
   el.querySelector('[data-go-notices]')?.addEventListener('click', toNotices);
   const s = el.querySelector('[data-nslider]');
@@ -96,7 +107,11 @@ function bindSlider(el) {
   };
   s.addEventListener('pointerup', up);
   s.addEventListener('pointerleave', up);
-  slides.forEach(c => c.addEventListener('click', () => { if (!moved) toNotices(); }));
+  slides.forEach(c => c.addEventListener('click', () => {
+    if (moved) return;
+    state.focusNotice = c.dataset.nid;      // 공지 탭에서 이 공지로 바로 내려간다
+    toNotices();
+  }));
 }
 
 function adminMoney(u, cur) {
