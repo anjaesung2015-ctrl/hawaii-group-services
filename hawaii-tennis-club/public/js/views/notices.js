@@ -1,14 +1,39 @@
 // 공지 — 관리자가 쓰고(사진 1장·상단 고정) 회원은 읽는다.
 import { api, esc, toast, openModal, pickPhoto, trText, origHtml, $$ } from '../ui.js';
 import { t } from '../i18n.js';
+import { openRules, editRulesNow } from './rules.js';
 
 export async function renderNotices(el, state) {
-  const list = await api('/notices?lang=en');
+  const [list, rules] = await Promise.all([
+    api('/notices?lang=en'),
+    api('/docs/rules?lang=ko').catch(() => null),
+  ]);
+  const owner = !!state.me.is_owner;
   el.innerHTML = `
     ${state.me.role === 'admin'
       ? `<div class="fab-row"><button class="btn btn-primary" style="width:100%" data-new>+ ${esc(t('newNotice'))}</button></div>`
       : `<div class="hint">${esc(t('readOnly'))}</div>`}
+    ${rules ? `
+      <div class="card tap pinned" data-rules>
+        <div class="card-row">
+          <div style="flex:1;min-width:0">
+            <h3>📜 ${esc(t('rulesTitle'))}</h3>
+            <div class="meta">${esc(t('rulesVersion', { v: rules.version }))} · ${esc(String(rules.updated_at).slice(0, 10))}</div>
+          </div>
+          ${owner ? `<button class="btn btn-sm" data-edit-rules>${esc(t('edit'))}</button>` : ''}
+        </div>
+        <div class="meta" style="margin-top:6px">${esc(t('rulesSee'))} →</div>
+      </div>` : ''}
     ${list.length ? list.map(n => noticeCard(n, state)).join('') : `<div class="empty">${esc(t('noNotices'))}</div>`}`;
+
+  // 회칙 — 누르면 읽기(한국어/몽골어), 오너는 '수정'으로 바로 고친다
+  const rc = el.querySelector('[data-rules]');
+  if (rc) rc.onclick = (e) => {
+    if (e.target.closest('[data-edit-rules]')) return;
+    openRules({ canEdit: owner });
+  };
+  const re = el.querySelector('[data-edit-rules]');
+  if (re) re.onclick = () => editRulesNow(() => renderNotices(el, state));
 
   const add = el.querySelector('[data-new]');
   if (add) add.onclick = () => noticeForm(null, state, () => renderNotices(el, state));

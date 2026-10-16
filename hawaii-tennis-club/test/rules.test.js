@@ -55,6 +55,20 @@ test('조문 번호와 상호 참조가 맞다 (휴회를 빼고 당겼으므로
   app.close();
 });
 
+test('작은 수정(minor)은 판 번호를 그대로 둔다 — 회원에게 다시 묻지 않는다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const before = (await a.call('/docs/rules')).data;
+  const body = before.body + '\n';
+  const r = await a.call('/docs/rules', { method: 'PUT', body: { lang: 'ko', body: body + '오타 수정 테스트', minor: true } });
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.data.version, before.version);
+  assert.match(r.data.body, /오타 수정 테스트$/);
+  const r2 = await a.call('/docs/rules', { method: 'PUT', body: { lang: 'ko', body: body + '정식 개정' } });
+  assert.strictEqual(r2.data.version, before.version + 1);
+  app.close();
+});
+
 test('관리자가 고치면 판 번호가 올라간다', async () => {
   const app = makeApp();
   const a = await loginAs(app.base, '99000000', '1234');

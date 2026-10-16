@@ -98,6 +98,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--court); background: #fff; }
 .field textarea { min-height: 110px; resize: vertical; }
+.field textarea.rules-edit { min-height: 58vh; font-size: 14px; line-height: 1.5; }
 .field-row { display: flex; gap: 10px; }
 .field-row .field { flex: 1; }
 

@@ -17,6 +17,7 @@ module.exports = function docRoutes(db, auth) {
   });
 
   // 개정 (부칙 제2조 — 임원 회의 제안, 클럽 오너 승인). 고치면 판 번호가 1 올라간다.
+  // minor: true(오타·띄어쓰기 같은 작은 수정)면 판 번호를 그대로 둔다 → 회원에게 다시 동의를 묻지 않는다.
   router.put('/rules', auth.requireOwner, (req, res) => {
     const lang = LANGS.includes(req.body?.lang) ? req.body.lang : null;
     const body = String(req.body?.body || '').trim();
@@ -27,10 +28,10 @@ module.exports = function docRoutes(db, auth) {
                 VALUES ('rules', ?, ?, 1, datetime('now','localtime'), ?)
                 ON CONFLICT(key, lang) DO UPDATE SET
                   body = excluded.body,
-                  version = doc.version + 1,
+                  version = doc.version + ?,
                   updated_at = excluded.updated_at,
                   updated_by = excluded.updated_by`)
-      .run(lang, body, req.me.id);
+      .run(lang, body, req.me.id, req.body?.minor ? 0 : 1);
     res.json({ ok: true, ...get(lang) });
   });
 
