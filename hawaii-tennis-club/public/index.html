@@ -46,6 +46,9 @@
     <!-- 아직 회원이 아닌 사람 — 신청하면 관리자가 승인한다 -->
     <button class="btn btn-ghost" id="joinBtn" type="button" style="width:100%;margin-top:2px" data-i18n="joinRequest">Гишүүнээр бүртгүүлэх</button>
 
+    <!-- 홈 화면에 앱 설치 — 이미 앱으로 열려 있으면 숨긴다 -->
+    <button class="btn btn-ghost" data-install type="button" style="width:100%;margin-top:2px" data-i18n="installApp">Install app</button>
+
   </div>
 </section>
 
@@ -60,6 +63,9 @@
       <div class="topbar-text">
         <strong id="topClub">Hawaii Tennis Club</strong>
       </div>
+      <button class="icon-btn" type="button" id="refreshBtn" aria-label="refresh">
+        <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
       <button class="icon-btn" type="button" id="menuBtn" aria-label="menu">
         <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
       </button>
@@ -69,6 +75,7 @@
   <div class="sheet" id="menuSheet" hidden>
     <div class="sheet-body">
       <button class="sheet-item" id="rulesBtn" data-i18n="rulesTitle">Клубын дүрэм</button>
+      <button class="sheet-item" data-install data-i18n="installApp">Install app</button>
       <button class="sheet-item" id="pushBtn" data-i18n="pushTitle">Утасны мэдэгдэл</button>
       <button class="sheet-item" id="pinBtn" data-i18n="changePin">ПИН солих</button>
       <button class="sheet-item owner-only" id="settingsBtn" data-i18n="settings">Тохиргоо</button>

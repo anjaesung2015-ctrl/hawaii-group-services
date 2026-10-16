@@ -5,6 +5,8 @@ import { renderHome } from './views/home.js';
 import { renderSchedule } from './views/schedule.js';
 import { renderBoard } from './views/board.js';
 import { openPushPanel } from './views/push.js';
+import { initInstall } from './views/install.js';
+import { initPullRefresh, refresh } from './refresh.js';
 import { openRules, askAgreeIfNeeded } from './views/rules.js';
 import { renderDues } from './views/dues.js';
 import { renderNotices } from './views/notices.js';
@@ -22,7 +24,7 @@ const VIEWS = {
 };
 
 // ---------- 렌더 ----------
-async function render() {
+async function render({ keepScroll = false } = {}) {
   const el = $('#content');
   const view = VIEWS[state.tab] || renderHome;
   try {
@@ -32,7 +34,7 @@ async function render() {
     el.innerHTML = `<div class="empty">${esc(errText(e))}</div>`;
   }
   $$('#tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === state.tab));
-  window.scrollTo({ top: 0 });
+  if (!keepScroll) window.scrollTo({ top: 0 });
 }
 
 function goTab(tab) {
@@ -134,6 +136,19 @@ $('#logoutBtn').onclick = async () => {
 $('#rulesBtn').onclick = () => { sheet.hidden = true; openRules({ canEdit: !!state.me?.is_owner }); };
 
 $('#pushBtn').onclick = () => { sheet.hidden = true; openPushPanel(); };
+initInstall(() => { sheet.hidden = true; });
+
+// ---------- 새로고침 ----------
+// 상단 ↻ 버튼, 또는 맨 위에서 아래로 당기기. 창(모달)이 열려 있을 땐 당기기를 막는다(쓰던 내용이 날아가니까)
+$('#refreshBtn').onclick = async () => {
+  const b = $('#refreshBtn');
+  if (b.classList.contains('spin')) return;
+  b.classList.add('spin');
+  try { await refresh(() => render({ keepScroll: true })); } finally { b.classList.remove('spin'); }
+};
+initPullRefresh(() => render({ keepScroll: true }), {
+  enabled: () => !!state.me && !$('#modalRoot').innerHTML && $('#menuSheet').hidden,
+});
 
 $('#pinBtn').onclick = () => {
   sheet.hidden = true;
