@@ -7,6 +7,10 @@ import { renderBoard } from './views/board.js';
 import { openPushPanel } from './views/push.js';
 import { initInstall } from './views/install.js';
 import { initPullRefresh, refresh } from './refresh.js';
+import { initBackNav } from './backnav.js';
+
+// 폰 뒤로가기가 열린 창부터 닫게 — 아래 탭 이동 popstate 보다 먼저 등록해야 한다
+initBackNav();
 import { openRules, askAgreeIfNeeded } from './views/rules.js';
 import { renderDues } from './views/dues.js';
 import { renderNotices } from './views/notices.js';
@@ -34,13 +38,17 @@ async function render({ keepScroll = false } = {}) {
     el.innerHTML = `<div class="empty">${esc(errText(e))}</div>`;
   }
   $$('#tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === state.tab));
+  $('#backBtn').hidden = state.tab === 'home';
   if (!keepScroll) window.scrollTo({ top: 0 });
 }
+
+// 앱 안에서 탭을 몇 번 옮겼는지 — 0 이면 뒤로 갈 곳이 앱 밖(알림으로 바로 열었을 때 등)이다
+let navDepth = 0;
 
 function goTab(tab) {
   state.tab = VIEWS[tab] ? tab : 'home';
   // 뒤로가기로 탭을 되짚을 수 있게 주소에 남긴다
-  if (location.hash !== `#${state.tab}`) history.pushState({ tab: state.tab }, '', `#${state.tab}`);
+  if (location.hash !== `#${state.tab}`) { history.pushState({ tab: state.tab }, '', `#${state.tab}`); navDepth++; }
   render();
 }
 
@@ -187,7 +195,16 @@ $('#settingsBtn').onclick = () => {
 // ---------- 탭 · 언어 · 뒤로가기 ----------
 $$('#tabbar button').forEach(b => b.onclick = () => goTab(b.dataset.tab));
 
+// ← 버튼: 앞서 본 탭으로. 앱 안에서 옮긴 적이 없으면(바로 열었으면) 홈으로 — 앱 밖으로 나가지 않게
+$('#backBtn').onclick = () => {
+  if (navDepth > 0) return history.back();
+  history.replaceState({ tab: 'home' }, '', '#home');
+  state.tab = 'home';
+  render();
+};
+
 window.addEventListener('popstate', (e) => {
+  navDepth = Math.max(0, navDepth - 1);
   const tab = e.state?.tab || (location.hash || '#home').slice(1);
   state.tab = VIEWS[tab] ? tab : 'home';
   if (state.me) render();
