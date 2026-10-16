@@ -54,7 +54,6 @@ function showApp() {
   $('#loginView').hidden = true;
   $('#appView').hidden = false;
   $('#topClub').textContent = state.settings.club_name;
-  $('#topWho').textContent = `${state.me.name}${state.me.title ? ` · ${state.me.title}` : ''}`;
   $$('.admin-only').forEach(el => { el.hidden = !(state.me.role === 'admin' || state.me.is_owner); });
   $$('.owner-only').forEach(el => { el.hidden = !state.me.is_owner; });
   const tab = (location.hash || '#home').slice(1);
