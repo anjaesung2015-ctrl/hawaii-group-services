@@ -17,8 +17,7 @@ export async function renderHome(el, state) {
   el.innerHTML = `
     <div class="card" style="background:linear-gradient(135deg,#1b7a4b,#0f5132);color:#fff;border:0">
       <div style="font-size:12px;opacity:.8;letter-spacing:.08em;text-transform:uppercase">${esc(t('greetMorning'))}</div>
-      <h3 style="font-size:19px;margin:2px 0 0">${esc(state.me.name)}${state.me.title ? ` · ${esc(state.me.title)}` : ''}</h3>
-      <div style="font-size:12.5px;opacity:.85;margin-top:2px">${esc(state.settings.club_name)}</div>
+      <h3 style="font-size:19px;margin:2px 0 0">${esc(state.settings.club_name)}</h3>
     </div>
 
     ${join.count ? `
