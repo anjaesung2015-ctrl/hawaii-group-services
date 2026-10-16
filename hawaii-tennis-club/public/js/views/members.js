@@ -74,6 +74,8 @@ function joinBlock(join) {
           <div class="who">
             <b>${esc(r.name)}</b>
             <small>${esc(r.phone)} · ${esc(levelLabel(r.level))} · ${esc(String(r.created_at).slice(5, 10))}</small>
+            ${r.name_en || r.shirt_size || r.recommenders ? `<small>${esc([r.name_en, r.shirt_size && `T-shirt ${r.shirt_size}`, r.recommenders && `${t('joinRecommenders')}: ${r.recommenders}`].filter(Boolean).join(' · '))}</small>` : ''}
+            <small style="color:var(--court)">✓ ${esc(t('joinAgreedRules'))}${r.privacy_agreed_at ? ` · ✓ ${esc(t('joinAgreedPrivacy'))}` : ''}</small>
           </div>
           <button class="btn btn-sm btn-primary" data-approve="${r.id}">${esc(t('joinApprove'))}</button>
           <button class="btn btn-sm btn-danger" data-reject="${r.id}">${esc(t('joinReject'))}</button>

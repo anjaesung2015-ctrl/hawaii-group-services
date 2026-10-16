@@ -656,3 +656,7 @@ main {
 .ndots i { width: 6px; height: 6px; border-radius: 3px; background: var(--hair); transition: width .2s, background .2s; }
 .ndots i.on { width: 16px; background: var(--court); }
 .card[id^="notice-"] { scroll-margin-top: 76px; }
+
+/* ---------- 가입 신청서 ---------- */
+.join-rules { max-height: 42vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.rl-agree.is-off { opacity: .45; }

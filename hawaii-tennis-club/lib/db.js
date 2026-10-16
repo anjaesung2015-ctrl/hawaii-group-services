@@ -203,6 +203,10 @@ function migrate(db) {
   const jcols = db.prepare('PRAGMA table_info(join_request)').all().map(c => c.name);
   if (!jcols.includes('agreed_at')) db.exec('ALTER TABLE join_request ADD COLUMN agreed_at TEXT');
   if (!jcols.includes('agreed_version')) db.exec('ALTER TABLE join_request ADD COLUMN agreed_version INTEGER');
+  // 가입 신청서 (종이 회칙 동의서와 같은 칸) — 영문 이름, 티셔츠 사이즈, 추천 회원, 개인정보 동의
+  for (const [c, type] of [['name_en', 'TEXT'], ['shirt_size', 'TEXT'], ['recommenders', 'TEXT'], ['privacy_agreed_at', 'TEXT']]) {
+    if (!jcols.includes(c)) db.exec(`ALTER TABLE join_request ADD COLUMN ${c} ${type}`);
+  }
 
   const put = db.prepare('INSERT INTO setting (k, v) VALUES (?, ?) ON CONFLICT(k) DO NOTHING');
   for (const [k, v] of Object.entries(DEFAULTS)) put.run(k, v);

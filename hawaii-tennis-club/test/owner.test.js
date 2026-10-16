@@ -99,7 +99,7 @@ test('운영진은 가입 승인·회원 등록·공지·일정·회비를 할 �
 
   // 가입 승인
   const c = require('./helper').client(app.base);
-  const id = (await c.call('/join', { method: 'POST', body: { name: 'Сарнай', phone: '95556677', pin: '2468', agree: true } })).data.id;
+  const id = (await c.call('/join', { method: 'POST', body: { name: 'Сарнай', phone: '95556677', pin: '2468', agree: true, privacy: true } })).data.id;
   assert.strictEqual((await staff.call(`/join/${id}/approve`, { method: 'POST' })).status, 200);
 
   // 회원 직접 등록
@@ -115,7 +115,7 @@ test('일반 회원은 가입 승인도 회원 등록도 못 한다', async () =
   const app = makeApp();
   const m = await loginAs(app.base, '88110044', '1111');   // 권한을 안 준 상태
   const c = require('./helper').client(app.base);
-  const id = (await c.call('/join', { method: 'POST', body: { name: 'Сарнай', phone: '95556677', pin: '2468', agree: true } })).data.id;
+  const id = (await c.call('/join', { method: 'POST', body: { name: 'Сарнай', phone: '95556677', pin: '2468', agree: true, privacy: true } })).data.id;
 
   assert.strictEqual((await m.call(`/join/${id}/approve`, { method: 'POST' })).status, 403);
   assert.strictEqual((await m.call('/members', { method: 'POST', body: { name: 'x', phone: '95550002', pin: '1111' } })).status, 403);

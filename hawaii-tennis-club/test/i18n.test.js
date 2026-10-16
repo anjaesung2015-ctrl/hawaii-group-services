@@ -62,7 +62,7 @@ test('화면 코드에서 쓰는 t() 키가 모두 사전에 있다', async () =
   const files = ['js/app.js', 'js/ui.js', 'js/views/home.js', 'js/views/schedule.js',
                  'js/views/dues.js', 'js/views/notices.js', 'js/views/members.js',
                  'js/views/board.js', 'js/views/rules.js', 'js/views/org.js', 'js/views/push.js',
-                 'js/views/install.js'];
+                 'js/views/install.js', 'js/views/join.js'];
   const missing = new Set();
   for (const f of files) {
     for (const m of read(f).matchAll(/\bt\(\s*'([A-Za-z_][A-Za-z0-9_]*)'\s*[,)]/g)) {

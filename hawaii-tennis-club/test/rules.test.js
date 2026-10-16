@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { makeApp, client, loginAs } = require('./helper');
 
-const req = (over = {}) => ({ name: 'Сарнай', phone: '95556677', pin: '2468', agree: true, ...over });
+const req = (over = {}) => ({ name: 'Сарнай', phone: '95556677', pin: '2468', agree: true, privacy: true, ...over });
 
 test('회칙은 로그인 없이도 읽힌다 (가입 전에 읽어야 하니까)', async () => {
   const app = makeApp();

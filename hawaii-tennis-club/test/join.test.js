@@ -4,7 +4,7 @@ const assert = require('node:assert');
 const { makeApp, client, loginAs } = require('./helper');
 
 // 2026-10-16부터 회칙 동의(agree)가 있어야 신청된다 (회칙 제6조7)
-const req = (over = {}) => ({ name: 'Сарнай', phone: '95556677', pin: '2468', level: 'beginner', agree: true, ...over });
+const req = (over = {}) => ({ name: 'Сарнай', phone: '95556677', pin: '2468', level: 'beginner', agree: true, privacy: true, ...over });
 
 test('로그인 없이 가입 신청할 수 있다', async () => {
   const app = makeApp();
@@ -167,5 +167,58 @@ test('처리 내역을 따로 볼 수 있다', async () => {
   assert.strictEqual(h.length, 1);
   assert.strictEqual(h[0].status, 'rejected');
   assert.ok(h[0].decided_at);
+  app.close();
+});
+
+const PUSH_SUB = { endpoint: 'https://fcm.googleapis.com/fcm/send/admin-1', keys: { p256dh: 'k-p256dh', auth: 'k-auth' } };
+
+// 2026-10-16: 가입 신청서 — 회칙 + 개인정보 동의가 둘 다 있어야 접수되고, 그때만 임원에게 알림
+test('개인정보 동의가 없으면 신청이 안 되고 알림도 안 간다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  await a.call('/push', { method: 'POST', body: PUSH_SUB });
+  const c = client(app.base);
+  const r = await c.call('/join', { method: 'POST', body: req({ privacy: false }) });
+  assert.strictEqual(r.status, 400);
+  assert.strictEqual(r.data.error, 'privacy_required');
+  const r2 = await c.call('/join', { method: 'POST', body: req({ agree: false }) });
+  assert.strictEqual(r2.data.error, 'agree_required');
+  await app.settle();
+  assert.ok(!app.sent.some(s => /가입 신청/.test(s.payload?.title || '')), '동의 없는 신청으로 알림이 갔다');
+  app.close();
+});
+
+test('신청서 칸(영문 이름·티셔츠·추천인)이 남고, 승인하면 회원 메모로 옮겨진다', async () => {
+  const app = makeApp();
+  const c = client(app.base);
+  const made = await c.call('/join', { method: 'POST', body: req({ name_en: 'Sarnai', shirt_size: 'L', recommenders: 'Ганбат, Bold' }) });
+  assert.strictEqual(made.status, 200);
+
+  const a = await loginAs(app.base, '99000000', '1234');
+  const row = (await a.call('/join')).data.rows.find(x => x.id === made.data.id);
+  assert.strictEqual(row.name_en, 'Sarnai');
+  assert.strictEqual(row.shirt_size, 'L');
+  assert.strictEqual(row.recommenders, 'Ганбат, Bold');
+  assert.ok(row.privacy_agreed_at && row.agreed_at);
+
+  const ok = await a.call(`/join/${made.data.id}/approve`, { method: 'POST' });
+  const m = (await a.call('/members')).data.find(x => x.id === ok.data.member_id);
+  assert.match(m.memo, /EN: Sarnai/);
+  assert.match(m.memo, /T-shirt: L/);
+  assert.match(m.memo, /Recommended by: Ганбат, Bold/);
+  app.close();
+});
+
+test('동의를 다 한 신청은 임원에게 알림이 간다 (신청서 내용 포함)', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  await a.call('/push', { method: 'POST', body: PUSH_SUB });
+  const c = client(app.base);
+  await c.call('/join', { method: 'POST', body: req({ name_en: 'Sarnai', shirt_size: 'M' }) });
+  await app.settle();
+  const s = app.sent.find(x => /가입 신청/.test(x.payload?.title || ''));
+  assert.ok(s, '알림이 없다');
+  assert.match(s.payload.body, /Sarnai/);
+  assert.match(s.payload.body, /티셔츠 M/);
   app.close();
 });

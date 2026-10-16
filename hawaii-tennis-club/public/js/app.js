@@ -8,6 +8,7 @@ import { openPushPanel } from './views/push.js';
 import { initInstall } from './views/install.js';
 import { initPullRefresh, refresh } from './refresh.js';
 import { initBackNav } from './backnav.js';
+import { openJoinForm } from './views/join.js';
 
 // 폰 뒤로가기가 열린 창부터 닫게 — 아래 탭 이동 popstate 보다 먼저 등록해야 한다
 initBackNav();
@@ -97,37 +98,8 @@ $('#loginForm').onsubmit = async (e) => {
 };
 
 // ---------- 가입 신청 (로그인 화면) ----------
-// 신청만 넣고 끝. 관리자가 승인해야 회원이 되고 그때부터 로그인된다.
-const LEVELS = ['newbie', 'beginner', 'intermediate', 'advanced'];
-$('#joinBtn').onclick = () => {
-  openModal({
-    title: t('joinRequest'),
-    fields: [
-      { name: 'name', label: t('name'), placeholder: t('name') },
-      { name: 'phone', label: t('phone'), type: 'tel', inputmode: 'numeric', maxlength: 15, placeholder: '99112233' },
-      { name: 'pin', label: t('pin'), type: 'tel', inputmode: 'numeric', maxlength: 4, placeholder: '1234' },
-      { name: 'level', label: t('level'), type: 'select', value: 'beginner',
-        options: LEVELS.map(l => ({ value: l, label: t({ newbie: 'lvNewbie', beginner: 'lvBeginner', intermediate: 'lvIntermediate', advanced: 'lvAdvanced' }[l]) })) },
-    ],
-    extra: `<div class="hint">${t('joinHint')}</div>
-      <label class="rl-agree"><input type="checkbox" name="agree"><span>${t('rulesAgreeCheck')}</span></label>
-      <button type="button" class="btn btn-sm" style="width:100%" data-see-rules>${t('rulesSee')}</button>`,
-    saveLabel: t('joinSend'),
-    onSave: async (v, form) => {
-      if (!v.name) return t('required');
-      if (!/^\d{4}$/.test(v.pin)) return t('pin4');
-      // 회칙에 동의해야 신청된다 (제6조7)
-      if (!form.querySelector('[name="agree"]').checked) return t('rulesAgreeCheck');
-      await api('/join', { method: 'POST', body: { ...v, agree: true } });
-      toast(t('joinDone'));
-      $('#loginPhone').value = v.phone;
-    },
-  });
-
-  // 신청 화면에서 회칙을 열어볼 수 있다 (로그인 전에도 읽힌다)
-  const see = document.querySelector('[data-see-rules]');
-  if (see) see.onclick = () => openRules();
-};
+// 신청서(회칙·개인정보 동의 포함)는 views/join.js. 관리자가 승인해야 회원이 되고 그때부터 로그인된다.
+$('#joinBtn').onclick = () => openJoinForm();
 
 // ---------- 상단 메뉴 ----------
 const sheet = $('#menuSheet');
