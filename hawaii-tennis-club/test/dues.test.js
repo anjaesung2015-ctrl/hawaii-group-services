@@ -158,3 +158,31 @@ test('금액을 바꿔도 이미 기록한 납부 줄의 금액은 그대로다'
   assert.strictEqual(row.monthly.amount, 200000, '지난 기록이 바뀌면 안 된다');
   app.close();
 });
+
+// 회칙 제10조 (2026-10-16): 첫 달은 입회비 300,000₮ 하나 — 그달 월회비가 들어 있다. 둘째 달부터 200,000₮.
+test('가입한 달은 월회비를 따로 매기지 않는다 (입회비에 포함)', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const month = thisMonth();
+  const next = (() => { const [y, m] = month.split('-').map(Number); const d = new Date(y, m, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })();
+  // 이번 달에 가입한 회원 — 입회비 줄이 생긴다
+  const r = await a.call('/members', { method: 'POST', body: { name: 'New', phone: '95001122', pin: '4321' } });
+  assert.strictEqual(r.status, 200);
+  const id = r.data.id;
+
+  const g = (await a.call(`/dues/grid?month=${month}`)).data;
+  const row = g.rows.find(x => x.member_id === id);
+  assert.strictEqual(row.monthly.exempt, true);
+  assert.strictEqual(row.monthly.amount, 0);
+  assert.strictEqual(row.joining.amount, 300000);
+  assert.strictEqual(g.summary.members, g.rows.length - 1, '가입한 달 회원은 월회비 집계에서 빠진다');
+  assert.ok(!(await a.call(`/dues/unpaid?month=${month}`)).data.rows.some(x => x.member_id === id));
+
+  // 다음 달부터는 월회비 대상
+  const g2 = (await a.call(`/dues/grid?month=${next}`)).data;
+  const row2 = g2.rows.find(x => x.member_id === id);
+  assert.ok(!row2.monthly.exempt);
+  assert.strictEqual(row2.monthly.amount, 200000);
+  assert.ok((await a.call(`/dues/unpaid?month=${next}`)).data.rows.some(x => x.member_id === id));
+  app.close();
+});

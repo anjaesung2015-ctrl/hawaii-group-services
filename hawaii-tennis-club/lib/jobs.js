@@ -61,7 +61,8 @@ function createJobs(db, notify, opts = {}) {
     const unpaid = db.prepare(`
       SELECT m.id FROM member m
       LEFT JOIN due d ON d.member_id=m.id AND d.kind='monthly' AND d.period=?
-      WHERE m.status='active' AND (d.id IS NULL OR d.paid_at IS NULL)`).pluck().all(month);
+      WHERE m.status='active' AND (d.id IS NULL OR d.paid_at IS NULL)
+        AND NOT (d.id IS NULL AND EXISTS (SELECT 1 FROM due j WHERE j.member_id=m.id AND j.kind='joining' AND j.period=?))`).pluck().all(month, month);
     if (!unpaid.length) return { sent: 0, unpaid: 0 };
 
     const { monthly_fee, currency } = getSettings(db);

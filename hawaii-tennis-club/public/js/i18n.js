@@ -38,6 +38,8 @@ export const DICT = {
     duesGrid: 'Member payments', unpaidList: 'Not paid yet', allPaid: 'Everyone has paid 🎉',
     collected: 'Collected', expected: 'Expected', members: 'Members',
     myDuesEmpty: 'No dues records yet', joiningLabel: 'Joining fee',
+    inJoiningFee: 'Joining month — included in the joining fee',
+    inJoiningFeeHint: 'includes the first month',
     markPaid: 'Mark as paid', markUnpaid: 'Mark as unpaid',
 
     notices: 'Notices', newNotice: 'New notice', editNotice: 'Edit notice',

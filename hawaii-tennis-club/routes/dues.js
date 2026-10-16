@@ -33,24 +33,29 @@ module.exports = function dueRoutes(db, auth) {
     const rows = members.map(m => {
       const d = byKey.get(`${m.id}:monthly`);
       const j = byKey.get(`${m.id}:joining`) || joiningOwed.get(m.id);
+      // 가입한 달 — 월회비는 입회비에 포함 (회칙 제10조)
+      const exempt = !d && !!byKey.get(`${m.id}:joining`);
       return {
         member_id: m.id, name: m.name, phone: m.phone, level: m.level, joined_at: m.joined_at,
-        monthly: {
-          amount: d ? d.amount : monthly_fee,
-          paid: !!d?.paid_at, paid_at: d?.paid_at || null, method: d?.method || null, note: d?.note || null,
-        },
+        monthly: exempt
+          ? { amount: 0, paid: true, exempt: true, paid_at: null, method: null, note: null }
+          : {
+            amount: d ? d.amount : monthly_fee,
+            paid: !!d?.paid_at, paid_at: d?.paid_at || null, method: d?.method || null, note: d?.note || null,
+          },
         joining: j ? { amount: j.amount, period: j.period, paid: !!j.paid_at, paid_at: j.paid_at || null, method: j.method || null } : null,
       };
     });
 
-    const paid = rows.filter(r => r.monthly.paid);
+    const charged = rows.filter(r => !r.monthly.exempt);   // 가입한 달 회원은 월회비 대상에서 뺀다
+    const paid = charged.filter(r => r.monthly.paid);
     res.json({
       month, currency, monthly_fee, joining_fee,
       rows,
       summary: {
-        members: rows.length,
+        members: charged.length,
         paid: paid.length,
-        unpaid: rows.length - paid.length,
+        unpaid: charged.length - paid.length,
         collected: paid.reduce((s, r) => s + r.monthly.amount, 0),
         expected: rows.reduce((s, r) => s + r.monthly.amount, 0),
       },
@@ -66,7 +71,8 @@ module.exports = function dueRoutes(db, auth) {
       FROM member m
       LEFT JOIN due d ON d.member_id = m.id AND d.kind='monthly' AND d.period = ?
       WHERE m.status='active' AND (d.id IS NULL OR d.paid_at IS NULL)
-      ORDER BY m.name`).all(month);
+        AND NOT (d.id IS NULL AND EXISTS (SELECT 1 FROM due j WHERE j.member_id = m.id AND j.kind='joining' AND j.period = ?))
+      ORDER BY m.name`).all(month, month);   // 가입한 달은 입회비에 월회비 포함
     res.json({ month, monthly_fee, count: rows.length, rows });
   });
 

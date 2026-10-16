@@ -36,7 +36,8 @@ export async function renderDues(el, state) {
               <td>
                 <div style="font-weight:600">${esc(r.name)}</div>
                 <small style="color:var(--muted)">
-                  ${r.monthly.paid
+                  ${r.monthly.exempt ? esc(t('inJoiningFee'))
+                    : r.monthly.paid
                     ? `${esc(r.monthly.paid_at || '')} · ${esc(methodLabel(r.monthly.method))}`
                     : esc(t('unpaid'))}
                 </small>
@@ -44,10 +45,10 @@ export async function renderDues(el, state) {
                     data-joining="${r.member_id}" data-period="${esc(r.joining.period)}" data-name="${esc(r.name)}"
                   >${esc(t('joiningFee'))} ${fmtMoney(r.joining.amount)}${cur}</button>` : ''}
               </td>
-              <td class="num">${fmtMoney(r.monthly.amount)}</td>
-              <td><button class="check ${r.monthly.paid ? 'paid' : ''}"
+              <td class="num">${r.monthly.exempt ? '—' : fmtMoney(r.monthly.amount)}</td>
+              <td>${r.monthly.exempt ? '' : `<button class="check ${r.monthly.paid ? 'paid' : ''}"
                     data-mark="${r.member_id}" data-paid="${r.monthly.paid ? 1 : 0}"
-                    data-name="${esc(r.name)}">✓</button></td>
+                    data-name="${esc(r.name)}">✓</button>`}</td>
             </tr>`).join('')}
         </tbody>
       </table>
@@ -55,7 +56,7 @@ export async function renderDues(el, state) {
     </div>
 
     ${unpaidBlock(g, cur)}
-    <div class="hint">${esc(t('joiningLabel'))}: ${fmtMoney(g.joining_fee)}${cur} · ${esc(t('settings'))} → ${esc(t('monthlyFee'))}</div>`;
+    <div class="hint">${esc(t('joiningLabel'))}: ${fmtMoney(g.joining_fee)}${cur} (${esc(t('inJoiningFeeHint'))}) · ${esc(t('settings'))} → ${esc(t('monthlyFee'))}</div>`;
 
   $$('[data-mv]', el).forEach(b => b.onclick = () => {
     state.duesMonth = shiftMonth(month, Number(b.dataset.mv));
