@@ -720,3 +720,16 @@ main {
 /* 방 안 — 하단 탭 대신 입력칸 */
 body.in-room .tabbar { display: none; }
 body.in-room main { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+
+/* 채팅 사진 */
+.chat-photo {
+  display: block; max-width: 100%; width: 240px; max-height: 320px; object-fit: cover;
+  border-radius: 14px; border: 1px solid var(--hair); background: var(--hair); cursor: zoom-in;
+}
+.msg .chat-photo + .bubble { margin-top: 3px; }
+.photo-btn { flex-shrink: 0; width: 42px; height: 42px; padding: 0; border-radius: 21px; font-size: 18px; }
+.photo-view {
+  position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,.92);
+  display: grid; place-items: center; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+}
+.photo-view img { max-width: 100%; max-height: 100%; object-fit: contain; }

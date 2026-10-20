@@ -1,6 +1,6 @@
 // 채팅 — 방 목록(클럽 전체방 + 1:1) 과 방 안 화면.
 // 방을 연 동안 3초마다 새 메시지만 받아 온다. 다른 화면으로 가거나 앱을 내리면 멈춘다.
-import { api, esc, toast, openModal, errText, $$ } from '../ui.js';
+import { api, esc, toast, openModal, errText, pickPhoto, $, $$ } from '../ui.js';
 import { t, levelLabel, timeAgo } from '../i18n.js';
 
 const POLL_MS = 3000;
@@ -29,7 +29,7 @@ function roomRow(r) {
   const club = r.kind === 'club';
   const name = club ? t('clubChat') : (r.other?.name || t('formerMember'));
   const last = r.last
-    ? `${r.last.mine ? `${t('you')}: ` : (club && r.last.name ? `${r.last.name}: ` : '')}${r.last.body}`
+    ? `${r.last.mine ? `${t('you')}: ` : (club && r.last.name ? `${r.last.name}: ` : '')}${r.last.body || `📷 ${t('photo')}`}`
     : t('clubChatSub');
   return `
     <div class="member-row room-row" data-room="${r.id}" style="cursor:pointer">
@@ -91,6 +91,7 @@ async function renderRoom(el, state, roomId) {
     <div class="chat-msgs" data-msgs></div>
     <form class="composer" data-composer>
       <div class="composer-inner">
+        <button class="btn photo-btn" type="button" data-photo aria-label="${esc(t('photo'))}">📷</button>
         <textarea name="body" rows="1" maxlength="1000" placeholder="${esc(t('chatPlaceholder'))}" enterkeyhint="send"></textarea>
         <button class="btn btn-primary" type="submit">${esc(t('send'))}</button>
       </div>
@@ -103,8 +104,11 @@ async function renderRoom(el, state, roomId) {
   let lastId = msgs.length ? msgs.at(-1).id : 0;
 
   const draw = () => {
+    const stick = nearBottom();
     box.innerHTML = msgs.length ? msgHtml(msgs, club, officer) : `<div class="empty">${esc(t('chatEmpty'))}</div>`;
     bindMsgs();
+    // 사진은 늦게 뜬다 — 맨 아래를 보고 있었으면 뜬 뒤에도 맨 아래로
+    $$('.chat-photo', box).forEach(img => { if (!img.complete) img.onload = () => { if (stick) toBottom(); }; });
   };
   const nearBottom = () => window.innerHeight + window.scrollY >= document.body.scrollHeight - 120;
   const toBottom = () => window.scrollTo({ top: document.body.scrollHeight });
@@ -119,6 +123,12 @@ async function renderRoom(el, state, roomId) {
         msgs = msgs.filter(m => String(m.id) !== b.dataset.del);
         draw();
       } catch (err) { toast(errText(err), true); }
+    });
+    // 사진을 누르면 크게 (창 바깥 아무 데나 누르거나 폰 뒤로가기로 닫힌다)
+    $$('[data-full]', box).forEach(img => img.onclick = (e) => {
+      e.stopPropagation();
+      $('#modalRoot').innerHTML = `<div class="photo-view" data-close><img src="${esc(img.dataset.full)}" alt=""></div>`;
+      $('#modalRoot [data-close]').onclick = () => { $('#modalRoot').innerHTML = ''; };
     });
     $$('.msg', box).forEach(m => m.onclick = () => {
       const del = m.querySelector('[data-del]');
@@ -152,13 +162,30 @@ async function renderRoom(el, state, roomId) {
   };
 
   let sending = false;
+  const photoBtn = form.querySelector('[data-photo]');
+  // 📷 — 고르면 바로 보낸다. 입력칸에 써 둔 글이 있으면 사진 설명으로 같이 간다
+  photoBtn.onclick = async () => {
+    if (sending) return;
+    const photo = await pickPhoto();
+    if (!photo) return;
+    photoBtn.disabled = true;
+    photoBtn.textContent = '⏳';
+    await post({ body: input.value.trim(), photo });
+    photoBtn.disabled = false;
+    photoBtn.textContent = '📷';
+  };
+
   form.onsubmit = async (e) => {
     e.preventDefault();
     const body = input.value.trim();
     if (!body || sending) return;
+    await post({ body });
+  };
+
+  async function post(payload) {
     sending = true;
     try {
-      const m = await api(`/chat/rooms/${roomId}/messages`, { method: 'POST', body: { body } });
+      const m = await api(`/chat/rooms/${roomId}/messages`, { method: 'POST', body: payload });
       input.value = '';
       input.style.height = 'auto';
       if (!msgs.some(x => x.id === m.id)) msgs.push(m);
@@ -166,8 +193,8 @@ async function renderRoom(el, state, roomId) {
       draw();
       toBottom();
     } catch (err) { toast(errText(err), true); }
-    finally { sending = false; input.focus(); }
-  };
+    finally { sending = false; if (!payload.photo) input.focus(); }
+  }
 
   // 3초마다 새 메시지 — 화면을 떠났으면 멈춘다
   poller = setInterval(async () => {
@@ -197,7 +224,8 @@ function msgHtml(msgs, club, officer) {
     return `${sep}
       <div class="msg ${m.mine ? 'mine' : ''}">
         ${showName ? `<div class="msg-who">${esc(m.name || t('formerMember'))}${m.is_coach ? ' 🎾' : ''}</div>` : ''}
-        <div class="bubble">${esc(m.body)}</div>
+        ${m.photo ? `<img class="chat-photo" src="${esc(m.photo)}" data-full="${esc(m.photo)}" alt="" loading="lazy">` : ''}
+        ${m.body ? `<div class="bubble">${esc(m.body)}</div>` : ''}
         <time>${esc(String(m.created_at).slice(11, 16))}</time>
         ${m.mine || (club && officer) ? `<button type="button" class="btn btn-sm btn-danger msg-del" data-del="${m.id}" hidden>${esc(t('del'))}</button>` : ''}
       </div>`;

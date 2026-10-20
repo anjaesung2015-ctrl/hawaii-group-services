@@ -186,3 +186,61 @@ test('로그인 안 하면 채팅 API 는 401', async () => {
   assert.strictEqual(r.status, 401);
   app.close();
 });
+
+// ---- 사진 ----
+const fs = require('fs');
+const path = require('path');
+const { UPLOAD_DIR } = require('../lib/photos');
+const JPG = 'data:image/jpeg;base64,' + Buffer.from('fake-jpeg-bytes').toString('base64');
+
+test('사진만, 또는 사진+설명을 보낸다 — 파일로 저장되고 지우면 파일도 사라진다', async () => {
+  const { app } = setup();
+  const [a, m] = await login(app);
+  const club = (await m.call('/chat/rooms')).data[0].id;
+
+  const only = await m.call(`/chat/rooms/${club}/messages`, { method: 'POST', body: { photo: JPG } });
+  assert.strictEqual(only.status, 200);
+  assert.match(only.data.photo, /^uploads\/.+\.jpg$/, '앞에 / 없는 상대 경로');
+  assert.strictEqual(only.data.body, '');
+  const file = path.join(UPLOAD_DIR, path.basename(only.data.photo));
+  assert.ok(fs.existsSync(file));
+
+  const cap = await m.call(`/chat/rooms/${club}/messages`, { method: 'POST', body: { body: 'Our court today', photo: JPG } });
+  assert.strictEqual(cap.data.body, 'Our court today');
+  assert.ok(cap.data.photo);
+
+  const list = (await a.call(`/chat/rooms/${club}/messages`)).data.messages;
+  assert.deepStrictEqual(list.map(x => [x.body, !!x.photo]), [['', true], ['Our court today', true]]);
+
+  await m.call(`/chat/messages/${only.data.id}`, { method: 'DELETE' });
+  await new Promise(r => setTimeout(r, 50));
+  assert.ok(!fs.existsSync(file), '지운 메시지의 사진 파일이 남았다');
+  await m.call(`/chat/messages/${cap.data.id}`, { method: 'DELETE' });
+  app.close();
+});
+
+test('사진만 보내면 알림 본문은 📷 Photo', async () => {
+  const { app } = setup();
+  const [a, m] = await login(app);
+  const dm = (await m.call('/chat/dm', { method: 'POST', body: { member_id: app.adminId } })).data.id;
+  const r = await m.call(`/chat/rooms/${dm}/messages`, { method: 'POST', body: { photo: JPG } });
+  await app.settle();
+  assert.strictEqual(app.sent[0].payload.body, '📷 Photo');
+  await m.call(`/chat/messages/${r.data.id}`, { method: 'DELETE' });
+  assert.ok(a);
+  app.close();
+});
+
+test('사진이 아닌 것·너무 큰 사진은 400', async () => {
+  const { app } = setup();
+  const [, m] = await login(app);
+  const club = (await m.call('/chat/rooms')).data[0].id;
+  const bad = await m.call(`/chat/rooms/${club}/messages`, { method: 'POST', body: { photo: 'data:text/html;base64,PGgxPg==' } });
+  assert.strictEqual(bad.status, 400);
+  assert.strictEqual(bad.data.error, 'bad_photo');
+  const big = 'data:image/jpeg;base64,' + Buffer.alloc(3 * 1024 * 1024 + 10).toString('base64');
+  const r = await m.call(`/chat/rooms/${club}/messages`, { method: 'POST', body: { photo: big } });
+  assert.ok(r.status === 400 || r.status === 413);
+  assert.strictEqual((await m.call(`/chat/rooms/${club}/messages`)).data.messages.length, 0, '실패하면 메시지도 안 남는다');
+  app.close();
+});

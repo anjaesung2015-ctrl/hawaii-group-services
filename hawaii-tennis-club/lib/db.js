@@ -233,6 +233,9 @@ function migrate(db) {
   if (!mcols.includes('rules_version')) db.exec('ALTER TABLE member ADD COLUMN rules_version INTEGER');
   // 코치 표시 — 레슨하는 회원. 권한(role)과는 별개라 따로 칸을 둔다
   if (!mcols.includes('is_coach')) db.exec('ALTER TABLE member ADD COLUMN is_coach INTEGER NOT NULL DEFAULT 0');
+  // 채팅 사진 (uploads/ 경로). 사진만 보내면 body 는 빈 글자
+  const ccols = db.prepare('PRAGMA table_info(chat_msg)').all().map(c => c.name);
+  if (!ccols.includes('photo')) db.exec('ALTER TABLE chat_msg ADD COLUMN photo TEXT');
   const jcols = db.prepare('PRAGMA table_info(join_request)').all().map(c => c.name);
   if (!jcols.includes('agreed_at')) db.exec('ALTER TABLE join_request ADD COLUMN agreed_at TEXT');
   if (!jcols.includes('agreed_version')) db.exec('ALTER TABLE join_request ADD COLUMN agreed_version INTEGER');
