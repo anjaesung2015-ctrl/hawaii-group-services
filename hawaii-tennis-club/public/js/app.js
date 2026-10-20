@@ -27,7 +27,7 @@ const VIEWS = {
   dues: renderDues,
   notices: renderNotices,
   members: renderMembers,
-  chat: renderChat,          // 하단 탭이 아니라 상단 💬 버튼으로 연다
+  chat: renderChat,          // 하단 Free Chat 탭
 };
 
 // 주소 → 탭. '#chat-12' 는 채팅 탭의 12번 방 (알림을 누르면 이 주소로 열린다)
@@ -54,7 +54,6 @@ async function render({ keepScroll = false } = {}) {
   $('#backBtn').hidden = state.tab === 'home';
   // 방 안에서는 하단 탭을 숨기고 그 자리에 입력칸을 둔다
   document.body.classList.toggle('in-room', state.tab === 'chat' && !!state.chatRoom);
-  $('#chatBtn').classList.toggle('on', state.tab === 'chat');
   updateChatBadge();
   // 채팅방은 화면이 스스로 맨 아래(최신 메시지)로 내려가 있으므로 건드리지 않는다
   if (!keepScroll && !(state.tab === 'chat' && state.chatRoom)) window.scrollTo({ top: 0 });
@@ -74,7 +73,7 @@ function goTab(tab, { room, replace = false } = {}) {
 }
 state.go = goTab;   // 화면 쪽(채팅·회원)에서 탭을 옮길 때
 
-// 상단 💬 의 안 읽은 수 — 화면을 그릴 때마다, 그리고 30초마다
+// Free Chat 탭의 안 읽은 수 — 화면을 그릴 때마다, 그리고 30초마다
 let badgeBusy = false;
 async function updateChatBadge() {
   if (!state.me || badgeBusy) return;
@@ -223,7 +222,6 @@ $('#settingsBtn').onclick = () => {
 
 // ---------- 탭 · 언어 · 뒤로가기 ----------
 $$('#tabbar button').forEach(b => b.onclick = () => goTab(b.dataset.tab));
-$('#chatBtn').onclick = () => goTab('chat');
 
 // ← 버튼: 앞서 본 탭으로. 앱 안에서 옮긴 적이 없으면(바로 열었으면) 홈으로 — 앱 밖으로 나가지 않게
 $('#backBtn').onclick = () => {

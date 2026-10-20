@@ -733,3 +733,15 @@ body.in-room main { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
   display: grid; place-items: center; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
 }
 .photo-view img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+/* 하단 탭 7개 — Free Chat 탭 아이콘 위에 안 읽은 수 */
+.tabbar button span { white-space: nowrap; }
+.tabbar .tab-icon { position: relative; display: block; width: 23px; height: 23px; }
+.tabbar .tab-icon svg { width: 100%; height: 100%; }
+.tabbar .badge {
+  position: absolute; top: -5px; left: 14px;
+  min-width: 17px; height: 17px; padding: 0 4px;
+  border-radius: 9px; background: #e74c3c; color: #fff;
+  font-size: 10.5px; font-weight: 700; line-height: 17px; text-align: center;
+}
+@media (max-width: 380px) { .tabbar button { font-size: 9.5px; letter-spacing: 0; } }

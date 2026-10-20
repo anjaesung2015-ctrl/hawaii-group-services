@@ -13,7 +13,7 @@ export const DICT = {
     loggingIn: 'Checking…',
 
     tabHome: 'Home', tabSchedule: 'Schedule', tabDues: 'Dues', tabNotices: 'Notices', tabMembers: 'Members',
-    tabBoard: 'Board',
+    tabBoard: 'Board', tabChat: 'Free Chat',
 
     changePin: 'Change PIN', settings: 'Settings', cancel: 'Cancel', save: 'Save',
     add: 'Add', edit: 'Edit', del: 'Delete', close: 'Close', confirmDelete: 'Delete this?',
@@ -144,7 +144,7 @@ export const DICT = {
     noComments: 'No comments',
     commentWrite: 'Write a comment…',
     send: 'Send',
-    chat: 'Chat', chats: 'Chats', clubChat: 'Club chat', clubChatSub: 'Everyone in the club',
+    chat: 'Chat', chats: 'Free Chat', clubChat: 'Club chat', clubChatSub: 'Everyone in the club',
     newChat: 'New chat', chatPick: 'Chat with', chatOpen: 'Open chat', chatNoMembers: 'No other members yet',
     chatPlaceholder: 'Message…', chatEmpty: 'No messages yet. Say hi! 👋', chatEarlier: 'Earlier messages',
     chatHint: 'Tap 💬 next to a name in Members, or + New chat, to talk one-on-one.',

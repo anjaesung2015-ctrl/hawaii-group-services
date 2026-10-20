@@ -66,10 +66,6 @@
       <div class="topbar-text">
         <strong id="topClub">Hawaii Tennis Club</strong>
       </div>
-      <button class="icon-btn" type="button" id="chatBtn" aria-label="chat">
-        <svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 9.5h8M8 12.5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <span class="badge" id="chatBadge" hidden></span>
-      </button>
       <button class="icon-btn" type="button" id="refreshBtn" aria-label="refresh">
         <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
@@ -104,8 +100,15 @@
       <span data-i18n="tabSchedule">Хуваарь</span>
     </button>
     <button data-tab="board">
-      <svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4V5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-      <span data-i18n="tabBoard">Чат</span>
+      <svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 11h7M9 14.5h7M9 18h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span data-i18n="tabBoard">Board</span>
+    </button>
+    <button data-tab="chat">
+      <span class="tab-icon">
+        <svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4V5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 9.5h8M8 12.5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span class="badge" id="chatBadge" hidden></span>
+      </span>
+      <span data-i18n="tabChat">Free Chat</span>
     </button>
     <button data-tab="dues">
       <svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2.8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
