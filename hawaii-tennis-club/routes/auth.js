@@ -61,11 +61,20 @@ module.exports = function authRoutes(db, auth) {
     res.json({ ok: true });
   });
 
-  // 본인 레벨 고르기 (☰ 메뉴 → My level). 코치 표시는 임원이 정한다
+  // 본인 레벨·코치 표시 (☰ 메뉴 → My profile). 권한(role)은 여기서 못 바꾼다
   router.patch('/profile', auth.requireMember, (req, res) => {
-    const level = req.body?.level;
-    if (!LEVELS.includes(level)) return res.status(400).json({ error: 'bad_level' });
-    db.prepare('UPDATE member SET level=? WHERE id=?').run(level, req.me.id);
+    const b = req.body || {};
+    const f = [], v = [];
+    if ('level' in b) {
+      if (!LEVELS.includes(b.level)) return res.status(400).json({ error: 'bad_level' });
+      f.push('level=?'); v.push(b.level);
+    }
+    if ('is_coach' in b) {
+      f.push('is_coach=?');
+      v.push(b.is_coach === true || b.is_coach === 1 || b.is_coach === '1' || b.is_coach === 'true' ? 1 : 0);
+    }
+    if (!f.length) return res.status(400).json({ error: 'no_changes' });
+    db.prepare(`UPDATE member SET ${f.join(', ')} WHERE id=?`).run(...v, req.me.id);
     res.json({ ok: true, me: publicMe(db.prepare('SELECT * FROM member WHERE id=?').get(req.me.id)) });
   });
 

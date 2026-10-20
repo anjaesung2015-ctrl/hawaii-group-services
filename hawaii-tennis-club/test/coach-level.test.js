@@ -14,13 +14,17 @@ test('회원이 자기 레벨을 직접 바꾼다 (이상한 값은 400)', async
   app.close();
 });
 
-test('회원은 레벨 바꾸는 길로 코치·권한을 못 바꾼다', async () => {
+test('회원이 코치를 직접 켜고 끈다 — 권한(role)은 못 바꾼다', async () => {
   const app = makeApp();
   const m = await loginAs(app.base, '88110044', '1111');
-  await m.call('/auth/profile', { method: 'PATCH', body: { level: 'beginner', is_coach: true, role: 'admin' } });
-  const me = (await m.call('/auth/me')).data.me;
-  assert.strictEqual(me.is_coach, false);
+  await m.call('/auth/profile', { method: 'PATCH', body: { is_coach: '1', role: 'admin' } });
+  let me = (await m.call('/auth/me')).data.me;
+  assert.strictEqual(me.is_coach, true);
   assert.strictEqual(me.role, 'member');
+  await m.call('/auth/profile', { method: 'PATCH', body: { is_coach: '0' } });
+  me = (await m.call('/auth/me')).data.me;
+  assert.strictEqual(me.is_coach, false);
+  assert.strictEqual((await m.call('/auth/profile', { method: 'PATCH', body: {} })).status, 400);
   app.close();
 });
 
