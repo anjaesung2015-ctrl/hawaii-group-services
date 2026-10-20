@@ -25,6 +25,7 @@ export async function renderMembers(el, state) {
     ${org}
     ${isAdmin ? `<div class="fab-row" style="margin-top:12px"><button class="btn btn-primary" style="width:100%" data-new>+ ${esc(t('newMember'))}</button></div>` : ''}
     <div class="section-head"><h2>${esc(t('memberList'))}</h2></div>
+    <label class="field member-search"><input type="search" data-search placeholder="🔍 ${esc(t('searchName'))}" autocomplete="off" enterkeyhint="search"></label>
     <div class="seg" data-filters>
       <button type="button" data-filter="all">${esc(t('filterAll'))} · ${list.length}</button>
       <button type="button" data-filter="coach">🎾 ${esc(t('filterCoaches'))} · ${list.filter(m => m.is_coach).length}</button>
@@ -36,15 +37,17 @@ export async function renderMembers(el, state) {
     <div class="card" data-list></div>
     ${isOwner ? `<div class="hint">${esc(t('ownerNote'))}</div>` : (isAdmin ? `<div class="hint">${esc(t('adminNote'))}</div>` : '')}`;
 
-  // 전체 / 코치만 × 레벨 — 두 줄을 함께 건다. 고른 칸은 탭을 옮겨 다녀도 기억한다 (다시 불러오지 않고 목록만 다시 그림)
+  // 이름 검색 × 전체/코치만 × 레벨 — 셋을 함께 건다. 고른 칸은 탭을 옮겨 다녀도 기억한다 (다시 불러오지 않고 목록만 다시 그림)
   const listEl = el.querySelector('[data-list]');
   const drawList = () => {
     const f = state.memberFilter === 'coach' ? 'coach' : 'all';
     const lv = LEVELS.includes(state.memberLevel) ? state.memberLevel : 'all';
     $$('[data-filter]', el).forEach(b => b.classList.toggle('on', b.dataset.filter === f));
     $$('[data-level]', el).forEach(b => b.classList.toggle('on', b.dataset.level === lv));
-    const shown = list.filter(m => (f !== 'coach' || m.is_coach) && (lv === 'all' || m.level === lv));
-    const none = f === 'coach' && lv === 'all' ? t('noCoaches') : (lv === 'all' ? t('membersN', { n: 0 }) : t('noMatch'));
+    const q = norm(state.memberQuery);
+    const shown = list.filter(m => (f !== 'coach' || m.is_coach) && (lv === 'all' || m.level === lv)
+      && (!q || norm(m.name).includes(q)));
+    const none = q || lv !== 'all' ? t('noMatch') : (f === 'coach' ? t('noCoaches') : t('membersN', { n: 0 }));
     listEl.innerHTML = shown.length ? shown.map(m => row(m, isAdmin, isOwner)).join('')
       : `<div class="empty">${esc(none)}</div>`;
     $$('[data-member]', listEl).forEach(r => r.onclick = () => {
@@ -55,6 +58,10 @@ export async function renderMembers(el, state) {
   };
   $$('[data-filter]', el).forEach(b => b.onclick = () => { state.memberFilter = b.dataset.filter; drawList(); });
   $$('[data-level]', el).forEach(b => b.onclick = () => { state.memberLevel = b.dataset.level; drawList(); });
+  // 글자를 칠 때마다 목록만 다시 그린다 (입력칸은 그대로라 키보드가 안 닫힌다)
+  const search = el.querySelector('[data-search]');
+  search.value = state.memberQuery || '';
+  search.oninput = () => { state.memberQuery = search.value; drawList(); };
   drawList();
 
   const add = el.querySelector('[data-new]');
@@ -175,3 +182,6 @@ function memberForm(m, state, refresh) {
     });
   };
 }
+
+// 검색용 — 대소문자·앞뒤 공백·몽골어/라틴 악센트 차이를 무시한다
+function norm(s) { return String(s || '').trim().toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, ''); }
