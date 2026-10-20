@@ -25,10 +25,29 @@ export async function renderMembers(el, state) {
     ${org}
     ${isAdmin ? `<div class="fab-row" style="margin-top:12px"><button class="btn btn-primary" style="width:100%" data-new>+ ${esc(t('newMember'))}</button></div>` : ''}
     <div class="section-head"><h2>${esc(t('memberList'))}</h2></div>
-    <div class="card">
-      ${list.length ? list.map(m => row(m, isAdmin, isOwner)).join('') : `<div class="empty">${esc(t('membersN', { n: 0 }))}</div>`}
+    <div class="seg" data-filters>
+      <button type="button" data-filter="all">${esc(t('filterAll'))} · ${list.length}</button>
+      <button type="button" data-filter="coach">🎾 ${esc(t('filterCoaches'))} · ${list.filter(m => m.is_coach).length}</button>
     </div>
+    <div class="card" data-list></div>
     ${isOwner ? `<div class="hint">${esc(t('ownerNote'))}</div>` : (isAdmin ? `<div class="hint">${esc(t('adminNote'))}</div>` : '')}`;
+
+  // 전체 / 코치만 — 고른 칸은 탭을 옮겨 다녀도 기억한다 (다시 불러오지 않고 목록만 다시 그림)
+  const listEl = el.querySelector('[data-list]');
+  const drawList = () => {
+    const f = state.memberFilter === 'coach' ? 'coach' : 'all';
+    $$('[data-filter]', el).forEach(b => b.classList.toggle('on', b.dataset.filter === f));
+    const shown = f === 'coach' ? list.filter(m => m.is_coach) : list;
+    listEl.innerHTML = shown.length ? shown.map(m => row(m, isAdmin, isOwner)).join('')
+      : `<div class="empty">${esc(f === 'coach' ? t('noCoaches') : t('membersN', { n: 0 }))}</div>`;
+    $$('[data-member]', listEl).forEach(r => r.onclick = () => {
+      if (!isAdmin) return;
+      const m = list.find(x => String(x.id) === r.dataset.member);
+      memberForm(m, state, () => renderMembers(el, state));
+    });
+  };
+  $$('[data-filter]', el).forEach(b => b.onclick = () => { state.memberFilter = b.dataset.filter; drawList(); });
+  drawList();
 
   const add = el.querySelector('[data-new]');
   if (add) add.onclick = () => memberForm(null, state, () => renderMembers(el, state));
@@ -54,11 +73,6 @@ export async function renderMembers(el, state) {
     await api(`/join/${b.dataset.reject}/reject`, { method: 'POST' }).catch(() => {});
     toast(t('joinRejected'));
     renderMembers(el, state);
-  });
-  $$('[data-member]', el).forEach(r => r.onclick = () => {
-    if (!isAdmin) return;
-    const m = list.find(x => String(x.id) === r.dataset.member);
-    memberForm(m, state, () => renderMembers(el, state));
   });
 }
 

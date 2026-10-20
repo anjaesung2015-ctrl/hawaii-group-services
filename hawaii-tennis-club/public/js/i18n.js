@@ -50,7 +50,7 @@ export const DICT = {
     memberList: 'Member list', newMember: 'Add member', editMember: 'Edit member',
     name: 'Name', level: 'Level', joinedAt: 'Joined', status: 'Status', role: 'Role',
     lvNewbie: 'New', lvBeginner: 'Beginner', lvIntermediate: 'Intermediate', lvAdvanced: 'Advanced',
-    coach: 'Coach', coachYes: 'Yes — coach', coachNo: 'No', myLevel: 'My level · Coach',
+    coach: 'Coach', filterAll: 'All', filterCoaches: 'Coaches', noCoaches: 'No coaches yet', coachYes: 'Yes — coach', coachNo: 'No', myLevel: 'My level · Coach',
     joinAs: 'Join as', joinAsMember: 'Member', joinAsCoach: 'Coach',
     myLevelHint: 'Pick the level that fits you. Turn on Coach if you give lessons — a 🎾 Coach badge shows in the member list.',
     stActive: 'Active', stDormant: 'Left',
