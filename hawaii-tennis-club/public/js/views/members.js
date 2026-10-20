@@ -2,6 +2,7 @@
 import { api, esc, toast, openModal, today, errText, $$ } from '../ui.js';
 import { t, levelLabel } from '../i18n.js';
 import { orgBlock, bindOrg } from './org.js';
+import { openDm } from './chat.js';
 
 const LEVELS = ['newbie', 'beginner', 'intermediate', 'advanced'];
 
@@ -48,8 +49,10 @@ export async function renderMembers(el, state) {
     const shown = list.filter(m => (f !== 'coach' || m.is_coach) && (lv === 'all' || m.level === lv)
       && (!q || norm(m.name).includes(q)));
     const none = q || lv !== 'all' ? t('noMatch') : (f === 'coach' ? t('noCoaches') : t('membersN', { n: 0 }));
-    listEl.innerHTML = shown.length ? shown.map(m => row(m, isAdmin, isOwner)).join('')
+    listEl.innerHTML = shown.length ? shown.map(m => row(m, isAdmin, isOwner, state.me.id)).join('')
       : `<div class="empty">${esc(none)}</div>`;
+    // 💬 — 그 사람과 1:1 채팅 (줄을 누른 것으로 치지 않게 막는다)
+    $$('[data-dm]', listEl).forEach(b => b.onclick = (e) => { e.stopPropagation(); openDm(state, Number(b.dataset.dm)); });
     $$('[data-member]', listEl).forEach(r => r.onclick = () => {
       if (!isAdmin) return;
       const m = list.find(x => String(x.id) === r.dataset.member);
@@ -112,7 +115,7 @@ function joinBlock(join) {
     </div>`;
 }
 
-function row(m, isAdmin, isOwner) {
+function row(m, isAdmin, isOwner, meId) {
   const dormant = m.status === 'dormant';
   return `
     <div class="member-row" ${isAdmin ? `data-member="${m.id}" style="cursor:pointer"` : ''}>
@@ -122,6 +125,7 @@ function row(m, isAdmin, isOwner) {
         <small>${esc(levelLabel(m.level))}${isAdmin && m.phone ? ` · ${esc(m.phone)}` : ''}${isAdmin && m.joined_at ? ` · ${esc(m.joined_at)}` : ''}</small>
       </div>
       ${dormant ? `<span class="pill grey">${esc(t('stDormant'))}</span>` : ''}
+      ${!dormant && m.id !== meId ? `<button type="button" class="btn btn-sm dm-btn" data-dm="${m.id}" aria-label="${esc(t('message'))}">💬</button>` : ''}
     </div>`;
 }
 

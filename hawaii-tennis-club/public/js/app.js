@@ -16,6 +16,7 @@ import { openRules, askAgreeIfNeeded } from './views/rules.js';
 import { renderDues } from './views/dues.js';
 import { renderNotices } from './views/notices.js';
 import { renderMembers } from './views/members.js';
+import { renderChat } from './views/chat.js';
 
 const state = { me: null, settings: { club_name: 'Hawaii Tennis Club', monthly_fee: 0, joining_fee: 0, currency: '₮' }, tab: 'home' };
 
@@ -26,7 +27,18 @@ const VIEWS = {
   dues: renderDues,
   notices: renderNotices,
   members: renderMembers,
+  chat: renderChat,          // 하단 탭이 아니라 상단 💬 버튼으로 연다
 };
+
+// 주소 → 탭. '#chat-12' 는 채팅 탭의 12번 방 (알림을 누르면 이 주소로 열린다)
+function fromHash(h) {
+  const m = /^#?chat-(\d+)$/.exec(h || '');
+  if (m) { state.chatRoom = Number(m[1]); return 'chat'; }
+  const tab = String(h || '#home').replace(/^#/, '') || 'home';
+  if (tab === 'chat') state.chatRoom = null;
+  return VIEWS[tab] ? tab : 'home';
+}
+const hashOf = () => (state.tab === 'chat' && state.chatRoom ? `#chat-${state.chatRoom}` : `#${state.tab}`);
 
 // ---------- 렌더 ----------
 async function render({ keepScroll = false } = {}) {
@@ -40,18 +52,42 @@ async function render({ keepScroll = false } = {}) {
   }
   $$('#tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === state.tab));
   $('#backBtn').hidden = state.tab === 'home';
-  if (!keepScroll) window.scrollTo({ top: 0 });
+  // 방 안에서는 하단 탭을 숨기고 그 자리에 입력칸을 둔다
+  document.body.classList.toggle('in-room', state.tab === 'chat' && !!state.chatRoom);
+  $('#chatBtn').classList.toggle('on', state.tab === 'chat');
+  updateChatBadge();
+  // 채팅방은 화면이 스스로 맨 아래(최신 메시지)로 내려가 있으므로 건드리지 않는다
+  if (!keepScroll && !(state.tab === 'chat' && state.chatRoom)) window.scrollTo({ top: 0 });
 }
 
 // 앱 안에서 탭을 몇 번 옮겼는지 — 0 이면 뒤로 갈 곳이 앱 밖(알림으로 바로 열었을 때 등)이다
 let navDepth = 0;
 
-function goTab(tab) {
+function goTab(tab, { room, replace = false } = {}) {
   state.tab = VIEWS[tab] ? tab : 'home';
+  if (state.tab === 'chat') state.chatRoom = room || null;
   // 뒤로가기로 탭을 되짚을 수 있게 주소에 남긴다
-  if (location.hash !== `#${state.tab}`) { history.pushState({ tab: state.tab }, '', `#${state.tab}`); navDepth++; }
+  const h = hashOf();
+  if (replace) history.replaceState({ tab: state.tab, room: state.chatRoom }, '', h);
+  else if (location.hash !== h) { history.pushState({ tab: state.tab, room: state.chatRoom }, '', h); navDepth++; }
   render();
 }
+state.go = goTab;   // 화면 쪽(채팅·회원)에서 탭을 옮길 때
+
+// 상단 💬 의 안 읽은 수 — 화면을 그릴 때마다, 그리고 30초마다
+let badgeBusy = false;
+async function updateChatBadge() {
+  if (!state.me || badgeBusy) return;
+  badgeBusy = true;
+  try {
+    const { count } = await api('/chat/unread');
+    const b = $('#chatBadge');
+    b.hidden = !count;
+    b.textContent = count > 99 ? '99+' : String(count);
+  } catch (e) { /* 다음 차례에 */ }
+  finally { badgeBusy = false; }
+}
+setInterval(() => { if (!document.hidden) updateChatBadge(); }, 30000);
 
 // ---------- 로그인 ----------
 function showLogin() {
@@ -67,8 +103,7 @@ function showApp() {
   $('#topClub').textContent = state.settings.club_name;
   $$('.admin-only').forEach(el => { el.hidden = !(state.me.role === 'admin' || state.me.is_owner); });
   $$('.owner-only').forEach(el => { el.hidden = !state.me.is_owner; });
-  const tab = (location.hash || '#home').slice(1);
-  state.tab = VIEWS[tab] ? tab : 'home';
+  state.tab = fromHash(location.hash);
   render();
 }
 
@@ -188,6 +223,7 @@ $('#settingsBtn').onclick = () => {
 
 // ---------- 탭 · 언어 · 뒤로가기 ----------
 $$('#tabbar button').forEach(b => b.onclick = () => goTab(b.dataset.tab));
+$('#chatBtn').onclick = () => goTab('chat');
 
 // ← 버튼: 앞서 본 탭으로. 앱 안에서 옮긴 적이 없으면(바로 열었으면) 홈으로 — 앱 밖으로 나가지 않게
 $('#backBtn').onclick = () => {
@@ -199,14 +235,15 @@ $('#backBtn').onclick = () => {
 
 window.addEventListener('popstate', (e) => {
   navDepth = Math.max(0, navDepth - 1);
-  const tab = e.state?.tab || (location.hash || '#home').slice(1);
-  state.tab = VIEWS[tab] ? tab : 'home';
+  state.tab = fromHash(location.hash);
   if (state.me) render();
 });
 
 // 앱으로 돌아오면 지금 화면을 다시 불러온다 (다른 사람이 바꾼 내용 반영)
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && state.me && !$('#modalRoot').innerHTML) render();
+  if (document.hidden || !state.me || $('#modalRoot').innerHTML) return;
+  if (state.tab === 'chat' && state.chatRoom) return updateChatBadge();
+  render();
 });
 
 // ---------- 부팅 ----------

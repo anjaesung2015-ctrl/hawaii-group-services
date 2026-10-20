@@ -187,6 +187,37 @@ function migrate(db) {
     );
     -- 같은 번호로 신청을 두 번 겹쳐 넣을 수 없다 (거절·승인된 옛 신청은 남아도 된다)
     CREATE UNIQUE INDEX IF NOT EXISTS idx_join_pending ON join_request(phone) WHERE status='pending';
+
+    -- 채팅 — 클럽 전체방(kind='club', 하나뿐) + 1:1 방(kind='dm', a_id < b_id 로 두 사람당 하나)
+    CREATE TABLE IF NOT EXISTS chat_room (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      kind       TEXT NOT NULL CHECK (kind IN ('club','dm')),
+      a_id       INTEGER REFERENCES member(id) ON DELETE CASCADE,
+      b_id       INTEGER REFERENCES member(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_club ON chat_room(kind) WHERE kind='club';
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_dm ON chat_room(a_id, b_id) WHERE kind='dm';
+
+    -- 회원을 지워도 전체방에 남긴 말은 남는다 (보낸 사람만 비움). 1:1 방은 방째 사라진다.
+    CREATE TABLE IF NOT EXISTS chat_msg (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      room_id    INTEGER NOT NULL REFERENCES chat_room(id) ON DELETE CASCADE,
+      member_id  INTEGER REFERENCES member(id) ON DELETE SET NULL,
+      body       TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_chat_msg_room ON chat_msg(room_id, id);
+
+    -- 어디까지 읽었는지 + 마지막으로 방을 본 시각(초) — 보고 있는 사람에게는 알림을 안 보낸다
+    CREATE TABLE IF NOT EXISTS chat_read (
+      room_id   INTEGER NOT NULL REFERENCES chat_room(id) ON DELETE CASCADE,
+      member_id INTEGER NOT NULL REFERENCES member(id)    ON DELETE CASCADE,
+      last_id   INTEGER NOT NULL DEFAULT 0,
+      seen_at   INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (room_id, member_id)
+    );
+    INSERT INTO chat_room (kind) SELECT 'club' WHERE NOT EXISTS (SELECT 1 FROM chat_room WHERE kind='club');
   `);
 
   // 이미 만들어진 DB 에도 새 칸을 더한다 (없을 때만)
