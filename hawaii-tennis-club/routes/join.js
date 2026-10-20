@@ -31,6 +31,7 @@ module.exports = function joinRoutes(db, auth, notify) {
     const nameEn = String(b.name_en || '').trim().slice(0, 60) || null;
     const shirt = SIZES.includes(b.shirt_size) ? b.shirt_size : null;
     const recommenders = String(b.recommenders || '').trim().slice(0, 200) || null;
+    const isCoach = b.is_coach === true || b.is_coach === '1' ? 1 : 0;   // 코치로 신청
 
     if (!name) return res.status(400).json({ error: 'name_required' });
     if (!validPhone(phone)) return res.status(400).json({ error: 'bad_phone' });
@@ -48,9 +49,9 @@ module.exports = function joinRoutes(db, auth, notify) {
 
     const rulesVersion = db.prepare("SELECT version FROM doc WHERE key='rules' AND lang='ko'").get()?.version || 1;
     const r = db.prepare(`INSERT INTO join_request (name, phone, pin_hash, level, memo, agreed_at, agreed_version,
-                                                    name_en, shirt_size, recommenders, privacy_agreed_at)
-                          VALUES (?,?,?,?,?, datetime('now','localtime'), ?, ?,?,?, datetime('now','localtime'))`)
-      .run(name, phone, hashPin(pin), level, memo, rulesVersion, nameEn, shirt, recommenders);
+                                                    name_en, shirt_size, recommenders, privacy_agreed_at, is_coach)
+                          VALUES (?,?,?,?,?, datetime('now','localtime'), ?, ?,?,?, datetime('now','localtime'), ?)`)
+      .run(name, phone, hashPin(pin), level, memo, rulesVersion, nameEn, shirt, recommenders, isCoach);
     res.json({ ok: true, id: r.lastInsertRowid });
 
     // 두 동의를 다 받은 신청만 여기까지 온다 → 승인해 줄 사람(오너·임원)에게 알린다
@@ -63,7 +64,7 @@ module.exports = function joinRoutes(db, auth, notify) {
 
   // ---- 여기서부터는 관리자만 ----
   router.get('/', auth.requireAdmin, (req, res) => {
-    const rows = db.prepare(`SELECT id, name, name_en, phone, level, shirt_size, recommenders, memo, created_at,
+    const rows = db.prepare(`SELECT id, name, name_en, phone, level, shirt_size, recommenders, memo, created_at, is_coach,
                                     agreed_at, agreed_version, privacy_agreed_at
                              FROM join_request WHERE status='pending' ORDER BY id`).all();
     res.json({ count: rows.length, rows });
@@ -87,9 +88,9 @@ module.exports = function joinRoutes(db, auth, notify) {
 
     const { joining_fee } = getSettings(db);
     const approve = db.transaction(() => {
-      const m = db.prepare(`INSERT INTO member (name, phone, pin_hash, role, level, status, joined_at, memo, rules_agreed_at, rules_version)
-                            VALUES (?,?,?,'member',?,'active',?,?,?,?)`)
-        .run(q.name, q.phone, q.pin_hash, q.level, today(), formMemo(q), q.agreed_at, q.agreed_version);
+      const m = db.prepare(`INSERT INTO member (name, phone, pin_hash, role, level, status, joined_at, memo, rules_agreed_at, rules_version, is_coach)
+                            VALUES (?,?,?,'member',?,'active',?,?,?,?,?)`)
+        .run(q.name, q.phone, q.pin_hash, q.level, today(), formMemo(q), q.agreed_at, q.agreed_version, q.is_coach ? 1 : 0);
       // 입회비 미납 한 줄을 세워 둔다 (손으로 넣은 회원과 같은 처리)
       if (joining_fee > 0) {
         db.prepare(`INSERT INTO due (member_id, kind, period, amount) VALUES (?,'joining',?,?)

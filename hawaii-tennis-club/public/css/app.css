@@ -243,6 +243,7 @@ main {
 .pill.grey   { background: #f0f3f1; color: var(--muted); }
 .pill.danger { background: var(--danger-tint); color: var(--danger); }
 .pill.solid  { background: var(--court); color: #fff; }
+.pill.coach  { background: #e6f0ff; color: #1d5fbf; }
 
 .date-chip {
   flex-shrink: 0;

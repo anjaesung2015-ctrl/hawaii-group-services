@@ -1,5 +1,5 @@
 const express = require('express');
-const { checkPin, hashPin, normalizePhone, validPin } = require('../lib/db');
+const { checkPin, hashPin, normalizePhone, validPin, LEVELS } = require('../lib/db');
 
 module.exports = function authRoutes(db, auth) {
   const router = express.Router();
@@ -61,11 +61,19 @@ module.exports = function authRoutes(db, auth) {
     res.json({ ok: true });
   });
 
+  // 본인 레벨 고르기 (☰ 메뉴 → My level). 코치 표시는 임원이 정한다
+  router.patch('/profile', auth.requireMember, (req, res) => {
+    const level = req.body?.level;
+    if (!LEVELS.includes(level)) return res.status(400).json({ error: 'bad_level' });
+    db.prepare('UPDATE member SET level=? WHERE id=?').run(level, req.me.id);
+    res.json({ ok: true, me: publicMe(db.prepare('SELECT * FROM member WHERE id=?').get(req.me.id)) });
+  });
+
   return router;
 };
 
 const publicMe = (m) => ({
   id: m.id, name: m.name, phone: m.phone, role: m.role,
   title: m.title, level: m.level, status: m.status, joined_at: m.joined_at,
-  is_owner: !!m.is_owner,
+  is_owner: !!m.is_owner, is_coach: !!m.is_coach,
 });

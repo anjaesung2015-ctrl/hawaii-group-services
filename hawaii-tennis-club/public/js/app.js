@@ -1,6 +1,6 @@
 // 앱 시작 — 로그인 확인, 탭 전환, 상단 메뉴.
 import { $, $$, api, esc, toast, openModal, errText } from './ui.js';
-import { t, applyStatic } from './i18n.js';
+import { t, applyStatic, levelLabel } from './i18n.js';
 import { renderHome } from './views/home.js';
 import { renderSchedule } from './views/schedule.js';
 import { renderBoard } from './views/board.js';
@@ -129,6 +129,24 @@ $('#refreshBtn').onclick = async () => {
 initPullRefresh(() => render({ keepScroll: true }), {
   enabled: () => !!state.me && !$('#modalRoot').innerHTML && $('#menuSheet').hidden,
 });
+
+// 내 레벨 — 회원이 직접 고른다
+$('#levelBtn').onclick = () => {
+  sheet.hidden = true;
+  const LV = ['newbie', 'beginner', 'intermediate', 'advanced'];
+  openModal({
+    title: t('myLevel'),
+    fields: [{ name: 'level', label: t('level'), type: 'select', value: state.me.level,
+      options: LV.map(l => ({ value: l, label: levelLabel(l) })) }],
+    extra: `<div class="hint">${esc(t('myLevelHint'))}</div>`,
+    onSave: async (v) => {
+      const r = await api('/auth/profile', { method: 'PATCH', body: v });
+      state.me = r.me;
+      toast(t('saved'));
+      render({ keepScroll: true });
+    },
+  });
+};
 
 $('#pinBtn').onclick = () => {
   sheet.hidden = true;

@@ -7,10 +7,10 @@ module.exports = function memberRoutes(db, auth) {
 
   // 명단 — 일반 회원에게는 이름·레벨만 보여준다 (전화번호는 관리자만)
   router.get('/', (req, res) => {
-    const rows = db.prepare(`SELECT id, name, phone, role, title, level, status, joined_at, memo, is_owner
-                             FROM member ORDER BY is_owner DESC, role='member', status='dormant', name`).all();
+    const rows = db.prepare(`SELECT id, name, phone, role, title, level, status, joined_at, memo, is_owner, is_coach
+                             FROM member ORDER BY is_owner DESC, role='member', is_coach DESC, status='dormant', name`).all();
     if (req.me.role === 'admin' || req.me.is_owner) return res.json(rows);
-    res.json(rows.map(m => ({ id: m.id, name: m.name, level: m.level, status: m.status, role: m.role, title: m.title, is_owner: m.is_owner })));
+    res.json(rows.map(m => ({ id: m.id, name: m.name, level: m.level, status: m.status, role: m.role, title: m.title, is_owner: m.is_owner, is_coach: m.is_coach })));
   });
 
   router.post('/', auth.requireAdmin, (req, res) => {
@@ -26,11 +26,11 @@ module.exports = function memberRoutes(db, auth) {
     if (!validPin(pin)) return res.status(400).json({ error: 'pin_4_digits' });
     if (db.prepare('SELECT id FROM member WHERE phone=?').get(phone)) return res.status(409).json({ error: 'phone_taken' });
 
-    const r = db.prepare(`INSERT INTO member (name, phone, pin_hash, role, title, level, status, joined_at, memo)
-                          VALUES (?,?,?,?,?,?,?,?,?)`)
+    const r = db.prepare(`INSERT INTO member (name, phone, pin_hash, role, title, level, status, joined_at, memo, is_coach)
+                          VALUES (?,?,?,?,?,?,?,?,?,?)`)
       .run(name, phone, hashPin(pin), b.role === 'admin' ? 'admin' : 'member',
            String(b.title || '').trim() || null, level,
-           b.status === 'dormant' ? 'dormant' : 'active', joined_at, String(b.memo || '').trim() || null);
+           b.status === 'dormant' ? 'dormant' : 'active', joined_at, String(b.memo || '').trim() || null, isOn(b.is_coach));
 
     // 입회비는 가입한 달의 미납 한 줄로 바로 세워둔다 (받아야 할 돈을 잊지 않도록)
     const { joining_fee } = getSettings(db);
@@ -63,6 +63,7 @@ module.exports = function memberRoutes(db, auth) {
     if ('level' in b && LEVELS.includes(b.level)) { f.push('level=?'); v.push(b.level); }
     if ('status' in b) { f.push('status=?'); v.push(b.status === 'dormant' ? 'dormant' : 'active'); }
     if ('title' in b) { f.push('title=?'); v.push(String(b.title || '').trim() || null); }
+    if ('is_coach' in b) { f.push('is_coach=?'); v.push(isOn(b.is_coach)); }
     if ('memo' in b) { f.push('memo=?'); v.push(String(b.memo || '').trim() || null); }
     if ('joined_at' in b && /^\d{4}-\d{2}-\d{2}$/.test(b.joined_at)) { f.push('joined_at=?'); v.push(b.joined_at); }
     if ('role' in b) {
@@ -115,3 +116,6 @@ module.exports = function memberRoutes(db, auth) {
 
 const lastAdmin = (db, id) =>
   db.prepare("SELECT COUNT(*) c FROM member WHERE role='admin' AND id<>?").get(id).c === 0;
+
+// 화면 select 는 '1'/'0', API 는 true/false — 둘 다 받는다
+function isOn(x) { return x === true || x === 1 || x === '1' || x === 'true' ? 1 : 0; }

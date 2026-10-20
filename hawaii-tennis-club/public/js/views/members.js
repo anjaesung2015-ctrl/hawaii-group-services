@@ -73,7 +73,7 @@ function joinBlock(join) {
           <div class="avatar">${esc(String(r.name || '?').slice(0, 1))}</div>
           <div class="who">
             <b>${esc(r.name)}</b>
-            <small>${esc(r.phone)} · ${esc(levelLabel(r.level))} · ${esc(String(r.created_at).slice(5, 10))}</small>
+            <small>${r.is_coach ? `🎾 ${esc(t('coach'))} · ` : ''}${esc(r.phone)} · ${esc(levelLabel(r.level))} · ${esc(String(r.created_at).slice(5, 10))}</small>
             ${r.name_en || r.shirt_size || r.recommenders ? `<small>${esc([r.name_en, r.shirt_size && `T-shirt ${r.shirt_size}`, r.recommenders && `${t('joinRecommenders')}: ${r.recommenders}`].filter(Boolean).join(' · '))}</small>` : ''}
             <small style="color:var(--court)">✓ ${esc(t('joinAgreedRules'))}${r.privacy_agreed_at ? ` · ✓ ${esc(t('joinAgreedPrivacy'))}` : ''}</small>
           </div>
@@ -89,7 +89,7 @@ function row(m, isAdmin, isOwner) {
     <div class="member-row" ${isAdmin ? `data-member="${m.id}" style="cursor:pointer"` : ''}>
       <div class="avatar ${dormant ? 'dormant' : ''}">${esc(String(m.name || '?').slice(0, 1))}</div>
       <div class="who">
-        <b>${esc(m.name)}${m.is_owner ? ` <span class="pill solid">👑 ${esc(t('roleOwner'))}</span>` : (m.role === 'admin' ? ` <span class="pill gold">${esc(m.title || t('admin'))}</span>` : '')}</b>
+        <b>${esc(m.name)}${m.is_owner ? ` <span class="pill solid">👑 ${esc(t('roleOwner'))}</span>` : (m.role === 'admin' ? ` <span class="pill gold">${esc(m.title || t('admin'))}</span>` : '')}${m.is_coach ? ` <span class="pill coach">🎾 ${esc(t('coach'))}</span>` : ''}</b>
         <small>${esc(levelLabel(m.level))}${isAdmin && m.phone ? ` · ${esc(m.phone)}` : ''}${isAdmin && m.joined_at ? ` · ${esc(m.joined_at)}` : ''}</small>
       </div>
       ${dormant ? `<span class="pill grey">${esc(t('stDormant'))}</span>` : ''}
@@ -106,6 +106,8 @@ function memberForm(m, state, refresh) {
       ...(isNew ? [{ name: 'pin', label: t('pin'), type: 'tel', inputmode: 'numeric', maxlength: 4, value: '', placeholder: '1234' }] : []),
       { name: 'level', label: t('level'), type: 'select', value: m?.level || 'beginner',
         options: LEVELS.map(l => ({ value: l, label: levelLabel(l) })) },
+      { name: 'is_coach', label: t('coach'), type: 'select', value: m?.is_coach ? '1' : '0',
+        options: [{ value: '0', label: t('coachNo') }, { value: '1', label: t('coachYes') }] },
       { name: 'joined_at', label: t('joinedAt'), type: 'date', value: m?.joined_at || today() },
       { name: 'status', label: t('status'), type: 'select', value: m?.status || 'active',
         options: [{ value: 'active', label: t('stActive') }, { value: 'dormant', label: t('stDormant') }] },

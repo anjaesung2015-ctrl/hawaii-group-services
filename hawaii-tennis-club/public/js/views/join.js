@@ -21,6 +21,8 @@ export function openJoinForm() {
         options: [{ value: '', label: '—' }, ...SIZES.map(s => ({ value: s, label: s }))] },
       { name: 'level', label: t('level'), type: 'select', value: 'beginner',
         options: LEVELS.map(l => ({ value: l, label: levelLabel(l) })) },
+      { name: 'is_coach', label: t('joinAs'), type: 'select', value: '0',
+        options: [{ value: '0', label: t('joinAsMember') }, { value: '1', label: t('joinAsCoach') }] },
       { name: 'recommenders', label: t('joinRecommenders'), placeholder: t('joinRecommendersPh') },
     ],
     extra: `

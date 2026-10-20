@@ -200,11 +200,13 @@ function migrate(db) {
   if (!mcols.includes('is_owner')) db.exec('ALTER TABLE member ADD COLUMN is_owner INTEGER NOT NULL DEFAULT 0');
   if (!mcols.includes('rules_agreed_at')) db.exec('ALTER TABLE member ADD COLUMN rules_agreed_at TEXT');
   if (!mcols.includes('rules_version')) db.exec('ALTER TABLE member ADD COLUMN rules_version INTEGER');
+  // 코치 표시 — 레슨하는 회원. 권한(role)과는 별개라 따로 칸을 둔다
+  if (!mcols.includes('is_coach')) db.exec('ALTER TABLE member ADD COLUMN is_coach INTEGER NOT NULL DEFAULT 0');
   const jcols = db.prepare('PRAGMA table_info(join_request)').all().map(c => c.name);
   if (!jcols.includes('agreed_at')) db.exec('ALTER TABLE join_request ADD COLUMN agreed_at TEXT');
   if (!jcols.includes('agreed_version')) db.exec('ALTER TABLE join_request ADD COLUMN agreed_version INTEGER');
   // 가입 신청서 (종이 회칙 동의서와 같은 칸) — 영문 이름, 티셔츠 사이즈, 추천 회원, 개인정보 동의
-  for (const [c, type] of [['name_en', 'TEXT'], ['shirt_size', 'TEXT'], ['recommenders', 'TEXT'], ['privacy_agreed_at', 'TEXT']]) {
+  for (const [c, type] of [['name_en', 'TEXT'], ['shirt_size', 'TEXT'], ['recommenders', 'TEXT'], ['privacy_agreed_at', 'TEXT'], ['is_coach', 'INTEGER NOT NULL DEFAULT 0']]) {
     if (!jcols.includes(c)) db.exec(`ALTER TABLE join_request ADD COLUMN ${c} ${type}`);
   }
 
