@@ -469,6 +469,9 @@ main {
   color: var(--ink-soft);
   cursor: pointer;
 }
+/* 레벨 필터 — 버튼이 5개라 폰에서는 두 줄로 접힌다 */
+.seg.levels { flex-wrap: wrap; margin-top: -4px; }
+.seg.levels button { flex: 1 1 28%; padding: 7px 4px; font-size: 12px; }
 .seg button.on { background: var(--court-dark); border-color: var(--court-dark); color: #fff; }
 .fab-row { margin: 4px 0 2px; }
 

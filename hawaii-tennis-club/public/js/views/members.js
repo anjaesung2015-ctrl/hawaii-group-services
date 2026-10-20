@@ -29,17 +29,24 @@ export async function renderMembers(el, state) {
       <button type="button" data-filter="all">${esc(t('filterAll'))} · ${list.length}</button>
       <button type="button" data-filter="coach">🎾 ${esc(t('filterCoaches'))} · ${list.filter(m => m.is_coach).length}</button>
     </div>
+    <div class="seg levels" data-levels>
+      <button type="button" data-level="all">${esc(t('allLevels'))}</button>
+      ${LEVELS.map(l => `<button type="button" data-level="${l}">${esc(levelLabel(l))} · ${list.filter(m => m.level === l).length}</button>`).join('')}
+    </div>
     <div class="card" data-list></div>
     ${isOwner ? `<div class="hint">${esc(t('ownerNote'))}</div>` : (isAdmin ? `<div class="hint">${esc(t('adminNote'))}</div>` : '')}`;
 
-  // 전체 / 코치만 — 고른 칸은 탭을 옮겨 다녀도 기억한다 (다시 불러오지 않고 목록만 다시 그림)
+  // 전체 / 코치만 × 레벨 — 두 줄을 함께 건다. 고른 칸은 탭을 옮겨 다녀도 기억한다 (다시 불러오지 않고 목록만 다시 그림)
   const listEl = el.querySelector('[data-list]');
   const drawList = () => {
     const f = state.memberFilter === 'coach' ? 'coach' : 'all';
+    const lv = LEVELS.includes(state.memberLevel) ? state.memberLevel : 'all';
     $$('[data-filter]', el).forEach(b => b.classList.toggle('on', b.dataset.filter === f));
-    const shown = f === 'coach' ? list.filter(m => m.is_coach) : list;
+    $$('[data-level]', el).forEach(b => b.classList.toggle('on', b.dataset.level === lv));
+    const shown = list.filter(m => (f !== 'coach' || m.is_coach) && (lv === 'all' || m.level === lv));
+    const none = f === 'coach' && lv === 'all' ? t('noCoaches') : (lv === 'all' ? t('membersN', { n: 0 }) : t('noMatch'));
     listEl.innerHTML = shown.length ? shown.map(m => row(m, isAdmin, isOwner)).join('')
-      : `<div class="empty">${esc(f === 'coach' ? t('noCoaches') : t('membersN', { n: 0 }))}</div>`;
+      : `<div class="empty">${esc(none)}</div>`;
     $$('[data-member]', listEl).forEach(r => r.onclick = () => {
       if (!isAdmin) return;
       const m = list.find(x => String(x.id) === r.dataset.member);
@@ -47,6 +54,7 @@ export async function renderMembers(el, state) {
     });
   };
   $$('[data-filter]', el).forEach(b => b.onclick = () => { state.memberFilter = b.dataset.filter; drawList(); });
+  $$('[data-level]', el).forEach(b => b.onclick = () => { state.memberLevel = b.dataset.level; drawList(); });
   drawList();
 
   const add = el.querySelector('[data-new]');
