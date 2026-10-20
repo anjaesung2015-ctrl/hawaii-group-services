@@ -35,6 +35,10 @@ async function main() {
     fs.cpSync(up, upOut, { recursive: true });
   }
 
+  // 채팅 사진 (data/chat-photos — 공개 폴더 밖에 따로 둔다)
+  const chat = path.join(path.dirname(SRC), 'chat-photos');
+  if (fs.existsSync(chat)) fs.cpSync(chat, path.join(OUT, `chat-photos-${stamp()}`), { recursive: true });
+
   // 오래된 것 정리
   const cutoff = Date.now() - KEEP_DAYS * 86400 * 1000;
   let pruned = 0;

@@ -10,14 +10,27 @@ const MAX_BYTES = 3 * 1024 * 1024;   // 줄여서 올리므로 3MB면 충분하�
 // 저장 경로는 앞에 / 를 붙이지 않는다 — /booking/ 처럼 하위 경로에 올려도 그대로 열리게
 function savePhoto(dataUrl) {
   if (!dataUrl) return null;
+  return `uploads/${writePhoto(dataUrl, UPLOAD_DIR)}`;
+}
+
+// data:URL 한 장을 dir 에 파일로 쓰고 파일 이름만 돌려준다
+function writePhoto(dataUrl, dir) {
   const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl));
   if (!m) throw new Error('bad_photo');
   const buf = Buffer.from(m[2], 'base64');
   if (buf.length > MAX_BYTES) throw new Error('photo_too_big');
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+  fs.mkdirSync(dir, { recursive: true });
   const name = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}.${m[1] === 'jpeg' ? 'jpg' : m[1]}`;
-  fs.writeFileSync(path.join(UPLOAD_DIR, name), buf);
-  return `uploads/${name}`;
+  fs.writeFileSync(path.join(dir, name), buf);
+  return name;
+}
+
+// 채팅 사진은 공개 폴더(uploads/)가 아니라 DB 옆 chat-photos/ 에 둔다.
+// 주소로 바로 못 열고, /api/chat/photo/<메시지 id> 가 방에 들어갈 수 있는 사람인지 보고 내준다.
+const chatPhotoDir = (db) => path.join(path.dirname(db.name), 'chat-photos');
+function removeChatPhoto(db, name) {
+  if (!name) return;
+  fs.rm(path.join(chatPhotoDir(db), path.basename(String(name))), { force: true }, () => {});
 }
 
 // 여러 장 — 한 장이라도 잘못되면 앞서 저장한 것을 지우고 던진다 (반쪽짜리로 남지 않게)
@@ -40,4 +53,4 @@ function removePhoto(webPath) {
   fs.rm(path.join(UPLOAD_DIR, name), { force: true }, () => {});
 }
 
-module.exports = { savePhoto, savePhotos, removePhoto, UPLOAD_DIR, MAX_BYTES };
+module.exports = { savePhoto, savePhotos, removePhoto, writePhoto, chatPhotoDir, removeChatPhoto, UPLOAD_DIR, MAX_BYTES };

@@ -1,8 +1,9 @@
 // 채팅 — 클럽 전체방 하나 + 회원끼리 1:1.
 // 화면은 방을 열어 둔 동안 3초마다 ?after=<마지막 id> 로 새 메시지만 받아 간다(웹소켓 없이 nginx 하위 경로 그대로).
 // 새 메시지는 폰 알림으로도 간다 — 단, 그 방을 지금 보고 있는 사람(최근 20초 안에 불러감)에게는 보내지 않는다.
+const path = require('path');
 const express = require('express');
-const { savePhoto, removePhoto } = require('../lib/photos');
+const { writePhoto, chatPhotoDir, removeChatPhoto } = require('../lib/photos');
 
 const MAX_BODY = 1000;
 const PAGE = 50;
@@ -40,7 +41,7 @@ module.exports = function chatRoutes(db, auth, notify) {
 
   const msgRow = (m, meId) => ({
     id: m.id, member_id: m.member_id, name: m.name, is_coach: !!m.is_coach,
-    body: m.body, photo: m.photo || null, created_at: m.created_at, mine: m.member_id === meId,
+    body: m.body, photo: m.photo ? `api/chat/photo/${m.id}` : null, created_at: m.created_at, mine: m.member_id === meId,
   });
   const SELECT_MSG = `SELECT c.id, c.member_id, c.body, c.photo, c.created_at, m.name, m.is_coach
                       FROM chat_msg c LEFT JOIN member m ON m.id = c.member_id`;
@@ -112,10 +113,10 @@ module.exports = function chatRoutes(db, auth, notify) {
     const other = otherOf(r, req.me);
     if (r.kind === 'dm' && (!other || other.status !== 'active')) return res.status(409).json({ error: 'member_gone' });
 
-    // 사진은 폰에서 줄인 JPEG(data:URL) 한 장 — 공지·게시판과 같은 저장 방식
+    // 사진은 폰에서 줄인 JPEG(data:URL) 한 장 — 공개 폴더가 아니라 chat-photos/ 에 (DB 에는 파일 이름만)
     let photo = null;
     if (hasPhoto) {
-      try { photo = savePhoto(req.body.photo); }
+      try { photo = writePhoto(req.body.photo, chatPhotoDir(db)); }
       catch (e) { return res.status(400).json({ error: e.message }); }
     }
     const id = db.prepare('INSERT INTO chat_msg (room_id, member_id, body, photo) VALUES (?,?,?,?)')
@@ -146,8 +147,18 @@ module.exports = function chatRoutes(db, auth, notify) {
     const officer = req.me.role === 'admin' || req.me.is_owner;
     if (m.member_id !== req.me.id && !(m.kind === 'club' && officer)) return res.status(403).json({ error: 'forbidden' });
     db.prepare('DELETE FROM chat_msg WHERE id=?').run(m.id);
-    removePhoto(m.photo);
+    removeChatPhoto(db, m.photo);
     res.json({ ok: true });
+  });
+
+  // 사진 — 그 방에 들어갈 수 있는 사람만 (1:1 사진은 두 사람만). 남에게는 있는지조차 알리지 않는다(404)
+  router.get('/photo/:id', (req, res) => {
+    const m = db.prepare('SELECT room_id, photo FROM chat_msg WHERE id=?').get(req.params.id);
+    if (!m?.photo || !roomFor(req.me, m.room_id)) return res.status(404).json({ error: 'not_found' });
+    res.set('Cache-Control', 'private, max-age=604800');
+    res.sendFile(path.join(chatPhotoDir(db), path.basename(m.photo)), (err) => {
+      if (err && !res.headersSent) res.status(404).json({ error: 'not_found' });
+    });
   });
 
   return router;

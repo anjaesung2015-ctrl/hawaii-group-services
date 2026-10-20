@@ -190,7 +190,7 @@ test('로그인 안 하면 채팅 API 는 401', async () => {
 // ---- 사진 ----
 const fs = require('fs');
 const path = require('path');
-const { UPLOAD_DIR } = require('../lib/photos');
+const { chatPhotoDir } = require('../lib/photos');
 const JPG = 'data:image/jpeg;base64,' + Buffer.from('fake-jpeg-bytes').toString('base64');
 
 test('사진만, 또는 사진+설명을 보낸다 — 파일로 저장되고 지우면 파일도 사라진다', async () => {
@@ -200,10 +200,12 @@ test('사진만, 또는 사진+설명을 보낸다 — 파일로 저장되고 �
 
   const only = await m.call(`/chat/rooms/${club}/messages`, { method: 'POST', body: { photo: JPG } });
   assert.strictEqual(only.status, 200);
-  assert.match(only.data.photo, /^uploads\/.+\.jpg$/, '앞에 / 없는 상대 경로');
+  assert.strictEqual(only.data.photo, `api/chat/photo/${only.data.id}`, '앞에 / 없는 상대 경로');
   assert.strictEqual(only.data.body, '');
-  const file = path.join(UPLOAD_DIR, path.basename(only.data.photo));
+  const name = app.db.prepare('SELECT photo FROM chat_msg WHERE id=?').pluck().get(only.data.id);
+  const file = path.join(chatPhotoDir(app.db), name);
   assert.ok(fs.existsSync(file));
+  assert.ok(!file.includes(`${path.sep}uploads${path.sep}`), '공개 폴더(uploads)에 두면 안 된다');
 
   const cap = await m.call(`/chat/rooms/${club}/messages`, { method: 'POST', body: { body: 'Our court today', photo: JPG } });
   assert.strictEqual(cap.data.body, 'Our court today');
@@ -242,5 +244,67 @@ test('사진이 아닌 것·너무 큰 사진은 400', async () => {
   const r = await m.call(`/chat/rooms/${club}/messages`, { method: 'POST', body: { photo: big } });
   assert.ok(r.status === 400 || r.status === 413);
   assert.strictEqual((await m.call(`/chat/rooms/${club}/messages`)).data.messages.length, 0, '실패하면 메시지도 안 남는다');
+  app.close();
+});
+
+// 사진 파일 받기 — 주소(api/chat/photo/<id>)로 열 수 있는 사람
+const getPhoto = async (c, url) => {
+  const r = await fetch(`${c.base}/${url.replace(/^api\//, '')}`, { headers: c.cookie ? { cookie: c.cookie } : {} });
+  return { status: r.status, type: r.headers.get('content-type'), body: Buffer.from(await r.arrayBuffer()) };
+};
+
+test('1:1 사진은 두 사람만 연다 — 제3자·로그아웃은 404/401', async () => {
+  const { app } = setup();
+  const [a, m, s] = await login(app);
+  for (const c of [a, m, s]) c.base = app.base;
+  const dm = (await m.call('/chat/dm', { method: 'POST', body: { member_id: app.adminId } })).data.id;
+  const sent = (await m.call(`/chat/rooms/${dm}/messages`, { method: 'POST', body: { photo: JPG } })).data;
+
+  for (const who of [m, a]) {
+    const r = await getPhoto(who, sent.photo);
+    assert.strictEqual(r.status, 200);
+    assert.match(r.type, /image\/jpeg/);
+    assert.strictEqual(r.body.toString(), 'fake-jpeg-bytes');
+  }
+  assert.strictEqual((await getPhoto(s, sent.photo)).status, 404, '제3자(임원 아님)');
+  assert.strictEqual((await getPhoto({ base: app.base }, sent.photo)).status, 401, '로그인 안 함');
+  await m.call(`/chat/messages/${sent.id}`, { method: 'DELETE' });
+  assert.strictEqual((await getPhoto(m, sent.photo)).status, 404, '지운 사진');
+  app.close();
+});
+
+test('1:1 사진은 오너·임원이라도 대화 당사자가 아니면 못 연다', async () => {
+  const { app, third } = setup();
+  const [a, m, s] = await login(app);
+  for (const c of [a, m, s]) c.base = app.base;
+  const dm = (await m.call('/chat/dm', { method: 'POST', body: { member_id: third } })).data.id;
+  const sent = (await m.call(`/chat/rooms/${dm}/messages`, { method: 'POST', body: { photo: JPG } })).data;
+  assert.strictEqual((await getPhoto(s, sent.photo)).status, 200);
+  assert.strictEqual((await getPhoto(a, sent.photo)).status, 404, '오너도 남의 1:1 사진은 못 본다');
+  await m.call(`/chat/messages/${sent.id}`, { method: 'DELETE' });
+  app.close();
+});
+
+test('전체방 사진은 회원 누구나 연다', async () => {
+  const { app } = setup();
+  const [a, m, s] = await login(app);
+  for (const c of [a, m, s]) c.base = app.base;
+  const club = (await m.call('/chat/rooms')).data[0].id;
+  const sent = (await m.call(`/chat/rooms/${club}/messages`, { method: 'POST', body: { photo: JPG } })).data;
+  for (const who of [a, m, s]) assert.strictEqual((await getPhoto(who, sent.photo)).status, 200);
+  await m.call(`/chat/messages/${sent.id}`, { method: 'DELETE' });
+  app.close();
+});
+
+test('회원을 지우면 그 사람 1:1 방 사진 파일도 지워진다', async () => {
+  const { app } = setup();
+  const [a, m] = await login(app);
+  const dm = (await m.call('/chat/dm', { method: 'POST', body: { member_id: app.adminId } })).data.id;
+  const sent = (await m.call(`/chat/rooms/${dm}/messages`, { method: 'POST', body: { photo: JPG } })).data;
+  const file = path.join(chatPhotoDir(app.db), app.db.prepare('SELECT photo FROM chat_msg WHERE id=?').pluck().get(sent.id));
+  assert.ok(fs.existsSync(file));
+  assert.strictEqual((await a.call(`/members/${app.memberId}`, { method: 'DELETE' })).status, 200);
+  await new Promise(r => setTimeout(r, 50));
+  assert.ok(!fs.existsSync(file));
   app.close();
 });
