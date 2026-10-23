@@ -36,6 +36,37 @@ export function initInstall(onOpen) {
   buttons().forEach(b => b.onclick = () => { if (onOpen) onOpen(); openInstall(); });
 }
 
+// 초대 링크 — 열면 로그인 화면에서 가입 신청서가 바로 뜬다(app.js boot 의 #join).
+// 설치 버튼과 달리 앱으로 열려 있어도 보인다(회원이 친구에게 보낼 때 쓰니까).
+export const inviteUrl = () => new URL('./#join', location.href).href;
+
+async function copyText(url) {
+  try { await navigator.clipboard.writeText(url); toast(t('installCopied')); }
+  catch (e) { prompt(t('installCopy'), url); }
+}
+
+export function openInvite(clubName) {
+  const url = inviteUrl();
+  const m = openModal({
+    title: t('inviteTitle'),
+    fields: [],
+    extra: `<div class="hint">${esc(t('inviteHint'))}</div>
+      <input class="invite-url" type="text" readonly value="${esc(url)}">
+      <button type="button" class="btn btn-primary" style="width:100%" data-copy>${esc(t('installCopy'))}</button>
+      ${navigator.share ? `<button type="button" class="btn" style="width:100%;margin-top:8px" data-share>${esc(t('inviteShare'))}</button>` : ''}`,
+    saveLabel: t('close'),
+    onSave: () => {},
+  });
+  const box = m.form.querySelector('.invite-url');
+  box.onfocus = () => box.select();
+  m.form.querySelector('[data-copy]').onclick = () => copyText(url);
+  const share = m.form.querySelector('[data-share]');
+  if (share) share.onclick = async () => {
+    try { await navigator.share({ title: clubName, text: t('inviteText', { club: clubName }), url }); }
+    catch (e) { if (e.name !== 'AbortError') copyText(url); }   // 공유 창을 그냥 닫은 건 무시
+  };
+}
+
 export async function openInstall() {
   if (deferred) {
     const ev = deferred;
@@ -63,9 +94,5 @@ export async function openInstall() {
     saveLabel: t('close'),
     onSave: () => {},
   });
-  m.form.querySelector('[data-copy]').onclick = async () => {
-    const url = new URL('./', location.href).href;
-    try { await navigator.clipboard.writeText(url); toast(t('installCopied')); }
-    catch (e) { prompt(t('installCopy'), url); }
-  };
+  m.form.querySelector('[data-copy]').onclick = () => copyText(new URL('./', location.href).href);
 }

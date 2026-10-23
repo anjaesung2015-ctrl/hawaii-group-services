@@ -5,7 +5,7 @@ import { renderHome } from './views/home.js';
 import { renderSchedule } from './views/schedule.js';
 import { renderBoard } from './views/board.js';
 import { openPushPanel } from './views/push.js';
-import { initInstall } from './views/install.js';
+import { initInstall, openInvite } from './views/install.js';
 import { initPullRefresh, refresh } from './refresh.js';
 import { initBackNav } from './backnav.js';
 import { openJoinForm } from './views/join.js';
@@ -151,6 +151,7 @@ $('#rulesBtn').onclick = () => { sheet.hidden = true; openRules({ canEdit: !!sta
 
 $('#pushBtn').onclick = () => { sheet.hidden = true; openPushPanel(); };
 initInstall(() => { sheet.hidden = true; });
+$('#inviteBtn').onclick = () => { sheet.hidden = true; openInvite(state.settings.club_name); };
 
 // ---------- 새로고침 ----------
 // 상단 ↻ 버튼, 또는 맨 위에서 아래로 당기기. 창(모달)이 열려 있을 땐 당기기를 막는다(쓰던 내용이 날아가니까)
@@ -260,6 +261,7 @@ async function boot() {
     askAgreeIfNeeded(state);                  // 아직 회칙에 동의하지 않았으면 한 번 받는다
   } catch (e) {
     showLogin();
+    if (location.hash === '#join') openJoinForm();   // 초대 링크로 들어온 사람 — 가입 신청서부터
   }
 
   if ('serviceWorker' in navigator) {

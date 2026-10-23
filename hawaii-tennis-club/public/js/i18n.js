@@ -132,6 +132,11 @@ export const DICT = {
     installLink: 'Link to the app',
     installCopy: 'Copy link',
     installCopied: 'Link copied',
+    inviteLink: 'Invite link',
+    inviteTitle: 'Invite a friend',
+    inviteHint: 'Send this link to a friend. It opens the membership application — an officer approves it.',
+    inviteShare: 'Share…',
+    inviteText: 'Join {club}! Apply for membership here:',
     loading: 'Loading…',
 
     newPost: 'New post',
