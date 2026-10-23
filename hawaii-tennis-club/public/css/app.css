@@ -456,6 +456,12 @@ main {
 
 .install-steps { margin: 0 0 10px; padding-left: 20px; line-height: 1.5; }
 .install-steps li { margin-bottom: 8px; }
+.invite-row { display: flex; gap: 8px; margin: 12px 0 2px; }
+.invite-row [data-invite] { flex: 1; }
+.invite-qr {
+  display: block; width: 200px; height: 200px; margin: 4px auto 2px;
+  background: #fff; padding: 8px; border-radius: 12px; image-rendering: pixelated;
+}
 .invite-url {
   width: 100%; box-sizing: border-box; margin-bottom: 10px; padding: 10px 12px;
   border: 1px solid var(--hair); border-radius: 10px; background: var(--card); color: inherit;

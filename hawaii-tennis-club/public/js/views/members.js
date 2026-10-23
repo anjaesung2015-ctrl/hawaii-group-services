@@ -3,6 +3,7 @@ import { api, esc, toast, openModal, today, errText, $$ } from '../ui.js';
 import { t, levelLabel } from '../i18n.js';
 import { orgBlock, bindOrg } from './org.js';
 import { openDm } from './chat.js';
+import { shareInvite, openInvite } from './install.js';
 
 const LEVELS = ['newbie', 'beginner', 'intermediate', 'advanced'];
 
@@ -21,6 +22,10 @@ export async function renderMembers(el, state) {
       <div class="stat"><b>${list.length}</b><span>${esc(t('members'))}</span></div>
       <div class="stat"><b>${active.length}</b><span>${esc(t('stActive'))}</span></div>
       ${isAdmin ? `<div class="stat ${join.count ? 'warn' : ''}"><b>${join.count}</b><span>${esc(t('joinPending'))}</span></div>` : ''}
+    </div>
+    <div class="invite-row">
+      <button class="btn btn-primary" type="button" data-invite>📨 ${esc(t('inviteFriends'))}</button>
+      <button class="btn" type="button" data-invite-qr aria-label="QR">▦ QR</button>
     </div>
     ${isAdmin ? joinBlock(join) : ''}
     ${org}
@@ -66,6 +71,9 @@ export async function renderMembers(el, state) {
   search.value = state.memberQuery || '';
   search.oninput = () => { state.memberQuery = search.value; drawList(); };
   drawList();
+
+  el.querySelector('[data-invite]').onclick = () => shareInvite(state.settings.club_name);
+  el.querySelector('[data-invite-qr]').onclick = () => openInvite(state.settings.club_name);
 
   const add = el.querySelector('[data-new]');
   if (add) add.onclick = () => memberForm(null, state, () => renderMembers(el, state));

@@ -136,6 +136,8 @@ export const DICT = {
     inviteTitle: 'Invite a friend',
     inviteHint: 'Send this link to a friend. It opens the membership application — an officer approves it.',
     inviteShare: 'Share…',
+    inviteFriends: 'Invite friends',
+    inviteQrHint: 'Scan with the phone camera to open the application',
     inviteText: 'Join {club}! Apply for membership here:',
     loading: 'Loading…',
 

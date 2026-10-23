@@ -45,12 +45,22 @@ async function copyText(url) {
   catch (e) { prompt(t('installCopy'), url); }
 }
 
+// 폰 공유 창(카톡·텔레그램·메신저…)을 바로 띄운다. 공유를 못 하는 기기(PC 등)는 초대 창(QR+복사)으로
+export async function shareInvite(clubName) {
+  const url = inviteUrl();
+  if (!navigator.share) return openInvite(clubName);
+  try { await navigator.share({ title: clubName, text: t('inviteText', { club: clubName }), url }); }
+  catch (e) { if (e.name !== 'AbortError') openInvite(clubName); }   // 공유 창을 그냥 닫은 건 무시
+}
+
 export function openInvite(clubName) {
   const url = inviteUrl();
   const m = openModal({
     title: t('inviteTitle'),
     fields: [],
     extra: `<div class="hint">${esc(t('inviteHint'))}</div>
+      <img class="invite-qr" src="api/invite/qr.svg?u=${encodeURIComponent(url)}" alt="QR">
+      <div class="hint" style="text-align:center">${esc(t('inviteQrHint'))}</div>
       <input class="invite-url" type="text" readonly value="${esc(url)}">
       <button type="button" class="btn btn-primary" style="width:100%" data-copy>${esc(t('installCopy'))}</button>
       ${navigator.share ? `<button type="button" class="btn" style="width:100%;margin-top:8px" data-share>${esc(t('inviteShare'))}</button>` : ''}`,
@@ -63,7 +73,7 @@ export function openInvite(clubName) {
   const share = m.form.querySelector('[data-share]');
   if (share) share.onclick = async () => {
     try { await navigator.share({ title: clubName, text: t('inviteText', { club: clubName }), url }); }
-    catch (e) { if (e.name !== 'AbortError') copyText(url); }   // 공유 창을 그냥 닫은 건 무시
+    catch (e) { if (e.name !== 'AbortError') copyText(url); }
   };
 }
 
