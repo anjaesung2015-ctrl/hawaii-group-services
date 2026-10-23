@@ -8,6 +8,7 @@ import { openPushPanel } from './views/push.js';
 import { initInstall, openInvite } from './views/install.js';
 import { initPullRefresh, refresh } from './refresh.js';
 import { initBackNav } from './backnav.js';
+import { initUpdate, checkUpdate } from './update.js';
 import { openJoinForm } from './views/join.js';
 
 // 폰 뒤로가기가 열린 창부터 닫게 — 아래 탭 이동 popstate 보다 먼저 등록해야 한다
@@ -160,7 +161,9 @@ $('#refreshBtn').onclick = async () => {
   if (b.classList.contains('spin')) return;
   b.classList.add('spin');
   try { await refresh(() => render({ keepScroll: true })); } finally { b.classList.remove('spin'); }
+  checkUpdate();   // 새 버전이 올라와 있으면 화면째 새로 받는다
 };
+initUpdate();
 initPullRefresh(() => render({ keepScroll: true }), {
   enabled: () => !!state.me && !$('#modalRoot').innerHTML && $('#menuSheet').hidden,
 });

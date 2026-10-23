@@ -9,6 +9,7 @@ const { createAuth } = require('./lib/auth');
 const { createNotifier } = require('./lib/notify');
 const { createTranslator } = require('./lib/translate');
 const { createJobs } = require('./lib/jobs');
+const { createVersion } = require('./lib/version');
 
 const PORT = Number(process.env.PORT || 3000);
 
@@ -42,6 +43,9 @@ app.use('/api/chat', require('./routes/chat')(db, auth, notify, tr));    // 채�
 app.use('/api/invite', require('./routes/invite')());                    // 초대 링크 QR
 
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
+// 화면 파일 버전 — 바뀌면 열려 있는 앱이 스스로 새로고침한다 (public/js/update.js)
+const version = createVersion(path.join(__dirname, 'public'));
+app.get('/api/version', (req, res) => { res.set('Cache-Control', 'no-store'); res.json({ v: version() }); });
 
 // 공지 사진은 로그인한 회원에게만 보여준다 (주소를 알아도 남이 못 열게)
 app.use('/uploads', auth.requireMember, express.static(path.join(__dirname, 'uploads'), { maxAge: '7d' }));
