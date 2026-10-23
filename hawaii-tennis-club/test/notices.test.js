@@ -61,7 +61,7 @@ test('사진을 붙이면 파일로 저장되고 주소가 돌아온다', async 
   // 앞에 / 가 없어야 한다 — /club/ 처럼 하위 경로에 올려도 그대로 열리게
   assert.match(r.data.photo, /^uploads\/.+\.png$/);
 
-  const file = path.join(__dirname, '..', 'uploads', path.basename(r.data.photo));
+  const file = path.join(app.uploadDir, path.basename(r.data.photo));
   assert.ok(fs.existsSync(file), '사진 파일이 없다');
   fs.rmSync(file, { force: true });
   app.close();
@@ -89,7 +89,8 @@ test('공지를 고치거나 지울 수 있다 (사진도 함께 지워진다)',
 
   await a.call(`/notices/${made.data.id}`, { method: 'DELETE' });
   assert.deepStrictEqual((await a.call('/notices')).data, []);
-  assert.ok(!fs.existsSync(path.join(__dirname, '..', 'uploads', path.basename(made.data.photo))), '사진 파일이 남았다');
+  await new Promise(r => setTimeout(r, 50));
+  assert.ok(!fs.existsSync(path.join(app.uploadDir, path.basename(made.data.photo))), '사진 파일이 남았다');
   app.close();
 });
 

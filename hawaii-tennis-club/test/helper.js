@@ -9,6 +9,8 @@ function makeApp(opts = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'htc-test-'));
   process.env.DB_PATH = path.join(dir, 'test.db');
   process.env.SESSION_SECRET = 'test-secret';
+  // 사진도 이 임시 폴더 안에 — 끝나면 폴더째 지워진다 (운영 uploads/ 를 건드리지 않는다)
+  process.env.UPLOAD_DIR = path.join(dir, 'uploads');
 
   // DB_PATH 를 정한 뒤에 불러와야 임시 파일을 쓴다
   delete require.cache[require.resolve('../lib/db')];
@@ -66,6 +68,7 @@ function makeApp(opts = {}) {
   let closed = false;
   const made = {
     db, dbmod, base, server, dir, notify, sent, tr,
+    uploadDir: process.env.UPLOAD_DIR,
     // 응답을 보낸 뒤 나가는 알림을 기다린다 (라우트가 res.json 뒤에 보내므로)
     settle: () => new Promise(r => setTimeout(r, 30)),
     adminId: admin.lastInsertRowid,

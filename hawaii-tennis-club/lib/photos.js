@@ -5,12 +5,14 @@ const path = require('path');
 const crypto = require('crypto');
 
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
+// 테스트는 UPLOAD_DIR 환경변수로 임시 폴더를 준다 (운영 uploads/ 에 테스트 사진이 쌓이지 않게)
+const uploadDir = () => process.env.UPLOAD_DIR || UPLOAD_DIR;
 const MAX_BYTES = 3 * 1024 * 1024;   // 줄여서 올리므로 3MB면 충분하다
 
 // 저장 경로는 앞에 / 를 붙이지 않는다 — /booking/ 처럼 하위 경로에 올려도 그대로 열리게
 function savePhoto(dataUrl) {
   if (!dataUrl) return null;
-  return `uploads/${writePhoto(dataUrl, UPLOAD_DIR)}`;
+  return `uploads/${writePhoto(dataUrl, uploadDir())}`;
 }
 
 // data:URL 한 장을 dir 에 파일로 쓰고 파일 이름만 돌려준다
@@ -50,7 +52,7 @@ function savePhotos(list, max = 4) {
 function removePhoto(webPath) {
   if (!webPath) return;
   const name = path.basename(String(webPath));
-  fs.rm(path.join(UPLOAD_DIR, name), { force: true }, () => {});
+  fs.rm(path.join(uploadDir(), name), { force: true }, () => {});
 }
 
-module.exports = { savePhoto, savePhotos, removePhoto, writePhoto, chatPhotoDir, removeChatPhoto, UPLOAD_DIR, MAX_BYTES };
+module.exports = { savePhoto, savePhotos, removePhoto, writePhoto, chatPhotoDir, removeChatPhoto, UPLOAD_DIR, uploadDir, MAX_BYTES };

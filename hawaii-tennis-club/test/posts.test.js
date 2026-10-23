@@ -6,7 +6,7 @@ const path = require('path');
 const { makeApp, client, loginAs } = require('./helper');
 
 const TINY = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/AAAADAAEAAQBPR+8AAAAASUVORK5CYII=';
-const up = (p) => path.join(__dirname, '..', 'uploads', path.basename(p));
+const up = (app, p) => path.join(app.uploadDir, path.basename(p));
 
 test('회원이 글을 쓰고 모두가 본다', async () => {
   const app = makeApp();
@@ -48,7 +48,7 @@ test('사진만 올려도 된다 (글 없이)', async () => {
   const r = await m.call('/posts', { method: 'POST', body: { photos: [TINY] } });
   assert.strictEqual(r.status, 200);
   assert.strictEqual(r.data.photos.length, 1);
-  assert.ok(fs.existsSync(up(r.data.photos[0])), '사진 파일이 없다');
+  assert.ok(fs.existsSync(up(app, r.data.photos[0])), '사진 파일이 없다');
   assert.match(r.data.photos[0], /^uploads\//, '경로 앞에 / 가 붙으면 하위 경로에서 깨진다');
   app.close();
 });
@@ -63,7 +63,7 @@ test('사진 여러 장을 순서대로 붙인다 (최대 4장)', async () => {
   const over = await m.call('/posts', { method: 'POST', body: { body: 'x', photos: [TINY, TINY, TINY, TINY, TINY] } });
   assert.strictEqual(over.status, 400);
   assert.strictEqual(over.data.error, 'too_many_photos');
-  for (const p of r.data.photos) fs.rmSync(up(p), { force: true });
+  for (const p of r.data.photos) fs.rmSync(up(app, p), { force: true });
   app.close();
 });
 
@@ -178,7 +178,7 @@ test('글을 지우면 댓글·좋아요·사진이 함께 사라진다', async 
   assert.strictEqual(app.db.prepare('SELECT COUNT(*) c FROM post_like').get().c, 0);
   assert.strictEqual(app.db.prepare('SELECT COUNT(*) c FROM post_photo').get().c, 0);
   await new Promise(r => setTimeout(r, 60));
-  assert.ok(!fs.existsSync(up(made.data.photos[0])), '사진 파일이 남았다');
+  assert.ok(!fs.existsSync(up(app, made.data.photos[0])), '사진 파일이 남았다');
   app.close();
 });
 
