@@ -1,10 +1,15 @@
 // 채팅 — 방 목록(클럽 전체방 + 1:1) 과 방 안 화면.
 // 방을 연 동안 3초마다 새 메시지만 받아 온다. 다른 화면으로 가거나 앱을 내리면 멈춘다.
-import { api, esc, toast, openModal, errText, pickPhoto, $, $$ } from '../ui.js';
+// 한글·몽골어 메시지는 영어 번역을 크게, 원문을 작게 (내 메시지는 반대로 — 남에게 어떻게 보이는지 확인용).
+import { api, esc, toast, openModal, errText, pickPhoto, origHtml, $, $$ } from '../ui.js';
 import { t, levelLabel, timeAgo } from '../i18n.js';
 
 const POLL_MS = 3000;
+const TR_TRIES = 3;   // 번역이 안 붙은 메시지를 몇 번까지 다시 물어볼지
 let poller = 0;
+
+// 서버가 번역할 대상과 같은 기준 (lib/translate.js srcLang, MAX_CHARS)
+const needsTr = (s) => !!s && s.length <= 1200 && /[가-힣Ѐ-ӿ]/.test(s);
 
 export async function renderChat(el, state) {
   clearInterval(poller);
@@ -14,7 +19,7 @@ export async function renderChat(el, state) {
 
 // ---------- 방 목록 ----------
 async function renderRooms(el, state) {
-  const rooms = await api('/chat/rooms');
+  const rooms = await api('/chat/rooms?lang=en');
   el.innerHTML = `
     <button class="btn btn-primary" style="width:100%" data-new>+ ${esc(t('newChat'))}</button>
     <div class="section-head"><h2>${esc(t('chats'))}</h2></div>
@@ -29,7 +34,7 @@ function roomRow(r) {
   const club = r.kind === 'club';
   const name = club ? t('clubChat') : (r.other?.name || t('formerMember'));
   const last = r.last
-    ? `${r.last.mine ? `${t('you')}: ` : (club && r.last.name ? `${r.last.name}: ` : '')}${r.last.body || `📷 ${t('photo')}`}`
+    ? `${r.last.mine ? `${t('you')}: ` : (club && r.last.name ? `${r.last.name}: ` : '')}${(!r.last.mine && r.last.body_tr) || r.last.body || `📷 ${t('photo')}`}`
     : t('clubChatSub');
   return `
     <div class="member-row room-row" data-room="${r.id}" style="cursor:pointer">
@@ -72,7 +77,7 @@ export async function openDm(state, memberId) {
 // ---------- 방 안 ----------
 async function renderRoom(el, state, roomId) {
   let d;
-  try { d = await api(`/chat/rooms/${roomId}/messages`); }
+  try { d = await api(`/chat/rooms/${roomId}/messages?lang=en`); }
   catch (e) {
     if (e.status !== 404) throw e;
     toast(t('chatGone'), true);
@@ -136,8 +141,31 @@ async function renderRoom(el, state, roomId) {
     });
   }
 
+  // 아직 번역이 안 붙은 메시지 — 서버가 몇 초 기다려 주는 /tr 로 따로 물어 와서 그 자리만 바꿔 그린다
+  const trTries = new Map();
+  let trBusy = false;
+  async function fillTr() {
+    if (trBusy) return;
+    const ids = msgs.filter(m => !m.body_tr && needsTr(m.body) && (trTries.get(m.id) || 0) < TR_TRIES).map(m => m.id).slice(-50);
+    if (!ids.length) return;
+    trBusy = true;
+    ids.forEach(id => trTries.set(id, (trTries.get(id) || 0) + 1));
+    try {
+      const got = await api(`/chat/rooms/${roomId}/tr?lang=en&ids=${ids.join(',')}`);
+      let changed = false;
+      for (const m of msgs) if (got[m.id] && !m.body_tr) { m.body_tr = got[m.id]; changed = true; }
+      if (changed && box.isConnected) {
+        const stick = nearBottom();
+        draw();
+        if (stick) toBottom();
+      }
+    } catch (e) { /* 번역이 안 돼도 원문은 이미 보인다 */ }
+    finally { trBusy = false; }
+  }
+
   draw();
   toBottom();
+  fillTr();
 
   el.querySelector('[data-rooms]').onclick = () => state.go('chat', { room: null });
 
@@ -145,11 +173,12 @@ async function renderRoom(el, state, roomId) {
   if (older) older.onclick = async () => {
     older.disabled = true;
     const h = document.body.scrollHeight;
-    const o = await api(`/chat/rooms/${roomId}/messages?before=${msgs[0].id}`);
+    const o = await api(`/chat/rooms/${roomId}/messages?lang=en&before=${msgs[0].id}`);
     msgs = [...o.messages, ...msgs];
     draw();
     window.scrollTo({ top: document.body.scrollHeight - h });   // 보던 자리 그대로
     if (!o.has_more) older.remove(); else older.disabled = false;
+    fillTr();
   };
 
   // 글자 수에 맞춰 입력칸 높이를 늘린다. 엔터 = 보내기, Shift+엔터 = 줄바꿈 (폰 키보드는 줄바꿈 그대로)
@@ -192,6 +221,7 @@ async function renderRoom(el, state, roomId) {
       lastId = Math.max(lastId, m.id);
       draw();
       toBottom();
+      fillTr();
     } catch (err) { toast(errText(err), true); }
     finally { sending = false; if (!payload.photo) input.focus(); }
   }
@@ -200,8 +230,9 @@ async function renderRoom(el, state, roomId) {
   poller = setInterval(async () => {
     if (!box.isConnected || state.tab !== 'chat' || state.chatRoom !== roomId) return clearInterval(poller);
     if (document.hidden || sending) return;
+    fillTr();
     try {
-      const n = await api(`/chat/rooms/${roomId}/messages?after=${lastId}`);
+      const n = await api(`/chat/rooms/${roomId}/messages?lang=en&after=${lastId}`);
       const fresh = n.messages.filter(m => !msgs.some(x => x.id === m.id));
       if (!fresh.length) return;
       const stick = nearBottom();
@@ -211,6 +242,12 @@ async function renderRoom(el, state, roomId) {
       if (stick) toBottom();
     } catch (e) { /* 잠깐 끊겨도 다음 차례에 다시 */ }
   }, POLL_MS);
+}
+
+// 남의 말: 번역문 크게 + 🌐 원문 작게. 내 말: 내가 쓴 그대로 크게 + 🌐 영어 번역 작게
+function bubble(m) {
+  const [big, small] = m.mine ? [m.body, m.body_tr] : [m.body_tr || m.body, m.body_tr ? m.body : null];
+  return `<div class="bubble">${esc(big)}${origHtml(small)}</div>`;
 }
 
 // 날짜가 바뀌면 가운데 날짜 줄. 같은 사람이 연달아 쓰면 이름은 처음 한 번만.
@@ -225,7 +262,7 @@ function msgHtml(msgs, club, officer) {
       <div class="msg ${m.mine ? 'mine' : ''}">
         ${showName ? `<div class="msg-who">${esc(m.name || t('formerMember'))}${m.is_coach ? ' 🎾' : ''}</div>` : ''}
         ${m.photo ? `<img class="chat-photo" src="${esc(m.photo)}" data-full="${esc(m.photo)}" alt="" loading="lazy">` : ''}
-        ${m.body ? `<div class="bubble">${esc(m.body)}</div>` : ''}
+        ${m.body ? bubble(m) : ''}
         <time>${esc(String(m.created_at).slice(11, 16))}</time>
         ${m.mine || (club && officer) ? `<button type="button" class="btn btn-sm btn-danger msg-del" data-del="${m.id}" hidden>${esc(t('del'))}</button>` : ''}
       </div>`;

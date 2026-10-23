@@ -47,7 +47,8 @@ function createTranslator(db, opts = {}) {
   const budget = opts.budgetMs ?? BUDGET_MS;
 
   // 서로 다른 문장만 한 번씩. 실패한 문장은 결과에서 빠지고 화면에는 원문만 보인다.
-  async function translateAll(texts, to) {
+  // budgetMs 0 = 캐시에 있는 것만 바로 돌려주고 나머지는 뒤에서 번역 (채팅처럼 기다리면 안 되는 곳)
+  async function translateAll(texts, to, budgetMs = budget) {
     const out = new Map();
     if (!TARGETS.includes(to)) return out;
 
@@ -76,19 +77,19 @@ function createTranslator(db, opts = {}) {
     };
     const all = Promise.all(Array.from({ length: Math.min(CONCURRENCY, todo.length) }, worker));
     all.catch(() => {});                          // 뒤에서 계속 돌아도 터지지 않게
-    await Promise.race([all, sleep(budget)]);     // 정해진 시간만 기다린다
+    await Promise.race([all, sleep(budgetMs)]);     // 정해진 시간만 기다린다
     return out;
   }
 
   // rows 의 지정한 칸을 번역해 '칸_tr' 을 덧붙인다. 원문은 그대로 둔다.
-  async function attach(rows, fields, to) {
+  async function attach(rows, fields, to, budgetMs = budget) {
     const list = Array.isArray(rows) ? rows : [rows];
     if (!to || !list.length) return rows;
     const texts = [];
     for (const r of list) for (const f of fields) if (r?.[f]) texts.push(r[f]);
     if (!texts.length) return rows;
 
-    const map = await translateAll(texts, to);
+    const map = await translateAll(texts, to, budgetMs);
     if (!map.size) return rows;
     for (const r of list) {
       for (const f of fields) {

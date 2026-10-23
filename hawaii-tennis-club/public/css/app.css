@@ -703,6 +703,8 @@ main {
 .msg.mine .bubble { background: var(--court); border-color: var(--court); color: #fff; border-radius: 18px 18px 5px 18px; }
 .msg time { font-size: 10.5px; color: var(--muted); margin: 1px 8px 2px; }
 .msg-del { margin: 2px 4px 6px; }
+.msg .bubble .src { color: var(--muted); }
+.msg.mine .bubble .src { color: rgba(255, 255, 255, .78); }
 .composer {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
   background: rgba(245,247,246,.97); backdrop-filter: blur(12px);

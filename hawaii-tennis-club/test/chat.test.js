@@ -308,3 +308,42 @@ test('회원을 지우면 그 사람 1:1 방 사진 파일도 지워진다', asy
   assert.ok(!fs.existsSync(file));
   app.close();
 });
+
+test('번역 — 한글·몽골어 메시지는 /tr 로 영어가 붙고, 그 뒤로는 메시지 목록에 body_tr 로 바로 온다', async () => {
+  const { app } = setup();
+  const [a, m] = await login(app);
+  const club = (await m.call('/chat/rooms')).data[0].id;
+  const ko = (await send(a, club, '내일 7시에 만나요')).data.id;
+  const mn = (await send(m, club, 'Маргааш уулзъя')).data.id;
+  const en = (await send(a, club, 'See you at 7')).data.id;
+
+  const got = (await m.call(`/chat/rooms/${club}/tr?lang=en&ids=${ko},${mn},${en}`)).data;
+  assert.strictEqual(got[ko], '[en] 내일 7시에 만나요');
+  assert.strictEqual(got[mn], '[en] Маргааш уулзъя');
+  assert.strictEqual(got[en], undefined, '영어는 번역하지 않는다');
+
+  const list = (await m.call(`/chat/rooms/${club}/messages?lang=en`)).data.messages;
+  assert.strictEqual(list.find(x => x.id === ko).body_tr, '[en] 내일 7시에 만나요');
+  assert.strictEqual(list.find(x => x.id === mn).body_tr, '[en] Маргааш уулзъя', '내 메시지에도 붙는다');
+  assert.strictEqual(list.find(x => x.id === en).body_tr, undefined);
+  assert.strictEqual(list.find(x => x.id === ko).body, '내일 7시에 만나요', '원문은 그대로');
+
+  const rooms = (await m.call('/chat/rooms?lang=en')).data;
+  assert.strictEqual(rooms[0].last.id, en);
+  const plain = (await m.call(`/chat/rooms/${club}/messages`)).data.messages;
+  assert.ok(plain.every(x => !('body_tr' in x)), 'lang 없으면 번역을 안 붙인다');
+  app.close();
+});
+
+test('번역 — /tr 은 그 방 메시지만 (남의 1:1 메시지 id 를 넣어도 안 나온다)', async () => {
+  const { app } = setup();
+  const [a, m, s] = await login(app);
+  const club = (await m.call('/chat/rooms')).data[0].id;
+  const dm = (await a.call('/chat/dm', { method: 'POST', body: { member_id: app.memberId } })).data.id;
+  const secret = (await send(a, dm, '비밀 이야기')).data.id;
+
+  assert.deepStrictEqual((await s.call(`/chat/rooms/${club}/tr?lang=en&ids=${secret}`)).data, {});
+  assert.strictEqual((await s.call(`/chat/rooms/${dm}/tr?lang=en&ids=${secret}`)).status, 404);
+  assert.strictEqual((await m.call(`/chat/rooms/${dm}/tr?lang=en&ids=${secret}`)).data[secret], '[en] 비밀 이야기');
+  app.close();
+});

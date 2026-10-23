@@ -1,6 +1,8 @@
 // 채팅 — 클럽 전체방 하나 + 회원끼리 1:1.
 // 화면은 방을 열어 둔 동안 3초마다 ?after=<마지막 id> 로 새 메시지만 받아 간다(웹소켓 없이 nginx 하위 경로 그대로).
 // 새 메시지는 폰 알림으로도 간다 — 단, 그 방을 지금 보고 있는 사람(최근 20초 안에 불러감)에게는 보내지 않는다.
+// ?lang=en 이면 한글·몽골어 메시지에 body_tr(영어)을 붙인다. 번역은 기다리지 않는다 — 캐시에 있는 것만 바로 붙이고,
+// 아직인 것은 화면이 잠시 뒤 /rooms/:id/tr 로 다시 물어 간다(그쪽은 몇 초 기다려 준다).
 const path = require('path');
 const express = require('express');
 const { writePhoto, chatPhotoDir, removeChatPhoto } = require('../lib/photos');
@@ -8,8 +10,9 @@ const { writePhoto, chatPhotoDir, removeChatPhoto } = require('../lib/photos');
 const MAX_BODY = 1000;
 const PAGE = 50;
 const WATCHING_SEC = 20;
+const TR_IDS = 50;
 
-module.exports = function chatRoutes(db, auth, notify) {
+module.exports = function chatRoutes(db, auth, notify, tr) {
   const router = express.Router();
   router.use(auth.requireMember);
 
@@ -46,8 +49,10 @@ module.exports = function chatRoutes(db, auth, notify) {
   const SELECT_MSG = `SELECT c.id, c.member_id, c.body, c.photo, c.created_at, m.name, m.is_coach
                       FROM chat_msg c LEFT JOIN member m ON m.id = c.member_id`;
 
+  const langOf = (req) => (tr && req.query.lang ? String(req.query.lang) : null);
+
   // 방 목록 — 전체방이 맨 위, 나머지는 최근 대화 순
-  router.get('/rooms', (req, res) => {
+  router.get('/rooms', async (req, res) => {
     const me = req.me;
     const rooms = db.prepare(`SELECT * FROM chat_room WHERE kind='club' OR a_id=? OR b_id=?`).all(me.id, me.id);
     const out = rooms.map(r => {
@@ -61,6 +66,8 @@ module.exports = function chatRoutes(db, auth, notify) {
       // 말을 한 번도 안 건 1:1 방은 목록에 띄우지 않는다
       .filter(r => r.kind === 'club' || r.last)
       .sort((a, b) => (a.kind === 'club' ? -1 : b.kind === 'club' ? 1 : (b.last?.id || 0) - (a.last?.id || 0)));
+    const lang = langOf(req);
+    if (lang) await tr.attach(out.map(r => r.last).filter(Boolean), ['body'], lang, 0);
     res.json(out);
   });
 
@@ -82,7 +89,7 @@ module.exports = function chatRoutes(db, auth, notify) {
   });
 
   // 메시지 — 기본은 최근 50개, ?after=N 은 그 뒤 새 것(3초 폴링), ?before=N 은 더 옛날 것
-  router.get('/rooms/:id/messages', (req, res) => {
+  router.get('/rooms/:id/messages', async (req, res) => {
     const r = roomFor(req.me, req.params.id);
     if (!r) return res.status(404).json({ error: 'not_found' });
     const after = Number(req.query.after) || 0;
@@ -96,11 +103,27 @@ module.exports = function chatRoutes(db, auth, notify) {
     }
     const newest = db.prepare('SELECT MAX(id) FROM chat_msg WHERE room_id=?').pluck().get(r.id) || 0;
     markRead(r.id, req.me.id, newest);
+    const messages = rows.map(m => msgRow(m, req.me.id));
+    const lang = langOf(req);
+    if (lang) await tr.attach(messages, ['body'], lang, 0);
     res.json({
       room: { id: r.id, kind: r.kind, other: otherOf(r, req.me) },
-      messages: rows.map(m => msgRow(m, req.me.id)),
+      messages,
       has_more: !after && rows.length === PAGE,
     });
+  });
+
+  // 아직 번역이 안 붙은 메시지들 — 몇 초 기다려 되는 것만 { id: 번역문 } 으로. 이 방 메시지만 본다
+  router.get('/rooms/:id/tr', async (req, res) => {
+    const r = roomFor(req.me, req.params.id);
+    if (!r) return res.status(404).json({ error: 'not_found' });
+    const lang = langOf(req);
+    const ids = String(req.query.ids || '').split(',').map(Number).filter(n => n > 0).slice(0, TR_IDS);
+    if (!lang || !ids.length) return res.json({});
+    const rows = db.prepare(`SELECT id, body FROM chat_msg WHERE room_id=? AND id IN (${ids.map(() => '?').join(',')})`)
+      .all(r.id, ...ids);
+    await tr.attach(rows, ['body'], lang);
+    res.json(Object.fromEntries(rows.filter(m => m.body_tr).map(m => [m.id, m.body_tr])));
   });
 
   router.post('/rooms/:id/messages', (req, res) => {
@@ -124,6 +147,9 @@ module.exports = function chatRoutes(db, auth, notify) {
     markRead(r.id, req.me.id, id);
     const m = db.prepare(`${SELECT_MSG} WHERE c.id=?`).get(id);
     res.json(msgRow(m, req.me.id));
+
+    // 받는 사람이 열기 전에 영어 번역을 미리 해 둔다 (기다리지 않음, 실패해도 그만)
+    if (tr && body) tr.translateAll([body], 'en', 0).catch(() => {});
 
     // 알림 — 지금 이 방을 보고 있는 사람은 빼고
     const watching = db.prepare(`SELECT member_id FROM chat_read
