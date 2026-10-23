@@ -7,7 +7,7 @@ const LAYOUT = [
   { group: 'owner', roles: ['owner'] },
   { group: 'exec', roles: ['president'] },
   { group: 'exec', roles: ['vice1', 'vice2'] },
-  { group: 'exec', roles: ['manager1', 'manager2'] },
+  { group: 'exec', roles: ['manager1'] },
   { group: 'exec', roles: ['match', 'event', 'external'] },
   { group: 'honorary', roles: ['honorary', 'advisor1', 'advisor2', 'advisor3'] },
 ];

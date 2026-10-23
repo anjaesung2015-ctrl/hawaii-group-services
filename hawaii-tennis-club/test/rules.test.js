@@ -167,7 +167,7 @@ test('조직도 자리가 회칙 제14조대로 만들어져 있다', async () =
   const m = await loginAs(app.base, '88110044', '1111');
   const rows = (await m.call('/officers')).data;
   assert.deepStrictEqual(rows.map(r => r.role), [
-    'owner', 'president', 'vice1', 'vice2', 'manager1', 'manager2',
+    'owner', 'president', 'vice1', 'vice2', 'manager1',
     'match', 'event', 'external', 'honorary', 'advisor1', 'advisor2', 'advisor3',
   ]);
   assert.ok(rows.every(r => r.name === null), '처음에는 비어 있어야 한다');
@@ -293,4 +293,15 @@ test('화면 — 바뀐 규정이 화면 조각에도 그대로 들어간다', a
   assert.ok(html.includes('클럽 정원은 40명으로 한다'));
   assert.ok(html.includes('2026년 11월 1일'));
   assert.ok(!/휴회|41/.test(html));
+});
+
+test("회칙에서 없어진 조직도 자리(총무2)는 비어 있으면 지우고, 사람이 앉아 있으면 남긴다", async () => {
+  const app = makeApp();
+  app.db.prepare("INSERT INTO officer (role, sort) VALUES (\x27manager2\x27, 5), (\x27oldrole\x27, 99)").run();
+  app.db.prepare("UPDATE officer SET person_name=\x27홍길동\x27 WHERE role=\x27oldrole\x27").run();
+  app.dbmod.migrate(app.db);
+  const roles = app.db.prepare("SELECT role FROM officer").pluck().all();
+  assert.ok(!roles.includes("manager2"), "빈 총무2 자리가 남았다");
+  assert.ok(roles.includes("oldrole"), "사람이 앉은 자리는 지우면 안 된다");
+  app.close();
 });

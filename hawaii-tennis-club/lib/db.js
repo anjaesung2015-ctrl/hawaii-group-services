@@ -256,6 +256,9 @@ function migrate(db) {
   // 조직도 자리 (회칙 제14조) — 사람은 비어 있고 자리만 먼저 만들어 둔다
   const putOfficer = db.prepare('INSERT INTO officer (role, sort) VALUES (?,?) ON CONFLICT(role) DO NOTHING');
   OFFICER_ROLES.forEach((r, i) => putOfficer.run(r.role, i));
+  // 회칙에서 없어진 자리(예: 총무2)는 비어 있을 때만 지운다 — 사람이 앉아 있으면 남겨 둔다
+  const keep = OFFICER_ROLES.map(r => r.role);
+  db.prepare(`DELETE FROM officer WHERE role NOT IN (${keep.map(() => '?').join(',')}) AND member_id IS NULL AND person_name IS NULL`).run(...keep);
 }
 
 // 회칙 제14조의 직책. slots = 그 자리에 몇 명까지.
@@ -264,8 +267,7 @@ const OFFICER_ROLES = [
   { role: 'president', group: 'exec',     slots: 1 },
   { role: 'vice1',     group: 'exec',     slots: 1 },
   { role: 'vice2',     group: 'exec',     slots: 1 },
-  { role: 'manager1',  group: 'exec',     slots: 1 },
-  { role: 'manager2',  group: 'exec',     slots: 1 },
+  { role: 'manager1',  group: 'exec',     slots: 1 },   // 총무 1명 (2026-10-23 2명→1명, 키는 앉은 사람 유지 위해 그대로)
   { role: 'match',     group: 'exec',     slots: 1 },
   { role: 'event',     group: 'exec',     slots: 1 },
   { role: 'external',  group: 'exec',     slots: 1 },
