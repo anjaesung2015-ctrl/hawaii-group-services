@@ -6,6 +6,10 @@ import { t, levelLabel, timeAgo } from '../i18n.js';
 
 const POLL_MS = 3000;
 const TR_TRIES = 3;   // 번역이 안 붙은 메시지를 몇 번까지 다시 물어볼지
+const DOUBLE_MS = 280;   // 이 안에 두 번 누르면 '두 번 톡톡'
+const HEART = '❤️';
+// 달 수 있는 이모지 — 서버(routes/chat.js REACTIONS)와 같아야 한다
+const REACTIONS = ['❤️', '👍', '😂', '😮', '😢', '🎾', '🔥', '👏'];
 let poller = 0;
 
 // 서버가 번역할 대상과 같은 기준 (lib/translate.js srcLang, MAX_CHARS)
@@ -107,10 +111,13 @@ async function renderRoom(el, state, roomId) {
   const input = form.querySelector('textarea');
   let msgs = d.messages;
   let lastId = msgs.length ? msgs.at(-1).id : 0;
+  let reacts = d.reacts || {};   // { 메시지 id: [{ e, n, mine }] } — 폴링 때마다 서버 것으로 갈아 끼운다
+  let openId = null;             // 한 번 눌러 이모지 줄을 펼친 메시지
+  let reacting = 0;              // 보내는 중인 반응 수 — 그동안은 폴링 결과로 덮지 않는다(눌렀다 깜빡 돌아가지 않게)
 
   const draw = () => {
     const stick = nearBottom();
-    box.innerHTML = msgs.length ? msgHtml(msgs, club, officer) : `<div class="empty">${esc(t('chatEmpty'))}</div>`;
+    box.innerHTML = msgs.length ? msgHtml(msgs, club, officer, reacts, openId) : `<div class="empty">${esc(t('chatEmpty'))}</div>`;
     bindMsgs();
     // 사진은 늦게 뜬다 — 맨 아래를 보고 있었으면 뜬 뒤에도 맨 아래로
     $$('.chat-photo', box).forEach(img => { if (!img.complete) img.onload = () => { if (stick) toBottom(); }; });
@@ -118,7 +125,36 @@ async function renderRoom(el, state, roomId) {
   const nearBottom = () => window.innerHeight + window.scrollY >= document.body.scrollHeight - 120;
   const toBottom = () => window.scrollTo({ top: document.body.scrollHeight });
 
-  // 내 말(임원은 전체방 아무 말)을 누르면 '지우기'가 나온다 (두 번 눌러야 지워짐)
+  // 사진을 크게 (창 바깥 아무 데나 누르거나 폰 뒤로가기로 닫힌다)
+  const openPhoto = (src) => {
+    $('#modalRoot').innerHTML = `<div class="photo-view" data-close><img src="${esc(src)}" alt=""></div>`;
+    $('#modalRoot [data-close]').onclick = () => { $('#modalRoot').innerHTML = ''; };
+  };
+
+  // 반응 달기/떼기 — 화면부터 바로 바꾸고(기다리지 않게) 서버 답으로 맞춘다
+  async function setReact(id, emoji, on, burst) {
+    const before = reacts[id] || [];
+    const list = before.map(r => ({ ...r }));
+    const r = list.find(x => x.e === emoji);
+    if (on && !r?.mine) r ? Object.assign(r, { n: r.n + 1, mine: true }) : list.push({ e: emoji, n: 1, mine: true });
+    if (!on && r?.mine) Object.assign(r, { n: r.n - 1, mine: false });
+    const put = (l) => { const k = l.filter(x => x.n > 0); if (k.length) reacts[id] = k; else delete reacts[id]; };
+    put(list);
+    draw();
+    if (burst && on) box.querySelector(`.msg[data-id="${id}"]`)?.classList.add('burst');
+    reacting++;
+    try {
+      const res = await api(`/chat/messages/${id}/react`, { method: 'POST', body: { emoji, on } });
+      const was = JSON.stringify(reacts[id] || []);
+      put(res.reacts);
+      if (JSON.stringify(reacts[id] || []) !== was) draw();   // 같으면 다시 안 그린다(하트 튀는 효과가 끊기지 않게)
+    } catch (err) { put(before); draw(); toast(errText(err), true); }
+    finally { reacting--; }
+  }
+  const mineOn = (id, emoji) => !!(reacts[id] || []).find(x => x.e === emoji && x.mine);
+
+  // 한 번 누르기 = 이모지 줄 펼치기/접기(사진은 크게 보기), 두 번 톡톡 = ❤️ 달기/떼기.
+  // 두 번인지 알아야 해서 한 번 누르기는 잠깐(DOUBLE_MS) 기다렸다가 한다
   function bindMsgs() {
     $$('[data-del]', box).forEach(b => b.onclick = async (e) => {
       e.stopPropagation();
@@ -126,18 +162,43 @@ async function renderRoom(el, state, roomId) {
       try {
         await api(`/chat/messages/${b.dataset.del}`, { method: 'DELETE' });
         msgs = msgs.filter(m => String(m.id) !== b.dataset.del);
+        openId = null;
         draw();
       } catch (err) { toast(errText(err), true); }
     });
-    // 사진을 누르면 크게 (창 바깥 아무 데나 누르거나 폰 뒤로가기로 닫힌다)
-    $$('[data-full]', box).forEach(img => img.onclick = (e) => {
+    // 말풍선 아래 달린 이모지 — 누르면 내 것 켜기/끄기
+    $$('[data-react]', box).forEach(b => b.onclick = (e) => {
       e.stopPropagation();
-      $('#modalRoot').innerHTML = `<div class="photo-view" data-close><img src="${esc(img.dataset.full)}" alt=""></div>`;
-      $('#modalRoot [data-close]').onclick = () => { $('#modalRoot').innerHTML = ''; };
+      const id = Number(b.dataset.react);
+      setReact(id, b.dataset.emoji, !mineOn(id, b.dataset.emoji));
     });
-    $$('.msg', box).forEach(m => m.onclick = () => {
-      const del = m.querySelector('[data-del]');
-      if (del) del.hidden = !del.hidden;
+    // 펼친 이모지 줄에서 고르기
+    $$('[data-pick]', box).forEach(b => b.onclick = (e) => {
+      e.stopPropagation();
+      const id = Number(b.dataset.pick);
+      openId = null;
+      setReact(id, b.dataset.emoji, !mineOn(id, b.dataset.emoji), true);
+    });
+    $$('.msg', box).forEach(el => {
+      let timer = 0, last = 0;
+      el.onclick = (e) => {
+        if (e.target.closest('.msg-actions')) return;
+        const id = Number(el.dataset.id);
+        const now = Date.now();
+        if (now - last < DOUBLE_MS) {
+          clearTimeout(timer);
+          last = 0;
+          window.getSelection()?.removeAllRanges();   // PC 에서 두 번 누르면 글자가 잡히는 것 풀기
+          return setReact(id, HEART, !mineOn(id, HEART), true);
+        }
+        last = now;
+        const img = e.target.closest('[data-full]');
+        timer = setTimeout(() => {
+          if (img) return openPhoto(img.dataset.full);
+          openId = openId === id ? null : id;
+          draw();
+        }, DOUBLE_MS);
+      };
     });
   }
 
@@ -175,6 +236,7 @@ async function renderRoom(el, state, roomId) {
     const h = document.body.scrollHeight;
     const o = await api(`/chat/rooms/${roomId}/messages?lang=en&before=${msgs[0].id}`);
     msgs = [...o.messages, ...msgs];
+    reacts = o.reacts || reacts;   // 새로 받은 가장 옛 메시지부터 끝까지 다 들어 있다
     draw();
     window.scrollTo({ top: document.body.scrollHeight - h });   // 보던 자리 그대로
     if (!o.has_more) older.remove(); else older.disabled = false;
@@ -232,12 +294,15 @@ async function renderRoom(el, state, roomId) {
     if (document.hidden || sending) return;
     fillTr();
     try {
-      const n = await api(`/chat/rooms/${roomId}/messages?lang=en&after=${lastId}`);
+      const n = await api(`/chat/rooms/${roomId}/messages?lang=en&after=${lastId}&from=${msgs[0]?.id || 0}`);
       const fresh = n.messages.filter(m => !msgs.some(x => x.id === m.id));
-      if (!fresh.length) return;
+      // 남이 단 반응 — 내가 보내는 중이면 이번엔 건너뛴다
+      const reactsChanged = !reacting && n.reacts && JSON.stringify(n.reacts) !== JSON.stringify(reacts);
+      if (reactsChanged) reacts = n.reacts;
+      if (!fresh.length && !reactsChanged) return;
       const stick = nearBottom();
       msgs.push(...fresh);
-      lastId = Math.max(lastId, ...fresh.map(m => m.id));
+      if (fresh.length) lastId = Math.max(lastId, ...fresh.map(m => m.id));
       draw();
       if (stick) toBottom();
     } catch (e) { /* 잠깐 끊겨도 다음 차례에 다시 */ }
@@ -251,7 +316,22 @@ function bubble(m) {
 }
 
 // 날짜가 바뀌면 가운데 날짜 줄. 같은 사람이 연달아 쓰면 이름은 처음 한 번만.
-function msgHtml(msgs, club, officer) {
+// 말풍선 아래 달린 이모지들 — 내가 단 건 색이 들어간다
+function reactsHtml(id, list) {
+  if (!list?.length) return '';
+  return `<div class="reacts">${list.map(r =>
+    `<button type="button" class="react ${r.mine ? 'on' : ''}" data-react="${id}" data-emoji="${esc(r.e)}">${esc(r.e)} ${r.n}</button>`).join('')}</div>`;
+}
+
+// 한 번 누르면 펼쳐지는 줄 — 이모지 고르기 + (지울 수 있으면) 지우기
+function actionsHtml(m, canDel) {
+  return `<div class="msg-actions">
+      <div class="react-pick">${REACTIONS.map(e => `<button type="button" data-pick="${m.id}" data-emoji="${esc(e)}">${esc(e)}</button>`).join('')}</div>
+      ${canDel ? `<button type="button" class="btn btn-sm btn-danger msg-del" data-del="${m.id}">${esc(t('del'))}</button>` : ''}
+    </div>`;
+}
+
+function msgHtml(msgs, club, officer, reacts, openId) {
   let day = '', prev = null;
   return msgs.map(m => {
     const d = String(m.created_at).slice(0, 10);
@@ -259,12 +339,13 @@ function msgHtml(msgs, club, officer) {
     const showName = club && !m.mine && (sep || prev?.member_id !== m.member_id);
     day = d; prev = m;
     return `${sep}
-      <div class="msg ${m.mine ? 'mine' : ''}">
+      <div class="msg ${m.mine ? 'mine' : ''}" data-id="${m.id}">
         ${showName ? `<div class="msg-who">${esc(m.name || t('formerMember'))}${m.is_coach ? ' 🎾' : ''}</div>` : ''}
         ${m.photo ? `<img class="chat-photo" src="${esc(m.photo)}" data-full="${esc(m.photo)}" alt="" loading="lazy">` : ''}
         ${m.body ? bubble(m) : ''}
+        ${reactsHtml(m.id, reacts[m.id])}
         <time>${esc(String(m.created_at).slice(11, 16))}</time>
-        ${m.mine || (club && officer) ? `<button type="button" class="btn btn-sm btn-danger msg-del" data-del="${m.id}" hidden>${esc(t('del'))}</button>` : ''}
+        ${openId === m.id ? actionsHtml(m, m.mine || (club && officer)) : ''}
       </div>`;
   }).join('');
 }

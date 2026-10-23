@@ -347,3 +347,48 @@ test('번역 — /tr 은 그 방 메시지만 (남의 1:1 메시지 id 를 넣�
   assert.strictEqual((await m.call(`/chat/rooms/${dm}/tr?lang=en&ids=${secret}`)).data[secret], '[en] 비밀 이야기');
   app.close();
 });
+
+const react = (c, id, emoji, on = true) => c.call(`/chat/messages/${id}/react`, { method: 'POST', body: { emoji, on } });
+
+test('이모지 반응 — 달고 떼고, 같은 걸 두 번 달아도 한 번, 남이 단 것도 폴링에 보인다', async () => {
+  const { app } = setup();
+  const [a, m, s] = await login(app);
+  const club = (await m.call('/chat/rooms')).data[0].id;
+  const id = (await send(a, club, 'Great match today')).data.id;
+
+  let r = await react(m, id, '❤️');
+  assert.strictEqual(r.status, 200);
+  assert.deepStrictEqual(r.data.reacts, [{ e: '❤️', n: 1, mine: true }]);
+  await react(m, id, '❤️');                        // 빨리 두 번 눌러도 1
+  await react(s, id, '❤️');
+  r = await react(s, id, '🎾');
+  assert.deepStrictEqual(r.data.reacts, [{ e: '❤️', n: 2, mine: true }, { e: '🎾', n: 1, mine: true }], '먼저 달린 이모지가 앞');
+
+  // 글쓴이는 폴링(after=마지막 id)으로 받아도 from 부터 반응이 다 온다
+  const poll = (await a.call(`/chat/rooms/${club}/messages?after=${id}&from=${id}`)).data;
+  assert.deepStrictEqual(poll.messages, []);
+  assert.deepStrictEqual(poll.reacts[id], [{ e: '❤️', n: 2, mine: false }, { e: '🎾', n: 1, mine: false }]);
+
+  r = await react(m, id, '❤️', false);
+  assert.deepStrictEqual(r.data.reacts[0], { e: '❤️', n: 1, mine: false });
+  await react(s, id, '❤️', false);
+  await react(s, id, '🎾', false);
+  assert.deepStrictEqual((await a.call(`/chat/rooms/${club}/messages`)).data.reacts, {}, '다 떼면 비어야 한다');
+  app.close();
+});
+
+test('이모지 반응 — 정해진 이모지만, 남의 1:1 방 메시지에는 못 단다, 메시지를 지우면 반응도 사라진다', async () => {
+  const { app } = setup();
+  const [a, m, s] = await login(app);
+  const dm = (await a.call('/chat/dm', { method: 'POST', body: { member_id: app.memberId } })).data.id;
+  const id = (await send(a, dm, 'hi')).data.id;
+
+  assert.strictEqual((await react(m, id, '💩')).status, 400);
+  assert.strictEqual((await react(m, id, '<b>')).status, 400);
+  assert.strictEqual((await react(s, id, '❤️')).status, 404, '세 번째 사람은 그 방 메시지에 못 단다');
+  assert.strictEqual((await react(m, id, '👍')).status, 200);
+
+  await a.call(`/chat/messages/${id}`, { method: 'DELETE' });
+  assert.strictEqual(app.db.prepare('SELECT COUNT(*) FROM chat_react').pluck().get(), 0);
+  app.close();
+});

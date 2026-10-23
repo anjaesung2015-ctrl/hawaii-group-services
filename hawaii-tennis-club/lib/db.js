@@ -217,6 +217,14 @@ function migrate(db) {
       seen_at   INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (room_id, member_id)
     );
+    -- 채팅 이모지 반응 — 두 번 톡톡 = ❤️, 한 번 누르면 고르는 줄. 한 사람이 이모지마다 한 번씩
+    CREATE TABLE IF NOT EXISTS chat_react (
+      msg_id     INTEGER NOT NULL REFERENCES chat_msg(id) ON DELETE CASCADE,
+      member_id  INTEGER NOT NULL REFERENCES member(id)   ON DELETE CASCADE,
+      emoji      TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      PRIMARY KEY (msg_id, member_id, emoji)
+    );
     INSERT INTO chat_room (kind) SELECT 'club' WHERE NOT EXISTS (SELECT 1 FROM chat_room WHERE kind='club');
   `);
 

@@ -11,6 +11,8 @@ const MAX_BODY = 1000;
 const PAGE = 50;
 const WATCHING_SEC = 20;
 const TR_IDS = 50;
+// 달 수 있는 이모지 — 화면(public/js/views/chat.js REACTIONS)과 같아야 한다
+const REACTIONS = ['❤️', '👍', '😂', '😮', '😢', '🎾', '🔥', '👏'];
 
 module.exports = function chatRoutes(db, auth, notify, tr) {
   const router = express.Router();
@@ -48,6 +50,18 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
   });
   const SELECT_MSG = `SELECT c.id, c.member_id, c.body, c.photo, c.created_at, m.name, m.is_coach
                       FROM chat_msg c LEFT JOIN member m ON m.id = c.member_id`;
+
+  // 이모지 반응 — 이 방에서 id >= fromId 인 메시지 중 반응이 있는 것만 { id: [{ e, n, mine }] } (먼저 달린 이모지가 앞).
+  // 화면은 이걸 통째로 갈아 끼운다(빠진 id = 반응 없음). 폴링 때마다 와서 남이 단 반응도 보인다
+  const reactsIn = (roomId, meId, fromId) => {
+    const out = {};
+    for (const r of db.prepare(`SELECT x.msg_id AS id, x.emoji AS e, COUNT(*) AS n, MAX(x.member_id = ?) AS mine, MIN(x.rowid) AS first
+                                FROM chat_react x JOIN chat_msg c ON c.id = x.msg_id
+                                WHERE c.room_id=? AND c.id>=? GROUP BY x.msg_id, x.emoji ORDER BY first`).all(meId, roomId, fromId || 0)) {
+      (out[r.id] ||= []).push({ e: r.e, n: r.n, mine: !!r.mine });
+    }
+    return out;
+  };
 
   const langOf = (req) => (tr && req.query.lang ? String(req.query.lang) : null);
 
@@ -109,6 +123,8 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
     res.json({
       room: { id: r.id, kind: r.kind, other: otherOf(r, req.me) },
       messages,
+      // 폴링(?after) 때는 화면이 가진 가장 옛 메시지(?from)부터, 아니면 이번에 준 것부터
+      reacts: reactsIn(r.id, req.me.id, after ? (Number(req.query.from) || after + 1) : (rows[0]?.id || 0)),
       has_more: !after && rows.length === PAGE,
     });
   });
@@ -164,6 +180,20 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
     } else {
       notify?.toAll(payload, [req.me.id, ...watching]);
     }
+  });
+
+  // 반응 달기/떼기 — on 으로 원하는 상태를 보낸다(빨리 두 번 눌러도 뒤집히지 않게). 들어갈 수 있는 방의 메시지만
+  router.post('/messages/:id/react', (req, res) => {
+    const m = db.prepare('SELECT id, room_id FROM chat_msg WHERE id=?').get(req.params.id);
+    if (!m || !roomFor(req.me, m.room_id)) return res.status(404).json({ error: 'not_found' });
+    const emoji = String(req.body?.emoji || '');
+    if (!REACTIONS.includes(emoji)) return res.status(400).json({ error: 'bad_emoji' });
+    if (req.body?.on === false) {
+      db.prepare('DELETE FROM chat_react WHERE msg_id=? AND member_id=? AND emoji=?').run(m.id, req.me.id, emoji);
+    } else {
+      db.prepare('INSERT OR IGNORE INTO chat_react (msg_id, member_id, emoji) VALUES (?,?,?)').run(m.id, req.me.id, emoji);
+    }
+    res.json({ id: m.id, reacts: reactsIn(m.room_id, req.me.id, m.id)[m.id] || [] });
   });
 
   // 지우기 — 쓴 사람, 또는 전체방에서는 임원

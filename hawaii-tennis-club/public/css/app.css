@@ -714,6 +714,33 @@ main {
 .msg.mine .bubble { background: var(--court); border-color: var(--court); color: #fff; border-radius: 18px 18px 5px 18px; }
 .msg time { font-size: 10.5px; color: var(--muted); margin: 1px 8px 2px; }
 .msg-del { margin: 2px 4px 6px; }
+
+/* 채팅 이모지 반응 — 두 번 톡톡 = ❤️, 한 번 누르면 고르는 줄 */
+.msg { position: relative; touch-action: manipulation; }   /* 두 번 눌러도 폰 화면이 확대되지 않게 */
+.reacts { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 4px 0; }
+.react {
+  font: inherit; font-size: 12.5px; line-height: 1.2; padding: 2px 8px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--hair); background: var(--card); color: var(--muted);
+}
+.react.on { border-color: rgba(233, 30, 99, .45); background: rgba(233, 30, 99, .12); color: inherit; font-weight: 650; }
+.msg-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 2px 6px; }
+.msg.mine .msg-actions { justify-content: flex-end; }
+.react-pick {
+  display: flex; gap: 2px; padding: 3px 6px; border-radius: 999px;
+  background: var(--card); border: 1px solid var(--hair); box-shadow: 0 2px 10px rgba(0, 0, 0, .12);
+}
+.react-pick button { font-size: 21px; line-height: 1; padding: 4px 3px; border: 0; background: none; cursor: pointer; border-radius: 8px; }
+.react-pick button:active { transform: scale(1.25); }
+.msg.burst::after {
+  content: '❤️'; position: absolute; left: 50%; top: 45%; font-size: 44px; pointer-events: none;
+  transform: translate(-50%, -50%) scale(0); animation: heart-pop .75s ease-out forwards;
+}
+@keyframes heart-pop {
+  0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0; }
+  30%  { transform: translate(-50%, -50%) scale(1.25); opacity: 1; }
+  70%  { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+  100% { transform: translate(-50%, -75%) scale(1);   opacity: 0; }
+}
 .msg .bubble .src { color: var(--muted); }
 .msg.mine .bubble .src { color: rgba(255, 255, 255, .78); }
 .composer {
