@@ -2,7 +2,7 @@
 //  1) 일정 하루 전 저녁 — "내일 19시 정기모임, 참석 체크해 주세요"
 //  2) 매월 10일 아침 — 아직 회비를 안 낸 사람에게만
 // 10분마다 깨어나 확인한다. 같은 것을 두 번 보내지 않도록 보낸 표시를 남긴다.
-const { getSettings, thisMonth } = require('./db');
+const { getSettings, thisMonth, MONTHLY_EXEMPT_SQL } = require('./db');
 
 const TICK_MS = 10 * 60 * 1000;
 const UB = 'Asia/Ulaanbaatar';
@@ -62,7 +62,7 @@ function createJobs(db, notify, opts = {}) {
       SELECT m.id FROM member m
       LEFT JOIN due d ON d.member_id=m.id AND d.kind='monthly' AND d.period=?
       WHERE m.status='active' AND (d.id IS NULL OR d.paid_at IS NULL)
-        AND NOT (d.id IS NULL AND EXISTS (SELECT 1 FROM due j WHERE j.member_id=m.id AND j.kind='joining' AND j.period=?))`).pluck().all(month, month);
+        AND NOT ${MONTHLY_EXEMPT_SQL}`).pluck().all(month, month);
     if (!unpaid.length) return { sent: 0, unpaid: 0 };
 
     const { monthly_fee, currency } = getSettings(db);

@@ -39,6 +39,7 @@ export const DICT = {
     collected: 'Collected', expected: 'Expected', members: 'Members',
     myDuesEmpty: 'No dues records yet', joiningLabel: 'Joining fee',
     inJoiningFee: 'Joining month — included in the joining fee',
+    ownerNoFee: 'Club owner — no monthly fee',
     inJoiningFeeHint: 'includes the first month',
     markPaid: 'Mark as paid', markUnpaid: 'Mark as unpaid',
 

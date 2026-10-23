@@ -2,7 +2,7 @@
 // 월회비 줄은 미리 만들어 두지 않고, 관리자가 체크할 때 그 자리에서 만든다
 // (회원이 늘어도 빈 줄이 쌓이지 않고, 금액은 체크하는 시점의 설정값을 쓴다).
 const express = require('express');
-const { getSettings, today, thisMonth, METHODS, DUE_KINDS } = require('../lib/db');
+const { getSettings, today, thisMonth, METHODS, DUE_KINDS, MONTHLY_EXEMPT_SQL } = require('../lib/db');
 
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -10,10 +10,14 @@ module.exports = function dueRoutes(db, auth) {
   const router = express.Router();
   router.use(auth.requireMember);
 
-  // 내 납부 내역 (회원은 본인 것만 본다)
+  // 내 납부 내역 (회원은 본인 것만 본다). 면제 달(오너·가입한 달)의 안 낸 월회비 줄은 미납으로 보이지 않게 뺀다
   router.get('/me', (req, res) => {
-    res.json(db.prepare(`SELECT id, kind, period, amount, paid_at, method, note
-                         FROM due WHERE member_id=? ORDER BY period DESC, kind`).all(req.me.id));
+    res.json(db.prepare(`SELECT d.id, d.kind, d.period, d.amount, d.paid_at, d.method, d.note
+                         FROM due d JOIN member m ON m.id = d.member_id
+                         WHERE d.member_id=?
+                           AND NOT (d.kind='monthly' AND d.paid_at IS NULL
+                                    AND (m.is_owner = 1 OR EXISTS (SELECT 1 FROM due j WHERE j.member_id = m.id AND j.kind='joining' AND j.period = d.period)))
+                         ORDER BY d.period DESC, d.kind`).all(req.me.id));
   });
 
   // 월별 전체 납부 현황표 (관리자)
@@ -22,7 +26,7 @@ module.exports = function dueRoutes(db, auth) {
     const { monthly_fee, joining_fee, currency } = getSettings(db);
 
     // 월회비는 활동 회원에게만 매긴다. 휴면 회원의 지난 납부 기록은 본인 내역에 그대로 남는다.
-    const members = db.prepare(`SELECT id, name, phone, level, joined_at FROM member
+    const members = db.prepare(`SELECT id, name, phone, level, joined_at, is_owner FROM member
                                 WHERE status='active' ORDER BY name`).all();
     const dues = db.prepare('SELECT * FROM due WHERE period=?').all(month);
     const byKey = new Map(dues.map(d => [`${d.member_id}:${d.kind}`, d]));
@@ -33,12 +37,12 @@ module.exports = function dueRoutes(db, auth) {
     const rows = members.map(m => {
       const d = byKey.get(`${m.id}:monthly`);
       const j = byKey.get(`${m.id}:joining`) || joiningOwed.get(m.id);
-      // 가입한 달 — 월회비는 입회비에 포함 (회칙 제10조)
-      const exempt = !d && !!byKey.get(`${m.id}:joining`);
+      // 월회비 면제 — 클럽 오너, 또는 가입한 달(입회비에 포함, 회칙 제10조). 낸 기록이 있으면 낸 걸로 보여준다
+      const reason = d?.paid_at ? null : (m.is_owner ? 'owner' : (byKey.get(`${m.id}:joining`) ? 'joining' : null));
       return {
         member_id: m.id, name: m.name, phone: m.phone, level: m.level, joined_at: m.joined_at,
-        monthly: exempt
-          ? { amount: 0, paid: true, exempt: true, paid_at: null, method: null, note: null }
+        monthly: reason
+          ? { amount: 0, paid: true, exempt: true, reason, paid_at: null, method: null, note: null }
           : {
             amount: d ? d.amount : monthly_fee,
             paid: !!d?.paid_at, paid_at: d?.paid_at || null, method: d?.method || null, note: d?.note || null,
@@ -47,7 +51,7 @@ module.exports = function dueRoutes(db, auth) {
       };
     });
 
-    const charged = rows.filter(r => !r.monthly.exempt);   // 가입한 달 회원은 월회비 대상에서 뺀다
+    const charged = rows.filter(r => !r.monthly.exempt);   // 면제(오너·가입한 달)는 월회비 집계에서 뺀다
     const paid = charged.filter(r => r.monthly.paid);
     res.json({
       month, currency, monthly_fee, joining_fee,
@@ -71,8 +75,8 @@ module.exports = function dueRoutes(db, auth) {
       FROM member m
       LEFT JOIN due d ON d.member_id = m.id AND d.kind='monthly' AND d.period = ?
       WHERE m.status='active' AND (d.id IS NULL OR d.paid_at IS NULL)
-        AND NOT (d.id IS NULL AND EXISTS (SELECT 1 FROM due j WHERE j.member_id = m.id AND j.kind='joining' AND j.period = ?))
-      ORDER BY m.name`).all(month, month);   // 가입한 달은 입회비에 월회비 포함
+        AND NOT ${MONTHLY_EXEMPT_SQL}
+      ORDER BY m.name`).all(month, month);   // 오너와 가입한 달(입회비에 포함)은 빠진다
     res.json({ month, monthly_fee, count: rows.length, rows });
   });
 

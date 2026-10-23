@@ -36,7 +36,7 @@ export async function renderDues(el, state) {
               <td>
                 <div style="font-weight:600">${esc(r.name)}</div>
                 <small style="color:var(--muted)">
-                  ${r.monthly.exempt ? esc(t('inJoiningFee'))
+                  ${r.monthly.exempt ? esc(t(r.monthly.reason === 'owner' ? 'ownerNoFee' : 'inJoiningFee'))
                     : r.monthly.paid
                     ? `${esc(r.monthly.paid_at || '')} · ${esc(methodLabel(r.monthly.method))}`
                     : esc(t('unpaid'))}
