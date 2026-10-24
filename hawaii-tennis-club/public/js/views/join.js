@@ -3,8 +3,9 @@
 // 회칙은 신청서 안의 상자에서 읽는다(따로 창을 열면 쓰던 내용이 날아가서).
 // 회칙을 끝까지 내려 읽어야 동의 칸이 켜지고, 두 동의가 다 있어야 보내진다 → 그때서야 임원에게 알림이 간다.
 import { api, esc, toast, openModal, $ } from '../ui.js';
-import { t, levelLabel } from '../i18n.js';
+import { t, levelLabel, fmtMoney } from '../i18n.js';
 import { renderRules } from './rules.js';
+import { bankCard, bindBankCopy } from './dues.js';
 
 const LEVELS = ['newbie', 'beginner', 'intermediate', 'advanced'];
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
@@ -27,6 +28,7 @@ export function openJoinForm() {
     ],
     extra: `
       <div class="hint">${esc(t('joinHint'))}</div>
+      <div data-bank></div>
       <div class="section-head" style="margin:14px 2px 6px"><h2>${esc(t('rulesTitle'))}</h2><span class="spacer"></span>
         <div class="rl-langs" data-langs>
           <button type="button" class="rl-lang on" data-lang="ko">${esc(t('rulesLangKo'))}</button>
@@ -52,6 +54,15 @@ export function openJoinForm() {
   // 회칙 상자 — 끝까지 내려 읽으면 동의 칸이 켜진다
   const box = m.form.querySelector('[data-rules]');
   const agree = m.form.querySelector('[name="agree"]');
+
+  // 입회비 계좌 — 설정은 로그인 없이 읽힌다. 못 불러오면 카드 없이 신청서만.
+  const bankEl = m.form.querySelector('[data-bank]');
+  api('/settings').then(s => {
+    const fee = s.joining_fee ? `${fmtMoney(s.joining_fee)}${s.currency || ''}` : '';
+    bankEl.innerHTML = bankCard(s, fee ? t('bankJoinHead', { fee }) : t('bankPayTo'));
+    bindBankCopy(bankEl);
+  }).catch(() => {});
+
   const wrap = m.form.querySelector('[data-agree-wrap]');
   const hint = m.form.querySelector('[data-read-hint]');
   let read = false;

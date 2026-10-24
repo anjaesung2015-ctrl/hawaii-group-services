@@ -147,11 +147,12 @@ export async function renderMyDues(el, state) {
 }
 
 // 회비 받는 계좌 — 오너가 설정에서 바꾼다. 계좌번호를 누르거나 Copy 로 복사해 은행 앱에 붙여넣는다.
-function bankCard(s) {
+// 가입 신청서(join.js)도 같은 카드를 쓴다 — 머리글만 입회비 안내로 바꿔서.
+export function bankCard(s, head = t('bankPayTo')) {
   if (!s.bank_account) return '';
   return `
     <div class="card bank-card">
-      <div class="bank-head">🏦 ${esc(t('bankPayTo'))}</div>
+      <div class="bank-head">🏦 ${esc(head)}</div>
       <div class="bank-name">${esc(s.bank_name || '')}</div>
       <div class="bank-row">
         <b class="bank-no" data-bank-copy>${esc(s.bank_account)}</b>
@@ -162,8 +163,8 @@ function bankCard(s) {
     </div>`;
 }
 
-function bindBankCopy(el) {
-  const no = el.querySelector('.bank-no')?.textContent.replace(/[s-]/g, '');
+export function bindBankCopy(el) {
+  const no = el.querySelector('.bank-no')?.textContent.replace(/[\s-]/g, '');
   if (!no) return;
   $$('[data-bank-copy]', el).forEach(b => b.onclick = async () => {
     try { await navigator.clipboard.writeText(no); toast(t('bankCopied')); }
