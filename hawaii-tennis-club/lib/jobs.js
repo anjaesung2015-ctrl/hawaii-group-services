@@ -3,6 +3,7 @@
 //  2) 매월 5일 아침(회칙 제11조 납부 기한) — 아직 회비를 안 낸 사람에게만
 // 10분마다 깨어나 확인한다. 같은 것을 두 번 보내지 않도록 보낸 표시를 남긴다.
 const { getSettings, thisMonth, MONTHLY_EXEMPT_SQL } = require('./db');
+const { eliteFeeOf } = require('./elite');
 
 const TICK_MS = 10 * 60 * 1000;
 const UB = 'Asia/Ulaanbaatar';
@@ -26,6 +27,7 @@ function createJobs(db, notify, opts = {}) {
   const EVENT_HOUR = opts.eventHour ?? 18;   // 전날 저녁 6시
   const DUE_HOUR = opts.dueHour ?? 10;       // 아침 10시
   const DUE_DAY = opts.dueDay ?? 5;          // 매월 5일 (회칙: 월회비는 매월 5일까지)
+  const ELITE_DUE_DAY = opts.eliteDueDay ?? 20;   // 선수반 수강료 매월 20일
 
   // 내일 있는 일정을 아직 안 알렸으면 알린다
   async function remindEvents() {
@@ -74,15 +76,61 @@ function createJobs(db, notify, opts = {}) {
     return { sent: r.sent, unpaid: unpaid.length };
   }
 
+  // 선수반 — 내일 훈련을 아직 안 알렸으면 선수에게
+  async function remindEliteSessions() {
+    const t = ubNow(now());
+    if (t.hour < EVENT_HOUR) return { sent: 0 };
+    const rows = db.prepare('SELECT * FROM elite_session WHERE session_date=? AND reminded_at IS NULL').all(addDays(t.date, 1));
+    let sent = 0;
+    for (const s of rows) {
+      db.prepare('UPDATE elite_session SET reminded_at=? WHERE id=?').run(t.stamp, s.id);
+      const r = await notify.toElitePlayers({
+        title: `🎾 Tomorrow ${s.start_time} ${s.title}`,
+        body: s.court ? `Court ${s.court}` : 'Elite training',
+        url: '#training',
+      });
+      sent += r.sent;
+    }
+    return { sent, sessions: rows.length };
+  }
+
+  // 선수반 수강료 — 매월 20일 10시, 그 달 안 낸 선수에게만 (한 달에 한 번)
+  async function remindEliteFees() {
+    const t = ubNow(now());
+    if (t.day < ELITE_DUE_DAY || t.hour < DUE_HOUR) return { sent: 0 };
+    const month = thisMonth();
+    const key = 'elite_due_reminder_month';
+    if (db.prepare('SELECT v FROM setting WHERE k=?').get(key)?.v === month) return { sent: 0, already: true };
+    db.prepare('INSERT INTO setting (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v').run(key, month);
+    const unpaid = db.prepare(`SELECT m.id, m.elite_fee FROM member m
+                               LEFT JOIN elite_due d ON d.member_id=m.id AND d.period=?
+                               WHERE m.program='elite' AND m.status='active' AND (d.id IS NULL OR d.paid_at IS NULL)`).all(month);
+    let sent = 0;
+    const { currency } = getSettings(db);
+    for (const m of unpaid) {
+      const r = await notify.toMembers([m.id], {
+        title: '💳 Elite tuition',
+        body: `This month's tuition ${eliteFeeOf(db, m).toLocaleString('en-US')}${currency} is not confirmed yet (due by the 20th)`,
+        url: '#fees',
+      });
+      sent += r.sent;
+    }
+    return { sent, unpaid: unpaid.length };
+  }
+
   async function tick() {
     try { await remindEvents(); } catch (e) { console.error('[jobs] 일정 알림 실패:', e.message); }
     try { await remindDues(); } catch (e) { console.error('[jobs] 회비 알림 실패:', e.message); }
+    try { await remindEliteSessions(); } catch (e) { console.error('[jobs] 선수반 훈련 알림 실패:', e.message); }
+    try { await remindEliteFees(); } catch (e) { console.error('[jobs] 선수반 수강료 알림 실패:', e.message); }
   }
 
   let timer = null;
   return {
     remindEvents,
     remindDues,
+    remindEliteSessions,
+    remindEliteFees,
     tick,
     start() {
       if (timer) return;

@@ -54,6 +54,7 @@ function makeApp(opts = {}) {
   app.use('/api/invite', require('../routes/invite')());
   app.use('/api/elite/sessions', require('../routes/elite-sessions')(db, auth, notify));
   app.use('/api/elite/fees', require('../routes/elite-fees')(db, auth));
+  app.use('/api/elite/notices', require('../routes/elite-notices')(db, auth, notify));
   app.use('/api/elite', require('../routes/elite-players')(db, auth));
 
   const server = app.listen(0);
