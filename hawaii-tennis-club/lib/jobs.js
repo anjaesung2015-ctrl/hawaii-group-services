@@ -27,7 +27,8 @@ function createJobs(db, notify, opts = {}) {
   const EVENT_HOUR = opts.eventHour ?? 18;   // 전날 저녁 6시
   const DUE_HOUR = opts.dueHour ?? 10;       // 아침 10시
   const DUE_DAY = opts.dueDay ?? 5;          // 매월 5일 (회칙: 월회비는 매월 5일까지)
-  const ELITE_DUE_DAY = opts.eliteDueDay ?? 20;   // 선수반 수강료 매월 20일
+  const ELITE_DUE_DAY = opts.eliteDueDay ?? 20;
+  const ELITE_QUIET_HOUR = 21;   // 늦게 등록한 선수에게 보낼 때도 밤에는 보내지 않는다   // 선수반 수강료 매월 20일
 
   // 내일 있는 일정을 아직 안 알렸으면 알린다
   async function remindEvents() {
@@ -94,17 +95,17 @@ function createJobs(db, notify, opts = {}) {
     return { sent, sessions: rows.length };
   }
 
-  // 선수반 수강료 — 매월 20일 10시, 그 달 안 낸 선수에게만 (한 달에 한 번)
+  // 선수반 수강료 — 매월 20일 10시부터, 그 달 안 낸 선수에게 한 번씩.
+  // 받은 달을 선수마다 적어 두므로 20일 뒤에 등록했거나 알림을 늦게 켠 선수도 (10~21시 사이) 한 번 받는다.
+  // 폰 알림이 실제로 간 선수만 '받음'으로 적는다 — 알림을 아직 안 켠 선수는 켠 뒤에 받는다.
   async function remindEliteFees() {
     const t = ubNow(now());
-    if (t.day < ELITE_DUE_DAY || t.hour < DUE_HOUR) return { sent: 0 };
+    if (t.day < ELITE_DUE_DAY || t.hour < DUE_HOUR || t.hour >= ELITE_QUIET_HOUR) return { sent: 0 };
     const month = t.date.slice(0, 7);   // 주입된 시계와 같은 기준
-    const key = 'elite_due_reminder_month';
-    if (db.prepare('SELECT v FROM setting WHERE k=?').get(key)?.v === month) return { sent: 0, already: true };
-    db.prepare('INSERT INTO setting (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v').run(key, month);
     const unpaid = db.prepare(`SELECT m.id, m.elite_fee FROM member m
                                LEFT JOIN elite_due d ON d.member_id=m.id AND d.period=?
-                               WHERE m.program='elite' AND m.status='active' AND (d.id IS NULL OR d.paid_at IS NULL)`).all(month);
+                               WHERE m.program='elite' AND m.status='active' AND (d.id IS NULL OR d.paid_at IS NULL)
+                                 AND (m.elite_reminded_month IS NULL OR m.elite_reminded_month <> ?)`).all(month, month);
     let sent = 0;
     const { currency } = getSettings(db);
     for (const m of unpaid) {
@@ -113,6 +114,7 @@ function createJobs(db, notify, opts = {}) {
         body: `This month's tuition ${eliteFeeOf(db, m).toLocaleString('en-US')}${currency} is not confirmed yet (due by the 20th)`,
         url: '#fees',
       });
+      if (r.sent) db.prepare('UPDATE member SET elite_reminded_month=? WHERE id=?').run(month, m.id);
       sent += r.sent;
     }
     return { sent, unpaid: unpaid.length };

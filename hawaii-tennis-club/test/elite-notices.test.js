@@ -63,7 +63,7 @@ test('수강료 알림 — 20일 10시부터, 안 낸 선수에게만, 한 달�
   assert.strictEqual(app.sent[0].endpoint, 'https://fcm/a');
   assert.match(app.sent[0].payload.body, /700,000/);
   jobs = createJobs(app.db, app.notify, { now: clock(`${month}-21 10:30`) });
-  assert.strictEqual((await jobs.remindEliteFees()).already, true);
+  assert.strictEqual((await jobs.remindEliteFees()).sent, 0, '같은 달에 두 번 보내지 않는다');
   app.close();
 });
 
@@ -80,5 +80,27 @@ test("훈련 날짜를 옮기면 하루 전 알림을 다시 보낸다", async (
   await owner.call(`/elite/sessions/${sid}`, { method: "PATCH", body: { session_date: "2030-05-09" } });
   jobs = createJobs(app.db, app.notify, { now: clock("2030-05-08 18:10") });
   assert.strictEqual((await jobs.remindEliteSessions()).sent, 1);
+  app.close();
+});
+
+test('20일 뒤에 등록한 선수도 그 달 수강료 알림을 한 번 받는다 (알림을 켠 뒤, 밤에는 안 보냄)', async () => {
+  const app = makeApp();
+  const { owner, pid } = await setup(app);
+  sub(app, pid, 'https://fcm/a');
+  const month = app.dbmod.thisMonth();
+  let jobs = createJobs(app.db, app.notify, { now: clock(`${month}-20 10:30`) });
+  assert.strictEqual((await jobs.remindEliteFees()).sent, 1);
+  // 24일에 새 선수 등록 — 알림을 아직 안 켰으면 기다린다
+  const late = (await owner.call('/elite/players', { method: 'POST', body: player({ name: 'Anu', phone: '77003344' }) })).data.id;
+  jobs = createJobs(app.db, app.notify, { now: clock(`${month}-24 11:00`) });
+  assert.strictEqual((await jobs.remindEliteFees()).sent, 0);
+  sub(app, late, 'https://fcm/late');
+  jobs = createJobs(app.db, app.notify, { now: clock(`${month}-24 22:00`) });
+  assert.strictEqual((await jobs.remindEliteFees()).sent, 0, '밤 9시 넘어서는 안 보낸다');
+  app.sent.length = 0;
+  jobs = createJobs(app.db, app.notify, { now: clock(`${month}-25 10:10`) });
+  assert.strictEqual((await jobs.remindEliteFees()).sent, 1);
+  assert.deepStrictEqual(app.sent.map(x => x.endpoint), ['https://fcm/late'], '먼저 받은 선수에게는 다시 안 간다');
+  assert.strictEqual((await jobs.remindEliteFees()).sent, 0);
   app.close();
 });

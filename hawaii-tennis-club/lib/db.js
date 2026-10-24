@@ -254,6 +254,8 @@ function migrate(db) {
                            ['assigned_coach_id', 'INTEGER REFERENCES member(id) ON DELETE SET NULL']]) {
     if (!mcols.includes(c)) db.exec(`ALTER TABLE member ADD COLUMN ${c} ${type}`);
   }
+  // 수강료 미납 알림을 받은 달 ('YYYY-MM') — 선수마다 따로 둬서 20일 뒤에 등록한 선수도 받게
+  if (!mcols.includes('elite_reminded_month')) db.exec('ALTER TABLE member ADD COLUMN elite_reminded_month TEXT');
   db.exec(`
     CREATE TABLE IF NOT EXISTS elite_session (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
