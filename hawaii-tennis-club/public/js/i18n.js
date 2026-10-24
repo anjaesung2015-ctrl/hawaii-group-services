@@ -39,6 +39,8 @@ export const DICT = {
     collected: 'Collected', expected: 'Expected', members: 'Members',
     myDuesEmpty: 'No dues records yet', joiningLabel: 'Joining fee',
     bankPayTo: 'Pay dues to this account', bankName: 'Bank', bankAccountNo: 'Account number', bankHolder: 'Account holder',
+    myPhoto: 'My photo', photoChoose: 'Choose photo', photoRemove: 'Remove photo', photoDone: 'Done',
+    photoHint: 'Your photo is shown next to your name in the member list, board and chat.', photoBad: 'This photo could not be used',
     copy: 'Copy', bankCopied: 'Account number copied', bankNoteHint: 'Please write your name in the transfer note.',
     inJoiningFee: 'Joining month — included in the joining fee',
     ownerNoFee: 'Club owner — no monthly fee',

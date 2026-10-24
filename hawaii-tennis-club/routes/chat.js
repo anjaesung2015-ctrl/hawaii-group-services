@@ -29,7 +29,7 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
   const otherOf = (r, me) => {
     if (r.kind !== 'dm') return null;
     const oid = r.a_id === me.id ? r.b_id : r.a_id;
-    return db.prepare('SELECT id, name, level, is_coach, status FROM member WHERE id=?').get(oid) || null;
+    return db.prepare('SELECT id, name, level, is_coach, status, photo FROM member WHERE id=?').get(oid) || null;
   };
 
   const unreadIn = (roomId, meId) => db.prepare(`

@@ -1,5 +1,5 @@
 // 회원 명단 — 관리자는 추가·수정·삭제·PIN 재설정, 회원은 이름과 레벨만 본다.
-import { api, esc, toast, openModal, today, errText, $$ } from '../ui.js';
+import { api, esc, toast, openModal, today, errText, pickPhoto, avatar, $$ } from '../ui.js';
 import { t, levelLabel } from '../i18n.js';
 import { orgBlock, bindOrg } from './org.js';
 import { openDm } from './chat.js';
@@ -127,7 +127,7 @@ function row(m, isAdmin, isOwner, meId) {
   const dormant = m.status === 'dormant';
   return `
     <div class="member-row" ${isAdmin ? `data-member="${m.id}" style="cursor:pointer"` : ''}>
-      <div class="avatar ${dormant ? 'dormant' : ''}">${esc(String(m.name || '?').slice(0, 1))}</div>
+      ${avatar(m.name, m.photo, dormant ? 'dormant' : '')}
       <div class="who">
         <b>${esc(m.name)}${m.is_owner ? ` <span class="pill solid">👑 ${esc(t('roleOwner'))}</span>` : (m.role === 'admin' ? ` <span class="pill gold">${esc(m.title || t('admin'))}</span>` : '')}${m.is_coach ? ` <span class="pill coach">🎾 ${esc(t('coach'))}</span>` : ''}</b>
         <small>${esc(levelLabel(m.level))}${isAdmin && m.phone ? ` · ${esc(m.phone)}` : ''}${isAdmin && m.joined_at ? ` · ${esc(m.joined_at)}` : ''}</small>
@@ -159,7 +159,10 @@ function memberForm(m, state, refresh) {
       { name: 'memo', label: t('memo'), value: m?.memo || '' },
     ],
     extra: isNew ? `<div class="hint">${esc(t('pin4'))}</div>`
-      : `<button type="button" class="btn btn-sm" style="width:100%;margin-top:4px" data-pin>${esc(t('resetPin'))}</button>`,
+      : `<div class="photo-edit">${avatar(m.name, m.photo, 'photo-preview')}
+          <button type="button" class="btn btn-sm" data-photo>📷 ${esc(t('photoChoose'))}</button>
+          ${m.photo ? `<button type="button" class="btn btn-sm btn-danger" data-photo-del>${esc(t('photoRemove'))}</button>` : ''}</div>
+         <button type="button" class="btn btn-sm" style="width:100%;margin-top:4px" data-pin>${esc(t('resetPin'))}</button>`,
     // 삭제는 오너만 (회칙 제31조 — 제명은 클럽 오너 최종 결정)
     onDelete: (isNew || !state.me.is_owner || m.is_owner) ? null : async () => {
       await api(`/members/${m.id}`, { method: 'DELETE' });
@@ -178,6 +181,21 @@ function memberForm(m, state, refresh) {
       refresh();
     },
   });
+
+  // 사진은 저장 버튼과 따로 바로 반영한다
+  const photoBtn = modal.form.querySelector('[data-photo]');
+  if (photoBtn) photoBtn.onclick = async () => {
+    const data = await pickPhoto(640);
+    if (!data) return;
+    try { await api(`/members/${m.id}/photo`, { method: 'PUT', body: { photo_data: data } }); }
+    catch (e) { return toast(errText(e), true); }
+    modal.close(); toast(t('saved')); refresh();
+  };
+  const photoDel = modal.form.querySelector('[data-photo-del]');
+  if (photoDel) photoDel.onclick = async () => {
+    await api(`/members/${m.id}/photo`, { method: 'DELETE' }).catch(() => {});
+    modal.close(); toast(t('saved')); refresh();
+  };
 
   const pinBtn = modal.form.querySelector('[data-pin]');
   if (pinBtn) pinBtn.onclick = () => {

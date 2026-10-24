@@ -1,5 +1,5 @@
 // 자유게시판 — 회원끼리 글·사진·댓글·좋아요.
-import { api, esc, toast, openModal, pickPhoto, errText, trText, origHtml, $, $$ } from '../ui.js';
+import { api, esc, toast, openModal, pickPhoto, errText, trText, origHtml, avatar, $, $$ } from '../ui.js';
 import { t, timeAgo } from '../i18n.js';
 
 export async function renderBoard(el, state) {
@@ -34,7 +34,7 @@ export function postCard(p, state) {
   return `
     <div class="card post" data-post="${p.id}">
       <div class="post-head">
-        <div class="avatar">${esc(String(p.author || '?').slice(0, 1))}</div>
+        ${avatar(p.author, p.author_photo)}
         <div class="who">
           <b>${esc(p.author)}</b>
           <small>${esc(timeAgo(p.created_at))}${p.updated_at ? ` · ${esc(t('edited'))}` : ''}</small>

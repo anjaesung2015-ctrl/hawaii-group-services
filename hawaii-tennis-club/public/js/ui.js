@@ -142,6 +142,30 @@ export function origHtml(orig) {
   return orig ? `<div class="src">🌐 ${esc(orig)}</div>` : '';
 }
 
+// 동그란 얼굴 — 사진이 있으면 사진, 없으면 이름 첫 글자. 사진은 누르면 크게 (data-view-photo)
+export function avatar(name, photo, cls = '') {
+  return photo
+    ? `<div class="avatar has-photo ${cls}" data-view-photo="${esc(photo)}"><img src="${esc(photo)}" alt="" loading="lazy"></div>`
+    : `<div class="avatar ${cls}">${esc(String(name || '?').slice(0, 1))}</div>`;
+}
+
+// 사진 크게 보기 — 아무 데나 누르면 닫힌다
+export function showPhoto(src) {
+  const root = document.querySelector('#modalRoot');
+  root.innerHTML = `<div class="photo-view"><img src="${esc(src)}" alt=""></div>`;
+  root.firstElementChild.onclick = () => { root.innerHTML = ''; };
+}
+
+// 화면 어디서든 얼굴 사진을 누르면 크게 — 줄을 누른 것(수정 창 열기 등)으로 치지 않는다
+// (node 테스트가 이 파일을 불러올 때는 document 가 없다)
+if (typeof document !== 'undefined') document.addEventListener('click', (e) => {
+  const a = e.target.closest?.('[data-view-photo]');
+  if (!a) return;
+  e.stopPropagation();
+  e.preventDefault();
+  showPhoto(a.dataset.viewPhoto);
+}, true);
+
 // 서버가 돌려준 코드를 사람 말로
 const ERRORS = {
   phone_taken: 'phoneTaken', bad_phone: 'badPhone', pin_4_digits: 'pin4',
@@ -151,12 +175,12 @@ const ERRORS = {
   already_member: 'alreadyMember', already_requested: 'alreadyRequested', too_many_requests: 'tooManyRequests',
   bad_range: 'repeatBadRange', weekdays_required: 'repeatNoDays', no_dates: 'repeatNone',
   too_many_dates: 'repeatTooMany', no_device: 'pushNoDevice', bad_subscription: 'failed',
-  owner_only: 'ownerOnly', cannot_delete_owner: 'cannotDeleteOwner',
+  owner_only: 'ownerOnly', bad_photo: 'photoBad', cannot_delete_owner: 'cannotDeleteOwner',
 };
 export const errText = (e) => t(ERRORS[e?.message] || 'failed');
 
 // 폰 사진은 그대로 올리면 수 MB다. 캔버스로 긴 변 1280px·JPEG 품질 0.8로 줄여 보낸다.
-export function pickPhoto() {
+export function pickPhoto(max = 1280) {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -168,7 +192,6 @@ export function pickPhoto() {
       const reader = new FileReader();
       reader.onload = () => { img.src = reader.result; };
       img.onload = () => {
-        const max = 1280;
         const scale = Math.min(1, max / Math.max(img.width, img.height));
         const c = document.createElement('canvas');
         c.width = Math.round(img.width * scale);

@@ -1,7 +1,7 @@
 // 채팅 — 방 목록(클럽 전체방 + 1:1) 과 방 안 화면.
 // 방을 연 동안 3초마다 새 메시지만 받아 온다. 다른 화면으로 가거나 앱을 내리면 멈춘다.
 // 한글·몽골어 메시지는 영어 번역을 크게, 원문을 작게 (내 메시지는 반대로 — 남에게 어떻게 보이는지 확인용).
-import { api, esc, toast, openModal, errText, pickPhoto, origHtml, $, $$ } from '../ui.js';
+import { api, esc, toast, openModal, errText, pickPhoto, origHtml, avatar, $, $$ } from '../ui.js';
 import { t, levelLabel, timeAgo } from '../i18n.js';
 
 const POLL_MS = 3000;
@@ -42,7 +42,7 @@ function roomRow(r) {
     : t('clubChatSub');
   return `
     <div class="member-row room-row" data-room="${r.id}" style="cursor:pointer">
-      <div class="avatar ${club ? 'club' : ''}">${club ? '🎾' : esc(String(name).slice(0, 1))}</div>
+      ${club ? '<div class="avatar club">🎾</div>' : avatar(name, r.other?.photo)}
       <div class="who">
         <b>${esc(name)}${!club && r.other?.is_coach ? ` <span class="pill coach">🎾 ${esc(t('coach'))}</span>` : ''}</b>
         <small class="room-last">${esc(last)}</small>

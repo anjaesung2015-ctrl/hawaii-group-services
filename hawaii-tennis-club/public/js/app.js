@@ -1,5 +1,5 @@
 // 앱 시작 — 로그인 확인, 탭 전환, 상단 메뉴.
-import { $, $$, api, esc, toast, openModal, errText } from './ui.js';
+import { $, $$, api, esc, toast, openModal, errText, pickPhoto, avatar } from './ui.js';
 import { t, applyStatic, levelLabel } from './i18n.js';
 import { renderHome } from './views/home.js';
 import { renderSchedule } from './views/schedule.js';
@@ -169,6 +169,30 @@ initPullRefresh(() => render({ keepScroll: true }), {
 });
 
 // 내 레벨·코치 — 회원이 직접 고른다
+// 내 사진 — 고르면 바로 올라간다. 회원 명단·게시판·채팅에 이름 옆으로 보인다
+$('#photoBtn').onclick = () => {
+  sheet.hidden = true;
+  const m = openModal({
+    title: t('myPhoto'),
+    fields: [],
+    extra: `<div class="photo-edit">${avatar(state.me.name, state.me.photo, 'photo-preview')}
+        <button type="button" class="btn btn-sm btn-primary" data-photo>📷 ${esc(t('photoChoose'))}</button>
+        ${state.me.photo ? `<button type="button" class="btn btn-sm btn-danger" data-photo-del>${esc(t('photoRemove'))}</button>` : ''}</div>
+      <div class="hint">${esc(t('photoHint'))}</div>`,
+    saveLabel: t('photoDone'),
+    onSave: () => {},
+  });
+  const done = (photo) => { state.me = { ...state.me, photo }; m.close(); toast(t('saved')); render({ keepScroll: true }); };
+  m.form.querySelector('[data-photo]').onclick = async () => {
+    const data = await pickPhoto(640);
+    if (!data) return;
+    try { done((await api('/auth/photo', { method: 'PUT', body: { photo_data: data } })).photo); }
+    catch (e) { m.err.textContent = errText(e); }
+  };
+  const del = m.form.querySelector('[data-photo-del]');
+  if (del) del.onclick = async () => { await api('/auth/photo', { method: 'DELETE' }).catch(() => {}); done(null); };
+};
+
 $('#levelBtn').onclick = () => {
   sheet.hidden = true;
   const LV = ['newbie', 'beginner', 'intermediate', 'advanced'];

@@ -55,4 +55,14 @@ function removePhoto(webPath) {
   fs.rm(path.join(uploadDir(), name), { force: true }, () => {});
 }
 
-module.exports = { savePhoto, savePhotos, removePhoto, writePhoto, chatPhotoDir, removeChatPhoto, UPLOAD_DIR, uploadDir, MAX_BYTES };
+// 회원 프로필 사진 — 새 사진(data:URL)으로 바꾸거나 null 이면 지운다. 옛 파일은 지운다.
+function setMemberPhoto(db, memberId, dataUrl) {
+  const m = db.prepare('SELECT photo FROM member WHERE id=?').get(memberId);
+  if (!m) return undefined;
+  const photo = dataUrl ? savePhoto(dataUrl) : null;
+  db.prepare('UPDATE member SET photo=? WHERE id=?').run(photo, memberId);
+  removePhoto(m.photo);
+  return photo;
+}
+
+module.exports = { setMemberPhoto, savePhoto, savePhotos, removePhoto, writePhoto, chatPhotoDir, removeChatPhoto, UPLOAD_DIR, uploadDir, MAX_BYTES };

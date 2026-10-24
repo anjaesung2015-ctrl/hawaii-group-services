@@ -1,6 +1,6 @@
 const express = require('express');
 const { hashPin, normalizePhone, validPhone, validPin, today, LEVELS, getSettings } = require('../lib/db');
-const { removeChatPhoto } = require('../lib/photos');
+const { removeChatPhoto, removePhoto, setMemberPhoto } = require('../lib/photos');
 
 module.exports = function memberRoutes(db, auth) {
   const router = express.Router();
@@ -8,10 +8,10 @@ module.exports = function memberRoutes(db, auth) {
 
   // 명단 — 일반 회원에게는 이름·레벨만 보여준다 (전화번호는 관리자만)
   router.get('/', (req, res) => {
-    const rows = db.prepare(`SELECT id, name, phone, role, title, level, status, joined_at, memo, is_owner, is_coach
+    const rows = db.prepare(`SELECT id, name, phone, role, title, level, status, joined_at, memo, is_owner, is_coach, photo
                              FROM member ORDER BY is_owner DESC, role='member', is_coach DESC, status='dormant', name`).all();
     if (req.me.role === 'admin' || req.me.is_owner) return res.json(rows);
-    res.json(rows.map(m => ({ id: m.id, name: m.name, level: m.level, status: m.status, role: m.role, title: m.title, is_owner: m.is_owner, is_coach: m.is_coach })));
+    res.json(rows.map(m => ({ id: m.id, name: m.name, level: m.level, status: m.status, role: m.role, title: m.title, is_owner: m.is_owner, is_coach: m.is_coach, photo: m.photo })));
   });
 
   router.post('/', auth.requireAdmin, (req, res) => {
@@ -84,6 +84,20 @@ module.exports = function memberRoutes(db, auth) {
     res.json({ ok: true });
   });
 
+  // 운영진이 회원 사진을 넣어주거나 지운다 (본인은 /auth/photo)
+  router.put('/:id/photo', auth.requireAdmin, (req, res) => {
+    if (!req.body?.photo_data) return res.status(400).json({ error: 'bad_photo' });
+    let photo;
+    try { photo = setMemberPhoto(db, req.params.id, req.body.photo_data); }
+    catch (e) { return res.status(400).json({ error: e.message }); }
+    if (photo === undefined) return res.status(404).json({ error: 'not_found' });
+    res.json({ ok: true, photo });
+  });
+  router.delete('/:id/photo', auth.requireAdmin, (req, res) => {
+    if (setMemberPhoto(db, req.params.id, null) === undefined) return res.status(404).json({ error: 'not_found' });
+    res.json({ ok: true, photo: null });
+  });
+
   // 관리자가 PIN을 새로 정해준다 (잊어버린 회원용)
   router.post('/:id/pin', auth.requireAdmin, (req, res) => {
     const pin = String(req.body?.pin || '');
@@ -112,6 +126,7 @@ module.exports = function memberRoutes(db, auth) {
       db.prepare('DELETE FROM member WHERE id=?').run(m.id);
     })();
     for (const p of dmPhotos) removeChatPhoto(db, p);
+    removePhoto(m.photo);
     res.json({ ok: true });
   });
 

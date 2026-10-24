@@ -18,7 +18,7 @@ module.exports = function postRoutes(db, auth, notify, tr) {
     const limit = Math.min(50, Math.max(1, Number(req.query.limit) || PAGE));
     const rows = db.prepare(`
       SELECT p.id, p.member_id, p.body, p.created_at, p.updated_at,
-             m.name AS author, m.level,
+             m.name AS author, m.photo AS author_photo, m.level,
              (SELECT COUNT(*) FROM comment   c WHERE c.post_id = p.id) AS comments,
              (SELECT COUNT(*) FROM post_like l WHERE l.post_id = p.id) AS likes,
              EXISTS(SELECT 1 FROM post_like l WHERE l.post_id = p.id AND l.member_id = ?) AS liked
@@ -33,7 +33,7 @@ module.exports = function postRoutes(db, auth, notify, tr) {
 
   router.get('/:id', async (req, res) => {
     const p = db.prepare(`
-      SELECT p.id, p.member_id, p.body, p.created_at, p.updated_at, m.name AS author, m.level,
+      SELECT p.id, p.member_id, p.body, p.created_at, p.updated_at, m.name AS author, m.photo AS author_photo, m.level,
              (SELECT COUNT(*) FROM post_like l WHERE l.post_id = p.id) AS likes,
              EXISTS(SELECT 1 FROM post_like l WHERE l.post_id = p.id AND l.member_id = ?) AS liked
       FROM post p JOIN member m ON m.id = p.member_id WHERE p.id=?`).get(req.me.id, req.params.id);

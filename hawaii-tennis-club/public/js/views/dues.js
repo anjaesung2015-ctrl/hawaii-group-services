@@ -60,7 +60,7 @@ export async function renderDues(el, state) {
     <div class="hint">${esc(t('joiningLabel'))}: ${fmtMoney(g.joining_fee)}${cur} (${esc(t('inJoiningFeeHint'))}) · ${esc(t('settings'))} → ${esc(t('monthlyFee'))}</div>`;
 
   bindBankCopy(el);
-  $('[data-mv]', el).forEach(b => b.onclick = () => {
+  $$('[data-mv]', el).forEach(b => b.onclick = () => {
     state.duesMonth = shiftMonth(month, Number(b.dataset.mv));
     renderDues(el, state);
   });

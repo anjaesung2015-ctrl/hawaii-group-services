@@ -63,7 +63,7 @@ function createAuth(db) {
     if (token) {
       try {
         const p = jwt.verify(token, secret);
-        const m = db.prepare('SELECT id, name, phone, role, title, level, status, joined_at, is_owner, is_coach FROM member WHERE id=?').get(p.id);
+        const m = db.prepare('SELECT id, name, phone, role, title, level, status, joined_at, is_owner, is_coach, photo FROM member WHERE id=?').get(p.id);
         // 탈퇴(삭제)한 사람의 쿠키는 더 이상 통하지 않는다
         if (m) req.me = m;
       } catch (e) { /* 만료·위조 — 로그인 안 된 것으로 본다 */ }

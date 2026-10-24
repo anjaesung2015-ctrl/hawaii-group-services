@@ -1,4 +1,5 @@
 const express = require('express');
+const { setMemberPhoto } = require('../lib/photos');
 const { checkPin, hashPin, normalizePhone, validPin, LEVELS } = require('../lib/db');
 
 module.exports = function authRoutes(db, auth) {
@@ -78,11 +79,22 @@ module.exports = function authRoutes(db, auth) {
     res.json({ ok: true, me: publicMe(db.prepare('SELECT * FROM member WHERE id=?').get(req.me.id)) });
   });
 
+  // 내 사진 — ☰ 메뉴 → My photo. 폰에서 줄인 JPEG 한 장
+  router.put('/photo', auth.requireMember, (req, res) => {
+    if (!req.body?.photo_data) return res.status(400).json({ error: 'bad_photo' });
+    try { res.json({ ok: true, photo: setMemberPhoto(db, req.me.id, req.body.photo_data) }); }
+    catch (e) { res.status(400).json({ error: e.message }); }
+  });
+  router.delete('/photo', auth.requireMember, (req, res) => {
+    setMemberPhoto(db, req.me.id, null);
+    res.json({ ok: true, photo: null });
+  });
+
   return router;
 };
 
 const publicMe = (m) => ({
   id: m.id, name: m.name, phone: m.phone, role: m.role,
   title: m.title, level: m.level, status: m.status, joined_at: m.joined_at,
-  is_owner: !!m.is_owner, is_coach: !!m.is_coach,
+  is_owner: !!m.is_owner, is_coach: !!m.is_coach, photo: m.photo || null,
 });
