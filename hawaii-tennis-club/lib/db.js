@@ -19,6 +19,7 @@ const EVENT_KINDS = ['regular', 'event', 'tournament'];
 const ANSWERS = ['yes', 'no', 'maybe'];
 const METHODS = ['cash', 'transfer', 'qpay'];
 const DUE_KINDS = ['monthly', 'joining'];
+const PROGRAMS = ['club', 'elite'];
 
 const DEFAULTS = {
   club_name: 'Hawaii Tennis Club',
@@ -28,6 +29,7 @@ const DEFAULTS = {
   bank_name: 'Khan Bank',
   bank_account: '850005005123042515',
   bank_holder: 'Egchjargal',
+  elite_fee: '800000',   // 엘리트선수반 기본 월 수강료 (선수별 금액이 없을 때)
 };
 
 function open() {
@@ -245,6 +247,58 @@ function migrate(db) {
   // 코치 표시 — 레슨하는 회원. 권한(role)과는 별개라 따로 칸을 둔다
   if (!mcols.includes('is_coach')) db.exec('ALTER TABLE member ADD COLUMN is_coach INTEGER NOT NULL DEFAULT 0');
   if (!mcols.includes('photo')) db.exec('ALTER TABLE member ADD COLUMN photo TEXT');   // 프로필 사진 (uploads/…)
+  // 엘리트선수반 — 같은 회원 테이블에 program 으로 가른다. 기존 회원은 전부 'club'
+  if (!mcols.includes('program')) db.exec("ALTER TABLE member ADD COLUMN program TEXT NOT NULL DEFAULT 'club' CHECK (program IN ('club','elite'))");
+  if (!mcols.includes('elite_coach')) db.exec('ALTER TABLE member ADD COLUMN elite_coach INTEGER NOT NULL DEFAULT 0');   // 선수반 관리 권한 (오너가 줌)
+  for (const [c, type] of [['birth_year', 'INTEGER'], ['parent_name', 'TEXT'], ['parent_phone', 'TEXT'], ['elite_fee', 'INTEGER'],
+                           ['assigned_coach_id', 'INTEGER REFERENCES member(id) ON DELETE SET NULL']]) {
+    if (!mcols.includes(c)) db.exec(`ALTER TABLE member ADD COLUMN ${c} ${type}`);
+  }
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS elite_session (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      title        TEXT NOT NULL,
+      session_date TEXT NOT NULL,
+      start_time   TEXT NOT NULL,
+      end_time     TEXT NOT NULL,
+      court        TEXT,
+      coach_id     INTEGER REFERENCES member(id) ON DELETE SET NULL,
+      memo         TEXT,
+      reminded_at  TEXT,
+      created_by   INTEGER REFERENCES member(id) ON DELETE SET NULL,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_elite_session_date ON elite_session(session_date, start_time);
+    CREATE TABLE IF NOT EXISTS elite_attendance (
+      session_id INTEGER NOT NULL REFERENCES elite_session(id) ON DELETE CASCADE,
+      member_id  INTEGER NOT NULL REFERENCES member(id) ON DELETE CASCADE,
+      status     TEXT NOT NULL CHECK (status IN ('present','absent')),
+      checked_by INTEGER REFERENCES member(id) ON DELETE SET NULL,
+      checked_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      PRIMARY KEY (session_id, member_id)
+    );
+    CREATE TABLE IF NOT EXISTS elite_due (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      member_id  INTEGER NOT NULL REFERENCES member(id) ON DELETE CASCADE,
+      period     TEXT NOT NULL,
+      amount     INTEGER NOT NULL,
+      paid_at    TEXT,
+      method     TEXT CHECK (method IN ('cash','transfer','qpay')),
+      note       TEXT,
+      updated_at TEXT,
+      UNIQUE (member_id, period)
+    );
+    CREATE TABLE IF NOT EXISTS elite_notice (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      title      TEXT NOT NULL,
+      body       TEXT NOT NULL,
+      photo      TEXT,
+      pinned     INTEGER NOT NULL DEFAULT 0,
+      created_by INTEGER REFERENCES member(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      updated_at TEXT
+    );
+  `);
   // 채팅 사진 (uploads/ 경로). 사진만 보내면 body 는 빈 글자
   const ccols = db.prepare('PRAGMA table_info(chat_msg)').all().map(c => c.name);
   if (!ccols.includes('photo')) db.exec('ALTER TABLE chat_msg ADD COLUMN photo TEXT');
@@ -339,6 +393,7 @@ function getSettings(db) {
     bank_name: out.bank_name ?? DEFAULTS.bank_name,
     bank_account: out.bank_account ?? DEFAULTS.bank_account,
     bank_holder: out.bank_holder ?? DEFAULTS.bank_holder,
+    elite_fee: Number(out.elite_fee || DEFAULTS.elite_fee),
   };
 }
 
@@ -361,6 +416,6 @@ module.exports = {
   open, migrate, ensureFirstAdmin, ensureOwner, getSettings, setSettings,
   hashPin, checkPin, normalizePhone, validPhone, validPin,
   today, thisMonth, UB,
-  LEVELS, EVENT_KINDS, ANSWERS, METHODS, DUE_KINDS, DEFAULTS, DB_PATH,
+  LEVELS, EVENT_KINDS, ANSWERS, METHODS, DUE_KINDS, PROGRAMS, DEFAULTS, DB_PATH,
   OFFICER_ROLES,
 };
