@@ -825,3 +825,23 @@ body.in-room main { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
   width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
   background: rgba(255, 255, 255, .16); color: #fff; font-size: 18px;
 }
+
+/* ---------- 엘리트선수반 ---------- */
+/* 관리자 Elite 탭 위쪽 칸 5개 — 좁은 폰에서는 옆으로 밀어 본다 */
+.elite-seg { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+.elite-seg button { flex: 1 0 auto; padding: 9px 10px; white-space: nowrap; }
+.session-card .session-date { display: flex; flex-direction: column; min-width: 84px; }
+.session-card .session-date b { font-size: 14px; color: var(--court-dark); }
+.session-card .session-date span { font-size: 12.5px; color: var(--muted); }
+.att-btn {
+  width: 40px; height: 36px; flex-shrink: 0;
+  border-radius: 10px; border: 1px solid var(--hair); background: #fff;
+  font-size: 17px; cursor: pointer; color: var(--muted);
+}
+.att-btn.on { background: var(--court); border-color: var(--court); color: #fff; }
+.att-btn.absent.on { background: var(--danger); border-color: var(--danger); }
+/* 오너·선수반 코치는 하단 탭이 8개 — 360px 폰에도 들어가게 글자를 줄이고 넘치면 … */
+body.tabs-8 .tabbar button { min-width: 0; font-size: 9px; letter-spacing: 0; padding: 0 1px; }
+body.tabs-8 .tabbar button > span:not(.tab-icon) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+body.tabs-8 .tabbar button svg { width: 21px; height: 21px; }
+body.tabs-8 .tabbar .tab-icon { width: 21px; height: 21px; }

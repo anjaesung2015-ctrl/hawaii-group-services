@@ -207,6 +207,22 @@ export const DICT = {
     alreadyRequested: 'You have already applied',
     tooManyRequests: 'Too many applications. Please try again later.',
 
+    // Elite player class — players (or parents) see Training · Fees · Notices; owner and elite coaches get the Elite tab
+    tabElite: 'Elite', tabTraining: 'Training', tabFees: 'Fees',
+    elite_players: 'Players', elite_schedule: 'Schedule', elite_attendance: 'Attendance', elite_fees: 'Fees', elite_notices: 'Notices',
+    elitePlayerNew: 'Add player', elitePlayerEdit: 'Edit player', elitePlayersEmpty: 'No players yet',
+    elitePhone: 'Phone (parent\'s for juniors)', eliteBirthYear: 'Birth year', eliteAssignedCoach: 'Coach',
+    eliteParentName: 'Parent name', eliteParentPhone: 'Parent phone', eliteMonthly: 'Monthly tuition',
+    eliteFeeBlank: 'blank = {fee}',
+    elitePinHint: 'Leave PIN blank to use the last 4 digits of the phone. The player (or parent) logs in with this phone and PIN.',
+    eliteCoaches: 'Elite coaches', eliteCoach: 'Elite coach', eliteCoachAdd: 'Add elite coach', eliteCoachRemove: 'Remove',
+    eliteCoachRemoveAsk: 'Remove this elite coach?',
+    eliteCoachHint: 'Elite coaches can manage players, training, attendance, tuition and elite notices.',
+    eliteSessionNew: 'Add training', eliteSessionEdit: 'Edit training', eliteSessionPick: 'Training',
+    court: 'Court', noTraining: 'No training scheduled', present: 'Present', absent: 'Absent', notChecked: 'Not checked',
+    eliteFeeHead: 'Elite tuition — pay by the {day}th of each month', myFees: 'My tuition',
+    eliteDueHint: 'Due by the {day}th · default {fee}', eliteDefaultFee: 'Elite default tuition',
+
     dow: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     months: ['January', 'February', 'March', 'April', 'May', 'June',
              'July', 'August', 'September', 'October', 'November', 'December'],

@@ -18,6 +18,8 @@ import { renderDues } from './views/dues.js';
 import { renderNotices } from './views/notices.js';
 import { renderMembers } from './views/members.js';
 import { renderChat } from './views/chat.js';
+import { renderTraining, renderMyFees, renderEliteNotices } from './views/elite-me.js';
+import { renderElite } from './views/elite.js';
 
 const state = { me: null, settings: { club_name: 'Hawaii Tennis Club', monthly_fee: 0, joining_fee: 0, currency: '₮' }, tab: 'home' };
 
@@ -29,15 +31,32 @@ const VIEWS = {
   notices: renderNotices,
   members: renderMembers,
   chat: renderChat,          // 하단 Free Chat 탭
+  elite: renderElite,        // 오너·선수반 코치
+  training: renderTraining,  // 선수(부모) 계정
+  fees: renderMyFees,
+  enotices: renderEliteNotices,
 };
+
+// 계정 종류 — 선수반 선수는 선수반 탭만, 동호인은 선수 탭을 빼고 (Elite 탭은 오너·선수반 코치만)
+const isElite = () => state.me?.program === 'elite';
+const isEliteStaff = () => !!state.me && !isElite() && !!(state.me.is_owner || state.me.elite_coach);
+const homeTab = () => (isElite() ? 'training' : 'home');
+const ELITE_TABS = ['training', 'fees', 'enotices'];
+const allowed = (tab) => (isElite() ? ELITE_TABS.includes(tab) : !ELITE_TABS.includes(tab) && (tab !== 'elite' || isEliteStaff()));
+// 선수반 알림 주소(#training·#fees·#enotices)를 관리자가 누르면 Elite 탭의 그 칸으로
+const STAFF_SEC = { training: 'schedule', fees: 'fees', enotices: 'notices' };
+function pickTab(tab) {
+  if (!isElite() && isEliteStaff() && STAFF_SEC[tab]) { state.eliteSec = STAFF_SEC[tab]; return 'elite'; }
+  return VIEWS[tab] && allowed(tab) ? tab : homeTab();
+}
 
 // 주소 → 탭. '#chat-12' 는 채팅 탭의 12번 방 (알림을 누르면 이 주소로 열린다)
 function fromHash(h) {
   const m = /^#?chat-(\d+)$/.exec(h || '');
-  if (m) { state.chatRoom = Number(m[1]); return 'chat'; }
-  const tab = String(h || '#home').replace(/^#/, '') || 'home';
+  if (m && !isElite()) { state.chatRoom = Number(m[1]); return 'chat'; }
+  const tab = String(h || '').replace(/^#/, '') || homeTab();
   if (tab === 'chat') state.chatRoom = null;
-  return VIEWS[tab] ? tab : 'home';
+  return pickTab(tab);
 }
 const hashOf = () => (state.tab === 'chat' && state.chatRoom ? `#chat-${state.chatRoom}` : `#${state.tab}`);
 
@@ -52,7 +71,7 @@ async function render({ keepScroll = false } = {}) {
     el.innerHTML = `<div class="empty">${esc(errText(e))}</div>`;
   }
   $$('#tabbar button').forEach(b => b.classList.toggle('active', b.dataset.tab === state.tab));
-  $('#backBtn').hidden = state.tab === 'home';
+  $('#backBtn').hidden = state.tab === homeTab();
   // 방 안에서는 하단 탭을 숨기고 그 자리에 입력칸을 둔다
   document.body.classList.toggle('in-room', state.tab === 'chat' && !!state.chatRoom);
   updateChatBadge();
@@ -64,7 +83,7 @@ async function render({ keepScroll = false } = {}) {
 let navDepth = 0;
 
 function goTab(tab, { room, replace = false } = {}) {
-  state.tab = VIEWS[tab] ? tab : 'home';
+  state.tab = pickTab(tab);
   if (state.tab === 'chat') state.chatRoom = room || null;
   // 뒤로가기로 탭을 되짚을 수 있게 주소에 남긴다
   const h = hashOf();
@@ -77,7 +96,7 @@ state.go = goTab;   // 화면 쪽(채팅·회원)에서 탭을 옮길 때
 // Free Chat 탭의 안 읽은 수 — 화면을 그릴 때마다, 그리고 30초마다
 let badgeBusy = false;
 async function updateChatBadge() {
-  if (!state.me || badgeBusy) return;
+  if (!state.me || isElite() || badgeBusy) return;   // 선수 계정에는 채팅이 없다 (서버가 403)
   badgeBusy = true;
   try {
     const { count } = await api('/chat/unread');
@@ -103,6 +122,11 @@ function showApp() {
   $('#topClub').textContent = state.settings.club_name;
   $$('.admin-only').forEach(el => { el.hidden = !(state.me.role === 'admin' || state.me.is_owner); });
   $$('.owner-only').forEach(el => { el.hidden = !state.me.is_owner; });
+  // 선수반 선수는 동호인 탭·메뉴를 보지 않는다 (settingsBtn 은 owner-only 라 선수에게는 이미 숨겨진다)
+  $$('.club-only').forEach(el => { el.hidden = isElite() || (el.classList.contains('owner-only') && !state.me.is_owner); });
+  $$('.elite-only').forEach(el => { el.hidden = !isElite(); });
+  $$('.elite-staff-only').forEach(el => { el.hidden = !isEliteStaff(); });
+  document.body.classList.toggle('tabs-8', isEliteStaff());
   state.tab = fromHash(location.hash);
   render();
 }
@@ -121,7 +145,7 @@ $('#loginForm').onsubmit = async (e) => {
     const me = await api('/auth/me').catch(() => ({}));
     state.rules_agreed = me.rules_agreed;
     showApp();
-    askAgreeIfNeeded(state);
+    if (!isElite()) askAgreeIfNeeded(state);   // 동호회 회칙 — 선수반 선수에게는 묻지 않는다
   } catch (e2) {
     err.textContent = e2.message === 'too_many_tries' ? t('loginLocked', { s: e2.data?.retry_after || 60 })
       : e2.message === 'dormant' ? t('loginDormant')
@@ -241,6 +265,7 @@ $('#settingsBtn').onclick = () => {
       { name: 'bank_name', label: t('bankName'), value: state.settings.bank_name || '', maxlength: 60 },
       { name: 'bank_account', label: t('bankAccountNo'), value: state.settings.bank_account || '', maxlength: 40, inputmode: 'numeric' },
       { name: 'bank_holder', label: t('bankHolder'), value: state.settings.bank_holder || '', maxlength: 60 },
+      { name: 'elite_fee', label: `${t('eliteDefaultFee')} (${state.settings.currency})`, type: 'number', value: state.settings.elite_fee, min: 0 },
     ],
     onSave: async (v) => {
       state.settings = await api('/settings', { method: 'PUT', body: v });
@@ -257,8 +282,9 @@ $$('#tabbar button').forEach(b => b.onclick = () => goTab(b.dataset.tab));
 // ← 버튼: 앞서 본 탭으로. 앱 안에서 옮긴 적이 없으면(바로 열었으면) 홈으로 — 앱 밖으로 나가지 않게
 $('#backBtn').onclick = () => {
   if (navDepth > 0) return history.back();
-  history.replaceState({ tab: 'home' }, '', '#home');
-  state.tab = 'home';
+  const h = homeTab();
+  history.replaceState({ tab: h }, '', `#${h}`);
+  state.tab = h;
   render();
 };
 
@@ -288,7 +314,7 @@ async function boot() {
     state.me = r.me;
     state.rules_agreed = r.rules_agreed;
     showApp();
-    askAgreeIfNeeded(state);                  // 아직 회칙에 동의하지 않았으면 한 번 받는다
+    if (!isElite()) askAgreeIfNeeded(state);  // 아직 회칙에 동의하지 않았으면 한 번 받는다 (선수반 선수는 제외)
   } catch (e) {
     showLogin();
     if (location.hash === '#join') openJoinForm();   // 초대 링크로 들어온 사람 — 가입 신청서부터
