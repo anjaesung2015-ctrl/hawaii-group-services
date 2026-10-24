@@ -6,7 +6,7 @@ const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
 module.exports = function eventRoutes(db, auth, notify, tr) {
   const router = express.Router();
-  router.use(auth.requireMember);
+  router.use(auth.requireClub);
 
   // 다가오는 일정 — 홈 화면이 쓴다 (오늘 것도 포함)
   router.get('/upcoming', async (req, res) => {

@@ -43,12 +43,22 @@ function createNotifier(db, opts = {}) {
   };
 
   const activeMembers = (exclude = []) =>
-    db.prepare(`SELECT id FROM member WHERE status='active'
+    db.prepare(`SELECT id FROM member WHERE status='active' AND program='club'
                 ${exclude.length ? `AND id NOT IN (${exclude.map(() => '?').join(',')})` : ''}`)
       .pluck().all(...exclude);
 
   const admins = (exclude = []) =>
-    db.prepare(`SELECT id FROM member WHERE status='active' AND role='admin'
+    db.prepare(`SELECT id FROM member WHERE status='active' AND program='club' AND role='admin'
+                ${exclude.length ? `AND id NOT IN (${exclude.map(() => '?').join(',')})` : ''}`)
+      .pluck().all(...exclude);
+
+  // 선수반 — 활동 선수 / 선수반 관리자(오너·선수반 코치)
+  const elitePlayers = (exclude = []) =>
+    db.prepare(`SELECT id FROM member WHERE status='active' AND program='elite'
+                ${exclude.length ? `AND id NOT IN (${exclude.map(() => '?').join(',')})` : ''}`)
+      .pluck().all(...exclude);
+  const eliteStaff = (exclude = []) =>
+    db.prepare(`SELECT id FROM member WHERE status='active' AND program='club' AND (is_owner=1 OR elite_coach=1)
                 ${exclude.length ? `AND id NOT IN (${exclude.map(() => '?').join(',')})` : ''}`)
       .pluck().all(...exclude);
 
@@ -73,6 +83,8 @@ function createNotifier(db, opts = {}) {
     // 알림은 '덤'이다 — 실패해도 글·공지 저장을 되돌리지 않는다. 그래서 전부 catch 한다.
     toAll: (payload, exclude = []) => sendTo(activeMembers(exclude), payload).catch(() => ({ sent: 0, failed: 0 })),
     toAdmins: (payload, exclude = []) => sendTo(admins(exclude), payload).catch(() => ({ sent: 0, failed: 0 })),
+    toElitePlayers: (payload, exclude = []) => sendTo(elitePlayers(exclude), payload).catch(() => ({ sent: 0, failed: 0 })),
+    toElite: (payload, exclude = []) => sendTo([...elitePlayers(exclude), ...eliteStaff(exclude)], payload).catch(() => ({ sent: 0, failed: 0 })),
     toMembers: (ids, payload) => sendTo(ids, payload).catch(() => ({ sent: 0, failed: 0 })),
     subscribed: (memberId) => db.prepare('SELECT COUNT(*) c FROM push_sub WHERE member_id=?').get(memberId).c > 0,
   };

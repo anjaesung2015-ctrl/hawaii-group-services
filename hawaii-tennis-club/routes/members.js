@@ -4,12 +4,16 @@ const { removeChatPhoto, removePhoto, setMemberPhoto } = require('../lib/photos'
 
 module.exports = function memberRoutes(db, auth) {
   const router = express.Router();
-  router.use(auth.requireMember);
+  router.use(auth.requireClub);
+
+  // :id 는 동호인 회원만 — 선수반 선수는 /api/elite/players 에서 다룬다
+  router.param('id', (req, res, next, id) =>
+    db.prepare("SELECT 1 FROM member WHERE id=? AND program='club'").get(id) ? next() : res.status(404).json({ error: 'not_found' }));
 
   // 명단 — 일반 회원에게는 이름·레벨만 보여준다 (전화번호는 관리자만)
   router.get('/', (req, res) => {
     const rows = db.prepare(`SELECT id, name, phone, role, title, level, status, joined_at, memo, is_owner, is_coach, photo
-                             FROM member ORDER BY is_owner DESC, role='member', is_coach DESC, status='dormant', name`).all();
+                             FROM member WHERE program='club' ORDER BY is_owner DESC, role='member', is_coach DESC, status='dormant', name`).all();
     if (req.me.role === 'admin' || req.me.is_owner) return res.json(rows);
     res.json(rows.map(m => ({ id: m.id, name: m.name, level: m.level, status: m.status, role: m.role, title: m.title, is_owner: m.is_owner, is_coach: m.is_coach, photo: m.photo })));
   });

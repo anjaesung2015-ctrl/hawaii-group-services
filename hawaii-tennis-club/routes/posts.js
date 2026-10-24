@@ -10,7 +10,7 @@ const PAGE = 20;
 
 module.exports = function postRoutes(db, auth, notify, tr) {
   const router = express.Router();
-  router.use(auth.requireMember);
+  router.use(auth.requireClub);
 
   // 목록 — 최신 글부터. ?before=<id> 로 그보다 오래된 글을 이어 받는다.
   router.get('/', async (req, res) => {

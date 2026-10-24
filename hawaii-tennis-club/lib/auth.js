@@ -63,7 +63,7 @@ function createAuth(db) {
     if (token) {
       try {
         const p = jwt.verify(token, secret);
-        const m = db.prepare('SELECT id, name, phone, role, title, level, status, joined_at, is_owner, is_coach, photo FROM member WHERE id=?').get(p.id);
+        const m = db.prepare('SELECT id, name, phone, role, title, level, status, joined_at, is_owner, is_coach, photo, program, elite_coach FROM member WHERE id=?').get(p.id);
         // 탈퇴(삭제)한 사람의 쿠키는 더 이상 통하지 않는다
         if (m) req.me = m;
       } catch (e) { /* 만료·위조 — 로그인 안 된 것으로 본다 */ }
@@ -84,7 +84,24 @@ function createAuth(db) {
     req.me ? (req.me.is_owner ? next() : res.status(403).json({ error: 'owner_only' }))
            : res.status(401).json({ error: 'login_required' });
 
-  return { sign, setCookie, clearCookie, attach, requireMember, requireAdmin, requireOwner, lockedFor, noteFail, clearFails, COOKIE };
+  // 선수반 관리자 = 오너 또는 오너가 지정한 선수반 코치 (둘 다 동호인 계정)
+  const isEliteStaff = (me) => !!me && me.program !== 'elite' && !!(me.is_owner || me.elite_coach);
+
+  // 동호인 화면 — 선수반 계정(program='elite')은 들어오지 못한다
+  const requireClub = (req, res, next) =>
+    req.me ? (req.me.program === 'elite' ? res.status(403).json({ error: 'club_only' }) : next())
+           : res.status(401).json({ error: 'login_required' });
+
+  const requireEliteStaff = (req, res, next) =>
+    req.me ? (isEliteStaff(req.me) ? next() : res.status(403).json({ error: 'elite_staff_only' }))
+           : res.status(401).json({ error: 'login_required' });
+
+  // 선수반 화면 — 선수 본인 또는 선수반 관리자
+  const requireElite = (req, res, next) =>
+    req.me ? ((req.me.program === 'elite' || isEliteStaff(req.me)) ? next() : res.status(403).json({ error: 'elite_only' }))
+           : res.status(401).json({ error: 'login_required' });
+
+  return { sign, setCookie, clearCookie, attach, requireMember, requireAdmin, requireOwner, requireClub, requireEliteStaff, requireElite, isEliteStaff, lockedFor, noteFail, clearFails, COOKIE };
 }
 
 module.exports = { createAuth, COOKIE, FAIL_LIMIT };

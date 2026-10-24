@@ -7,7 +7,7 @@ const ROLES = new Map(OFFICER_ROLES.map(r => [r.role, r]));
 
 module.exports = function officerRoutes(db, auth) {
   const router = express.Router();
-  router.use(auth.requireMember);
+  router.use(auth.requireClub);
 
   const rows = () => db.prepare(`
     SELECT o.role, o.member_id, o.person_name, o.note, o.sort, m.name AS member_name, m.level, m.role AS member_role
@@ -36,7 +36,7 @@ module.exports = function officerRoutes(db, auth) {
 
     // 회원을 지정했으면 이름칸은 비운다 (둘이 어긋나지 않게)
     if (b.member_id) {
-      const m = db.prepare('SELECT id FROM member WHERE id=?').get(Number(b.member_id));
+      const m = db.prepare("SELECT id FROM member WHERE id=? AND program='club'").get(Number(b.member_id));
       if (!m) return res.status(404).json({ error: 'member_not_found' });
       db.prepare(`UPDATE officer SET member_id=?, person_name=NULL, note=?, updated_at=datetime('now','localtime') WHERE role=?`)
         .run(m.id, note, role);

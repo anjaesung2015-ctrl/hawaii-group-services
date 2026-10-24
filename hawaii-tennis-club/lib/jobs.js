@@ -61,7 +61,7 @@ function createJobs(db, notify, opts = {}) {
     const unpaid = db.prepare(`
       SELECT m.id FROM member m
       LEFT JOIN due d ON d.member_id=m.id AND d.kind='monthly' AND d.period=?
-      WHERE m.status='active' AND (d.id IS NULL OR d.paid_at IS NULL)
+      WHERE m.status='active' AND m.program='club' AND (d.id IS NULL OR d.paid_at IS NULL)
         AND NOT ${MONTHLY_EXEMPT_SQL}`).pluck().all(month, month);
     if (!unpaid.length) return { sent: 0, unpaid: 0 };
 

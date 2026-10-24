@@ -16,7 +16,7 @@ const REACTIONS = ['❤️', '👍', '😂', '😮', '😢', '🎾', '🔥', '�
 
 module.exports = function chatRoutes(db, auth, notify, tr) {
   const router = express.Router();
-  router.use(auth.requireMember);
+  router.use(auth.requireClub);
 
   // 내가 들어갈 수 있는 방만 — 1:1 방은 두 사람만
   function roomFor(me, id) {
@@ -95,7 +95,7 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
   router.post('/dm', (req, res) => {
     const oid = Number(req.body?.member_id);
     if (!oid || oid === req.me.id) return res.status(400).json({ error: 'bad_member' });
-    const o = db.prepare("SELECT id FROM member WHERE id=? AND status='active'").get(oid);
+    const o = db.prepare("SELECT id FROM member WHERE id=? AND status='active' AND program='club'").get(oid);
     if (!o) return res.status(404).json({ error: 'not_found' });
     const [a, b] = req.me.id < oid ? [req.me.id, oid] : [oid, req.me.id];
     db.prepare("INSERT OR IGNORE INTO chat_room (kind, a_id, b_id) VALUES ('dm',?,?)").run(a, b);

@@ -4,7 +4,7 @@ const { savePhoto, removePhoto } = require('../lib/photos');
 
 module.exports = function noticeRoutes(db, auth, notify, tr) {
   const router = express.Router();
-  router.use(auth.requireMember);
+  router.use(auth.requireClub);
 
   // 고정 공지가 먼저, 그다음 최신 순
   router.get('/', async (req, res) => {
