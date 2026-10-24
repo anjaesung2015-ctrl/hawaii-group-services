@@ -42,6 +42,7 @@ app.use('/api/officers', require('./routes/officers')(db, auth));    // 조직�
 app.use('/api/chat', require('./routes/chat')(db, auth, notify, tr));    // 채팅 (전체방 + 1:1)
 app.use('/api/invite', require('./routes/invite')());                    // 초대 링크 QR
 app.use('/api/elite/sessions', require('./routes/elite-sessions')(db, auth, notify));   // 선수반 훈련·출석
+app.use('/api/elite/fees', require('./routes/elite-fees')(db, auth));          // 선수반 수강료
 app.use('/api/elite', require('./routes/elite-players')(db, auth));       // 엘리트선수반 — 명단·코치
 
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: new Date().toISOString() }));

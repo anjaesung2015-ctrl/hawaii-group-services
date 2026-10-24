@@ -16,7 +16,7 @@ module.exports = function settingRoutes(db, auth) {
       if (!name) return res.status(400).json({ error: 'club_name_required' });
       patch.club_name = name;
     }
-    for (const k of ['monthly_fee', 'joining_fee']) {
+    for (const k of ['monthly_fee', 'joining_fee', 'elite_fee']) {
       if (k in b) {
         const n = Number(b[k]);
         if (!Number.isFinite(n) || n < 0 || n > 100000000) return res.status(400).json({ error: `bad_${k}` });
