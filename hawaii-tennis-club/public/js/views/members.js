@@ -1,5 +1,5 @@
 // 회원 명단 — 관리자는 추가·수정·삭제·PIN 재설정, 회원은 이름과 레벨만 본다.
-import { api, esc, toast, openModal, today, errText, pickPhoto, avatar, $$ } from '../ui.js';
+import { api, esc, toast, openModal, today, errText, pickFacePhoto, avatar, $$ } from '../ui.js';
 import { t, levelLabel } from '../i18n.js';
 import { orgBlock, bindOrg } from './org.js';
 import { openDm } from './chat.js';
@@ -110,7 +110,7 @@ function joinBlock(join) {
     <div class="card">
       ${join.rows.map(r => `
         <div class="member-row">
-          <div class="avatar">${esc(String(r.name || '?').slice(0, 1))}</div>
+          ${avatar(r.name, r.photo)}
           <div class="who">
             <b>${esc(r.name)}</b>
             <small>${r.is_coach ? `🎾 ${esc(t('coach'))} · ` : ''}${esc(r.phone)} · ${esc(levelLabel(r.level))} · ${esc(String(r.created_at).slice(5, 10))}</small>
@@ -185,7 +185,7 @@ function memberForm(m, state, refresh) {
   // 사진은 저장 버튼과 따로 바로 반영한다
   const photoBtn = modal.form.querySelector('[data-photo]');
   if (photoBtn) photoBtn.onclick = async () => {
-    const data = await pickPhoto(640);
+    const data = await pickFacePhoto();
     if (!data) return;
     try { await api(`/members/${m.id}/photo`, { method: 'PUT', body: { photo_data: data } }); }
     catch (e) { return toast(errText(e), true); }

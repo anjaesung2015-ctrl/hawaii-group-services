@@ -2,7 +2,7 @@
 // 성명 · 영문 이름 · 연락처 · 티셔츠 사이즈 · 추천 회원 + 회칙 동의 · 개인정보 동의.
 // 회칙은 신청서 안의 상자에서 읽는다(따로 창을 열면 쓰던 내용이 날아가서).
 // 회칙을 끝까지 내려 읽어야 동의 칸이 켜지고, 두 동의가 다 있어야 보내진다 → 그때서야 임원에게 알림이 간다.
-import { api, esc, toast, openModal, $ } from '../ui.js';
+import { api, esc, toast, openModal, pickFacePhoto, avatar, $ } from '../ui.js';
 import { t, levelLabel, fmtMoney } from '../i18n.js';
 import { renderRules } from './rules.js';
 import { bankCard, bindBankCopy } from './dues.js';
@@ -11,6 +11,7 @@ const LEVELS = ['newbie', 'beginner', 'intermediate', 'advanced'];
 const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
 export function openJoinForm() {
+  let photo = null;   // 고른 얼굴 사진 (data:URL)
   const m = openModal({
     title: t('joinRequest'),
     fields: [
@@ -27,6 +28,10 @@ export function openJoinForm() {
       { name: 'recommenders', label: t('joinRecommenders'), placeholder: t('joinRecommendersPh') },
     ],
     extra: `
+      <div class="field"><span>${esc(t('joinPhoto'))}</span>
+        <div class="photo-edit" data-photo-box></div>
+        <div class="hint" style="margin:0">${esc(t('joinPhotoHint'))}</div>
+      </div>
       <div class="hint">${esc(t('joinHint'))}</div>
       <div data-bank></div>
       <div class="section-head" style="margin:14px 2px 6px"><h2>${esc(t('rulesTitle'))}</h2><span class="spacer"></span>
@@ -45,11 +50,26 @@ export function openJoinForm() {
       if (!v.shirt_size) return t('joinShirtPick');
       if (!form.querySelector('[name="agree"]').checked) return t('joinNeedRules');
       if (!form.querySelector('[name="privacy"]').checked) return t('joinNeedPrivacy');
-      await api('/join', { method: 'POST', body: { ...v, agree: true, privacy: true } });
+      await api('/join', { method: 'POST', body: { ...v, agree: true, privacy: true, photo_data: photo || undefined } });
       toast(t('joinDone'));
       $('#loginPhone').value = v.phone;
     },
   });
+
+  // 얼굴 사진(선택) — 고르고 틀에 맞춘 뒤 신청할 때 함께 보낸다. 승인되면 그대로 회원 사진이 된다.
+  const photoBox = m.form.querySelector('[data-photo-box]');
+  const drawPhoto = () => {
+    photoBox.innerHTML = `${avatar(m.form.querySelector('[name="name"]').value, photo, 'photo-preview')}
+      <button type="button" class="btn btn-sm" data-photo>📷 ${esc(t(photo ? 'photoChoose' : 'joinPhotoAdd'))}</button>
+      ${photo ? `<button type="button" class="btn btn-sm btn-danger" data-photo-del>${esc(t('photoRemove'))}</button>` : ''}`;
+    photoBox.querySelector('[data-photo]').onclick = async () => {
+      const data = await pickFacePhoto();
+      if (data) { photo = data; drawPhoto(); }
+    };
+    const del = photoBox.querySelector('[data-photo-del]');
+    if (del) del.onclick = () => { photo = null; drawPhoto(); };
+  };
+  drawPhoto();
 
   // 회칙 상자 — 끝까지 내려 읽으면 동의 칸이 켜진다
   const box = m.form.querySelector('[data-rules]');

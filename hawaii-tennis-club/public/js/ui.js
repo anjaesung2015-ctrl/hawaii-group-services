@@ -149,11 +149,14 @@ export function avatar(name, photo, cls = '') {
     : `<div class="avatar ${cls}">${esc(String(name || '?').slice(0, 1))}</div>`;
 }
 
-// 사진 크게 보기 — 아무 데나 누르면 닫힌다
+// 사진 크게 보기 — 아무 데나 누르면 닫힌다.
+// #modalRoot 가 아니라 body 에 따로 띄운다 (가입 신청서·수정 창 위에서 눌러도 창이 안 날아가게)
 export function showPhoto(src) {
-  const root = document.querySelector('#modalRoot');
-  root.innerHTML = `<div class="photo-view"><img src="${esc(src)}" alt=""></div>`;
-  root.firstElementChild.onclick = () => { root.innerHTML = ''; };
+  const v = document.createElement('div');
+  v.className = 'photo-view';
+  v.innerHTML = `<img src="${esc(src)}" alt="">`;
+  v.onclick = () => v.remove();
+  document.body.appendChild(v);
 }
 
 // 화면 어디서든 얼굴 사진을 누르면 크게 — 줄을 누른 것(수정 창 열기 등)으로 치지 않는다
@@ -203,5 +206,108 @@ export function pickPhoto(max = 1280) {
       reader.readAsDataURL(file);
     };
     input.click();
+  });
+}
+
+// 얼굴 사진 고르기 + 맞추기 — 동그란 틀 안에서 끌어 옮기고, 두 손가락·막대로 키우고, 90° 돌린다.
+// 틀 안 그대로 512×512 JPEG 로 돌려준다 (취소하면 null).
+// 열려 있는 창(#modalRoot — 가입 신청서 등)을 덮어쓰지 않게 body 에 따로 띄운다.
+export async function pickFacePhoto() {
+  const src = await pickPhoto(1600);
+  if (!src) return null;
+  const img = await new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
+  if (!img) return null;
+
+  return new Promise((resolve) => {
+    const ov = document.createElement('div');
+    ov.className = 'crop-ov';
+    ov.innerHTML = `
+      <div class="crop-box">
+        <h3>${esc(t('photoAdjust'))}</h3>
+        <div class="crop-stage" data-stage><img alt="" draggable="false"><div class="crop-ring"></div></div>
+        <div class="crop-tools">
+          <span>－</span><input type="range" min="1" max="4" step="0.01" value="1" data-zoom aria-label="zoom"><span>＋</span>
+          <button type="button" class="btn btn-sm" data-rot aria-label="${esc(t('photoRotate'))}">⟳</button>
+        </div>
+        <div class="hint" style="text-align:center">${esc(t('photoAdjustHint'))}</div>
+        <div class="modal-actions">
+          <button type="button" class="btn" data-cancel>${esc(t('cancel'))}</button>
+          <button type="button" class="btn btn-primary" data-use>${esc(t('photoUse'))}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const stage = ov.querySelector('[data-stage]');
+    const im = stage.querySelector('img');
+    const zoomEl = ov.querySelector('[data-zoom]');
+    im.src = src;
+
+    const W = img.naturalWidth, H = img.naturalHeight;
+    let S = stage.clientWidth;          // 틀 한 변 (화면 px)
+    let zoom = 1, rot = 0, x = 0, y = 0; // x,y = 틀 가운데에서 사진 가운데까지
+    const turned = () => rot % 2 === 1;
+    const k = () => S / Math.min(W, H) * zoom;   // 짧은 변이 틀에 꽉 차는 것이 1배
+    const clamp = () => {
+      const bw = (turned() ? H : W) * k(), bh = (turned() ? W : H) * k();
+      x = Math.max(-(bw - S) / 2, Math.min((bw - S) / 2, x));
+      y = Math.max(-(bh - S) / 2, Math.min((bh - S) / 2, y));
+    };
+    const draw = () => {
+      clamp();
+      im.style.width = `${W * k()}px`;
+      im.style.height = `${H * k()}px`;
+      im.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px) rotate(${rot * 90}deg)`;
+    };
+    const setZoom = (z) => { zoom = Math.max(1, Math.min(4, z)); zoomEl.value = zoom; draw(); };
+    draw();
+
+    // 한 손가락 = 옮기기, 두 손가락 = 키우기
+    const pts = new Map();
+    let pinch = null;
+    stage.addEventListener('pointerdown', (e) => {
+      stage.setPointerCapture(e.pointerId);
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2) {
+        const [a, b] = [...pts.values()];
+        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: zoom };
+      }
+    });
+    stage.addEventListener('pointermove', (e) => {
+      const p = pts.get(e.pointerId);
+      if (!p) return;
+      const dx = e.clientX - p.x, dy = e.clientY - p.y;
+      p.x = e.clientX; p.y = e.clientY;
+      if (pts.size === 1) { x += dx; y += dy; draw(); }
+      else if (pinch) {
+        const [a, b] = [...pts.values()];
+        setZoom(pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / (pinch.d || 1));
+      }
+    });
+    const up = (e) => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; };
+    stage.addEventListener('pointerup', up);
+    stage.addEventListener('pointercancel', up);
+    stage.addEventListener('wheel', (e) => { e.preventDefault(); setZoom(zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); }, { passive: false });
+    zoomEl.oninput = () => setZoom(Number(zoomEl.value));
+    ov.querySelector('[data-rot]').onclick = () => { rot = (rot + 1) % 4; x = y = 0; draw(); };
+
+    const done = (val) => { ov.remove(); resolve(val); };
+    ov.querySelector('[data-cancel]').onclick = () => done(null);
+    ov.querySelector('[data-use]').onclick = () => {
+      const O = 512, r = O / S;
+      const c = document.createElement('canvas');
+      c.width = c.height = O;
+      const g = c.getContext('2d');
+      g.fillStyle = '#fff';
+      g.fillRect(0, 0, O, O);
+      g.translate(O / 2 + x * r, O / 2 + y * r);
+      g.rotate(rot * Math.PI / 2);
+      g.drawImage(img, -W * k() * r / 2, -H * k() * r / 2, W * k() * r, H * k() * r);
+      done(c.toDataURL('image/jpeg', 0.85));
+    };
+    // 화면을 돌리면 틀 크기가 바뀐다
+    window.addEventListener('resize', function re() {
+      if (!ov.isConnected) return window.removeEventListener('resize', re);
+      const ns = stage.clientWidth;
+      if (ns && ns !== S) { x *= ns / S; y *= ns / S; S = ns; draw(); }
+    });
   });
 }

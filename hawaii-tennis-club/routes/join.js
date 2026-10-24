@@ -2,6 +2,7 @@
 // 신청만으로는 아무것도 볼 수 없다(로그인 불가).
 const express = require('express');
 const { hashPin, normalizePhone, validPhone, validPin, today, LEVELS, getSettings } = require('../lib/db');
+const { savePhoto, removePhoto } = require('../lib/photos');
 
 const WINDOW_MS = 60 * 60 * 1000;   // 한 시간에
 const MAX_PER_IP = 5;               // 한 아이피에서 5건까지 (장난 신청 막기)
@@ -47,11 +48,20 @@ module.exports = function joinRoutes(db, auth, notify) {
       return res.status(409).json({ error: 'already_requested' });
     }
 
+    // 얼굴 사진(선택) — 다른 검사를 다 통과한 뒤에야 파일로 쓴다 (거절될 신청이 파일을 남기지 않게)
+    let photo = null;
+    if (b.photo_data) {
+      try { photo = savePhoto(b.photo_data); } catch (e) { return res.status(400).json({ error: e.message }); }
+    }
+
     const rulesVersion = db.prepare("SELECT version FROM doc WHERE key='rules' AND lang='ko'").get()?.version || 1;
-    const r = db.prepare(`INSERT INTO join_request (name, phone, pin_hash, level, memo, agreed_at, agreed_version,
-                                                    name_en, shirt_size, recommenders, privacy_agreed_at, is_coach)
-                          VALUES (?,?,?,?,?, datetime('now','localtime'), ?, ?,?,?, datetime('now','localtime'), ?)`)
-      .run(name, phone, hashPin(pin), level, memo, rulesVersion, nameEn, shirt, recommenders, isCoach);
+    let r;
+    try {
+      r = db.prepare(`INSERT INTO join_request (name, phone, pin_hash, level, memo, agreed_at, agreed_version,
+                                                name_en, shirt_size, recommenders, privacy_agreed_at, is_coach, photo)
+                      VALUES (?,?,?,?,?, datetime('now','localtime'), ?, ?,?,?, datetime('now','localtime'), ?, ?)`)
+        .run(name, phone, hashPin(pin), level, memo, rulesVersion, nameEn, shirt, recommenders, isCoach, photo);
+    } catch (e) { removePhoto(photo); throw e; }
     res.json({ ok: true, id: r.lastInsertRowid });
 
     // 두 동의를 다 받은 신청만 여기까지 온다 → 승인해 줄 사람(오너·임원)에게 알린다
@@ -64,7 +74,7 @@ module.exports = function joinRoutes(db, auth, notify) {
 
   // ---- 여기서부터는 관리자만 ----
   router.get('/', auth.requireAdmin, (req, res) => {
-    const rows = db.prepare(`SELECT id, name, name_en, phone, level, shirt_size, recommenders, memo, created_at, is_coach,
+    const rows = db.prepare(`SELECT id, name, name_en, phone, level, shirt_size, recommenders, memo, created_at, is_coach, photo,
                                     agreed_at, agreed_version, privacy_agreed_at
                              FROM join_request WHERE status='pending' ORDER BY id`).all();
     res.json({ count: rows.length, rows });
@@ -81,23 +91,25 @@ module.exports = function joinRoutes(db, auth, notify) {
     if (!q) return res.status(404).json({ error: 'not_found' });
     // 기다리는 동안 관리자가 같은 번호를 손으로 넣었을 수도 있다
     if (db.prepare('SELECT id FROM member WHERE phone=?').get(q.phone)) {
-      db.prepare("UPDATE join_request SET status='approved', decided_at=datetime('now','localtime'), decided_by=? WHERE id=?")
+      db.prepare("UPDATE join_request SET status='approved', decided_at=datetime('now','localtime'), decided_by=?, photo=NULL WHERE id=?")
         .run(req.me.id, q.id);
+      removePhoto(q.photo);
       return res.status(409).json({ error: 'already_member' });
     }
 
     const { joining_fee } = getSettings(db);
     const approve = db.transaction(() => {
-      const m = db.prepare(`INSERT INTO member (name, phone, pin_hash, role, level, status, joined_at, memo, rules_agreed_at, rules_version, is_coach)
-                            VALUES (?,?,?,'member',?,'active',?,?,?,?,?)`)
-        .run(q.name, q.phone, q.pin_hash, q.level, today(), formMemo(q), q.agreed_at, q.agreed_version, q.is_coach ? 1 : 0);
+      // 신청서 사진은 그대로 회원 사진이 된다 (파일은 옮기지 않고 경로만 넘긴다)
+      const m = db.prepare(`INSERT INTO member (name, phone, pin_hash, role, level, status, joined_at, memo, rules_agreed_at, rules_version, is_coach, photo)
+                            VALUES (?,?,?,'member',?,'active',?,?,?,?,?,?)`)
+        .run(q.name, q.phone, q.pin_hash, q.level, today(), formMemo(q), q.agreed_at, q.agreed_version, q.is_coach ? 1 : 0, q.photo || null);
       // 입회비 미납 한 줄을 세워 둔다 (손으로 넣은 회원과 같은 처리)
       if (joining_fee > 0) {
         db.prepare(`INSERT INTO due (member_id, kind, period, amount) VALUES (?,'joining',?,?)
                     ON CONFLICT(member_id, kind, period) DO NOTHING`)
           .run(m.lastInsertRowid, today().slice(0, 7), joining_fee);
       }
-      db.prepare("UPDATE join_request SET status='approved', decided_at=datetime('now','localtime'), decided_by=? WHERE id=?")
+      db.prepare("UPDATE join_request SET status='approved', decided_at=datetime('now','localtime'), decided_by=?, photo=NULL WHERE id=?")
         .run(req.me.id, q.id);
       return m.lastInsertRowid;
     });
@@ -106,9 +118,12 @@ module.exports = function joinRoutes(db, auth, notify) {
   });
 
   router.post('/:id/reject', auth.requireAdmin, (req, res) => {
-    const r = db.prepare(`UPDATE join_request SET status='rejected', decided_at=datetime('now','localtime'), decided_by=?
-                          WHERE id=? AND status='pending'`).run(req.me.id, req.params.id);
-    if (!r.changes) return res.status(404).json({ error: 'not_found' });
+    const q = db.prepare("SELECT photo FROM join_request WHERE id=? AND status='pending'").get(req.params.id);
+    if (!q) return res.status(404).json({ error: 'not_found' });
+    // 거절하면 사진은 지운다 (회원이 아닌 사람의 얼굴을 남겨 두지 않는다)
+    db.prepare(`UPDATE join_request SET status='rejected', decided_at=datetime('now','localtime'), decided_by=?, photo=NULL
+                WHERE id=?`).run(req.me.id, req.params.id);
+    removePhoto(q.photo);
     res.json({ ok: true });
   });
 

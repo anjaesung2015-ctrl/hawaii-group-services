@@ -1,5 +1,5 @@
 // 앱 시작 — 로그인 확인, 탭 전환, 상단 메뉴.
-import { $, $$, api, esc, toast, openModal, errText, pickPhoto, avatar } from './ui.js';
+import { $, $$, api, esc, toast, openModal, errText, pickFacePhoto, avatar } from './ui.js';
 import { t, applyStatic, levelLabel } from './i18n.js';
 import { renderHome } from './views/home.js';
 import { renderSchedule } from './views/schedule.js';
@@ -184,7 +184,7 @@ $('#photoBtn').onclick = () => {
   });
   const done = (photo) => { state.me = { ...state.me, photo }; m.close(); toast(t('saved')); render({ keepScroll: true }); };
   m.form.querySelector('[data-photo]').onclick = async () => {
-    const data = await pickPhoto(640);
+    const data = await pickFacePhoto();
     if (!data) return;
     try { done((await api('/auth/photo', { method: 'PUT', body: { photo_data: data } })).photo); }
     catch (e) { m.err.textContent = errText(e); }

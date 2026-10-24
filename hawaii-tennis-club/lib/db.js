@@ -252,7 +252,7 @@ function migrate(db) {
   if (!jcols.includes('agreed_at')) db.exec('ALTER TABLE join_request ADD COLUMN agreed_at TEXT');
   if (!jcols.includes('agreed_version')) db.exec('ALTER TABLE join_request ADD COLUMN agreed_version INTEGER');
   // 가입 신청서 (종이 회칙 동의서와 같은 칸) — 영문 이름, 티셔츠 사이즈, 추천 회원, 개인정보 동의
-  for (const [c, type] of [['name_en', 'TEXT'], ['shirt_size', 'TEXT'], ['recommenders', 'TEXT'], ['privacy_agreed_at', 'TEXT'], ['is_coach', 'INTEGER NOT NULL DEFAULT 0']]) {
+  for (const [c, type] of [['name_en', 'TEXT'], ['shirt_size', 'TEXT'], ['recommenders', 'TEXT'], ['privacy_agreed_at', 'TEXT'], ['is_coach', 'INTEGER NOT NULL DEFAULT 0'], ['photo', 'TEXT']]) {
     if (!jcols.includes(c)) db.exec(`ALTER TABLE join_request ADD COLUMN ${c} ${type}`);
   }
 

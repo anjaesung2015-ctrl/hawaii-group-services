@@ -222,3 +222,58 @@ test('동의를 다 한 신청은 임원에게 알림이 간다 (신청서 내�
   assert.match(s.payload.body, /티셔츠 M/);
   app.close();
 });
+
+// 신청서 얼굴 사진 (선택) — 승인하면 회원 사진, 거절하면 파일까지 지운다
+const fs = require('fs');
+const path = require('path');
+const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+const settle = () => new Promise(r => setTimeout(r, 50));
+
+test('신청서 사진은 신청 목록에 보이고, 승인하면 그대로 회원 사진이 된다', async () => {
+  const app = makeApp();
+  const c = client(app.base);
+  const r = await c.call('/join', { method: 'POST', body: req({ photo_data: PNG }) });
+  assert.strictEqual(r.status, 200);
+  const a = await loginAs(app.base, '99000000', '1234');
+  const q = (await a.call('/join')).data.rows[0];
+  assert.match(q.photo, /^uploads\/.+\.png$/);
+  assert.ok(fs.existsSync(path.join(app.uploadDir, path.basename(q.photo))));
+  const ok = (await a.call(`/join/${q.id}/approve`, { method: 'POST' })).data;
+  const m = (await a.call('/members')).data.find(x => x.id === ok.member_id);
+  assert.strictEqual(m.photo, q.photo);
+  assert.ok(fs.existsSync(path.join(app.uploadDir, path.basename(q.photo))));
+  app.close();
+});
+
+test('사진 없이도 신청된다 / 사진이 아닌 것은 400 이고 신청도 안 남는다', async () => {
+  const app = makeApp();
+  const c = client(app.base);
+  assert.strictEqual((await c.call('/join', { method: 'POST', body: req({ photo_data: 'data:text/plain;base64,aGk=' }) })).status, 400);
+  const a = await loginAs(app.base, '99000000', '1234');
+  assert.strictEqual((await a.call('/join')).data.count, 0);
+  assert.strictEqual((await c.call('/join', { method: 'POST', body: req() })).status, 200);
+  assert.strictEqual((await a.call('/join')).data.rows[0].photo, null);
+  app.close();
+});
+
+test('거절하면 신청서 사진 파일도 지운다', async () => {
+  const app = makeApp();
+  const c = client(app.base);
+  await c.call('/join', { method: 'POST', body: req({ photo_data: PNG }) });
+  const a = await loginAs(app.base, '99000000', '1234');
+  const q = (await a.call('/join')).data.rows[0];
+  assert.strictEqual((await a.call(`/join/${q.id}/reject`, { method: 'POST' })).status, 200);
+  await settle();
+  assert.ok(!fs.existsSync(path.join(app.uploadDir, path.basename(q.photo))));
+  app.close();
+});
+
+test('동의 없는 신청은 사진 파일을 남기지 않는다', async () => {
+  const app = makeApp();
+  const c = client(app.base);
+  const before = fs.existsSync(app.uploadDir) ? fs.readdirSync(app.uploadDir).length : 0;
+  assert.strictEqual((await c.call('/join', { method: 'POST', body: req({ privacy: false, photo_data: PNG }) })).status, 400);
+  const after = fs.existsSync(app.uploadDir) ? fs.readdirSync(app.uploadDir).length : 0;
+  assert.strictEqual(after, before);
+  app.close();
+});

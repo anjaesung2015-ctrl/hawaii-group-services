@@ -66,7 +66,7 @@ function noticeCard(n, state) {
       </div>
       <div class="notice-body">${esc(trText(n, 'body').text)}</div>
       ${origHtml(trText(n, 'body').orig)}
-      ${n.photo ? `<img class="notice-photo" src="${esc(photoSrc(n.photo))}" alt="" loading="lazy">` : ''}
+      ${n.photo ? `<img class="notice-photo" src="${esc(photoSrc(n.photo))}" data-view-photo="${esc(photoSrc(n.photo))}" alt="" loading="lazy">` : ''}
     </div>`;
 }
 

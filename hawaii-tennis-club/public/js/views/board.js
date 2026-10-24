@@ -29,7 +29,7 @@ export function postCard(p, state) {
   const mine = p.member_id === state.me.id;
   const canDelete = mine || state.me.role === 'admin';
   const photos = (p.photos || []).map(src =>
-    `<img class="post-photo" src="${esc(src)}" data-full="${esc(src)}" alt="" loading="lazy">`).join('');
+    `<img class="post-photo" src="${esc(src)}" data-view-photo="${esc(src)}" alt="" loading="lazy">`).join('');
 
   return `
     <div class="card post" data-post="${p.id}">
@@ -80,14 +80,7 @@ export function bindPosts(el, state, refresh) {
     toast(t('deleted'));
     refresh();
   });
-  // 사진을 누르면 크게 본다
-  $$('[data-full]', el).forEach(img => img.onclick = () => {
-    const root = $('#modalRoot');
-    root.innerHTML = `<div class="modal" data-shade style="align-items:center">
-      <img src="${esc(img.dataset.full)}" style="max-width:96vw;max-height:88vh;border-radius:12px">
-    </div>`;
-    root.querySelector('[data-shade]').onclick = () => { root.innerHTML = ''; };
-  });
+  // 사진을 누르면 크게 — data-view-photo 는 ui.js 가 화면 전체에서 받는다
 }
 
 // 글 하나 + 댓글
@@ -101,7 +94,7 @@ async function openPost(id, state, refresh) {
     extra: `
       <div class="hint" style="margin:-8px 2px 8px">${esc(timeAgo(p.created_at))}</div>
       ${p.body ? `<div class="post-body">${esc(trText(p, 'body').text)}</div>${origHtml(trText(p, 'body').orig)}` : ''}
-      ${(p.photos || []).map(src => `<img class="post-photo" src="${esc(src)}" style="width:100%;margin-top:8px;border-radius:12px" alt="">`).join('')}
+      ${(p.photos || []).map(src => `<img class="post-photo" src="${esc(src)}" data-view-photo="${esc(src)}" style="width:100%;margin-top:8px;border-radius:12px" alt="">`).join('')}
       <div class="section-head" style="margin:16px 2px 8px"><h2>${esc(t('comments'))} · ${p.comments.length}</h2></div>
       <div data-comments>
         ${p.comments.length ? p.comments.map(c => `

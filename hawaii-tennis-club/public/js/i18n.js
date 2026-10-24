@@ -41,6 +41,8 @@ export const DICT = {
     bankPayTo: 'Pay dues to this account', bankJoinHead: 'Joining fee {fee} — pay to this account',bankName: 'Bank', bankAccountNo: 'Account number', bankHolder: 'Account holder',
     myPhoto: 'My photo', photoChoose: 'Choose photo', photoRemove: 'Remove photo', photoDone: 'Done',
     photoHint: 'Your photo is shown next to your name in the member list, board and chat.', photoBad: 'This photo could not be used',
+    photoAdjust: 'Adjust photo', photoAdjustHint: 'Drag to move · pinch or slide to zoom', photoRotate: 'Rotate', photoUse: 'Use photo',
+    joinPhoto: 'Photo (optional)', joinPhotoAdd: 'Add photo', joinPhotoHint: 'A face photo helps officers and members recognize you.',
     copy: 'Copy', bankCopied: 'Account number copied', bankNoteHint: 'Please write your name in the transfer note.',
     inJoiningFee: 'Joining month — included in the joining fee',
     ownerNoFee: 'Club owner — no monthly fee',

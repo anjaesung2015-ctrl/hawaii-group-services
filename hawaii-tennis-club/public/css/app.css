@@ -799,3 +799,29 @@ body.in-room main { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
 .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .photo-edit { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 10px; }
 .avatar.photo-preview { width: 72px; height: 72px; font-size: 28px; }
+
+/* 얼굴 사진 맞추기 — 신청서·수정 창 위에 뜬다 */
+.crop-ov {
+  position: fixed; inset: 0; z-index: 110; background: rgba(10, 20, 15, .72);
+  display: grid; place-items: center; padding: 16px;
+}
+.crop-box { width: min(100%, 400px); background: var(--card, #fff); border-radius: 18px; padding: 16px; }
+.crop-box h3 { margin: 0 0 12px; font-size: 17px; }
+.crop-stage {
+  position: relative; width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 12px;
+  background: #1b1f1d; touch-action: none; cursor: grab; user-select: none;
+}
+.crop-stage:active { cursor: grabbing; }
+.crop-stage img { position: absolute; left: 50%; top: 50%; max-width: none; pointer-events: none; transform-origin: center; }
+.crop-ring {
+  position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, .5); outline: 2px solid rgba(255, 255, 255, .85); outline-offset: -2px;
+}
+.crop-tools { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; color: var(--muted); }
+.crop-tools input[type=range] { flex: 1; accent-color: var(--court); }
+.photo-view { cursor: zoom-out; }
+.photo-view::after {
+  content: '✕'; position: absolute; top: calc(env(safe-area-inset-top) + 14px); right: 16px;
+  width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(255, 255, 255, .16); color: #fff; font-size: 18px;
+}
