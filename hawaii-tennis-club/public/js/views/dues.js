@@ -10,7 +10,7 @@ export async function renderDues(el, state) {
   const cur = g.currency;
 
   el.innerHTML = `
-    ${bankCard(state.settings)}
+    ${bankCard(state.settings, t('duesPayHead'))}
     <div class="monthbar">
       <button data-mv="-1">‹</button><strong>${esc(fmtMonth(month))}</strong><button data-mv="1">›</button>
     </div>
@@ -128,7 +128,7 @@ export async function renderMyDues(el, state) {
   const unpaid = rows.filter(r => !r.paid_at);
 
   el.innerHTML = `
-    ${bankCard(state.settings)}
+    ${bankCard(state.settings, t('duesPayHead'))}
     <div class="stat-row">
       <div class="stat"><b>${fmtMoney(state.settings.monthly_fee)}</b><span>${esc(t('monthlyFee'))} ${cur}</span></div>
       <div class="stat ${unpaid.length ? 'warn' : ''}"><b>${unpaid.length}</b><span>${esc(t('unpaid'))}</span></div>

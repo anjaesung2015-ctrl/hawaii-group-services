@@ -1,6 +1,6 @@
 // 때가 되면 알아서 보내는 알림 두 가지.
 //  1) 일정 하루 전 저녁 — "내일 19시 정기모임, 참석 체크해 주세요"
-//  2) 매월 10일 아침 — 아직 회비를 안 낸 사람에게만
+//  2) 매월 5일 아침(회칙 제11조 납부 기한) — 아직 회비를 안 낸 사람에게만
 // 10분마다 깨어나 확인한다. 같은 것을 두 번 보내지 않도록 보낸 표시를 남긴다.
 const { getSettings, thisMonth, MONTHLY_EXEMPT_SQL } = require('./db');
 
@@ -25,7 +25,7 @@ function createJobs(db, notify, opts = {}) {
   const now = opts.now || (() => new Date());
   const EVENT_HOUR = opts.eventHour ?? 18;   // 전날 저녁 6시
   const DUE_HOUR = opts.dueHour ?? 10;       // 아침 10시
-  const DUE_DAY = opts.dueDay ?? 10;         // 매월 10일
+  const DUE_DAY = opts.dueDay ?? 5;          // 매월 5일 (회칙: 월회비는 매월 5일까지)
 
   // 내일 있는 일정을 아직 안 알렸으면 알린다
   async function remindEvents() {
@@ -68,7 +68,7 @@ function createJobs(db, notify, opts = {}) {
     const { monthly_fee, currency } = getSettings(db);
     const r = await notify.toMembers(unpaid, {
       title: '💳 회비 안내',
-      body: `이번 달 회비 ${monthly_fee.toLocaleString('en-US')}${currency} 가 아직 확인되지 않았습니다`,
+      body: `이번 달 회비 ${monthly_fee.toLocaleString('en-US')}${currency} 가 아직 확인되지 않았습니다 (매월 5일까지)`,
       url: '#dues',
     });
     return { sent: r.sent, unpaid: unpaid.length };
