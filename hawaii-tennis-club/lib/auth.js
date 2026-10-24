@@ -64,8 +64,8 @@ function createAuth(db) {
       try {
         const p = jwt.verify(token, secret);
         const m = db.prepare('SELECT id, name, phone, role, title, level, status, joined_at, is_owner, is_coach, photo, program, elite_coach FROM member WHERE id=?').get(p.id);
-        // 탈퇴(삭제)한 사람의 쿠키는 더 이상 통하지 않는다
-        if (m) req.me = m;
+        // 탈퇴(삭제)·휴면 처리한 사람의 쿠키는 더 이상 통하지 않는다 (로그인도 휴면은 막는다)
+        if (m && m.status !== 'dormant') req.me = m;
       } catch (e) { /* 만료·위조 — 로그인 안 된 것으로 본다 */ }
     }
     next();

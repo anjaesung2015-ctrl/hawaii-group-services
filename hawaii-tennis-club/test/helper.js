@@ -56,6 +56,7 @@ function makeApp(opts = {}) {
   app.use('/api/elite/fees', require('../routes/elite-fees')(db, auth));
   app.use('/api/elite/notices', require('../routes/elite-notices')(db, auth, notify));
   app.use('/api/elite', require('../routes/elite-players')(db, auth));
+  app.use('/uploads', require('../lib/uploads')(db, auth, process.env.UPLOAD_DIR));
 
   const server = app.listen(0);
   const base = `http://127.0.0.1:${server.address().port}/api`;

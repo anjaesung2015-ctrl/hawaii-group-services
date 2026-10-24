@@ -270,7 +270,7 @@ async function fees(body, state, staff, again) {
       <table class="table">
         <thead><tr><th>${esc(t('name'))}</th><th class="num">${esc(t('eliteMonthly'))}</th><th style="width:40px"></th></tr></thead>
         <tbody>${g.rows.map((r, i) => `
-          <tr><td><div style="font-weight:600">${esc(r.name)}</div>
+          <tr><td><div style="font-weight:600">${esc(r.name)}${r.status === 'dormant' ? ` <span class="pill grey">${esc(t('stDormant'))}</span>` : ''}</div>
             <small style="color:var(--muted)">${r.paid ? `${esc(r.paid_at)} · ${esc(methodLabel(r.method))}` : esc(t('unpaid'))}</small></td>
           <td class="num">${fmtMoney(r.amount)}</td>
           <td><button class="check ${r.paid ? 'paid' : ''}" data-mark="${i}">✓</button></td></tr>`).join('')}

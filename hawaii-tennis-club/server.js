@@ -51,8 +51,8 @@ app.get('/api/health', (req, res) => res.json({ ok: true, ts: new Date().toISOSt
 const version = createVersion(path.join(__dirname, 'public'));
 app.get('/api/version', (req, res) => { res.set('Cache-Control', 'no-store'); res.json({ v: version() }); });
 
-// 공지 사진은 로그인한 회원에게만 보여준다 (주소를 알아도 남이 못 열게)
-app.use('/uploads', auth.requireMember, express.static(path.join(__dirname, 'uploads'), { maxAge: '7d' }));
+// 사진은 로그인한 회원에게만, 자기 반 것만 보여준다 (주소를 알아도 남이 못 열게)
+app.use('/uploads', require('./lib/uploads')(db, auth, process.env.UPLOAD_DIR || path.join(__dirname, 'uploads')));   // 동호인반·선수반 사진을 섞지 않는다
 app.use(express.static(path.join(__dirname, 'public'), { index: 'index.html' }));
 
 app.use((req, res) => {

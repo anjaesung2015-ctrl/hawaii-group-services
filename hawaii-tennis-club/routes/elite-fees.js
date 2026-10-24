@@ -24,12 +24,14 @@ module.exports = function eliteFeeRoutes(db, auth) {
   router.get('/grid', auth.requireEliteStaff, (req, res) => {
     const month = PERIOD.test(req.query.month || '') ? req.query.month : thisMonth();
     const s = getSettings(db);
-    const players = db.prepare(`SELECT id, name, phone, photo, elite_fee FROM member
-                                WHERE program='elite' AND status='active' ORDER BY name`).all();
+    // 활동 선수 + 그 달 기록이 있는 휴면 선수 (낸 돈이 집계에서 빠지지 않게)
+    const players = db.prepare(`SELECT id, name, phone, photo, elite_fee, status FROM member
+                                WHERE program='elite' AND (status='active' OR id IN (SELECT member_id FROM elite_due WHERE period=?))
+                                ORDER BY name`).all(month);
     const dues = new Map(db.prepare('SELECT * FROM elite_due WHERE period=?').all(month).map(d => [d.member_id, d]));
     const rows = players.map(p => {
       const d = dues.get(p.id);
-      return { member_id: p.id, name: p.name, phone: p.phone, photo: p.photo,
+      return { member_id: p.id, name: p.name, phone: p.phone, photo: p.photo, status: p.status,
                amount: d ? d.amount : eliteFeeOf(db, p), paid: !!d?.paid_at, paid_at: d?.paid_at || null,
                method: d?.method || null, note: d?.note || null };
     });
