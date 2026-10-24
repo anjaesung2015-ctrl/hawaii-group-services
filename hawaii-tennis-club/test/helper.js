@@ -52,6 +52,7 @@ function makeApp(opts = {}) {
   app.use('/api/officers', require('../routes/officers')(db, auth));
   app.use('/api/chat', require('../routes/chat')(db, auth, notify, tr));
   app.use('/api/invite', require('../routes/invite')());
+  app.use('/api/elite', require('../routes/elite-players')(db, auth));
 
   const server = app.listen(0);
   const base = `http://127.0.0.1:${server.address().port}/api`;
