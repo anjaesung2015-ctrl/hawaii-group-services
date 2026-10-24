@@ -185,3 +185,5 @@ function withCounts(db, e, myId) {
   const my = db.prepare('SELECT answer FROM rsvp WHERE event_id=? AND member_id=?').get(e.id, myId);
   return { ...e, ...counts(db, e.id), my_answer: my?.answer || null };
 }
+
+module.exports.expand = expand;   // 선수반 반복 등록(routes/elite-sessions.js)도 같은 날짜 계산을 쓴다

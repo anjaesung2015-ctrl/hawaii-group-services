@@ -52,6 +52,7 @@ function makeApp(opts = {}) {
   app.use('/api/officers', require('../routes/officers')(db, auth));
   app.use('/api/chat', require('../routes/chat')(db, auth, notify, tr));
   app.use('/api/invite', require('../routes/invite')());
+  app.use('/api/elite/sessions', require('../routes/elite-sessions')(db, auth, notify));
   app.use('/api/elite', require('../routes/elite-players')(db, auth));
 
   const server = app.listen(0);

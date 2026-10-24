@@ -2,17 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const { makeApp, loginAs } = require('./helper');
-
-const player = (over = {}) => ({ name: 'Temuulen', phone: '77001122', birth_year: 2011, level: 'advanced',
-  parent_name: 'Bold', parent_phone: '99887766', elite_fee: 700000, ...over });
-
-async function makeStaffCoach(app) {
-  // 동호인 임원 하나 + 선수반 코치 하나 (오너가 지정)
-  const owner = await loginAs(app.base, '99000000', '1234');
-  const c = await owner.call('/members', { method: 'POST', body: { name: 'Coach B', phone: '88002233', pin: '3333' } });
-  await owner.call(`/elite/coaches/${c.data.id}`, { method: 'PUT', body: { on: true } });
-  return { owner, coachId: c.data.id, coach: await loginAs(app.base, '88002233', '3333') };
-}
+const { player, makeStaffCoach } = require('./elite-fixtures');
 
 test('오너가 선수를 등록하면 선수는 그 번호와 PIN 으로 로그인한다', async () => {
   const app = makeApp();
@@ -82,5 +72,3 @@ test('선수 수정·탈퇴·PIN 재설정·삭제(사진 정리 포함)', async
   assert.strictEqual(app.db.prepare('SELECT COUNT(*) c FROM member WHERE id=?').get(pid).c, 0);
   app.close();
 });
-
-module.exports = { player, makeStaffCoach };
