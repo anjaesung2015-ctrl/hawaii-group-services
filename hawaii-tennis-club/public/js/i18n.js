@@ -38,6 +38,8 @@ export const DICT = {
     duesGrid: 'Member payments', unpaidList: 'Not paid yet', allPaid: 'Everyone has paid 🎉',
     collected: 'Collected', expected: 'Expected', members: 'Members',
     myDuesEmpty: 'No dues records yet', joiningLabel: 'Joining fee',
+    bankPayTo: 'Pay dues to this account', bankName: 'Bank', bankAccountNo: 'Account number', bankHolder: 'Account holder',
+    copy: 'Copy', bankCopied: 'Account number copied', bankNoteHint: 'Please write your name in the transfer note.',
     inJoiningFee: 'Joining month — included in the joining fee',
     ownerNoFee: 'Club owner — no monthly fee',
     inJoiningFeeHint: 'includes the first month',

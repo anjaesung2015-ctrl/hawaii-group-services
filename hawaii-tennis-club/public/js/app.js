@@ -214,6 +214,9 @@ $('#settingsBtn').onclick = () => {
       { name: 'club_name', label: t('clubName'), value: state.settings.club_name },
       { name: 'monthly_fee', label: `${t('monthlyFee')} (${state.settings.currency})`, type: 'number', value: state.settings.monthly_fee, min: 0 },
       { name: 'joining_fee', label: `${t('joiningFee')} (${state.settings.currency})`, type: 'number', value: state.settings.joining_fee, min: 0 },
+      { name: 'bank_name', label: t('bankName'), value: state.settings.bank_name || '', maxlength: 60 },
+      { name: 'bank_account', label: t('bankAccountNo'), value: state.settings.bank_account || '', maxlength: 40, inputmode: 'numeric' },
+      { name: 'bank_holder', label: t('bankHolder'), value: state.settings.bank_holder || '', maxlength: 60 },
     ],
     onSave: async (v) => {
       state.settings = await api('/settings', { method: 'PUT', body: v });

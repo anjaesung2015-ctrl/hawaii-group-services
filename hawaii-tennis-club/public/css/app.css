@@ -785,3 +785,10 @@ body.in-room main { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
   font-size: 10.5px; font-weight: 700; line-height: 17px; text-align: center;
 }
 @media (max-width: 380px) { .tabbar button { font-size: 9.5px; letter-spacing: 0; } }
+
+/* 회비 계좌 카드 */
+.bank-card { border-color: #cfe3d8; background: linear-gradient(180deg, #f4faf6 0%, #fff 70%); }
+.bank-head { font-size: 13px; color: var(--ink-soft); font-weight: 600; }
+.bank-name { font-size: 15px; font-weight: 700; margin-top: 4px; }
+.bank-row { display: flex; align-items: center; gap: 10px; margin: 4px 0 6px; flex-wrap: wrap; }
+.bank-no { font-size: 20px; letter-spacing: .02em; font-variant-numeric: tabular-nums; cursor: pointer; word-break: break-all; }

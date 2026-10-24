@@ -10,6 +10,7 @@ export async function renderDues(el, state) {
   const cur = g.currency;
 
   el.innerHTML = `
+    ${bankCard(state.settings)}
     <div class="monthbar">
       <button data-mv="-1">‹</button><strong>${esc(fmtMonth(month))}</strong><button data-mv="1">›</button>
     </div>
@@ -58,7 +59,8 @@ export async function renderDues(el, state) {
     ${unpaidBlock(g, cur)}
     <div class="hint">${esc(t('joiningLabel'))}: ${fmtMoney(g.joining_fee)}${cur} (${esc(t('inJoiningFeeHint'))}) · ${esc(t('settings'))} → ${esc(t('monthlyFee'))}</div>`;
 
-  $$('[data-mv]', el).forEach(b => b.onclick = () => {
+  bindBankCopy(el);
+  $('[data-mv]', el).forEach(b => b.onclick = () => {
     state.duesMonth = shiftMonth(month, Number(b.dataset.mv));
     renderDues(el, state);
   });
@@ -126,6 +128,7 @@ export async function renderMyDues(el, state) {
   const unpaid = rows.filter(r => !r.paid_at);
 
   el.innerHTML = `
+    ${bankCard(state.settings)}
     <div class="stat-row">
       <div class="stat"><b>${fmtMoney(state.settings.monthly_fee)}</b><span>${esc(t('monthlyFee'))} ${cur}</span></div>
       <div class="stat ${unpaid.length ? 'warn' : ''}"><b>${unpaid.length}</b><span>${esc(t('unpaid'))}</span></div>
@@ -140,4 +143,30 @@ export async function renderMyDues(el, state) {
         <span class="pill ${r.paid_at ? '' : 'danger'}">${fmtMoney(r.amount)}${cur}</span>
       </div>`).join('')}</div>`
       : `<div class="empty">${esc(t('myDuesEmpty'))}</div>`}`;
+  bindBankCopy(el);
+}
+
+// 회비 받는 계좌 — 오너가 설정에서 바꾼다. 계좌번호를 누르거나 Copy 로 복사해 은행 앱에 붙여넣는다.
+function bankCard(s) {
+  if (!s.bank_account) return '';
+  return `
+    <div class="card bank-card">
+      <div class="bank-head">🏦 ${esc(t('bankPayTo'))}</div>
+      <div class="bank-name">${esc(s.bank_name || '')}</div>
+      <div class="bank-row">
+        <b class="bank-no" data-bank-copy>${esc(s.bank_account)}</b>
+        <button type="button" class="btn btn-sm" data-bank-copy>📋 ${esc(t('copy'))}</button>
+      </div>
+      ${s.bank_holder ? `<div class="meta">${esc(t('bankHolder'))}: <b>${esc(s.bank_holder)}</b></div>` : ''}
+      <div class="hint" style="margin:6px 0 0">${esc(t('bankNoteHint'))}</div>
+    </div>`;
+}
+
+function bindBankCopy(el) {
+  const no = el.querySelector('.bank-no')?.textContent.replace(/[s-]/g, '');
+  if (!no) return;
+  $$('[data-bank-copy]', el).forEach(b => b.onclick = async () => {
+    try { await navigator.clipboard.writeText(no); toast(t('bankCopied')); }
+    catch { prompt(t('copy'), no); }
+  });
 }

@@ -23,6 +23,19 @@ module.exports = function settingRoutes(db, auth) {
         patch[k] = Math.round(n);
       }
     }
+    // 계좌 — 비워도 된다(계좌 카드 숨김). 계좌번호는 숫자·공백·하이픈만.
+    for (const k of ['bank_name', 'bank_holder']) {
+      if (k in b) {
+        const v = String(b[k] ?? '').trim();
+        if (v.length > 60) return res.status(400).json({ error: `bad_${k}` });
+        patch[k] = v;
+      }
+    }
+    if ('bank_account' in b) {
+      const v = String(b.bank_account ?? '').trim();
+      if (v.length > 40 || !/^[\d\s-]*$/.test(v)) return res.status(400).json({ error: 'bad_bank_account' });
+      patch.bank_account = v;
+    }
     if (!Object.keys(patch).length) return res.status(400).json({ error: 'no_changes' });
     res.json(setSettings(db, patch));
   });

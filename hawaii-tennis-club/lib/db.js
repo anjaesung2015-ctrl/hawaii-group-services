@@ -25,6 +25,9 @@ const DEFAULTS = {
   monthly_fee: '200000',
   joining_fee: '300000',
   currency: '₮',
+  bank_name: 'Khan Bank',
+  bank_account: '850005005123042515',
+  bank_holder: 'Egchjargal',
 };
 
 function open() {
@@ -331,6 +334,10 @@ function getSettings(db) {
     monthly_fee: Number(out.monthly_fee || DEFAULTS.monthly_fee),
     joining_fee: Number(out.joining_fee || DEFAULTS.joining_fee),
     currency: out.currency || DEFAULTS.currency,
+    // 회비 받는 계좌 — 오너가 비우면 화면에서 계좌 카드가 사라진다 (그래서 ?? 로 빈 값 유지)
+    bank_name: out.bank_name ?? DEFAULTS.bank_name,
+    bank_account: out.bank_account ?? DEFAULTS.bank_account,
+    bank_holder: out.bank_holder ?? DEFAULTS.bank_holder,
   };
 }
 

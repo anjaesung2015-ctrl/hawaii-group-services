@@ -221,3 +221,18 @@ test('면제 달이라도 실제로 낸 기록은 낸 걸로 보인다', async (
   assert.strictEqual(g.summary.collected, 200000);
   app.close();
 });
+
+test('회비 계좌 — 기본은 Khan Bank, 오너만 바꾸고 비울 수 있다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const m = await loginAs(app.base, '88110044', '1111');
+  const s = (await m.call('/settings')).data;
+  assert.deepStrictEqual([s.bank_name, s.bank_account, s.bank_holder], ['Khan Bank', '850005005123042515', 'Egchjargal']);
+  assert.strictEqual((await m.call('/settings', { method: 'PUT', body: { bank_account: '1' } })).status, 403);
+  assert.strictEqual((await a.call('/settings', { method: 'PUT', body: { bank_account: 'abc' } })).status, 400);
+  const s2 = (await a.call('/settings', { method: 'PUT', body: { bank_name: ' Golomt ', bank_account: '1234 5678' } })).data;
+  assert.deepStrictEqual([s2.bank_name, s2.bank_account, s2.monthly_fee], ['Golomt', '1234 5678', 200000]);
+  const s3 = (await a.call('/settings', { method: 'PUT', body: { bank_account: '' } })).data;
+  assert.strictEqual(s3.bank_account, '');
+  app.close();
+});
