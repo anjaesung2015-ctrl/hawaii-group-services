@@ -53,7 +53,7 @@ function createJobs(db, notify, opts = {}) {
   async function remindDues() {
     const t = ubNow(now());
     if (t.day < DUE_DAY || t.hour < DUE_HOUR) return { sent: 0 };
-    const month = thisMonth();
+    const month = t.date.slice(0, 7);   // 주입된 시계와 같은 기준
     const key = 'due_reminder_month';
     const done = db.prepare('SELECT v FROM setting WHERE k=?').get(key)?.v;
     if (done === month) return { sent: 0, already: true };
@@ -98,7 +98,7 @@ function createJobs(db, notify, opts = {}) {
   async function remindEliteFees() {
     const t = ubNow(now());
     if (t.day < ELITE_DUE_DAY || t.hour < DUE_HOUR) return { sent: 0 };
-    const month = thisMonth();
+    const month = t.date.slice(0, 7);   // 주입된 시계와 같은 기준
     const key = 'elite_due_reminder_month';
     if (db.prepare('SELECT v FROM setting WHERE k=?').get(key)?.v === month) return { sent: 0, already: true };
     db.prepare('INSERT INTO setting (k,v) VALUES (?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v').run(key, month);

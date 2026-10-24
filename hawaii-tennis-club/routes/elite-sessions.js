@@ -91,8 +91,11 @@ module.exports = function eliteSessionRoutes(db, auth, notify) {
     if (s.error) return res.status(400).json({ error: s.error });
     const bad = checkCoach(s);
     if (bad) return res.status(400).json({ error: bad });
-    db.prepare(`UPDATE elite_session SET title=?, session_date=?, start_time=?, end_time=?, court=?, coach_id=?, memo=? WHERE id=?`)
-      .run(s.title, s.session_date, s.start_time, s.end_time, s.court, s.coach_id, s.memo, cur.id);
+    // 날짜·시간을 옮기면 하루 전 알림을 다시 보낸다
+    const moved = s.session_date !== cur.session_date || s.start_time !== cur.start_time;
+    db.prepare(`UPDATE elite_session SET title=?, session_date=?, start_time=?, end_time=?, court=?, coach_id=?, memo=?,
+                reminded_at=CASE WHEN ? THEN NULL ELSE reminded_at END WHERE id=?`)
+      .run(s.title, s.session_date, s.start_time, s.end_time, s.court, s.coach_id, s.memo, moved ? 1 : 0, cur.id);
     res.json({ ok: true });
   });
 

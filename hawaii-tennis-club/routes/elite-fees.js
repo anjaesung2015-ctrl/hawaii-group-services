@@ -1,4 +1,4 @@
-// 선수반 수강료 — 매월 20일까지. 한 줄 = 선수 한 명의 한 달치. 줄은 체크할 때 그 시점 금액으로 만든다(지난 기록 불변).
+// 선수반 수강료 — 매월 20일까지. 한 줄 = 선수 한 명의 한 달치. 줄은 체크할 때 그 시점 금액으로 만든다(낸 기록은 불변, 미납 줄은 다시 체크할 때 새 금액).
 const express = require('express');
 const { getSettings, today, thisMonth, METHODS } = require('../lib/db');
 const { eliteFeeOf } = require('../lib/elite');
@@ -13,10 +13,12 @@ module.exports = function eliteFeeRoutes(db, auth) {
   router.get('/me', (req, res) => {
     if (req.me.program !== 'elite') return res.status(403).json({ error: 'elite_only' });
     const m = db.prepare('SELECT elite_fee FROM member WHERE id=?').get(req.me.id);
-    res.json({
-      fee: eliteFeeOf(db, m), due_day: DUE_DAY, currency: getSettings(db).currency,
-      rows: db.prepare('SELECT period, amount, paid_at, method FROM elite_due WHERE member_id=? ORDER BY period DESC').all(req.me.id),
-    });
+    const fee = eliteFeeOf(db, m);
+    const rows = db.prepare('SELECT period, amount, paid_at, method FROM elite_due WHERE member_id=? ORDER BY period DESC').all(req.me.id);
+    // 이번 달 줄은 코치가 체크해야 생긴다 — 아직 없으면 미납으로 보여 준다 (20일 알림과 같은 기준)
+    const month = thisMonth();
+    if (!rows.some(r => r.period === month)) rows.unshift({ period: month, amount: fee, paid_at: null, method: null });
+    res.json({ fee, due_day: DUE_DAY, currency: getSettings(db).currency, rows });
   });
 
   router.get('/grid', auth.requireEliteStaff, (req, res) => {
@@ -48,11 +50,13 @@ module.exports = function eliteFeeRoutes(db, auth) {
     const method = METHODS.includes(b.method) ? b.method : (paid ? 'cash' : null);
     const paid_at = paid ? (/^\d{4}-\d{2}-\d{2}$/.test(b.paid_at || '') ? b.paid_at : today()) : null;
     const note = String(b.note || '').trim() || null;
+    const hasNote = 'note' in b ? 1 : 0;   // 메모 칸을 보냈으면 비운 것도 반영
     db.prepare(`INSERT INTO elite_due (member_id, period, amount, paid_at, method, note, updated_at)
                 VALUES (?,?,?,?,?,?, datetime('now','localtime'))
                 ON CONFLICT(member_id, period) DO UPDATE SET paid_at=excluded.paid_at, method=excluded.method,
-                  note=COALESCE(excluded.note, elite_due.note), updated_at=excluded.updated_at`)
-      .run(p.id, period, eliteFeeOf(db, p), paid_at, method, note);
+                  amount=CASE WHEN elite_due.paid_at IS NULL THEN excluded.amount ELSE elite_due.amount END,
+                  note=CASE WHEN ? THEN excluded.note ELSE elite_due.note END, updated_at=excluded.updated_at`)
+      .run(p.id, period, eliteFeeOf(db, p), paid_at, method, note, hasNote);
     res.json({ ok: true, ...db.prepare('SELECT * FROM elite_due WHERE member_id=? AND period=?').get(p.id, period) });
   });
 

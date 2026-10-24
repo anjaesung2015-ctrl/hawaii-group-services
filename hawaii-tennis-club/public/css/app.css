@@ -828,7 +828,8 @@ body.in-room main { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
 
 /* ---------- 엘리트선수반 ---------- */
 /* 관리자 Elite 탭 위쪽 칸 5개 — 좁은 폰에서는 옆으로 밀어 본다 */
-.elite-seg { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+.elite-seg { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.elite-seg::-webkit-scrollbar { display: none; }
 .elite-seg button { flex: 1 0 auto; padding: 9px 10px; white-space: nowrap; }
 .session-card .session-date { display: flex; flex-direction: column; min-width: 84px; }
 .session-card .session-date b { font-size: 14px; color: var(--court-dark); }

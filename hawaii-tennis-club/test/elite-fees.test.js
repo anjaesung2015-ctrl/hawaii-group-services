@@ -43,7 +43,7 @@ test('선수는 내 수강료만 보고 체크는 못 한다, 동호인 회원�
   const me = (await p.call('/elite/fees/me')).data;
   assert.strictEqual(me.fee, 700000);
   assert.strictEqual(me.due_day, 20);
-  assert.deepStrictEqual(me.rows.map(r => [r.period, r.amount, !!r.paid_at]), [['2030-05', 700000, true]]);
+  assert.deepStrictEqual(me.rows.filter(r => r.period === '2030-05').map(r => [r.period, r.amount, !!r.paid_at]), [['2030-05', 700000, true]]);
   assert.strictEqual((await p.call('/elite/fees/grid')).status, 403);
   assert.strictEqual((await p.call('/elite/fees/mark', { method: 'PUT', body: { member_id: a, paid: true } })).status, 403);
   const m = await loginAs(app.base, '88110044', '1111');
@@ -59,3 +59,23 @@ test('기본 수강료는 오너가 설정에서 바꾼다', async () => {
   app.close();
 });
 
+
+test('이번 달 줄이 없으면 선수 화면에 미납으로 나온다', async () => {
+  const app = makeApp();
+  const { p } = await setup(app);
+  const me = (await p.call('/elite/fees/me')).data;
+  const cur = me.rows.find(r => r.period === app.dbmod.thisMonth());
+  assert.deepStrictEqual([cur.amount, cur.paid_at], [700000, null]);
+  app.close();
+});
+
+test('메모를 비우면 지워지고, 미납 줄은 다시 체크할 때 새 금액', async () => {
+  const app = makeApp();
+  const { owner, a } = await setup(app);
+  await owner.call('/elite/fees/mark', { method: 'PUT', body: { member_id: a, period: '2030-06', paid: true, note: 'half' } });
+  await owner.call('/elite/fees/mark', { method: 'PUT', body: { member_id: a, period: '2030-06', paid: false, note: '' } });
+  await owner.call(`/elite/players/${a}`, { method: 'PATCH', body: { elite_fee: 900000 } });
+  const r = (await owner.call('/elite/fees/mark', { method: 'PUT', body: { member_id: a, period: '2030-06', paid: true } })).data;
+  assert.deepStrictEqual([r.note, r.amount], [null, 900000]);
+  app.close();
+});

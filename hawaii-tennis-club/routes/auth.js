@@ -63,7 +63,7 @@ module.exports = function authRoutes(db, auth) {
   });
 
   // 본인 레벨·코치 표시 (☰ 메뉴 → My profile). 권한(role)은 여기서 못 바꾼다
-  router.patch('/profile', auth.requireMember, (req, res) => {
+  router.patch('/profile', auth.requireClub, (req, res) => {   // 선수반 선수는 레벨·코치 표시를 스스로 못 바꾼다
     const b = req.body || {};
     const f = [], v = [];
     if ('level' in b) {

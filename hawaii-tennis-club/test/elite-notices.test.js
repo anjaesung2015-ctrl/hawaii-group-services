@@ -66,3 +66,19 @@ test('수강료 알림 — 20일 10시부터, 안 낸 선수에게만, 한 달�
   assert.strictEqual((await jobs.remindEliteFees()).already, true);
   app.close();
 });
+
+test("훈련 날짜를 옮기면 하루 전 알림을 다시 보낸다", async () => {
+  const app = makeApp();
+  const { owner, pid } = await setup(app);
+  sub(app, pid, "https://fcm/elite");
+  const sid = (await owner.call("/elite/sessions", { method: "POST", body: { title: "Elite", session_date: "2030-05-07", start_time: "16:00", end_time: "18:00" } })).data.id;
+  await app.settle();
+  let jobs = createJobs(app.db, app.notify, { now: clock("2030-05-06 18:10") });
+  assert.strictEqual((await jobs.remindEliteSessions()).sent, 1);
+  await owner.call(`/elite/sessions/${sid}`, { method: "PATCH", body: { court: "3" } });
+  assert.strictEqual((await jobs.remindEliteSessions()).sent, 0, "코트만 바꾸면 다시 안 보낸다");
+  await owner.call(`/elite/sessions/${sid}`, { method: "PATCH", body: { session_date: "2030-05-09" } });
+  jobs = createJobs(app.db, app.notify, { now: clock("2030-05-08 18:10") });
+  assert.strictEqual((await jobs.remindEliteSessions()).sent, 1);
+  app.close();
+});

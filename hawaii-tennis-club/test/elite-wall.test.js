@@ -60,3 +60,11 @@ test('동호인 공지 알림은 선수에게 안 간다', async () => {
 });
 
 module.exports = { addPlayer };
+
+test("선수는 레벨·코치 표시를 스스로 못 바꾼다", async () => {
+  const app = makeApp();
+  addPlayer(app);
+  const p = await loginAs(app.base, "77001122", "2222");
+  assert.strictEqual((await p.call("/auth/profile", { method: "PATCH", body: { is_coach: true } })).status, 403);
+  app.close();
+});
