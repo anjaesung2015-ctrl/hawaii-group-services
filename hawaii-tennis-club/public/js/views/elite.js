@@ -20,10 +20,15 @@ export async function renderElite(el, state) {
 
 // ---------- 선수 ----------
 async function players(body, state, staff, again) {
-  const list = await api('/elite/players');
+  const [list, join] = await Promise.all([
+    api('/elite/players'),
+    // 선수반 가입 신청은 오너만 보고 승인한다
+    state.me.is_owner ? api('/join?program=elite').catch(() => ({ count: 0, rows: [] })) : Promise.resolve({ count: 0, rows: [] }),
+  ]);
   const cur = state.settings.currency;
   const coachName = (id) => staff.find(s => s.id === id)?.name || '';
   body.innerHTML = `
+    ${joinBlock(join)}
     <div class="fab-row"><button class="btn btn-primary" style="width:100%;margin-bottom:12px" data-new>+ ${esc(t('elitePlayerNew'))}</button></div>
     <div class="card">${list.length ? list.map(p => `
       <div class="member-row" data-player="${p.id}" style="cursor:pointer">
@@ -42,6 +47,26 @@ async function players(body, state, staff, again) {
       <button class="btn" style="width:100%;margin-top:8px" data-addcoach>+ ${esc(t('eliteCoachAdd'))}</button>` : ''}`;
 
   body.querySelector('[data-new]').onclick = () => playerForm(null, state, staff, again);
+  $$('[data-approve]', body).forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try {
+      const r = await api(`/join/${b.dataset.approve}/approve`, { method: 'POST' });
+      toast(t('joinApproved', { name: r.name }));
+    } catch (e) { toast(errText(e), true); }
+    again();
+  });
+  $$('[data-reject]', body).forEach(b => b.onclick = async () => {
+    // 실수로 눌리지 않게 두 번 눌러야 거절된다 (Members 탭과 같게)
+    if (!b.classList.contains('ask')) {
+      b.classList.add('ask');
+      b.textContent = t('confirmDelete');
+      setTimeout(() => { if (b.isConnected) { b.classList.remove('ask'); b.textContent = t('joinReject'); } }, 3000);
+      return;
+    }
+    await api(`/join/${b.dataset.reject}/reject`, { method: 'POST' }).catch(() => {});
+    toast(t('joinRejected'));
+    again();
+  });
   $$('[data-player]', body).forEach(r => r.onclick = () => playerForm(list.find(p => String(p.id) === r.dataset.player), state, staff, again));
   $$('[data-uncoach]', body).forEach(b => b.onclick = async () => {
     if (!confirm(t('eliteCoachRemoveAsk'))) return;
@@ -359,4 +384,25 @@ function noticeForm(n, again) {
   };
   const rm = m.form.querySelector('[data-rm]');
   if (rm) rm.onclick = () => { removePhoto = true; photoData = null; preview.hidden = true; };
+}
+
+// 기다리는 선수반 가입 신청 — 승인하면 그 자리에서 선수 계정이 된다 (신청할 때 정한 PIN 그대로)
+function joinBlock(join) {
+  if (!join.count) return '';
+  return `
+    <div class="section-head"><h2>${esc(t('eliteApplications'))} · ${join.count}</h2></div>
+    <div class="card" style="margin-bottom:12px">
+      ${join.rows.map(r => `
+        <div class="member-row">
+          ${avatar(r.name, r.photo)}
+          <div class="who">
+            <b>${esc(r.name)}</b>
+            <small>${esc([r.phone, r.birth_year, levelLabel(r.level), String(r.created_at).slice(5, 10)].filter(Boolean).join(' · '))}</small>
+            ${r.parent_name || r.parent_phone || r.memo ? `<small>${esc([r.parent_name && `${t('eliteParentName')}: ${r.parent_name}`, r.parent_phone && `☎ ${r.parent_phone}`, r.memo].filter(Boolean).join(' · '))}</small>` : ''}
+            <small style="color:var(--court)">✓ ${esc(t('joinAgreedPrivacy'))}</small>
+          </div>
+          <button class="btn btn-sm btn-primary" data-approve="${r.id}">${esc(t('joinApprove'))}</button>
+          <button class="btn btn-sm btn-danger" data-reject="${r.id}">${esc(t('joinReject'))}</button>
+        </div>`).join('')}
+    </div>`;
 }

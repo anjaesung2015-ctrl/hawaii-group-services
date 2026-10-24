@@ -846,3 +846,7 @@ body.tabs-8 .tabbar button { min-width: 0; font-size: 9px; letter-spacing: 0; pa
 body.tabs-8 .tabbar button > span:not(.tab-icon) { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 body.tabs-8 .tabbar button svg { width: 21px; height: 21px; }
 body.tabs-8 .tabbar .tab-icon { width: 21px; height: 21px; }
+
+/* 가입 신청서 맨 위 — 동호인반 / 엘리트선수반 */
+.join-prog { display: flex; margin: 0 0 14px; }
+.join-prog .rl-lang { flex: 1; padding: 9px 12px; font-size: 14px; }

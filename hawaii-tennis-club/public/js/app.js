@@ -318,6 +318,7 @@ async function boot() {
   } catch (e) {
     showLogin();
     if (location.hash === '#join') openJoinForm();   // 초대 링크로 들어온 사람 — 가입 신청서부터
+    else if (location.hash === '#join-elite') openJoinForm('elite');   // 선수반 초대 링크 — 선수반 신청서부터
   }
 
   if ('serviceWorker' in navigator) {

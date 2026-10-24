@@ -311,6 +311,11 @@ function migrate(db) {
   for (const [c, type] of [['name_en', 'TEXT'], ['shirt_size', 'TEXT'], ['recommenders', 'TEXT'], ['privacy_agreed_at', 'TEXT'], ['is_coach', 'INTEGER NOT NULL DEFAULT 0'], ['photo', 'TEXT']]) {
     if (!jcols.includes(c)) db.exec(`ALTER TABLE join_request ADD COLUMN ${c} ${type}`);
   }
+  // 엘리트선수반 신청 — 같은 신청 테이블, program 으로 가른다. 선수반 신청은 오너만 보고 승인한다
+  if (!jcols.includes('program')) db.exec("ALTER TABLE join_request ADD COLUMN program TEXT NOT NULL DEFAULT 'club' CHECK (program IN ('club','elite'))");
+  for (const [c, type] of [['birth_year', 'INTEGER'], ['parent_name', 'TEXT'], ['parent_phone', 'TEXT']]) {
+    if (!jcols.includes(c)) db.exec(`ALTER TABLE join_request ADD COLUMN ${c} ${type}`);
+  }
 
   const put = db.prepare('INSERT INTO setting (k, v) VALUES (?, ?) ON CONFLICT(k) DO NOTHING');
   for (const [k, v] of Object.entries(DEFAULTS)) put.run(k, v);
