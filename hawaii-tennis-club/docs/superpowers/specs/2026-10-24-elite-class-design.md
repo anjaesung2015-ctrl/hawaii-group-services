@@ -15,7 +15,8 @@
 | 관리 항목 | 선수 명단, 수강료, 훈련 일정, **출석**, **선수반 공지** |
 | 선수 로그인 | 한다 — 선수 본인 또는 (주니어면) 부모 번호로 |
 | 선수가 보는 범위 | **선수반 화면만**. 동호인 게시판·채팅·회비·명단·공지는 안 보인다 |
-| 수강료 | 선수마다 다름 (선수별 월 금액), **매월 20일 납부** |
+| 수강료 | 기본 월 **800,000₮**, 선수마다 따로 정할 수 있음, **매월 20일 납부** |
+| (참고) 동호인 회비 | 매월 **5일**까지 (회칙 제11조) — 2026-10-24 앱 알림도 10일→5일로 맞춤 |
 | 관리자 | 오너 + 오너가 지정한 선수반 코치. 동호인 임원(회장·총무 등)은 선수반을 못 본다 |
 
 ## 접근 방식
@@ -49,7 +50,7 @@
 - `auth.requireEliteStaff` = 오너 또는 `elite_coach=1`.
 - `auth.requireElite` = 선수 본인 또는 선수반 관리자.
 - 동호인 쪽 회원 목록 쿼리 5곳에 `program='club'` 조건: 회원 명단(routes/members.js),
-  회비 현황표·미납자(routes/dues.js 2곳), 매월 10일 미납 알림(lib/jobs.js),
+  회비 현황표·미납자(routes/dues.js 2곳), 매월 5일 미납 알림(lib/jobs.js),
   알림 대상 activeMembers·admins(lib/notify.js). → 선수는 동호인 알림·집계에 안 나온다.
 - 로그인(auth/login)은 program을 가리지 않는다. 선수 계정의 `/auth/me`에 `program`이 나간다.
 
@@ -86,7 +87,7 @@ elite_due (id, member_id → member CASCADE, period 'YYYY-MM', amount, paid_at, 
 elite_notice (id, title, body, pinned, photo, created_by → member SET NULL, created_at, updated_at)
 ```
 
-설정(`setting`)에 `elite_fee`(기본 월 수강료). 수강료 줄은 동호인 회비와 같은 원칙 —
+설정(`setting`)에 `elite_fee`(기본 월 수강료, **기본값 800,000₮** — 사장님 지정). 수강료 줄은 동호인 회비와 같은 원칙 —
 미리 만들지 않고 체크할 때 그 시점 금액(선수별 `elite_fee`, 없으면 기본값)으로 생성, 지난 기록은 불변.
 
 ## 알림 (웹 푸시, 기존 notifier 재사용)
@@ -94,7 +95,7 @@ elite_notice (id, title, body, pinned, photo, created_by → member SET NULL, cr
 - 선수반 공지 → 활동 선수 전원 + 선수반 관리자 (작성자 제외).
 - 새 훈련 등록(단건) → 활동 선수 전원. 반복 등록은 한 번만 요약 알림.
 - 훈련 하루 전 18시 → 활동 선수(동호인 일정 알림과 같은 방식, `elite_session.reminded_at`).
-- **수강료 납부일 = 매월 20일**(동호인 회비 10일과 다름). 20일 10시 → 그 달 수강료 미납 선수
+- **수강료 납부일 = 매월 20일**(동호인 회비 5일과 다름). 20일 10시 → 그 달 수강료 미납 선수
   (`setting.elite_due_reminder_month`로 월 1회). 선수 Fees 화면에 "매월 20일까지" 안내.
 
 ## 범위 밖 (이번에 안 함)
@@ -108,7 +109,7 @@ elite_notice (id, title, body, pinned, photo, created_by → member SET NULL, cr
 
 - 권한 벽: 선수 → 동호인 API 7개 403 · 동호인 임원 → 선수반 API 403 · 선수반 코치/오너 → 200 ·
   선수는 남의 수강료·출석을 못 봄.
-- 섞이지 않음: 선수가 동호인 명단·회비 현황표·미납자·10일 알림·공지 푸시에 안 나옴.
+- 섞이지 않음: 선수가 동호인 명단·회비 현황표·미납자·5일 회비 알림·공지 푸시에 안 나옴.
 - 일정 반복 등록(건너뜀·120개 제한), 출석 토글, 수강료(선수별 금액·기본값·체크 시점 금액 고정),
   공지 푸시 대상, 하루 전·20일 수강료 알림 1회 보장(20일 전에는 안 감).
 - 선수 삭제 시 출석·수강료 CASCADE, 사진 파일 삭제.
