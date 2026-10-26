@@ -7,7 +7,9 @@
     "start": "node server.js",
     "seed": "node seed.js",
     "seed:reset": "node seed.js --reset",
-    "test": "node --test \"test/*.test.js\""
+    "test": "node --test \"test/*.test.js\"",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -21,5 +23,10 @@
   "engines": {
     "node": ">=18"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0"
+  }
 }

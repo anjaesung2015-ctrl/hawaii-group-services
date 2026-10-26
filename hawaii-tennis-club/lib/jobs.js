@@ -2,7 +2,7 @@
 //  1) 일정 하루 전 저녁 — "내일 19시 정기모임, 참석 체크해 주세요"
 //  2) 매월 5일 아침(회칙 제11조 납부 기한) — 아직 회비를 안 낸 사람에게만
 // 10분마다 깨어나 확인한다. 같은 것을 두 번 보내지 않도록 보낸 표시를 남긴다.
-const { getSettings, thisMonth, MONTHLY_EXEMPT_SQL } = require('./db');
+const { getSettings, MONTHLY_EXEMPT_SQL } = require('./db');
 const { eliteFeeOf } = require('./elite');
 
 const TICK_MS = 10 * 60 * 1000;

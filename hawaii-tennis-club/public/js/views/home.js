@@ -1,5 +1,5 @@
 // 홈 — 공지(옆으로 넘겨보기), 다가오는 일정 3개, 내 회비(관리자는 이번 달 미납자).
-import { api, esc, thisMonth, trText, origHtml } from '../ui.js';
+import { api, esc, thisMonth, trText } from '../ui.js';
 import { t, fmtMonth, fmtMoney } from '../i18n.js';
 import { eventCard, bindEventCards } from './schedule.js';
 import { noticeForm } from './notices.js';

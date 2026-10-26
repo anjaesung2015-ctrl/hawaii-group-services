@@ -36,7 +36,7 @@ export function weekdaysFromText(text) {
   }
 
   // 3) 요일 글자가 두 개 이상 홀로 붙어 있을 때 ('화목', '월수금', '화·목')
-  for (const m of s.matchAll(/[일월화수목금토](?:\s*[·,\/]?\s*[일월화수목금토])+/g)) {
+  for (const m of s.matchAll(/[일월화수목금토](?:\s*[·,/]?\s*[일월화수목금토])+/g)) {
     const before = s[m.index - 1];
     const after = s[m.index + m[0].length];
     // 앞뒤에 다른 한글이 붙어 있으면 요일이 아니다 ('화목한', '목요일수업')

@@ -288,7 +288,7 @@ $('#backBtn').onclick = () => {
   render();
 };
 
-window.addEventListener('popstate', (e) => {
+window.addEventListener('popstate', () => {
   navDepth = Math.max(0, navDepth - 1);
   state.tab = fromHash(location.hash);
   if (state.me) render();

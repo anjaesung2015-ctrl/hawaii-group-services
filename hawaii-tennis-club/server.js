@@ -60,7 +60,7 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error('[error]', err.message);
   if (err.type === 'entity.too.large') return res.status(413).json({ error: 'too_large' });
   res.status(500).json({ error: 'server_error' });

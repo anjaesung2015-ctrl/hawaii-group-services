@@ -1,6 +1,6 @@
 // 폰 알림 켜기/끄기 — ☰ 메뉴에서 연다.
 // 아이폰은 '홈 화면에 추가' 한 상태에서만 알림을 받을 수 있다(iOS 제약)。
-import { api, esc, toast, openModal, errText, $ } from '../ui.js';
+import { api, esc, toast, openModal, errText } from '../ui.js';
 import { t } from '../i18n.js';
 
 const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent);

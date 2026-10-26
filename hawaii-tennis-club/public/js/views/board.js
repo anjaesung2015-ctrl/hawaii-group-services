@@ -1,5 +1,5 @@
 // 자유게시판 — 회원끼리 글·사진·댓글·좋아요.
-import { api, esc, toast, openModal, pickPhoto, errText, trText, origHtml, avatar, $, $$ } from '../ui.js';
+import { api, esc, toast, openModal, pickPhoto, errText, trText, origHtml, avatar, $$ } from '../ui.js';
 import { t, timeAgo } from '../i18n.js';
 
 export async function renderBoard(el, state) {

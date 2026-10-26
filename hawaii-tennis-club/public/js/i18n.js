@@ -51,7 +51,7 @@ export const DICT = {
 
     notices: 'Notices', newNotice: 'New notice', editNotice: 'Edit notice',
     body: 'Message', photo: 'Photo', pinTop: 'Pin to top', pinned: 'Pinned',
-    noNotices: 'No notices', photoPick: 'Choose photo', photoRemove: 'Remove photo',
+    noNotices: 'No notices', photoPick: 'Choose photo',
     photoTooBig: 'Photo is too large', readOnly: 'Only officers can post here',
 
     memberList: 'Member list', newMember: 'Add member', editMember: 'Edit member',
