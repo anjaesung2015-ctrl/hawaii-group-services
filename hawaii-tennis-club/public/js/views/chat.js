@@ -1,7 +1,7 @@
 // 채팅 — 방 목록(클럽 전체방 + 1:1) 과 방 안 화면.
 // 방을 연 동안 3초마다 새 메시지만 받아 온다. 다른 화면으로 가거나 앱을 내리면 멈춘다.
 // 한글·몽골어 메시지는 영어 번역을 크게, 원문을 작게 (내 메시지는 반대로 — 남에게 어떻게 보이는지 확인용).
-import { api, esc, toast, openModal, errText, pickPhoto, origHtml, avatar, $, $$ } from '../ui.js';
+import { api, esc, toast, openModal, errText, pickPhoto, origHtml, avatar, $, $$, officerPill } from '../ui.js';
 import { t, levelLabel, timeAgo } from '../i18n.js';
 
 const POLL_MS = 3000;
@@ -368,7 +368,7 @@ function msgHtml(msgs, club, officer, reacts, openId, reads = {}) {
     day = d; prev = m;
     return `${sep}
       <div class="msg ${m.mine ? 'mine' : ''}" data-id="${m.id}">
-        ${showName ? `<div class="msg-who">${esc(m.name || t('formerMember'))}${m.is_coach ? ' 🎾' : ''}</div>` : ''}
+        ${showName ? `<div class="msg-who">${esc(m.name || t('formerMember'))}${m.is_coach ? ' 🎾' : ''}${officerPill(m.officer_role)}</div>` : ''}
         ${m.photo ? `<img class="chat-photo" src="${esc(m.photo)}" data-full="${esc(m.photo)}" alt="" loading="lazy">` : ''}
         ${m.body ? bubble(m) : ''}
         ${reactsHtml(m.id, reacts[m.id])}

@@ -62,7 +62,8 @@ module.exports = function authRoutes(db, auth) {
     res.json({ ok: true });
   });
 
-  // 본인 레벨·코치 표시 (☰ 메뉴 → My profile). 권한(role)은 여기서 못 바꾼다
+  // 본인 레벨 (☰ 메뉴 → My level). 권한(role)은 여기서 못 바꾼다.
+  // 코치 표시는 월회비 면제라 2026-10-30부터 오너만 정한다 — 오너 본인 말고는 403
   router.patch('/profile', auth.requireClub, (req, res) => {   // 선수반 선수는 레벨·코치 표시를 스스로 못 바꾼다
     const b = req.body || {};
     const f = [], v = [];
@@ -71,6 +72,7 @@ module.exports = function authRoutes(db, auth) {
       f.push('level=?'); v.push(b.level);
     }
     if ('is_coach' in b) {
+      if (!req.me.is_owner) return res.status(403).json({ error: 'owner_only' });
       f.push('is_coach=?');
       v.push(b.is_coach === true || b.is_coach === 1 || b.is_coach === '1' || b.is_coach === 'true' ? 1 : 0);
     }

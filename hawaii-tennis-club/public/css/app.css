@@ -244,6 +244,8 @@ main {
 .pill.danger { background: var(--danger-tint); color: var(--danger); }
 .pill.solid  { background: var(--court); color: #fff; }
 .pill.coach  { background: #e6f0ff; color: #1d5fbf; }
+.pill.officer { background: var(--gold-tint); color: var(--gold); font-weight: 700; }
+.msg-who .pill { font-size: 10px; padding: 1px 6px; vertical-align: 1px; }
 
 .date-chip {
   flex-shrink: 0;

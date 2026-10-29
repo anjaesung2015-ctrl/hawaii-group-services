@@ -1,5 +1,5 @@
 // 회원 명단 — 관리자는 추가·수정·삭제·PIN 재설정, 회원은 이름과 레벨만 본다.
-import { api, esc, toast, openModal, today, errText, pickFacePhoto, avatar, $$ } from '../ui.js';
+import { api, esc, toast, openModal, today, errText, pickFacePhoto, avatar, $$, officerPill } from '../ui.js';
 import { t, levelLabel } from '../i18n.js';
 import { orgBlock, bindOrg } from './org.js';
 import { openDm } from './chat.js';
@@ -129,7 +129,7 @@ function row(m, isAdmin, isOwner, meId) {
     <div class="member-row" ${isAdmin ? `data-member="${m.id}" style="cursor:pointer"` : ''}>
       ${avatar(m.name, m.photo, dormant ? 'dormant' : '')}
       <div class="who">
-        <b>${esc(m.name)}${m.is_owner ? ` <span class="pill solid">👑 ${esc(t('roleOwner'))}</span>` : (m.role === 'admin' ? ` <span class="pill gold">${esc(m.title || t('admin'))}</span>` : '')}${m.is_coach ? ` <span class="pill coach">🎾 ${esc(t('coach'))}</span>` : ''}${m.dues_manager ? ` <span class="pill grey">💰 ${esc(t('duesManager'))}</span>` : ''}</b>
+        <b>${esc(m.name)}${m.is_owner ? ` <span class="pill solid">👑 ${esc(t('roleOwner'))}</span>` : (m.officer_role ? officerPill(m.officer_role) : (m.role === 'admin' ? ` <span class="pill gold">${esc(m.title || t('admin'))}</span>` : ''))}${m.is_coach ? ` <span class="pill coach">🎾 ${esc(t('coach'))}</span>` : ''}${m.dues_manager ? ` <span class="pill grey">💰 ${esc(t('duesManager'))}</span>` : ''}</b>
         <small>${esc(levelLabel(m.level))}${isAdmin && m.phone ? ` · ${esc(m.phone)}` : ''}${isAdmin && m.joined_at ? ` · ${esc(m.joined_at)}` : ''}</small>
       </div>
       ${dormant ? `<span class="pill grey">${esc(t('stDormant'))}</span>` : ''}
@@ -147,8 +147,9 @@ function memberForm(m, state, refresh) {
       ...(isNew ? [{ name: 'pin', label: t('pin'), type: 'tel', inputmode: 'numeric', maxlength: 4, value: '', placeholder: '1234' }] : []),
       { name: 'level', label: t('level'), type: 'select', value: m?.level || 'beginner',
         options: LEVELS.map(l => ({ value: l, label: levelLabel(l) })) },
-      { name: 'is_coach', label: t('coach'), type: 'select', value: m?.is_coach ? '1' : '0',
-        options: [{ value: '0', label: t('coachNo') }, { value: '1', label: t('coachYes') }] },
+      // 코치 = 월회비 면제라 오너만 정한다
+      ...(state.me.is_owner ? [{ name: 'is_coach', label: t('coach'), type: 'select', value: m?.is_coach ? '1' : '0',
+        options: [{ value: '0', label: t('coachNo') }, { value: '1', label: t('coachYes') }] }] : []),
       { name: 'joined_at', label: t('joinedAt'), type: 'date', value: m?.joined_at || today() },
       { name: 'status', label: t('status'), type: 'select', value: m?.status || 'active',
         options: [{ value: 'active', label: t('stActive') }, { value: 'dormant', label: t('stDormant') }] },

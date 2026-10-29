@@ -175,7 +175,7 @@ module.exports = function joinRoutes(db, auth, notify) {
       // 신청서 사진은 그대로 회원 사진이 된다 (파일은 옮기지 않고 경로만 넘긴다)
       const m = db.prepare(`INSERT INTO member (name, phone, pin_hash, role, level, status, joined_at, memo, rules_agreed_at, rules_version, is_coach, photo)
                             VALUES (?,?,?,'member',?,'active',?,?,?,?,?,?)`)
-        .run(q.name, q.phone, q.pin_hash, q.level, today(), formMemo(q), q.agreed_at, q.agreed_version, q.is_coach ? 1 : 0, q.photo || null);
+        .run(q.name, q.phone, q.pin_hash, q.level, today(), formMemo(q), q.agreed_at, q.agreed_version, q.is_coach && req.me.is_owner ? 1 : 0, q.photo || null);   // 코치 신청은 오너가 승인할 때만 코치로
       // 입회비 미납 한 줄을 세워 둔다 (손으로 넣은 회원과 같은 처리)
       if (joining_fee > 0) {
         db.prepare(`INSERT INTO due (member_id, kind, period, amount) VALUES (?,'joining',?,?)

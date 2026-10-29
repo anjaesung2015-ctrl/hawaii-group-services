@@ -143,6 +143,10 @@ export function origHtml(orig) {
 }
 
 // 동그란 얼굴 — 사진이 있으면 사진, 없으면 이름 첫 글자. 사진은 누르면 크게 (data-view-photo)
+// 임원 배지 — 조직도 자리 이름 (부회장 1·고문 2 의 번호는 뺀다)
+export const officerPill = (role) => (role
+  ? ` <span class="pill officer">★ ${esc(t('role_' + role).replace(/\s*\d+$/, ''))}</span>` : '');
+
 export function avatar(name, photo, cls = '') {
   return photo
     ? `<div class="avatar has-photo ${cls}" data-view-photo="${esc(photo)}"><img src="${esc(photo)}" alt="" loading="lazy"></div>`

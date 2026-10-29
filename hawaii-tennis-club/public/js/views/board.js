@@ -1,5 +1,5 @@
 // 자유게시판 — 회원끼리 글·사진·댓글·좋아요.
-import { api, esc, toast, openModal, pickPhoto, errText, trText, origHtml, avatar, $$ } from '../ui.js';
+import { api, esc, toast, openModal, pickPhoto, errText, trText, origHtml, avatar, $$, officerPill } from '../ui.js';
 import { t, timeAgo } from '../i18n.js';
 
 export async function renderBoard(el, state) {
@@ -36,7 +36,7 @@ export function postCard(p, state) {
       <div class="post-head">
         ${avatar(p.author, p.author_photo)}
         <div class="who">
-          <b>${esc(p.author)}</b>
+          <b>${esc(p.author)}${officerPill(p.officer_role)}</b>
           <small>${esc(timeAgo(p.created_at))}${p.updated_at ? ` · ${esc(t('edited'))}` : ''}</small>
         </div>
         ${mine ? `<button class="btn btn-sm" data-edit="${p.id}">${esc(t('edit'))}</button>` : ''}

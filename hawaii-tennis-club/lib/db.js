@@ -423,8 +423,12 @@ const FEE_FREE_SQL = `(m.is_owner = 1 OR m.is_coach = 1 OR EXISTS (SELECT 1 FROM
 // 체크했다 푼 월회비 줄이 남아 있어도 면제는 그대로다 (2026-10-23 Miigaa·Ahreumjun 이 미납으로 잘못 뜬 일)
 const MONTHLY_EXEMPT_SQL = `(${FEE_FREE_SQL} OR EXISTS (SELECT 1 FROM due j WHERE j.member_id = m.id AND j.kind = 'joining' AND j.period = ?))`;
 
+// 조직도에서 앉은 자리 (회장·부회장·총무·이사·명예회장·고문) — 배지용. 'm' = member 별칭.
+// 오너 자리는 👑 배지가 따로 있어 뺀다. 두 자리면 조직도 위쪽 것
+const OFFICER_ROLE_SQL = `(SELECT o.role FROM officer o WHERE o.member_id = m.id AND o.role <> 'owner' ORDER BY o.sort LIMIT 1)`;
+
 module.exports = {
-  MONTHLY_EXEMPT_SQL, FEE_FREE_SQL,
+  MONTHLY_EXEMPT_SQL, FEE_FREE_SQL, OFFICER_ROLE_SQL,
   open, migrate, ensureFirstAdmin, ensureOwner, getSettings, setSettings,
   hashPin, checkPin, normalizePhone, validPhone, validPin,
   today, thisMonth, UB,

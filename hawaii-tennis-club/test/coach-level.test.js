@@ -14,17 +14,42 @@ test('회원이 자기 레벨을 직접 바꾼다 (이상한 값은 400)', async
   app.close();
 });
 
-test('회원이 코치를 직접 켜고 끈다 — 권한(role)은 못 바꾼다', async () => {
+test('코치(월회비 면제)는 오너만 정한다 — 회원 본인·운영진은 403, 권한(role)도 못 바꾼다', async () => {
   const app = makeApp();
   const m = await loginAs(app.base, '88110044', '1111');
-  await m.call('/auth/profile', { method: 'PATCH', body: { is_coach: '1', role: 'admin' } });
-  let me = (await m.call('/auth/me')).data.me;
-  assert.strictEqual(me.is_coach, true);
-  assert.strictEqual(me.role, 'member');
-  await m.call('/auth/profile', { method: 'PATCH', body: { is_coach: '0' } });
-  me = (await m.call('/auth/me')).data.me;
-  assert.strictEqual(me.is_coach, false);
-  assert.strictEqual((await m.call('/auth/profile', { method: 'PATCH', body: {} })).status, 400);
+  assert.strictEqual((await m.call('/auth/profile', { method: 'PATCH', body: { is_coach: '1' } })).status, 403);
+  await m.call('/auth/profile', { method: 'PATCH', body: { level: 'advanced', role: 'admin' } });
+  const me = (await m.call('/auth/me')).data.me;
+  assert.deepStrictEqual([me.is_coach, me.role], [false, 'member']);
+
+  // 운영진(오너 아님) — 코치를 바꾸면 403, 같은 값을 그대로 보내는 건 괜찮다
+  app.db.prepare("INSERT INTO member (name, phone, pin_hash, role, level, status, joined_at) VALUES ('Off','95550077',?,'admin','beginner','active','2026-05-01')").run(app.dbmod.hashPin('7777'));
+  const off = await loginAs(app.base, '95550077', '7777');
+  assert.strictEqual((await off.call(`/members/${app.memberId}`, { method: 'PATCH', body: { is_coach: '1' } })).status, 403);
+  assert.strictEqual((await off.call(`/members/${app.memberId}`, { method: 'PATCH', body: { is_coach: '0', level: 'beginner' } })).status, 200);
+  const made = await off.call('/members', { method: 'POST', body: { name: 'X', phone: '89990077', is_coach: true } });
+  assert.strictEqual(app.db.prepare('SELECT is_coach FROM member WHERE id=?').pluck().get(made.data.id), 0);
+
+  // 오너는 자기 것도 바꾼다
+  const o = await loginAs(app.base, '99000000', '1234');
+  assert.strictEqual((await o.call('/auth/profile', { method: 'PATCH', body: { is_coach: '1' } })).status, 200);
+  app.close();
+});
+
+test('임원 배지 — 조직도 자리가 명단·채팅·게시판에 붙는다 (오너 자리는 빼고)', async () => {
+  const app = makeApp();
+  app.db.prepare("UPDATE officer SET member_id=? WHERE role='vice1'").run(app.memberId);
+  app.db.prepare("UPDATE officer SET member_id=? WHERE role='owner'").run(app.adminId);
+  const m = await loginAs(app.base, '88110044', '1111');
+  const list = (await m.call('/members')).data;
+  assert.strictEqual(list.find(x => x.id === app.memberId).officer_role, 'vice1');
+  assert.strictEqual(list.find(x => x.id === app.adminId).officer_role, null);
+
+  const club = (await m.call('/chat/rooms')).data[0].id;
+  const msg = (await m.call(`/chat/rooms/${club}/messages`, { method: 'POST', body: { body: 'hi' } })).data;
+  assert.strictEqual(msg.officer_role, 'vice1');
+  await m.call('/posts', { method: 'POST', body: { body: 'post' } });
+  assert.strictEqual((await m.call('/posts')).data.rows[0].officer_role, 'vice1');
   app.close();
 });
 

@@ -1,5 +1,5 @@
 const express = require('express');
-const { hashPin, normalizePhone, validPhone, validPin, today, LEVELS, getSettings } = require('../lib/db');
+const { hashPin, normalizePhone, validPhone, validPin, today, LEVELS, getSettings, OFFICER_ROLE_SQL } = require('../lib/db');
 const { removeChatPhoto, removePhoto, setMemberPhoto } = require('../lib/photos');
 
 module.exports = function memberRoutes(db, auth) {
@@ -12,10 +12,11 @@ module.exports = function memberRoutes(db, auth) {
 
   // 명단 — 일반 회원에게는 이름·레벨만 보여준다 (전화번호는 관리자만)
   router.get('/', (req, res) => {
-    const rows = db.prepare(`SELECT id, name, phone, role, title, level, status, joined_at, memo, is_owner, is_coach, dues_manager, photo
-                             FROM member WHERE program='club' ORDER BY is_owner DESC, role='member', is_coach DESC, status='dormant', name`).all();
+    const rows = db.prepare(`SELECT id, name, phone, role, title, level, status, joined_at, memo, is_owner, is_coach, dues_manager, photo,
+                                    ${OFFICER_ROLE_SQL} AS officer_role
+                             FROM member m WHERE program='club' ORDER BY is_owner DESC, role='member', is_coach DESC, status='dormant', name`).all();
     if (req.me.role === 'admin' || req.me.is_owner) return res.json(rows);
-    res.json(rows.map(m => ({ id: m.id, name: m.name, level: m.level, status: m.status, role: m.role, title: m.title, is_owner: m.is_owner, is_coach: m.is_coach, dues_manager: m.dues_manager, photo: m.photo })));
+    res.json(rows.map(m => ({ id: m.id, name: m.name, level: m.level, status: m.status, role: m.role, title: m.title, is_owner: m.is_owner, is_coach: m.is_coach, dues_manager: m.dues_manager, photo: m.photo, officer_role: m.officer_role })));
   });
 
   router.post('/', auth.requireAdmin, (req, res) => {
@@ -35,7 +36,7 @@ module.exports = function memberRoutes(db, auth) {
                           VALUES (?,?,?,?,?,?,?,?,?,?)`)
       .run(name, phone, hashPin(pin), b.role === 'admin' ? 'admin' : 'member',
            String(b.title || '').trim() || null, level,
-           b.status === 'dormant' ? 'dormant' : 'active', joined_at, String(b.memo || '').trim() || null, isOn(b.is_coach));
+           b.status === 'dormant' ? 'dormant' : 'active', joined_at, String(b.memo || '').trim() || null, req.me.is_owner ? isOn(b.is_coach) : 0);   // 코치(월회비 면제)는 오너만
 
     // 입회비는 가입한 달의 미납 한 줄로 바로 세워둔다 (받아야 할 돈을 잊지 않도록)
     const { joining_fee } = getSettings(db);
@@ -68,7 +69,11 @@ module.exports = function memberRoutes(db, auth) {
     if ('level' in b && LEVELS.includes(b.level)) { f.push('level=?'); v.push(b.level); }
     if ('status' in b) { f.push('status=?'); v.push(b.status === 'dormant' ? 'dormant' : 'active'); }
     if ('title' in b) { f.push('title=?'); v.push(String(b.title || '').trim() || null); }
-    if ('is_coach' in b) { f.push('is_coach=?'); v.push(isOn(b.is_coach)); }
+    // 코치 = 월회비 면제라 오너만 바꾼다 (값이 그대로면 운영진이 보내도 괜찮다)
+    if ('is_coach' in b && isOn(b.is_coach) !== (m.is_coach ? 1 : 0)) {
+      if (!req.me.is_owner) return res.status(403).json({ error: 'owner_only' });
+      f.push('is_coach=?'); v.push(isOn(b.is_coach));
+    }
     if ('memo' in b) { f.push('memo=?'); v.push(String(b.memo || '').trim() || null); }
     if ('joined_at' in b && /^\d{4}-\d{2}-\d{2}$/.test(b.joined_at)) { f.push('joined_at=?'); v.push(b.joined_at); }
     if ('role' in b) {

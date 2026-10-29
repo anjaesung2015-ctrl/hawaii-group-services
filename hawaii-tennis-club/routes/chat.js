@@ -6,6 +6,7 @@
 const path = require('path');
 const express = require('express');
 const { writePhoto, chatPhotoDir, removeChatPhoto } = require('../lib/photos');
+const { OFFICER_ROLE_SQL } = require('../lib/db');
 
 const MAX_BODY = 1000;
 const PAGE = 50;
@@ -45,10 +46,10 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
     .run(roomId, meId, lastId || 0);
 
   const msgRow = (m, meId) => ({
-    id: m.id, member_id: m.member_id, name: m.name, is_coach: !!m.is_coach,
+    id: m.id, member_id: m.member_id, name: m.name, is_coach: !!m.is_coach, officer_role: m.officer_role || null,
     body: m.body, photo: m.photo ? `api/chat/photo/${m.id}` : null, created_at: m.created_at, mine: m.member_id === meId,
   });
-  const SELECT_MSG = `SELECT c.id, c.member_id, c.body, c.photo, c.created_at, m.name, m.is_coach
+  const SELECT_MSG = `SELECT c.id, c.member_id, c.body, c.photo, c.created_at, m.name, m.is_coach, ${OFFICER_ROLE_SQL} AS officer_role
                       FROM chat_msg c LEFT JOIN member m ON m.id = c.member_id`;
 
   // 이모지 반응 — 이 방에서 id >= fromId 인 메시지 중 반응이 있는 것만 { id: [{ e, n, mine }] } (먼저 달린 이모지가 앞).

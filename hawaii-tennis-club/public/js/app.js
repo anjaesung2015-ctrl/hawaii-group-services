@@ -232,8 +232,6 @@ $('#levelBtn').onclick = () => {
     fields: [
       { name: 'level', label: t('level'), type: 'select', value: state.me.level,
         options: LV.map(l => ({ value: l, label: levelLabel(l) })) },
-      { name: 'is_coach', label: t('coach'), type: 'select', value: state.me.is_coach ? '1' : '0',
-        options: [{ value: '0', label: t('coachNo') }, { value: '1', label: t('coachYes') }] },
     ],
     extra: `<div class="hint">${esc(t('myLevelHint'))}</div>`,
     onSave: async (v) => {
