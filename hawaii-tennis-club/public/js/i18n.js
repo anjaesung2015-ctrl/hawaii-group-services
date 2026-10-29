@@ -215,7 +215,7 @@ export const DICT = {
     tooManyRequests: 'Too many applications. Please try again later.',
 
     // Elite player class — players (or parents) see Training · Fees · Notices; owner and elite coaches get the Elite tab
-    tabElite: 'Elite', tabTraining: 'Training', tabFees: 'Fees',
+    tabElite: 'Elite', eliteMenu: '⭐ Elite class', tabTraining: 'Training', tabFees: 'Fees',
     elite_players: 'Players', elite_schedule: 'Schedule', elite_attendance: 'Attendance', elite_fees: 'Fees', elite_notices: 'Notices',
     elitePlayerNew: 'Add player', elitePlayerEdit: 'Edit player', elitePlayersEmpty: 'No players yet',
     elitePhone: 'Phone (parent\'s for juniors)', eliteBirthYear: 'Birth year', eliteAssignedCoach: 'Coach',

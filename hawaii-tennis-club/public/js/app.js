@@ -126,7 +126,6 @@ function showApp() {
   $$('.club-only').forEach(el => { el.hidden = isElite() || (el.classList.contains('owner-only') && !state.me.is_owner); });
   $$('.elite-only').forEach(el => { el.hidden = !isElite(); });
   $$('.elite-staff-only').forEach(el => { el.hidden = !isEliteStaff(); });
-  document.body.classList.toggle('tabs-8', isEliteStaff());
   state.tab = fromHash(location.hash);
   render();
 }
@@ -177,6 +176,14 @@ $('#rulesBtn').onclick = () => { sheet.hidden = true; openRules({ canEdit: !!sta
 $('#pushBtn').onclick = () => { sheet.hidden = true; openPushPanel(); };
 initInstall(() => { sheet.hidden = true; });
 $('#inviteBtn').onclick = () => { sheet.hidden = true; openInvite(state.settings.club_name); };
+// 선수반 관리 — 하단 탭이 아니라 메뉴에서 (2026-10-30 사장님 지시로 하단 Elite 탭 뺌)
+// 메뉴를 닫으면 backnav 가 메뉴 몫 history 칸을 걷어낸다(비동기) — 그게 끝난 뒤에 탭을 옮겨야 #elite 칸이 같이 지워지지 않는다
+$('#eliteBtn').onclick = () => {
+  sheet.hidden = true;
+  let tries = 0;
+  const go = () => (history.state?.overlay && tries++ < 20 ? setTimeout(go, 30) : goTab('elite'));
+  setTimeout(go, 30);
+};
 
 // ---------- 새로고침 ----------
 // 상단 ↻ 버튼, 또는 맨 위에서 아래로 당기기. 창(모달)이 열려 있을 땐 당기기를 막는다(쓰던 내용이 날아가니까)
