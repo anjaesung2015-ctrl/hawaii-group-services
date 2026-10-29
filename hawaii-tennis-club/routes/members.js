@@ -12,10 +12,10 @@ module.exports = function memberRoutes(db, auth) {
 
   // 명단 — 일반 회원에게는 이름·레벨만 보여준다 (전화번호는 관리자만)
   router.get('/', (req, res) => {
-    const rows = db.prepare(`SELECT id, name, phone, role, title, level, status, joined_at, memo, is_owner, is_coach, photo
+    const rows = db.prepare(`SELECT id, name, phone, role, title, level, status, joined_at, memo, is_owner, is_coach, dues_manager, photo
                              FROM member WHERE program='club' ORDER BY is_owner DESC, role='member', is_coach DESC, status='dormant', name`).all();
     if (req.me.role === 'admin' || req.me.is_owner) return res.json(rows);
-    res.json(rows.map(m => ({ id: m.id, name: m.name, level: m.level, status: m.status, role: m.role, title: m.title, is_owner: m.is_owner, is_coach: m.is_coach, photo: m.photo })));
+    res.json(rows.map(m => ({ id: m.id, name: m.name, level: m.level, status: m.status, role: m.role, title: m.title, is_owner: m.is_owner, is_coach: m.is_coach, dues_manager: m.dues_manager, photo: m.photo })));
   });
 
   router.post('/', auth.requireAdmin, (req, res) => {
@@ -80,6 +80,11 @@ module.exports = function memberRoutes(db, auth) {
         return res.status(409).json({ error: 'last_admin' });
       }
       f.push('role=?'); v.push(role);
+    }
+    if ('dues_manager' in b) {
+      // 회비 담당도 오너만 정한다
+      if (!req.me.is_owner) return res.status(403).json({ error: 'owner_only' });
+      f.push('dues_manager=?'); v.push(isOn(b.dues_manager));
     }
     if (!f.length) return res.status(400).json({ error: 'no_changes' });
 

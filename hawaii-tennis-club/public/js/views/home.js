@@ -3,13 +3,15 @@ import { api, esc, thisMonth, trText } from '../ui.js';
 import { t, fmtMonth, fmtMoney } from '../i18n.js';
 import { eventCard, bindEventCards } from './schedule.js';
 import { noticeForm } from './notices.js';
+import { canDues } from './dues.js';
 
 export async function renderHome(el, state) {
   const isAdmin = state.me.role === 'admin';
+  const duesView = canDues(state.me);   // 회비 담당은 운영진이 아니어도 미납자 목록을 본다
   const [events, notices, money, join] = await Promise.all([
     api('/events/upcoming?limit=3&lang=en'),
     api('/notices?lang=en'),
-    isAdmin ? api(`/dues/unpaid?month=${thisMonth()}`) : api('/dues/me'),
+    duesView ? api(`/dues/unpaid?month=${thisMonth()}`) : api('/dues/me'),
     isAdmin ? api('/join').catch(() => ({ count: 0 })) : Promise.resolve({ count: 0 }),
   ]);
   const recent = notices.slice(0, 6);       // 서버가 고정 공지 먼저, 그다음 최신순으로 준다
@@ -51,7 +53,7 @@ export async function renderHome(el, state) {
       ${events.length ? events.map(e => eventCard(e, { rsvp: true })).join('') : `<div class="empty">${esc(t('noUpcoming'))}</div>`}
     </div>
 
-    ${isAdmin ? adminMoney(money, cur) : myMoney(money, state, cur)}`;
+    ${duesView ? adminMoney(money, cur) : myMoney(money, state, cur)}`;
 
   bindEventCards(el, state, () => renderHome(el, state));
 

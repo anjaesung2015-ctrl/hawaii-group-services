@@ -112,12 +112,13 @@ async function renderRoom(el, state, roomId) {
   let msgs = d.messages;
   let lastId = msgs.length ? msgs.at(-1).id : 0;
   let reacts = d.reacts || {};   // { 메시지 id: [{ e, n, mine }] } — 폴링 때마다 서버 것으로 갈아 끼운다
+  let reads = d.reads || {};     // { 메시지 id: 읽은 사람 수 } — 이것도 폴링 때마다 통째로
   let openId = null;             // 한 번 눌러 이모지 줄을 펼친 메시지
   let reacting = 0;              // 보내는 중인 반응 수 — 그동안은 폴링 결과로 덮지 않는다(눌렀다 깜빡 돌아가지 않게)
 
   const draw = () => {
     const stick = nearBottom();
-    box.innerHTML = msgs.length ? msgHtml(msgs, club, officer, reacts, openId) : `<div class="empty">${esc(t('chatEmpty'))}</div>`;
+    box.innerHTML = msgs.length ? msgHtml(msgs, club, officer, reacts, openId, reads) : `<div class="empty">${esc(t('chatEmpty'))}</div>`;
     bindMsgs();
     // 사진은 늦게 뜬다 — 맨 아래를 보고 있었으면 뜬 뒤에도 맨 아래로
     $$('.chat-photo', box).forEach(img => { if (!img.complete) img.onload = () => { if (stick) toBottom(); }; });
@@ -166,6 +167,8 @@ async function renderRoom(el, state, roomId) {
         draw();
       } catch (err) { toast(errText(err), true); }
     });
+    // 읽음 숫자 — 누르면 누가 읽었는지
+    $$('[data-readers]', box).forEach(b => b.onclick = (e) => { e.stopPropagation(); showReaders(Number(b.dataset.readers)); });
     // 말풍선 아래 달린 이모지 — 누르면 내 것 켜기/끄기
     $$('[data-react]', box).forEach(b => b.onclick = (e) => {
       e.stopPropagation();
@@ -200,6 +203,22 @@ async function renderRoom(el, state, roomId) {
         }, DOUBLE_MS);
       };
     });
+  }
+
+  async function showReaders(id) {
+    let list;
+    try { list = await api(`/chat/messages/${id}/readers`); }
+    catch (err) { return toast(errText(err), true); }
+    const md = openModal({
+      title: `${t('readBy')} · ${list.length}`,
+      fields: [],
+      extra: list.length
+        ? list.map(p => `<div class="member-row">${avatar(p.name, p.photo)}<div class="who"><b>${esc(p.name)}</b></div></div>`).join('')
+        : `<div class="empty">${esc(t('readNobody'))}</div>`,
+      saveLabel: t('close'),
+      onSave: () => {},
+    });
+    md.form.querySelector('[data-cancel]')?.remove();   // 볼 것만 있는 창 — 닫기 하나면 된다
   }
 
   // 아직 번역이 안 붙은 메시지 — 서버가 몇 초 기다려 주는 /tr 로 따로 물어 와서 그 자리만 바꿔 그린다
@@ -237,6 +256,7 @@ async function renderRoom(el, state, roomId) {
     const o = await api(`/chat/rooms/${roomId}/messages?lang=en&before=${msgs[0].id}`);
     msgs = [...o.messages, ...msgs];
     reacts = o.reacts || reacts;   // 새로 받은 가장 옛 메시지부터 끝까지 다 들어 있다
+    reads = o.reads || reads;
     draw();
     window.scrollTo({ top: document.body.scrollHeight - h });   // 보던 자리 그대로
     if (!o.has_more) older.remove(); else older.disabled = false;
@@ -299,7 +319,9 @@ async function renderRoom(el, state, roomId) {
       // 남이 단 반응 — 내가 보내는 중이면 이번엔 건너뛴다
       const reactsChanged = !reacting && n.reacts && JSON.stringify(n.reacts) !== JSON.stringify(reacts);
       if (reactsChanged) reacts = n.reacts;
-      if (!fresh.length && !reactsChanged) return;
+      const readsChanged = n.reads && JSON.stringify(n.reads) !== JSON.stringify(reads);
+      if (readsChanged) reads = n.reads;
+      if (!fresh.length && !reactsChanged && !readsChanged) return;
       const stick = nearBottom();
       msgs.push(...fresh);
       if (fresh.length) lastId = Math.max(lastId, ...fresh.map(m => m.id));
@@ -331,7 +353,13 @@ function actionsHtml(m, canDel) {
     </div>`;
 }
 
-function msgHtml(msgs, club, officer, reacts, openId) {
+// 읽음 — 전체방은 몇 명이 읽었는지(누르면 이름), 1:1 은 내 메시지에 상대가 읽었으면 'Read'
+function readHtml(m, club, n) {
+  if (club) return n ? `<button type="button" class="read-n" data-readers="${m.id}">${esc(t('readN', { n }))}</button>` : '';
+  return m.mine && n ? `<span class="read-n">${esc(t('read'))}</span>` : '';
+}
+
+function msgHtml(msgs, club, officer, reacts, openId, reads = {}) {
   let day = '', prev = null;
   return msgs.map(m => {
     const d = String(m.created_at).slice(0, 10);
@@ -344,7 +372,7 @@ function msgHtml(msgs, club, officer, reacts, openId) {
         ${m.photo ? `<img class="chat-photo" src="${esc(m.photo)}" data-full="${esc(m.photo)}" alt="" loading="lazy">` : ''}
         ${m.body ? bubble(m) : ''}
         ${reactsHtml(m.id, reacts[m.id])}
-        <time>${esc(String(m.created_at).slice(11, 16))}</time>
+        <time>${readHtml(m, club, reads[m.id])}${esc(String(m.created_at).slice(11, 16))}</time>
         ${openId === m.id ? actionsHtml(m, m.mine || (club && officer)) : ''}
       </div>`;
   }).join('');

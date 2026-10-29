@@ -250,6 +250,8 @@ function migrate(db) {
   // 엘리트선수반 — 같은 회원 테이블에 program 으로 가른다. 기존 회원은 전부 'club'
   if (!mcols.includes('program')) db.exec("ALTER TABLE member ADD COLUMN program TEXT NOT NULL DEFAULT 'club' CHECK (program IN ('club','elite'))");
   if (!mcols.includes('elite_coach')) db.exec('ALTER TABLE member ADD COLUMN elite_coach INTEGER NOT NULL DEFAULT 0');   // 선수반 관리 권한 (오너가 줌)
+  // 회비 담당 — 운영진이 아니어도 회비 현황표를 보고 납부 체크를 한다 (오너가 줌, 총무 등)
+  if (!mcols.includes('dues_manager')) db.exec('ALTER TABLE member ADD COLUMN dues_manager INTEGER NOT NULL DEFAULT 0');
   for (const [c, type] of [['birth_year', 'INTEGER'], ['parent_name', 'TEXT'], ['parent_phone', 'TEXT'], ['elite_fee', 'INTEGER'],
                            ['assigned_coach_id', 'INTEGER REFERENCES member(id) ON DELETE SET NULL']]) {
     if (!mcols.includes(c)) db.exec(`ALTER TABLE member ADD COLUMN ${c} ${type}`);

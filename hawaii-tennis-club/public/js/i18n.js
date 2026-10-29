@@ -70,9 +70,10 @@ export const DICT = {
 
     roleOwner: 'Owner',
     adminGive: 'Officer (give rights)',
+    duesManager: 'Dues manager', duesManagerYes: 'Yes — can mark dues',
     ownerOnly: 'Only the club owner can do this',
     cannotDeleteOwner: 'The club owner cannot be deleted',
-    ownerNote: 'Giving or taking rights, editing the rules, the org chart, dues amounts and deleting members — owner only.',
+    ownerNote: 'Giving or taking rights (officer, dues manager), editing the rules, the org chart, dues amounts and deleting members — owner only.',
     adminNote: 'Officer rights: approve members, post events and notices, mark dues.',
 
     rulesTitle: 'Club rules',
@@ -160,6 +161,7 @@ export const DICT = {
     chat: 'Chat', chats: 'Free Chat', clubChat: 'Club chat', clubChatSub: 'Everyone in the club',
     newChat: 'New chat', chatPick: 'Chat with', chatOpen: 'Open chat', chatNoMembers: 'No other members yet',
     chatPlaceholder: 'Message…', chatEmpty: 'No messages yet. Say hi! 👋', chatEarlier: 'Earlier messages',
+    read: 'Read', readN: 'Read {n}', readBy: 'Read by', readNobody: 'No one has read this yet',
     chatHint: 'Tap 💬 next to a name in Members, or + New chat, to talk one-on-one.',
     chatGone: 'This chat is no longer available', formerMember: 'Former member', you: 'You', message: 'Message',
     more: 'More',

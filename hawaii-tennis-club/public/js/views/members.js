@@ -129,7 +129,7 @@ function row(m, isAdmin, isOwner, meId) {
     <div class="member-row" ${isAdmin ? `data-member="${m.id}" style="cursor:pointer"` : ''}>
       ${avatar(m.name, m.photo, dormant ? 'dormant' : '')}
       <div class="who">
-        <b>${esc(m.name)}${m.is_owner ? ` <span class="pill solid">👑 ${esc(t('roleOwner'))}</span>` : (m.role === 'admin' ? ` <span class="pill gold">${esc(m.title || t('admin'))}</span>` : '')}${m.is_coach ? ` <span class="pill coach">🎾 ${esc(t('coach'))}</span>` : ''}</b>
+        <b>${esc(m.name)}${m.is_owner ? ` <span class="pill solid">👑 ${esc(t('roleOwner'))}</span>` : (m.role === 'admin' ? ` <span class="pill gold">${esc(m.title || t('admin'))}</span>` : '')}${m.is_coach ? ` <span class="pill coach">🎾 ${esc(t('coach'))}</span>` : ''}${m.dues_manager ? ` <span class="pill grey">💰 ${esc(t('duesManager'))}</span>` : ''}</b>
         <small>${esc(levelLabel(m.level))}${isAdmin && m.phone ? ` · ${esc(m.phone)}` : ''}${isAdmin && m.joined_at ? ` · ${esc(m.joined_at)}` : ''}</small>
       </div>
       ${dormant ? `<span class="pill grey">${esc(t('stDormant'))}</span>` : ''}
@@ -154,7 +154,9 @@ function memberForm(m, state, refresh) {
         options: [{ value: 'active', label: t('stActive') }, { value: 'dormant', label: t('stDormant') }] },
       // 운영진 권한을 주고 거두는 것은 오너만 — 다른 사람 화면에는 이 칸이 아예 없다
       ...(state.me.is_owner ? [{ name: 'role', label: t('role'), type: 'select', value: m?.role || 'member',
-        options: [{ value: 'member', label: t('member') }, { value: 'admin', label: t('adminGive') }] }] : []),
+        options: [{ value: 'member', label: t('member') }, { value: 'admin', label: t('adminGive') }] },
+      { name: 'dues_manager', label: t('duesManager'), type: 'select', value: m?.dues_manager ? '1' : '0',
+        options: [{ value: '0', label: t('coachNo') }, { value: '1', label: t('duesManagerYes') }] }] : []),
       { name: 'title', label: t('titleRole'), value: m?.title || '', placeholder: '대표 / 코치' },
       { name: 'memo', label: t('memo'), value: m?.memo || '' },
     ],

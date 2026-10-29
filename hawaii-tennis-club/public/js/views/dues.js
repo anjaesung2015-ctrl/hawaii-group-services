@@ -1,9 +1,12 @@
-// 회비 — 관리자는 월별 현황표에서 체크, 회원은 본인 내역만.
+// 회비 — 관리자·회비 담당은 월별 현황표에서 체크, 회원은 본인 내역만.
 import { api, esc, toast, openModal, thisMonth, shiftMonth, $$ } from '../ui.js';
 import { t, fmtMonth, fmtMoney, methodLabel } from '../i18n.js';
 
+// 서버 auth.canDues 와 같은 기준 — 운영진(오너 포함) 또는 오너가 정한 회비 담당
+export const canDues = (me) => !!me && (me.role === 'admin' || !!me.is_owner || !!me.dues_manager);
+
 export async function renderDues(el, state) {
-  if (state.me.role !== 'admin') return renderMyDues(el, state);
+  if (!canDues(state.me)) return renderMyDues(el, state);
 
   const month = state.duesMonth || thisMonth();
   const g = await api(`/dues/grid?month=${month}`);

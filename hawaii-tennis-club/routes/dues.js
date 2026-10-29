@@ -20,8 +20,8 @@ module.exports = function dueRoutes(db, auth) {
                          ORDER BY d.period DESC, d.kind`).all(req.me.id));
   });
 
-  // 월별 전체 납부 현황표 (관리자)
-  router.get('/grid', auth.requireAdmin, (req, res) => {
+  // 월별 전체 납부 현황표 (관리자·회비 담당)
+  router.get('/grid', auth.requireDues, (req, res) => {
     const month = PERIOD.test(req.query.month || '') ? req.query.month : thisMonth();
     const { monthly_fee, joining_fee, currency } = getSettings(db);
 
@@ -66,8 +66,8 @@ module.exports = function dueRoutes(db, auth) {
     });
   });
 
-  // 이번 달 미납자만 (관리자) — 홈 화면에서 한눈에 보려고
-  router.get('/unpaid', auth.requireAdmin, (req, res) => {
+  // 이번 달 미납자만 (관리자·회비 담당) — 홈 화면에서 한눈에 보려고
+  router.get('/unpaid', auth.requireDues, (req, res) => {
     const month = PERIOD.test(req.query.month || '') ? req.query.month : thisMonth();
     const { monthly_fee } = getSettings(db);
     const rows = db.prepare(`
@@ -80,8 +80,8 @@ module.exports = function dueRoutes(db, auth) {
     res.json({ month, monthly_fee, count: rows.length, rows });
   });
 
-  // 완납/미납 체크 (관리자) — 같은 요청을 두 번 보내도 결과가 같다
-  router.put('/mark', auth.requireAdmin, (req, res) => {
+  // 완납/미납 체크 (관리자·회비 담당) — 같은 요청을 두 번 보내도 결과가 같다
+  router.put('/mark', auth.requireDues, (req, res) => {
     const b = req.body || {};
     const member_id = Number(b.member_id);
     const kind = DUE_KINDS.includes(b.kind) ? b.kind : 'monthly';

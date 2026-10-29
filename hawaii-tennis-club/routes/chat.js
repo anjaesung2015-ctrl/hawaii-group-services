@@ -63,6 +63,20 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
     return out;
   };
 
+  // 읽음 수 — 이 방에서 id >= fromId 인 메시지마다 쓴 사람 말고 읽은 사람 수 { id: n } (0 은 뺀다).
+  // 방을 열면(메시지를 불러가면) 그 방 마지막 메시지까지 읽은 것으로 친다(chat_read.last_id).
+  // 반응처럼 폴링 때마다 통째로 와서, 남이 읽으면 숫자가 바로 오른다
+  const readsIn = (roomId, fromId) => {
+    const readers = db.prepare('SELECT member_id, last_id FROM chat_read WHERE room_id=? AND last_id>=?').all(roomId, fromId || 0);
+    const out = {};
+    if (!readers.length) return out;
+    for (const m of db.prepare('SELECT id, member_id FROM chat_msg WHERE room_id=? AND id>=?').all(roomId, fromId || 0)) {
+      const n = readers.filter(r => r.last_id >= m.id && r.member_id !== m.member_id).length;
+      if (n) out[m.id] = n;
+    }
+    return out;
+  };
+
   const langOf = (req) => (tr && req.query.lang ? String(req.query.lang) : null);
 
   // 방 목록 — 전체방이 맨 위, 나머지는 최근 대화 순
@@ -120,11 +134,13 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
     const messages = rows.map(m => msgRow(m, req.me.id));
     const lang = langOf(req);
     if (lang) await tr.attach(messages, ['body'], lang, 0);
+    // 폴링(?after) 때는 화면이 가진 가장 옛 메시지(?from)부터, 아니면 이번에 준 것부터
+    const from = after ? (Number(req.query.from) || after + 1) : (rows[0]?.id || 0);
     res.json({
       room: { id: r.id, kind: r.kind, other: otherOf(r, req.me) },
       messages,
-      // 폴링(?after) 때는 화면이 가진 가장 옛 메시지(?from)부터, 아니면 이번에 준 것부터
-      reacts: reactsIn(r.id, req.me.id, after ? (Number(req.query.from) || after + 1) : (rows[0]?.id || 0)),
+      reacts: reactsIn(r.id, req.me.id, from),
+      reads: readsIn(r.id, from),
       has_more: !after && rows.length === PAGE,
     });
   });
@@ -194,6 +210,15 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
       db.prepare('INSERT OR IGNORE INTO chat_react (msg_id, member_id, emoji) VALUES (?,?,?)').run(m.id, req.me.id, emoji);
     }
     res.json({ id: m.id, reacts: reactsIn(m.room_id, req.me.id, m.id)[m.id] || [] });
+  });
+
+  // 누가 읽었나 — 읽음 숫자를 누르면 이름 목록 (쓴 사람은 뺀다). 들어갈 수 있는 방의 메시지만
+  router.get('/messages/:id/readers', (req, res) => {
+    const m = db.prepare('SELECT id, room_id, member_id FROM chat_msg WHERE id=?').get(req.params.id);
+    if (!m || !roomFor(req.me, m.room_id)) return res.status(404).json({ error: 'not_found' });
+    res.json(db.prepare(`SELECT m.id, m.name, m.photo FROM chat_read r JOIN member m ON m.id = r.member_id
+                         WHERE r.room_id=? AND r.last_id>=? AND r.member_id IS NOT ? ORDER BY m.name`)
+      .all(m.room_id, m.id, m.member_id));
   });
 
   // 지우기 — 쓴 사람, 또는 전체방에서는 임원

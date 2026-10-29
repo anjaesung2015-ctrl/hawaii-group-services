@@ -392,3 +392,37 @@ test('이모지 반응 — 정해진 이모지만, 남의 1:1 방 메시지에�
   assert.strictEqual(app.db.prepare('SELECT COUNT(*) FROM chat_react').pluck().get(), 0);
   app.close();
 });
+
+test('읽음 수 — 쓴 사람은 빼고 방을 연 사람 수, 누르면 이름', async () => {
+  const { app } = setup();
+  const [a, m, s] = await login(app);
+  const club = (await a.call('/chat/rooms')).data[0].id;
+  const sent = (await send(a, club, 'Read me')).data;
+
+  let d = (await a.call(`/chat/rooms/${club}/messages`)).data;
+  assert.strictEqual(d.reads[sent.id], undefined);   // 아직 아무도
+
+  await m.call(`/chat/rooms/${club}/messages`);
+  d = (await a.call(`/chat/rooms/${club}/messages?after=${sent.id}&from=${sent.id}`)).data;
+  assert.strictEqual(d.reads[sent.id], 1);           // 폴링에도 실려 온다
+
+  await s.call(`/chat/rooms/${club}/messages`);
+  d = (await a.call(`/chat/rooms/${club}/messages`)).data;
+  assert.strictEqual(d.reads[sent.id], 2);
+
+  const who = (await a.call(`/chat/messages/${sent.id}/readers`)).data.map(x => x.name).sort();
+  assert.deepStrictEqual(who, ['Батбаяр', 'Сарнай'].sort());
+  app.close();
+});
+
+test('읽음 — 1:1 은 상대가 열면 1, 남의 1:1 메시지 읽은 사람은 못 본다', async () => {
+  const { app } = setup();
+  const [a, m, s] = await login(app);
+  const dm = (await a.call('/chat/dm', { method: 'POST', body: { member_id: app.memberId } })).data.id;
+  const sent = (await send(a, dm, 'hi')).data;
+  assert.strictEqual((await a.call(`/chat/rooms/${dm}/messages`)).data.reads[sent.id], undefined);
+  await m.call(`/chat/rooms/${dm}/messages`);
+  assert.strictEqual((await a.call(`/chat/rooms/${dm}/messages`)).data.reads[sent.id], 1);
+  assert.strictEqual((await s.call(`/chat/messages/${sent.id}/readers`)).status, 404);
+  app.close();
+});

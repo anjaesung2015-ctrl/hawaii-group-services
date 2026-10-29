@@ -713,6 +713,9 @@ main {
 }
 .msg.mine .bubble { background: var(--court); border-color: var(--court); color: #fff; border-radius: 18px 18px 5px 18px; }
 .msg time { font-size: 10.5px; color: var(--muted); margin: 1px 8px 2px; }
+/* 읽음 — 시각 앞에 작게. 전체방은 누르면 누가 읽었는지 */
+.read-n { font: inherit; font-size: 10.5px; color: var(--court); font-weight: 650; background: none; border: 0; padding: 0; margin-right: 6px; }
+button.read-n { cursor: pointer; text-decoration: underline dotted; }
 .msg-del { margin: 2px 4px 6px; }
 
 /* 채팅 이모지 반응 — 두 번 톡톡 = ❤️, 한 번 누르면 고르는 줄 */
