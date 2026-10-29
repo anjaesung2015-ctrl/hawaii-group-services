@@ -415,13 +415,16 @@ function setSettings(db, patch) {
   return getSettings(db);
 }
 
-// 그 달 월회비를 안 내는 회원 — 가입한 달(입회비에 포함, 회칙 제10조)과 클럽 오너.
+// 늘 월회비를 안 내는 사람 — 클럽 오너, 코치(선생님), 총무(조직도 manager1 자리). 2026-10-30 사장님 지시로 코치·총무 추가.
+// 'm' = member 별칭, 자리표시자 없음
+const FEE_FREE_SQL = `(m.is_owner = 1 OR m.is_coach = 1 OR EXISTS (SELECT 1 FROM officer o WHERE o.role = 'manager1' AND o.member_id = m.id))`;
+// 그 달 월회비를 안 내는 회원 — 위 사람들 + 가입한 달(입회비에 포함, 회칙 제10조).
 // 'm' = member 별칭, 자리표시자 ? 하나 = 그 달(YYYY-MM). 미납자 목록·5일 알림이 같이 쓴다(현황표는 routes/dues.js 에서 같은 규칙).
 // 체크했다 푼 월회비 줄이 남아 있어도 면제는 그대로다 (2026-10-23 Miigaa·Ahreumjun 이 미납으로 잘못 뜬 일)
-const MONTHLY_EXEMPT_SQL = `(m.is_owner = 1 OR EXISTS (SELECT 1 FROM due j WHERE j.member_id = m.id AND j.kind = 'joining' AND j.period = ?))`;
+const MONTHLY_EXEMPT_SQL = `(${FEE_FREE_SQL} OR EXISTS (SELECT 1 FROM due j WHERE j.member_id = m.id AND j.kind = 'joining' AND j.period = ?))`;
 
 module.exports = {
-  MONTHLY_EXEMPT_SQL,
+  MONTHLY_EXEMPT_SQL, FEE_FREE_SQL,
   open, migrate, ensureFirstAdmin, ensureOwner, getSettings, setSettings,
   hashPin, checkPin, normalizePhone, validPhone, validPin,
   today, thisMonth, UB,

@@ -1,7 +1,7 @@
 // 홈 화면에 추가했을 때 껍데기(HTML·CSS·JS)를 캐시해 두어 바로 뜨게 한다.
 // 데이터(api/…)와 사진(uploads/…)은 캐시하지 않는다 — 항상 최신이어야 하니까.
 // 경로는 모두 이 파일이 있는 폴더 기준(상대 경로)이라 /club/ 아래에 올려도 그대로 동작한다.
-const CACHE = 'htc-shell-v38';
+const CACHE = 'htc-shell-v39';
 const SHELL = [
   './', 'index.html', 'css/app.css', 'manifest.json', 'icon.svg',
   'js/app.js', 'js/ui.js', 'js/refresh.js', 'js/backnav.js', 'js/update.js', 'js/i18n.js', 'js/weekdays.js',

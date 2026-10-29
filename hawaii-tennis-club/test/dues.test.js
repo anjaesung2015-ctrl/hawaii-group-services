@@ -236,3 +236,35 @@ test('회비 계좌 — 기본은 Khan Bank, 오너만 바꾸고 비울 수 있�
   assert.strictEqual(s3.bank_account, '');
   app.close();
 });
+
+test('코치(선생님)와 총무는 월회비 면제 — 현황표·미납자·내 내역 모두', async () => {
+  const app = makeApp();
+  const add = (name, phone, coach) => app.db.prepare(`INSERT INTO member (name, phone, pin_hash, role, level, status, joined_at, is_coach)
+                                                     VALUES (?,?,?,'member','beginner','active','2026-01-05',?)`)
+    .run(name, phone, app.dbmod.hashPin('2222'), coach).lastInsertRowid;
+  const coach = add('Coach', '95550101', 1);
+  const sec = add('Secretary', '95550102', 0);
+  app.db.prepare("INSERT INTO officer (role, member_id, sort) VALUES ('manager1', ?, 4) ON CONFLICT(role) DO UPDATE SET member_id=excluded.member_id").run(sec);
+  const a = await loginAs(app.base, '99000000', '1234');
+
+  const g = (await a.call('/dues/grid')).data;
+  const reasonOf = (id) => g.rows.find(r => r.member_id === id).monthly;
+  assert.deepStrictEqual([reasonOf(coach).exempt, reasonOf(coach).reason], [true, 'coach']);
+  assert.deepStrictEqual([reasonOf(sec).exempt, reasonOf(sec).reason], [true, 'secretary']);
+  assert.strictEqual(reasonOf(app.memberId).exempt, undefined);
+  assert.strictEqual(g.summary.members, 1);   // 일반 회원 한 명만 대상
+
+  const u = (await a.call('/dues/unpaid')).data.rows.map(r => r.member_id);
+  assert.deepStrictEqual(u, [app.memberId]);
+
+  // 체크했다 푼 줄이 남아도 본인 내역에 미납으로 안 보인다
+  await a.call('/dues/mark', { method: 'PUT', body: { member_id: coach, paid: true } });
+  await a.call('/dues/mark', { method: 'PUT', body: { member_id: coach, paid: false } });
+  const c = await loginAs(app.base, '95550101', '2222');
+  assert.deepStrictEqual((await c.call('/dues/me')).data, []);
+
+  // 코치를 그만두면 다시 낸다
+  app.db.prepare('UPDATE member SET is_coach=0 WHERE id=?').run(coach);
+  assert.ok((await a.call('/dues/unpaid')).data.rows.some(r => r.member_id === coach));
+  app.close();
+});

@@ -46,6 +46,7 @@ export const DICT = {
     copy: 'Copy', bankCopied: 'Account number copied', bankNoteHint: 'Please write your name in the transfer note.',
     inJoiningFee: 'Joining month — included in the joining fee',
     ownerNoFee: 'Club owner — no monthly fee',
+    coachNoFee: 'Coach — no monthly fee', secretaryNoFee: 'Secretary — no monthly fee',
     inJoiningFeeHint: 'includes the first month',
     markPaid: 'Mark as paid', markUnpaid: 'Mark as unpaid',
 

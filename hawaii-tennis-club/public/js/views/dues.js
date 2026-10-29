@@ -3,6 +3,9 @@ import { api, esc, toast, openModal, thisMonth, shiftMonth, $$ } from '../ui.js'
 import { t, fmtMonth, fmtMoney, methodLabel } from '../i18n.js';
 
 // 서버 auth.canDues 와 같은 기준 — 운영진(오너 포함) 또는 오너가 정한 회비 담당
+// 월회비 면제 이유 → 현황표 글자 (서버 routes/dues.js grid 의 reason)
+const EXEMPT_LABEL = { owner: 'ownerNoFee', coach: 'coachNoFee', secretary: 'secretaryNoFee', joining: 'inJoiningFee' };
+
 export const canDues = (me) => !!me && (me.role === 'admin' || !!me.is_owner || !!me.dues_manager);
 
 export async function renderDues(el, state) {
@@ -40,7 +43,7 @@ export async function renderDues(el, state) {
               <td>
                 <div style="font-weight:600">${esc(r.name)}</div>
                 <small style="color:var(--muted)">
-                  ${r.monthly.exempt ? esc(t(r.monthly.reason === 'owner' ? 'ownerNoFee' : 'inJoiningFee'))
+                  ${r.monthly.exempt ? esc(t(EXEMPT_LABEL[r.monthly.reason] || 'inJoiningFee'))
                     : r.monthly.paid
                     ? `${esc(r.monthly.paid_at || '')} · ${esc(methodLabel(r.monthly.method))}`
                     : esc(t('unpaid'))}
