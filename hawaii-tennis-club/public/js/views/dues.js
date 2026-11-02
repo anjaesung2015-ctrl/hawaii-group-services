@@ -64,7 +64,7 @@ export async function renderDues(el, state) {
     </div>
 
     ${unpaidBlock(g, cur)}
-    <div class="hint">${esc(t('joiningLabel'))}: ${fmtMoney(g.joining_fee)}${cur} (${esc(t('inJoiningFeeHint'))}) · ${esc(t('settings'))} → ${esc(t('monthlyFee'))}</div>`;
+    <div class="hint">${esc(t('joiningLabel'))}: ${fmtMoney(g.joining_fee)}${cur} · ${esc(t('joinMonthHint', { full: fmtMoney(g.monthly_fee) + cur, half: fmtMoney(Math.round(g.monthly_fee / 2)) + cur }))} · ${esc(t('settings'))} → ${esc(t('monthlyFee'))}</div>`;
 
   bindBankCopy(el);
   $$('[data-mv]', el).forEach(b => b.onclick = () => {

@@ -123,7 +123,7 @@ function adminMoney(u, cur) {
       ${u.rows.map(r => `<div class="member-row">
         <div class="avatar">${esc(String(r.name).slice(0, 1))}</div>
         <div class="who"><b>${esc(r.name)}</b><small>${esc(r.phone || '')}</small></div>
-        <span class="pill danger">${fmtMoney(u.monthly_fee)}${cur}</span>
+        <span class="pill danger">${fmtMoney(r.amount ?? u.monthly_fee)}${cur}</span>
       </div>`).join('')}
     </div>` : `<div class="card" style="text-align:center;color:var(--court)">${esc(t('allPaid'))}</div>`}`;
 }

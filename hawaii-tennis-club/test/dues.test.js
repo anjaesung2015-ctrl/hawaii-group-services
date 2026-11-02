@@ -4,12 +4,12 @@ const assert = require('node:assert');
 const { makeApp, loginAs } = require('./helper');
 const { thisMonth } = require('../lib/db');
 
-test('기본 금액은 월회비 200,000₮ · 입회비 300,000₮', async () => {
+test('기본 금액은 월회비 200,000₮ · 입회비 100,000₮', async () => {
   const app = makeApp();
   const a = await loginAs(app.base, '99000000', '1234');
   const s = (await a.call('/settings')).data;
   assert.strictEqual(s.monthly_fee, 200000);
-  assert.strictEqual(s.joining_fee, 300000);
+  assert.strictEqual(s.joining_fee, 100000);
   app.close();
 });
 
@@ -147,7 +147,7 @@ test('회원을 새로 넣으면 입회비 미납 한 줄이 선다', async () =
   const r = await a.call('/members', { method: 'POST', body: { name: 'Сарнай', phone: '95556677', pin: '1111', joined_at: '2026-10-02' } });
   const due = app.db.prepare("SELECT * FROM due WHERE member_id=? AND kind='joining'").get(r.data.id);
   assert.ok(due, '입회비 줄이 없다');
-  assert.strictEqual(due.amount, 300000);
+  assert.strictEqual(due.amount, 100000);
   assert.strictEqual(due.paid_at, null);
   assert.strictEqual(due.period, '2026-10');
   app.close();
@@ -163,40 +163,40 @@ test('금액을 바꿔도 이미 기록한 납부 줄의 금액은 그대로다'
   app.close();
 });
 
-// 회칙 제10조 (2026-10-16): 첫 달은 입회비 300,000₮ 하나 — 그달 월회비가 들어 있다. 둘째 달부터 200,000₮.
-test('가입한 달은 월회비를 따로 매기지 않는다 (입회비에 포함)', async () => {
+// 회칙 제10·11조 (2026-11-02): 가입한 달 = 입회비 100,000₮ + 그달 월회비 (15일까지 가입 200,000₮, 16일부터 100,000₮). 둘째 달부터 200,000₮.
+test('가입한 달도 월회비를 낸다 — 15일까지 전액, 16일부터 반액', async () => {
   const app = makeApp();
   const a = await loginAs(app.base, '99000000', '1234');
-  const month = thisMonth();
-  const next = (() => { const [y, m] = month.split('-').map(Number); const d = new Date(y, m, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })();
-  // 이번 달에 가입한 회원 — 입회비 줄이 생긴다
-  const r = await a.call('/members', { method: 'POST', body: { name: 'New', phone: '95001122', pin: '4321' } });
-  assert.strictEqual(r.status, 200);
-  const id = r.data.id;
+  const month = '2026-12';
+  const add = async (phone, day) => (await a.call('/members', { method: 'POST', body: { name: 'N' + day, phone, pin: '4321', joined_at: `${month}-${day}` } })).data.id;
+  const early = await add('95001122', '15');
+  const late = await add('95001123', '16');
 
   const g = (await a.call(`/dues/grid?month=${month}`)).data;
-  const row = g.rows.find(x => x.member_id === id);
-  assert.strictEqual(row.monthly.exempt, true);
-  assert.strictEqual(row.monthly.amount, 0);
-  assert.strictEqual(row.joining.amount, 300000);
-  assert.strictEqual(g.summary.members, g.rows.length - 1, '가입한 달 회원만 월회비 집계에서 빠진다');
-  assert.ok(!(await a.call(`/dues/unpaid?month=${month}`)).data.rows.some(x => x.member_id === id));
+  const rowOf = (id) => g.rows.find(x => x.member_id === id);
+  assert.deepStrictEqual([rowOf(early).monthly.exempt, rowOf(early).monthly.amount, rowOf(early).joining.amount], [undefined, 200000, 100000]);
+  assert.deepStrictEqual([rowOf(late).monthly.exempt, rowOf(late).monthly.amount, rowOf(late).joining.amount], [undefined, 100000, 100000]);
+  const u = (await a.call(`/dues/unpaid?month=${month}`)).data.rows;
+  assert.strictEqual(u.find(x => x.member_id === late).amount, 100000);
+  assert.strictEqual(u.find(x => x.member_id === early).amount, 200000);
 
-  // 다음 달부터는 월회비 대상
-  const g2 = (await a.call(`/dues/grid?month=${next}`)).data;
-  const row2 = g2.rows.find(x => x.member_id === id);
-  assert.ok(!row2.monthly.exempt);
-  assert.strictEqual(row2.monthly.amount, 200000);
-  assert.ok((await a.call(`/dues/unpaid?month=${next}`)).data.rows.some(x => x.member_id === id));
+  // 체크하면 그 금액으로 줄이 선다
+  const m = (await a.call('/dues/mark', { method: 'PUT', body: { member_id: late, period: month, paid: true } })).data;
+  assert.strictEqual(m.amount, 100000);
+
+  // 다음 달부터는 전액
+  const g2 = (await a.call('/dues/grid?month=2027-01')).data;
+  assert.strictEqual(g2.rows.find(x => x.member_id === late).monthly.amount, 200000);
   app.close();
 });
 
+// 옛 규칙(2026-10까지 가입): 입회비 300,000₮에 그달 월회비 포함 → 그 달은 면제 그대로.
 // 2026-10-23: 가입한 달 회원의 월회비를 체크했다 풀어서 빈 줄이 남자 미납으로 떴다 (Miigaa·Ahreumjun)
-test('가입한 달은 체크했다 푼 월회비 줄이 남아 있어도 면제 — 현황표·미납자·본인 화면 모두', async () => {
+test('옛 규칙으로 가입한 달은 체크했다 푼 월회비 줄이 남아 있어도 면제 — 현황표·미납자·본인 화면 모두', async () => {
   const app = makeApp();
   const a = await loginAs(app.base, '99000000', '1234');
-  const month = thisMonth();
-  const id = (await a.call('/members', { method: 'POST', body: { name: 'New', phone: '95001122', pin: '4321' } })).data.id;
+  const month = '2026-10';
+  const id = (await a.call('/members', { method: 'POST', body: { name: 'New', phone: '95001122', pin: '4321', joined_at: '2026-10-20' } })).data.id;
   const base = { member_id: id, kind: 'monthly', period: month };
   await a.call('/dues/mark', { method: 'PUT', body: { ...base, paid: true, method: 'cash' } });
   await a.call('/dues/mark', { method: 'PUT', body: { ...base, paid: false } });   // 실수로 체크 → 풀기
@@ -207,6 +207,8 @@ test('가입한 달은 체크했다 푼 월회비 줄이 남아 있어도 면제
   const me = await loginAs(app.base, '95001122', '4321');
   const mine = (await me.call('/dues/me')).data;
   assert.deepStrictEqual(mine.map(r => r.kind), ['joining'], '본인 화면에는 입회비 한 줄만');
+  // 11월부터는 낸다
+  assert.ok((await a.call('/dues/unpaid?month=2026-11')).data.rows.some(x => x.member_id === id));
   app.close();
 });
 
@@ -237,7 +239,7 @@ test('회비 계좌 — 기본은 Khan Bank, 오너만 바꾸고 비울 수 있�
   app.close();
 });
 
-test('코치(선생님)와 총무도 월회비를 낸다 — 현황표·미납자 모두', async () => {
+test('코치(선생님)와 총무는 월회비 면제, 오너는 낸다 — 현황표·미납자·내 내역 모두', async () => {
   const app = makeApp();
   const add = (name, phone, coach) => app.db.prepare(`INSERT INTO member (name, phone, pin_hash, role, level, status, joined_at, is_coach)
                                                      VALUES (?,?,?,'member','beginner','active','2026-01-05',?)`)
@@ -249,16 +251,23 @@ test('코치(선생님)와 총무도 월회비를 낸다 — 현황표·미납�
 
   const g = (await a.call('/dues/grid')).data;
   const reasonOf = (id) => g.rows.find(r => r.member_id === id).monthly;
-  for (const id of [coach, sec, app.adminId, app.memberId]) assert.strictEqual(reasonOf(id).exempt, undefined);
-  assert.deepStrictEqual([g.summary.members, g.summary.exempt], [4, 0]);   // 오너·코치·총무·회원 전원 대상
+  assert.deepStrictEqual([reasonOf(coach).exempt, reasonOf(coach).reason], [true, 'coach']);
+  assert.deepStrictEqual([reasonOf(sec).exempt, reasonOf(sec).reason], [true, 'secretary']);
+  assert.strictEqual(reasonOf(app.adminId).exempt, undefined, '오너는 낸다');
+  assert.strictEqual(reasonOf(app.memberId).exempt, undefined);
+  assert.deepStrictEqual([g.summary.members, g.summary.exempt], [2, 2]);
 
   const u = (await a.call('/dues/unpaid')).data.rows.map(r => r.member_id).sort((x, y) => x - y);
-  assert.deepStrictEqual(u, [app.adminId, app.memberId, coach, sec].sort((x, y) => x - y));
+  assert.deepStrictEqual(u, [app.adminId, app.memberId].sort((x, y) => x - y));
 
-  // 체크했다 푼 줄은 본인 내역에 미납으로 보인다
+  // 체크했다 푼 줄이 남아도 본인 내역에 미납으로 안 보인다
   await a.call('/dues/mark', { method: 'PUT', body: { member_id: coach, paid: true } });
   await a.call('/dues/mark', { method: 'PUT', body: { member_id: coach, paid: false } });
   const c = await loginAs(app.base, '95550101', '2222');
-  assert.deepStrictEqual((await c.call('/dues/me')).data.map(r => [r.kind, r.paid_at]), [['monthly', null]]);
+  assert.deepStrictEqual((await c.call('/dues/me')).data, []);
+
+  // 코치를 그만두면 다시 낸다
+  app.db.prepare('UPDATE member SET is_coach=0 WHERE id=?').run(coach);
+  assert.ok((await a.call('/dues/unpaid')).data.rows.some(r => r.member_id === coach));
   app.close();
 });

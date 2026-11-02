@@ -102,8 +102,10 @@ export function openJoinForm(program = 'club') {
   // 입회비 계좌 — 설정은 로그인 없이 읽힌다. 못 불러오면 카드 없이 신청서만.
   const bankEl = m.form.querySelector('[data-bank]');
   api('/settings').then(s => {
-    const fee = s.joining_fee ? `${fmtMoney(s.joining_fee)}${s.currency || ''}` : '';
-    bankEl.innerHTML = bankCard(s, fee ? t('bankJoinHead', { fee }) : t('bankPayTo'));
+    const cur = s.currency || '';
+    const fee = s.joining_fee ? `${fmtMoney(s.joining_fee)}${cur}` : '';
+    const full = `${fmtMoney(s.monthly_fee)}${cur}`, half = `${fmtMoney(Math.round(s.monthly_fee / 2))}${cur}`;   // 가입한 달 월회비 (lib/db monthlyFeeFor)
+    bankEl.innerHTML = bankCard(s, fee ? t('bankJoinHead', { fee, full, half }) : t('bankPayTo'));
     bindBankCopy(bankEl);
   }).catch(() => {});
 

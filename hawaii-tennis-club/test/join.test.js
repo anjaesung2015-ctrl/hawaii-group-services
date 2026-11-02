@@ -50,7 +50,7 @@ test('승인하면 입회비 미납 한 줄이 함께 선다', async () => {
 
   const due = app.db.prepare("SELECT * FROM due WHERE member_id=? AND kind='joining'").get(r.data.member_id);
   assert.ok(due, '입회비 줄이 없다');
-  assert.strictEqual(due.amount, 300000);
+  assert.strictEqual(due.amount, 100000);
   assert.strictEqual(due.paid_at, null);
   app.close();
 });

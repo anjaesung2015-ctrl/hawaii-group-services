@@ -24,7 +24,7 @@ const PROGRAMS = ['club', 'elite'];
 const DEFAULTS = {
   club_name: 'Hawaii Tennis Club',
   monthly_fee: '200000',
-  joining_fee: '300000',
+  joining_fee: '100000',
   currency: '₮',
   bank_name: 'Khan Bank',
   bank_account: '850005005123042515',
@@ -415,18 +415,30 @@ function setSettings(db, patch) {
   return getSettings(db);
 }
 
-// 그 달 월회비를 안 내는 회원 — 가입한 달뿐(입회비에 포함, 회칙 제10조).
-// 2026-11-02 사장님 지시 "전체가 내야지": 오너·코치·총무 면제(2026-10-30) 폐지 → 그 외엔 모두 낸다.
+// 가입한 달 월회비 (2026-11-02 사장님 지시, 회칙 제10·11조): 입회비 100,000₮ + 그달 월회비.
+// 15일까지 가입하면 그달 월회비 전액, 16일부터 가입하면 반액. 다음 달부터는 모두 전액.
+const HALF_FEE_AFTER_DAY = 15;
+function monthlyFeeFor(joinedAt, period, monthlyFee) {
+  const j = String(joinedAt || '');
+  return j.slice(0, 7) === period && Number(j.slice(8, 10)) > HALF_FEE_AFTER_DAY ? Math.round(monthlyFee / 2) : monthlyFee;
+}
+// 옛 규칙(2026-10까지 가입): 입회비 300,000₮에 그달 월회비가 들어 있어 가입한 달은 월회비 면제.
+// 2026-11부터는 가입한 달도 월회비를 낸다(위 monthlyFeeFor).
+const LEGACY_JOIN_UNTIL = '2026-10';
 // 'm' = member 별칭, 자리표시자 ? 하나 = 그 달(YYYY-MM). 미납자 목록·5일 알림이 같이 쓴다(현황표는 routes/dues.js 에서 같은 규칙).
 // 체크했다 푼 월회비 줄이 남아 있어도 면제는 그대로다 (2026-10-23 Miigaa·Ahreumjun 이 미납으로 잘못 뜬 일)
-const MONTHLY_EXEMPT_SQL = `(EXISTS (SELECT 1 FROM due j WHERE j.member_id = m.id AND j.kind = 'joining' AND j.period = ?))`;
+// 늘 월회비를 안 내는 사람 — 코치(선생님)와 총무(조직도 manager1 자리). 오너는 낸다(2026-11-02 사장님 지시).
+// 'm' = member 별칭, 자리표시자 없음
+const FEE_FREE_SQL = `(m.is_coach = 1 OR EXISTS (SELECT 1 FROM officer o WHERE o.role = 'manager1' AND o.member_id = m.id))`;
+// 그 달 월회비를 안 내는 회원 — 위 사람들 + 옛 규칙으로 가입한 달. 자리표시자 ? 하나 = 그 달(YYYY-MM)
+const MONTHLY_EXEMPT_SQL = `(${FEE_FREE_SQL} OR EXISTS (SELECT 1 FROM due j WHERE j.member_id = m.id AND j.kind = 'joining' AND j.period = ? AND j.period <= '${LEGACY_JOIN_UNTIL}'))`;
 
 // 조직도에서 앉은 자리 (회장·부회장·총무·이사·명예회장·고문) — 배지용. 'm' = member 별칭.
 // 오너 자리는 👑 배지가 따로 있어 뺀다. 두 자리면 조직도 위쪽 것
 const OFFICER_ROLE_SQL = `(SELECT o.role FROM officer o WHERE o.member_id = m.id AND o.role <> 'owner' ORDER BY o.sort LIMIT 1)`;
 
 module.exports = {
-  MONTHLY_EXEMPT_SQL, OFFICER_ROLE_SQL,
+  MONTHLY_EXEMPT_SQL, FEE_FREE_SQL, LEGACY_JOIN_UNTIL, monthlyFeeFor, OFFICER_ROLE_SQL,
   open, migrate, ensureFirstAdmin, ensureOwner, getSettings, setSettings,
   hashPin, checkPin, normalizePhone, validPhone, validPin,
   today, thisMonth, UB,
