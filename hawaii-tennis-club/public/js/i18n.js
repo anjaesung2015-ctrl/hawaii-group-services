@@ -36,7 +36,7 @@ export const DICT = {
     paid: 'Paid', unpaid: 'Unpaid', paidAt: 'Paid on', method: 'How',
     cash: 'Cash', transfer: 'Bank transfer', qpay: 'QPay',
     duesGrid: 'Member payments', unpaidList: 'Not paid yet', allPaid: 'Everyone has paid 🎉',
-    collected: 'Collected', expected: 'Expected', members: 'Members', duesCountNote: '{total} members = {members} paying + {exempt} exempt (owner · coach · secretary · joined this month)',
+    collected: 'Collected', expected: 'Expected', members: 'Members', duesCountNote: '{total} members = {members} paying + {exempt} joined this month (dues in joining fee)',
     myDuesEmpty: 'No dues records yet', joiningLabel: 'Joining fee',
     bankPayTo: 'Pay dues to this account', bankJoinHead: 'Joining fee {fee} — pay to this account', duesPayHead: 'Monthly dues — pay by the 5th of each month', bankName: 'Bank', bankAccountNo: 'Account number', bankHolder: 'Account holder',
     myPhoto: 'My photo', photoChoose: 'Choose photo', photoRemove: 'Remove photo', photoDone: 'Done',

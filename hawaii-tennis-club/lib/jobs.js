@@ -1,6 +1,6 @@
 // 때가 되면 알아서 보내는 알림 두 가지.
 //  1) 일정 하루 전 저녁 — "내일 19시 정기모임, 참석 체크해 주세요"
-//  2) 매월 5일 아침(회칙 제11조 납부 기한) — 아직 회비를 안 낸 사람에게만
+//  2) 매월 1일 아침(미리 안내)과 5일 아침(회칙 제11조 납부 기한) — 아직 회비를 안 낸 사람에게만
 // 10분마다 깨어나 확인한다. 같은 것을 두 번 보내지 않도록 보낸 표시를 남긴다.
 const { getSettings, MONTHLY_EXEMPT_SQL } = require('./db');
 const { eliteFeeOf } = require('./elite');
@@ -27,6 +27,7 @@ function createJobs(db, notify, opts = {}) {
   const EVENT_HOUR = opts.eventHour ?? 18;   // 전날 저녁 6시
   const DUE_HOUR = opts.dueHour ?? 10;       // 아침 10시
   const DUE_DAY = opts.dueDay ?? 5;          // 매월 5일 (회칙: 월회비는 매월 5일까지)
+  const DUE_EARLY_DAY = opts.dueEarlyDay ?? 1;   // 기한 전 미리 안내 (2026-11-02 사장님 지시)
   const ELITE_DUE_DAY = opts.eliteDueDay ?? 20;
   const ELITE_QUIET_HOUR = 21;   // 늦게 등록한 선수에게 보낼 때도 밤에는 보내지 않는다   // 선수반 수강료 매월 20일
 
@@ -50,12 +51,14 @@ function createJobs(db, notify, opts = {}) {
     return { sent, events: rows.length };
   }
 
-  // 이번 달 회비를 안 낸 사람에게만 (한 달에 한 번)
+  // 이번 달 회비를 안 낸 사람에게만 — 1일 미리 안내 한 번, 5일 기한 당일 한 번.
+  // 회차마다 보낸 달을 적어 둔다. 1일 안내를 놓쳤으면 4일까지만 보내고, 5일이 되면 기한 알림만 보낸다.
   async function remindDues() {
     const t = ubNow(now());
-    if (t.day < DUE_DAY || t.hour < DUE_HOUR) return { sent: 0 };
+    if (t.hour < DUE_HOUR || t.day < DUE_EARLY_DAY) return { sent: 0 };
+    const final = t.day >= DUE_DAY;
     const month = t.date.slice(0, 7);   // 주입된 시계와 같은 기준
-    const key = 'due_reminder_month';
+    const key = final ? 'due_reminder_month' : 'due_early_reminder_month';
     const done = db.prepare('SELECT v FROM setting WHERE k=?').get(key)?.v;
     if (done === month) return { sent: 0, already: true };
 
@@ -66,15 +69,14 @@ function createJobs(db, notify, opts = {}) {
       LEFT JOIN due d ON d.member_id=m.id AND d.kind='monthly' AND d.period=?
       WHERE m.status='active' AND m.program='club' AND (d.id IS NULL OR d.paid_at IS NULL)
         AND NOT ${MONTHLY_EXEMPT_SQL}`).pluck().all(month, month);
-    if (!unpaid.length) return { sent: 0, unpaid: 0 };
+    if (!unpaid.length) return { sent: 0, unpaid: 0, final };
 
     const { monthly_fee, currency } = getSettings(db);
-    const r = await notify.toMembers(unpaid, {
-      title: '💳 회비 안내',
-      body: `이번 달 회비 ${monthly_fee.toLocaleString('en-US')}${currency} 가 아직 확인되지 않았습니다 (매월 5일까지)`,
-      url: '#dues',
-    });
-    return { sent: r.sent, unpaid: unpaid.length };
+    const fee = `${monthly_fee.toLocaleString('en-US')}${currency}`;
+    const r = await notify.toMembers(unpaid, final
+      ? { title: '💳 Monthly dues — due today', body: `Today (the ${DUE_DAY}th) is the deadline for this month's dues ${fee}. Please pay if you haven't yet.`, url: '#dues' }
+      : { title: '💳 Monthly dues', body: `This month's dues ${fee} — please pay by the ${DUE_DAY}th.`, url: '#dues' });
+    return { sent: r.sent, unpaid: unpaid.length, final };
   }
 
   // 선수반 — 내일 훈련을 아직 안 알렸으면 선수에게

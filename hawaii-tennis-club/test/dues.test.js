@@ -29,18 +29,18 @@ test('회원은 금액을 바꿀 수 없다', async () => {
   app.close();
 });
 
-test('현황표에 활동 회원 전원이 나오고, 처음엔 미납 — 클럽 오너는 월회비 면제', async () => {
+test('현황표에 활동 회원 전원이 나오고, 처음엔 미납 — 클럽 오너도 월회비를 낸다', async () => {
   const app = makeApp();
   const a = await loginAs(app.base, '99000000', '1234');
   const g = (await a.call('/dues/grid')).data;
   assert.strictEqual(g.rows.length, 2);
   const owner = g.rows.find(r => r.member_id === app.adminId);
-  assert.deepStrictEqual([owner.monthly.exempt, owner.monthly.reason, owner.monthly.amount], [true, 'owner', 0]);
+  assert.deepStrictEqual([owner.monthly.exempt, owner.monthly.paid, owner.monthly.amount], [undefined, false, 200000]);
   assert.strictEqual(g.rows.find(r => r.member_id === app.memberId).monthly.paid, false);
-  assert.strictEqual(g.summary.members, 1);
-  assert.strictEqual(g.summary.unpaid, 1);
+  assert.deepStrictEqual([g.summary.members, g.summary.total, g.summary.exempt], [2, 2, 0]);
+  assert.strictEqual(g.summary.unpaid, 2);
   assert.strictEqual(g.summary.collected, 0);
-  assert.strictEqual(g.summary.expected, 200000);
+  assert.strictEqual(g.summary.expected, 400000);
   app.close();
 });
 
@@ -90,12 +90,12 @@ test('이번 달 미납자 목록 — 완납하면 빠진다', async () => {
   const app = makeApp();
   const a = await loginAs(app.base, '99000000', '1234');
   let u = (await a.call('/dues/unpaid')).data;
-  assert.strictEqual(u.count, 1, '오너는 빠지고 회원 한 명');
-  assert.ok(!u.rows.some(r => r.member_id === app.adminId));
+  assert.strictEqual(u.count, 2, '오너도 회원도 미납');
+  assert.ok(u.rows.some(r => r.member_id === app.adminId));
 
   await a.call('/dues/mark', { method: 'PUT', body: { member_id: app.memberId, paid: true, method: 'qpay' } });
   u = (await a.call('/dues/unpaid')).data;
-  assert.strictEqual(u.count, 0);
+  assert.strictEqual(u.count, 1);
   assert.ok(!u.rows.some(r => r.member_id === app.memberId));
   app.close();
 });
@@ -105,7 +105,7 @@ test('휴면 회원에게는 월회비를 매기지 않는다', async () => {
   app.db.prepare("UPDATE member SET status='dormant' WHERE id=?").run(app.memberId);
   const a = await loginAs(app.base, '99000000', '1234');
   assert.strictEqual((await a.call('/dues/grid')).data.rows.length, 1);
-  assert.strictEqual((await a.call('/dues/unpaid')).data.count, 0, '남은 건 오너뿐(면제)');
+  assert.deepStrictEqual((await a.call('/dues/unpaid')).data.rows.map(r => r.member_id), [app.adminId], '남은 건 오너뿐');
   app.close();
 });
 
@@ -179,7 +179,7 @@ test('가입한 달은 월회비를 따로 매기지 않는다 (입회비에 포
   assert.strictEqual(row.monthly.exempt, true);
   assert.strictEqual(row.monthly.amount, 0);
   assert.strictEqual(row.joining.amount, 300000);
-  assert.strictEqual(g.summary.members, g.rows.length - 2, '가입한 달 회원과 오너는 월회비 집계에서 빠진다');
+  assert.strictEqual(g.summary.members, g.rows.length - 1, '가입한 달 회원만 월회비 집계에서 빠진다');
   assert.ok(!(await a.call(`/dues/unpaid?month=${month}`)).data.rows.some(x => x.member_id === id));
 
   // 다음 달부터는 월회비 대상
@@ -210,7 +210,7 @@ test('가입한 달은 체크했다 푼 월회비 줄이 남아 있어도 면제
   app.close();
 });
 
-test('면제 달이라도 실제로 낸 기록은 낸 걸로 보인다', async () => {
+test('오너가 낸 기록은 낸 걸로 보인다', async () => {
   const app = makeApp();
   const a = await loginAs(app.base, '99000000', '1234');
   await a.call('/dues/mark', { method: 'PUT', body: { member_id: app.adminId, kind: 'monthly', paid: true, method: 'cash' } });
@@ -237,7 +237,7 @@ test('회비 계좌 — 기본은 Khan Bank, 오너만 바꾸고 비울 수 있�
   app.close();
 });
 
-test('코치(선생님)와 총무는 월회비 면제 — 현황표·미납자·내 내역 모두', async () => {
+test('코치(선생님)와 총무도 월회비를 낸다 — 현황표·미납자 모두', async () => {
   const app = makeApp();
   const add = (name, phone, coach) => app.db.prepare(`INSERT INTO member (name, phone, pin_hash, role, level, status, joined_at, is_coach)
                                                      VALUES (?,?,?,'member','beginner','active','2026-01-05',?)`)
@@ -249,22 +249,16 @@ test('코치(선생님)와 총무는 월회비 면제 — 현황표·미납자·
 
   const g = (await a.call('/dues/grid')).data;
   const reasonOf = (id) => g.rows.find(r => r.member_id === id).monthly;
-  assert.deepStrictEqual([reasonOf(coach).exempt, reasonOf(coach).reason], [true, 'coach']);
-  assert.deepStrictEqual([reasonOf(sec).exempt, reasonOf(sec).reason], [true, 'secretary']);
-  assert.strictEqual(reasonOf(app.memberId).exempt, undefined);
-  assert.strictEqual(g.summary.members, 1);   // 일반 회원 한 명만 대상
+  for (const id of [coach, sec, app.adminId, app.memberId]) assert.strictEqual(reasonOf(id).exempt, undefined);
+  assert.deepStrictEqual([g.summary.members, g.summary.exempt], [4, 0]);   // 오너·코치·총무·회원 전원 대상
 
-  const u = (await a.call('/dues/unpaid')).data.rows.map(r => r.member_id);
-  assert.deepStrictEqual(u, [app.memberId]);
+  const u = (await a.call('/dues/unpaid')).data.rows.map(r => r.member_id).sort((x, y) => x - y);
+  assert.deepStrictEqual(u, [app.adminId, app.memberId, coach, sec].sort((x, y) => x - y));
 
-  // 체크했다 푼 줄이 남아도 본인 내역에 미납으로 안 보인다
+  // 체크했다 푼 줄은 본인 내역에 미납으로 보인다
   await a.call('/dues/mark', { method: 'PUT', body: { member_id: coach, paid: true } });
   await a.call('/dues/mark', { method: 'PUT', body: { member_id: coach, paid: false } });
   const c = await loginAs(app.base, '95550101', '2222');
-  assert.deepStrictEqual((await c.call('/dues/me')).data, []);
-
-  // 코치를 그만두면 다시 낸다
-  app.db.prepare('UPDATE member SET is_coach=0 WHERE id=?').run(coach);
-  assert.ok((await a.call('/dues/unpaid')).data.rows.some(r => r.member_id === coach));
+  assert.deepStrictEqual((await c.call('/dues/me')).data.map(r => [r.kind, r.paid_at]), [['monthly', null]]);
   app.close();
 });
