@@ -39,7 +39,7 @@ export const DICT = {
     collected: 'Collected', expected: 'Expected', members: 'Members', duesCountNote: '{total} members = {members} paying + {exempt} exempt (coach · secretary)',
     myDuesEmpty: 'No dues records yet', joiningLabel: 'Joining fee',
     bankPayTo: 'Pay dues to this account', bankJoinHead: 'Joining fee {fee} + this month’s dues ({full} if you join by the 15th, {half} from the 16th) — pay to this account', duesPayHead: 'Monthly dues — pay by the 5th of each month', bankName: 'Bank', bankAccountNo: 'Account number', bankHolder: 'Account holder',
-    myPhoto: 'My photo', photoChoose: 'Choose photo', photoRemove: 'Remove photo', photoDone: 'Done',
+    myPhoto: 'My photo', myProfile: 'My profile', nameRequired: 'Please enter your name', photoChoose: 'Choose photo', photoRemove: 'Remove photo', photoDone: 'Done',
     photoHint: 'Your photo is shown next to your name in the member list, board and chat.', photoBad: 'This photo could not be used',
     photoAdjust: 'Adjust photo', photoAdjustHint: 'Drag to move · pinch or slide to zoom', photoRotate: 'Rotate', photoUse: 'Use photo',
     joinPhoto: 'Photo (optional)', joinPhotoAdd: 'Add photo', joinPhotoHint: 'A face photo helps officers and members recognize you.',

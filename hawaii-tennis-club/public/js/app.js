@@ -227,20 +227,25 @@ $('#photoBtn').onclick = () => {
 $('#levelBtn').onclick = () => {
   sheet.hidden = true;
   const LV = ['newbie', 'beginner', 'intermediate', 'advanced'];
-  openModal({
-    title: t('myLevel'),
+  const m = openModal({
+    title: t('myProfile'),
     fields: [
-      { name: 'level', label: t('level'), type: 'select', value: state.me.level,
-        options: LV.map(l => ({ value: l, label: levelLabel(l) })) },
+      { name: 'name', label: t('name'), type: 'text', maxlength: 40, value: state.me.name || '' },
+      ...(isElite() ? [] : [{ name: 'level', label: t('level'), type: 'select', value: state.me.level,
+        options: LV.map(l => ({ value: l, label: levelLabel(l) })) }]),
     ],
-    extra: `<div class="hint">${esc(t('myLevelHint'))}</div>`,
+    extra: `<button type="button" class="btn ghost" data-my-photo>📷 ${esc(t('myPhoto'))}</button>
+      ${isElite() ? '' : `<div class="hint">${esc(t('myLevelHint'))}</div>`}`,
     onSave: async (v) => {
+      v.name = String(v.name || '').trim();
+      if (!v.name) return t('nameRequired');
       const r = await api('/auth/profile', { method: 'PATCH', body: v });
       state.me = r.me;
       toast(t('saved'));
       render({ keepScroll: true });
     },
   });
+  m.form.querySelector('[data-my-photo]').onclick = () => { m.close(); $('#photoBtn').click(); };
 };
 
 $('#pinBtn').onclick = () => {

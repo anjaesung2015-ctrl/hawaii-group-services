@@ -64,9 +64,16 @@ module.exports = function authRoutes(db, auth) {
 
   // 본인 레벨 (☰ 메뉴 → My level). 권한(role)은 여기서 못 바꾼다.
   // 코치 표시는 월회비 면제라 2026-10-30부터 오너만 정한다 — 오너 본인 말고는 403
-  router.patch('/profile', auth.requireClub, (req, res) => {   // 선수반 선수는 레벨·코치 표시를 스스로 못 바꾼다
+  router.patch('/profile', auth.requireMember, (req, res) => {   // 이름은 누구나, 레벨·코치는 동호인만 (선수반 선수는 못 바꾼다)
     const b = req.body || {};
     const f = [], v = [];
+    if (req.me.program === 'elite' && ('level' in b || 'is_coach' in b)) return res.status(403).json({ error: 'club_only' });
+    if ('name' in b) {
+      const name = String(b.name || '').replace(/\s+/g, ' ').trim();
+      if (!name) return res.status(400).json({ error: 'name_required' });
+      if (name.length > 40) return res.status(400).json({ error: 'name_too_long' });
+      f.push('name=?'); v.push(name);
+    }
     if ('level' in b) {
       if (!LEVELS.includes(b.level)) return res.status(400).json({ error: 'bad_level' });
       f.push('level=?'); v.push(b.level);
