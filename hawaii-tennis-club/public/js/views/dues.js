@@ -26,6 +26,7 @@ export async function renderDues(el, state) {
       <div class="stat ${g.summary.unpaid ? 'warn' : ''}"><b>${g.summary.unpaid}</b><span>${esc(t('unpaid'))}</span></div>
       <div class="stat"><b>${fmtMoney(g.summary.collected)}</b><span>${esc(t('collected'))} ${cur}</span></div>
     </div>
+    ${g.summary.exempt ? `<div class="hint">${esc(t('duesCountNote', { total: g.summary.total, members: g.summary.members, exempt: g.summary.exempt }))}</div>` : ''}
 
     <div class="section-head"><h2>${esc(t('duesGrid'))}</h2><span class="spacer"></span>
       <span class="pill grey">${esc(t('monthlyFee'))} ${fmtMoney(g.monthly_fee)}${cur}</span></div>

@@ -61,6 +61,8 @@ module.exports = function dueRoutes(db, auth) {
       rows,
       summary: {
         members: charged.length,
+        total: rows.length,                 // 회원 탭 활동 회원 수 = members + exempt
+        exempt: rows.length - charged.length,
         paid: paid.length,
         unpaid: charged.length - paid.length,
         collected: paid.reduce((s, r) => s + r.monthly.amount, 0),
