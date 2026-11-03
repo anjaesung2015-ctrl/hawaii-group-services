@@ -271,3 +271,63 @@ test('코치(선생님)와 총무는 월회비 면제, 오너는 낸다 — 현�
   assert.ok((await a.call('/dues/unpaid')).data.rows.some(r => r.member_id === coach));
   app.close();
 });
+
+test('정산 — 그 달에 받은 돈(받은 날 기준): 월회비(몇 월치든) + 입회비 + 찬조금', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const mark = (body) => a.call('/dues/mark', { method: 'PUT', body: { paid: true, method: 'transfer', ...body } });
+  await mark({ member_id: app.memberId, kind: 'monthly', period: '2026-11', paid_at: '2026-10-30' });   // 미리 낸 11월분 → 10월 정산
+  await mark({ member_id: app.adminId, kind: 'monthly', period: '2026-11', paid_at: '2026-11-03' });
+  await mark({ member_id: app.adminId, kind: 'monthly', period: '2026-12', paid_at: '2026-11-03' });    // 12월분 선납 → 11월 정산
+  await mark({ member_id: app.memberId, kind: 'joining', period: '2026-10', paid_at: '2026-11-02', amount: 100000 });
+
+  const d1 = await a.call('/dues/donations', { method: 'POST', body: { donor_name: 'Sponsor LLC', amount: 500000, given_at: '2026-11-04', method: 'transfer', note: 'Balls' } });
+  assert.strictEqual(d1.status, 200);
+  assert.strictEqual(d1.data.donor_name, 'Sponsor LLC');
+  const d2 = (await a.call('/dues/donations', { method: 'POST', body: { member_id: app.memberId, amount: 50000, given_at: '2026-11-05' } })).data;
+  assert.ok(d2.donor_name, '회원을 고르면 이름이 자동으로 들어간다');
+  await a.call('/dues/donations', { method: 'POST', body: { donor_name: 'Old', amount: 70000, given_at: '2026-10-01' } });
+
+  const nov = (await a.call('/dues/grid?month=2026-11')).data.settlement;
+  assert.deepStrictEqual(nov, { monthly: 400000, monthly_n: 2, joining: 100000, joining_n: 1, donation: 550000, donation_n: 2, total: 1050000 });
+  const oct = (await a.call('/dues/grid?month=2026-10')).data.settlement;
+  assert.deepStrictEqual([oct.monthly, oct.donation, oct.total], [200000, 70000, 270000]);
+
+  const list = (await a.call('/dues/donations?month=2026-11')).data;
+  assert.deepStrictEqual(list.map(x => x.amount), [50000, 500000]);
+
+  // 수정·삭제
+  const up = await a.call(`/dues/donations/${d1.data.id}`, { method: 'PUT', body: { donor_name: 'Sponsor LLC', amount: 600000, given_at: '2026-11-04' } });
+  assert.strictEqual(up.data.amount, 600000);
+  assert.strictEqual((await a.call(`/dues/donations/${d2.id}`, { method: 'DELETE' })).status, 200);
+  assert.strictEqual((await a.call('/dues/grid?month=2026-11')).data.settlement.donation, 600000);
+  app.close();
+});
+
+test('찬조금 — 이름·금액은 필수, 일반 회원은 못 본다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  assert.strictEqual((await a.call('/dues/donations', { method: 'POST', body: { amount: 1000 } })).status, 400);
+  assert.strictEqual((await a.call('/dues/donations', { method: 'POST', body: { donor_name: 'X', amount: 0 } })).status, 400);
+  assert.strictEqual((await a.call('/dues/donations/999', { method: 'DELETE' })).status, 404);
+  const m = await loginAs(app.base, '88110044', '1111');
+  assert.strictEqual((await m.call('/dues/donations')).status, 403);
+  assert.strictEqual((await m.call('/dues/donations', { method: 'POST', body: { donor_name: 'X', amount: 1000 } })).status, 403);
+  app.close();
+});
+
+test('정산 — 코치(선생님)·총무가 낸 돈은 금액에서 뺀다, 미납 입회비도 안 띄운다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const month = thisMonth();
+  const day = `${month}-02`;
+  await a.call('/dues/mark', { method: 'PUT', body: { member_id: app.memberId, kind: 'joining', period: month, paid: true, paid_at: day, amount: 100000 } });
+  await a.call('/dues/mark', { method: 'PUT', body: { member_id: app.adminId, kind: 'monthly', period: month, paid: true, paid_at: day } });
+  assert.strictEqual((await a.call(`/dues/grid?month=${month}`)).data.settlement.total, 300000);
+
+  assert.strictEqual((await a.call(`/members/${app.memberId}`, { method: 'PATCH', body: { is_coach: true } })).status, 200);
+  const g = (await a.call(`/dues/grid?month=${month}`)).data;
+  assert.deepStrictEqual([g.settlement.joining, g.settlement.joining_n, g.settlement.total], [0, 0, 200000]);
+  assert.strictEqual(g.rows.find(r => r.member_id === app.memberId).joining, null);
+  app.close();
+});

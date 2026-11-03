@@ -36,7 +36,7 @@ export const DICT = {
     paid: 'Paid', unpaid: 'Unpaid', paidAt: 'Paid on', method: 'How',
     cash: 'Cash', transfer: 'Bank transfer', qpay: 'QPay',
     duesGrid: 'Member payments', unpaidList: 'Not paid yet', allPaid: 'Everyone has paid 🎉',
-    collected: 'Collected', expected: 'Expected', members: 'Members', duesCountNote: '{total} members = {members} paying + {exempt} exempt (coach · secretary)',
+    collected: 'Collected', received: 'Received', settlement: 'Settlement', total: 'Total', settlementHint: 'Money received this month, by payment date (dues for any month + joining fees + donations). It should match the bank account.', donations: 'Donations', addDonation: 'Add donation', editDonation: 'Edit donation', noDonations: 'No donations this month', donorMember: 'Member', donorOutside: '— Not a member (type the name below) —', donorName: 'Donor name', amount: 'Amount', donorNameRequired: 'Choose a member or type the donor name', amountRequired: 'Please enter the amount', expected: 'Expected', members: 'Members', duesCountNote: '{total} members = {members} paying + {exempt} exempt (coach · secretary)',
     myDuesEmpty: 'No dues records yet', joiningLabel: 'Joining fee',
     bankPayTo: 'Pay dues to this account', bankJoinHead: 'Joining fee {fee} + this month’s dues ({full} if you join by the 15th, {half} from the 16th) — pay to this account', duesPayHead: 'Monthly dues — pay by the 5th of each month', bankName: 'Bank', bankAccountNo: 'Account number', bankHolder: 'Account holder',
     myPhoto: 'My photo', myProfile: 'My profile', nameRequired: 'Please enter your name', photoChoose: 'Choose photo', photoRemove: 'Remove photo', photoDone: 'Done',

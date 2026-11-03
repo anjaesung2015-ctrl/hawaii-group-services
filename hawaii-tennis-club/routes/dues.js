@@ -15,6 +15,7 @@ module.exports = function dueRoutes(db, auth) {
     res.json(db.prepare(`SELECT d.id, d.kind, d.period, d.amount, d.paid_at, d.method, d.note
                          FROM due d JOIN member m ON m.id = d.member_id
                          WHERE d.member_id=?
+                           AND NOT (d.kind='joining' AND d.paid_at IS NULL AND ${FEE_FREE_SQL})
                            AND NOT (d.kind='monthly' AND d.paid_at IS NULL
                                     AND (${FEE_FREE_SQL} OR EXISTS (SELECT 1 FROM due j WHERE j.member_id = m.id AND j.kind='joining' AND j.period = d.period AND j.period <= '${LEGACY_JOIN_UNTIL}')))
                          ORDER BY d.period DESC, d.kind`).all(req.me.id));
@@ -37,7 +38,8 @@ module.exports = function dueRoutes(db, auth) {
 
     const rows = members.map(m => {
       const d = byKey.get(`${m.id}:monthly`);
-      const j = byKey.get(`${m.id}:joining`) || joiningOwed.get(m.id);
+      // 코치·총무는 입회비도 안 낸다 — 미납 입회비 표시를 띄우지 않는다
+      const j = (m.is_coach || m.secretary) ? null : (byKey.get(`${m.id}:joining`) || joiningOwed.get(m.id));
       // 월회비 면제 — 코치·총무(lib/db FEE_FREE_SQL), 또는 옛 규칙(2026-10까지)으로 가입한 달. 낸 기록이 있으면 낸 걸로 보여준다
       const reason = d?.paid_at ? null
         : m.is_coach ? 'coach' : m.secretary ? 'secretary'
@@ -68,7 +70,73 @@ module.exports = function dueRoutes(db, auth) {
         collected: paid.reduce((s, r) => s + r.monthly.amount, 0),
         expected: rows.reduce((s, r) => s + r.monthly.amount, 0),
       },
+      settlement: settlement(month),
     });
+  });
+
+  // 정산 — 그 달에 실제로 받은 돈(받은 날 기준, 통장과 맞춘다): 월회비(몇 월치든) + 입회비 + 찬조금
+  function settlement(month) {
+    const like = `${month}%`;
+    // 코치(선생님)·총무는 월회비·입회비 모두 정산 금액에서 뺀다 (2026-11-04 사장님 지시)
+    const sum = (kind) => db.prepare(`SELECT COUNT(*) AS n, COALESCE(SUM(d.amount),0) AS s FROM due d JOIN member m ON m.id = d.member_id
+                                      WHERE d.kind=? AND d.paid_at LIKE ? AND NOT ${FEE_FREE_SQL}`).get(kind, like);
+    const mo = sum('monthly');
+    const jo = sum('joining');
+    const dn = db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(amount),0) AS s FROM donation WHERE given_at LIKE ?').get(like);
+    return {
+      monthly: mo.s, monthly_n: mo.n,
+      joining: jo.s, joining_n: jo.n,
+      donation: dn.s, donation_n: dn.n,
+      total: mo.s + jo.s + dn.s,
+    };
+  }
+
+  // 찬조금 — 관리자·회비 담당이 입력. 회원을 고르거나(member_id) 외부인 이름을 직접 쓴다
+  const DATE = /^\d{4}-\d{2}-\d{2}$/;
+  function donationInput(b) {
+    const member_id = b.member_id ? Number(b.member_id) : null;
+    let donor_name = String(b.donor_name || '').trim().slice(0, 80);
+    if (member_id) {
+      const m = db.prepare('SELECT name FROM member WHERE id=?').get(member_id);
+      if (!m) return { error: 'member_not_found' };
+      if (!donor_name) donor_name = m.name;
+    }
+    if (!donor_name) return { error: 'name_required' };
+    const amount = Math.round(Number(b.amount));
+    if (!Number.isFinite(amount) || amount <= 0) return { error: 'bad_amount' };
+    const given_at = DATE.test(b.given_at || '') ? b.given_at : today();
+    const method = METHODS.includes(b.method) ? b.method : 'cash';
+    const note = String(b.note || '').trim().slice(0, 300) || null;
+    return { member_id, donor_name, amount, given_at, method, note };
+  }
+
+  router.get('/donations', auth.requireDues, (req, res) => {
+    const month = PERIOD.test(req.query.month || '') ? req.query.month : thisMonth();
+    res.json(db.prepare('SELECT * FROM donation WHERE given_at LIKE ? ORDER BY given_at DESC, id DESC').all(`${month}%`));
+  });
+
+  router.post('/donations', auth.requireDues, (req, res) => {
+    const v = donationInput(req.body || {});
+    if (v.error) return res.status(400).json({ error: v.error });
+    const r = db.prepare(`INSERT INTO donation (member_id, donor_name, amount, given_at, method, note, created_by)
+                          VALUES (?,?,?,?,?,?,?)`).run(v.member_id, v.donor_name, v.amount, v.given_at, v.method, v.note, req.me.id);
+    res.json(db.prepare('SELECT * FROM donation WHERE id=?').get(r.lastInsertRowid));
+  });
+
+  router.put('/donations/:id', auth.requireDues, (req, res) => {
+    const id = Number(req.params.id);
+    if (!db.prepare('SELECT 1 FROM donation WHERE id=?').get(id)) return res.status(404).json({ error: 'not_found' });
+    const v = donationInput(req.body || {});
+    if (v.error) return res.status(400).json({ error: v.error });
+    db.prepare(`UPDATE donation SET member_id=?, donor_name=?, amount=?, given_at=?, method=?, note=?, updated_at=datetime('now','localtime')
+                WHERE id=?`).run(v.member_id, v.donor_name, v.amount, v.given_at, v.method, v.note, id);
+    res.json(db.prepare('SELECT * FROM donation WHERE id=?').get(id));
+  });
+
+  router.delete('/donations/:id', auth.requireDues, (req, res) => {
+    const r = db.prepare('DELETE FROM donation WHERE id=?').run(Number(req.params.id));
+    if (!r.changes) return res.status(404).json({ error: 'not_found' });
+    res.json({ ok: true });
   });
 
   // 이번 달 미납자만 (관리자·회비 담당) — 홈 화면에서 한눈에 보려고

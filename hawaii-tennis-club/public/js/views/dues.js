@@ -12,7 +12,8 @@ export async function renderDues(el, state) {
   if (!canDues(state.me)) return renderMyDues(el, state);
 
   const month = state.duesMonth || thisMonth();
-  const g = await api(`/dues/grid?month=${month}`);
+  const [g, donations] = await Promise.all([api(`/dues/grid?month=${month}`), api(`/dues/donations?month=${month}`)]);
+  const st = g.settlement;
   const cur = g.currency;
 
   el.innerHTML = `
@@ -24,7 +25,17 @@ export async function renderDues(el, state) {
     <div class="stat-row">
       <div class="stat"><b>${g.summary.paid}/${g.summary.members}</b><span>${esc(t('paid'))}</span></div>
       <div class="stat ${g.summary.unpaid ? 'warn' : ''}"><b>${g.summary.unpaid}</b><span>${esc(t('unpaid'))}</span></div>
-      <div class="stat"><b>${fmtMoney(g.summary.collected)}</b><span>${esc(t('collected'))} ${cur}</span></div>
+      <div class="stat"><b>${fmtMoney(st.total)}</b><span>${esc(t('received'))} ${cur}</span></div>
+    </div>
+    <div class="card settle-card">
+      <div class="section-head" style="margin:0 0 6px"><h2>${esc(t('settlement'))} · ${esc(fmtMonth(month))}</h2></div>
+      <table class="table"><tbody>
+        <tr><td>${esc(t('monthlyFee'))} <small style="color:var(--muted)">${st.monthly_n}</small></td><td class="num">${fmtMoney(st.monthly)}${cur}</td></tr>
+        <tr><td>${esc(t('joiningFee'))} <small style="color:var(--muted)">${st.joining_n}</small></td><td class="num">${fmtMoney(st.joining)}${cur}</td></tr>
+        <tr><td>${esc(t('donations'))} <small style="color:var(--muted)">${st.donation_n}</small></td><td class="num">${fmtMoney(st.donation)}${cur}</td></tr>
+        <tr><td><b>${esc(t('total'))}</b></td><td class="num"><b>${fmtMoney(st.total)}${cur}</b></td></tr>
+      </tbody></table>
+      <div class="hint" style="margin:6px 0 0">${esc(t('settlementHint'))}</div>
     </div>
     ${g.summary.exempt ? `<div class="hint">${esc(t('duesCountNote', { total: g.summary.total, members: g.summary.members, exempt: g.summary.exempt }))}</div>` : ''}
 
@@ -64,6 +75,7 @@ export async function renderDues(el, state) {
     </div>
 
     ${unpaidBlock(g, cur)}
+    ${donationBlock(donations, cur)}
     <div class="hint">${esc(t('joiningLabel'))}: ${fmtMoney(g.joining_fee)}${cur} · ${esc(t('joinMonthHint', { full: fmtMoney(g.monthly_fee) + cur, half: fmtMoney(Math.round(g.monthly_fee / 2)) + cur }))} · ${esc(t('settings'))} → ${esc(t('monthlyFee'))}</div>`;
 
   bindBankCopy(el);
@@ -79,6 +91,12 @@ export async function renderDues(el, state) {
     if (!already) return payModal({ member_id, name: b.dataset.name, month, kind: 'monthly' }, () => renderDues(el, state));
     payModal({ member_id, name: b.dataset.name, month, kind: 'monthly', paid: true }, () => renderDues(el, state));
   });
+
+  const refresh = () => renderDues(el, state);
+  const addBtn = el.querySelector('[data-don-add]');
+  if (addBtn) addBtn.onclick = () => donationModal({ rows: g.rows, month }, refresh);
+  $$('[data-don]', el).forEach(b => b.onclick = () =>
+    donationModal({ rows: g.rows, month, d: donations.find(x => x.id === Number(b.dataset.don)) }, refresh));
 
   $$('[data-joining]', el).forEach(b => b.onclick = () => {
     const [member_id, period, name] = [Number(b.dataset.joining), b.dataset.period, b.dataset.name];
@@ -98,6 +116,52 @@ function unpaidBlock(g, cur) {
         <span class="pill danger">${fmtMoney(r.monthly.amount)}${cur}</span>
       </div>`).join('')}
     </div>`;
+}
+
+// 찬조금 — 그 달(받은 날 기준) 목록과 추가 버튼
+function donationBlock(list, cur) {
+  return `
+    <div class="section-head"><h2>${esc(t('donations'))}${list.length ? ` · ${list.length}` : ''}</h2><span class="spacer"></span>
+      <button class="btn btn-sm btn-primary" data-don-add>+ ${esc(t('addDonation'))}</button></div>
+    <div class="card">
+      ${list.length ? list.map(d => `<div class="member-row" data-don="${d.id}" style="cursor:pointer">
+        <div class="avatar">🎁</div>
+        <div class="who"><b>${esc(d.donor_name)}</b><small>${esc(d.given_at)} · ${esc(methodLabel(d.method))}${d.note ? ` · ${esc(d.note)}` : ''}</small></div>
+        <span class="pill">${fmtMoney(d.amount)}${cur}</span>
+      </div>`).join('') : `<div class="empty">${esc(t('noDonations'))}</div>`}
+    </div>`;
+}
+
+// 찬조금 입력·수정 — 회원을 고르거나, 외부인이면 이름을 직접 쓴다
+function donationModal({ rows, month, d = null }, refresh) {
+  const now = new Date().toISOString().slice(0, 10);
+  const defDate = now.slice(0, 7) === month ? now : `${month}-01`;
+  const methods = [{ value: 'cash', label: t('cash') }, { value: 'transfer', label: t('transfer') }, { value: 'qpay', label: t('qpay') }];
+  openModal({
+    title: d ? t('editDonation') : t('addDonation'),
+    fields: [
+      { name: 'member_id', label: t('donorMember'), type: 'select', value: d?.member_id ? String(d.member_id) : '',
+        options: [{ value: '', label: t('donorOutside') }, ...rows.map(r => ({ value: String(r.member_id), label: r.name }))] },
+      { name: 'donor_name', label: t('donorName'), value: d && !d.member_id ? d.donor_name : '' },
+      { name: 'amount', label: t('amount'), type: 'number', value: d ? String(d.amount) : '' },
+      { name: 'given_at', label: t('paidAt'), type: 'date', value: d?.given_at || defDate },
+      { name: 'method', label: t('method'), type: 'select', value: d?.method || 'cash', options: methods },
+      { name: 'note', label: t('memo'), value: d?.note || '' },
+    ],
+    onSave: async (v) => {
+      if (!v.member_id && !v.donor_name) return t('donorNameRequired');
+      if (!(Number(v.amount) > 0)) return t('amountRequired');
+      const body = { ...v, member_id: v.member_id ? Number(v.member_id) : null, amount: Number(v.amount) };
+      await api(d ? `/dues/donations/${d.id}` : '/dues/donations', { method: d ? 'PUT' : 'POST', body });
+      toast(t('saved'));
+      refresh();
+    },
+    onDelete: d ? async () => {
+      await api(`/dues/donations/${d.id}`, { method: 'DELETE' });
+      toast(t('saved'));
+      refresh();
+    } : undefined,
+  });
 }
 
 // 납부 기록 — 날짜와 방법을 남긴다

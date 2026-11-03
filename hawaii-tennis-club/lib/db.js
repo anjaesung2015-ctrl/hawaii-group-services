@@ -319,6 +319,23 @@ function migrate(db) {
     if (!jcols.includes(c)) db.exec(`ALTER TABLE join_request ADD COLUMN ${c} ${type}`);
   }
 
+  // 찬조금 — 회원(member_id) 또는 외부인(이름만). 그 달 정산(받은 날 기준)에 더한다
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS donation (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      member_id  INTEGER REFERENCES member(id) ON DELETE SET NULL,
+      donor_name TEXT NOT NULL,
+      amount     INTEGER NOT NULL CHECK (amount > 0),
+      given_at   TEXT NOT NULL,
+      method     TEXT CHECK (method IN ('cash','transfer','qpay')),
+      note       TEXT,
+      created_by INTEGER REFERENCES member(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_donation_given ON donation(given_at);
+  `);
+
   const put = db.prepare('INSERT INTO setting (k, v) VALUES (?, ?) ON CONFLICT(k) DO NOTHING');
   for (const [k, v] of Object.entries(DEFAULTS)) put.run(k, v);
 
