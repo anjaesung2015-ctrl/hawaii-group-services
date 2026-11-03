@@ -1,9 +1,11 @@
 // 때가 되면 알아서 보내는 알림 두 가지.
 //  1) 일정 하루 전 저녁 — "내일 19시 정기모임, 참석 체크해 주세요"
 //  2) 매월 1일 아침(미리 안내)과 5일 아침(회칙 제11조 납부 기한) — 아직 회비를 안 낸 사람에게만
+//  3) 기한이 지나도 안 냈으면 6·13·20·27일 아침 — 1:1 채팅(오너 이름) + 폰 알림, 낼 금액·계좌 포함 (2026-11-04 사장님 지시)
 // 10분마다 깨어나 확인한다. 같은 것을 두 번 보내지 않도록 보낸 표시를 남긴다.
 const { getSettings, MONTHLY_EXEMPT_SQL } = require('./db');
 const { eliteFeeOf } = require('./elite');
+const { sendDuesReminders } = require('./dues-remind');
 
 const TICK_MS = 10 * 60 * 1000;
 const UB = 'Asia/Ulaanbaatar';
@@ -122,9 +124,23 @@ function createJobs(db, notify, opts = {}) {
     return { sent, unpaid: unpaid.length };
   }
 
+  // 기한(5일) 지난 미납자 — 6일부터 7일마다(6·13·20·27일) 아침에 한 번. 낼 때까지 계속
+  const OVERDUE_DAYS = opts.overdueDays ?? [6, 13, 20, 27];
+  async function remindOverdue() {
+    const t = ubNow(now());
+    if (t.hour < DUE_HOUR || !OVERDUE_DAYS.includes(t.day)) return { members: 0 };
+    const done = db.prepare("SELECT v FROM setting WHERE k='due_overdue_reminded'").get()?.v;
+    if (done === t.date) return { members: 0, already: true };
+    db.prepare("INSERT INTO setting (k,v) VALUES ('due_overdue_reminded',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").run(t.date);
+    const owner = db.prepare("SELECT id FROM member WHERE is_owner=1 AND status='active' ORDER BY id LIMIT 1").pluck().get();
+    if (!owner) return { members: 0 };
+    return sendDuesReminders(db, notify, { senderId: owner, month: t.date.slice(0, 7), overdue: true });
+  }
+
   async function tick() {
     try { await remindEvents(); } catch (e) { console.error('[jobs] 일정 알림 실패:', e.message); }
     try { await remindDues(); } catch (e) { console.error('[jobs] 회비 알림 실패:', e.message); }
+    try { await remindOverdue(); } catch (e) { console.error('[jobs] 회비 연체 알림 실패:', e.message); }
     try { await remindEliteSessions(); } catch (e) { console.error('[jobs] 선수반 훈련 알림 실패:', e.message); }
     try { await remindEliteFees(); } catch (e) { console.error('[jobs] 선수반 수강료 알림 실패:', e.message); }
   }
@@ -133,6 +149,7 @@ function createJobs(db, notify, opts = {}) {
   return {
     remindEvents,
     remindDues,
+    remindOverdue,
     remindEliteSessions,
     remindEliteFees,
     tick,

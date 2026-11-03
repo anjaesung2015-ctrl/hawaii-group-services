@@ -128,3 +128,39 @@ test('tick 은 두 가지를 모두 돌리고 터지지 않는다', async () => 
   await jobs.tick();
   app.close();
 });
+
+test('기한(5일) 지나도 안 냈으면 6·13·20·27일 아침에 1:1 채팅 + 폰 알림 — 하루 한 번, 낸 사람은 빼고', async () => {
+  const app = makeApp();
+  await addSub(app, '88110044', '1111', 1);
+  const month = app.dbmod.thisMonth();
+  // 오너는 냈다 — 미납은 일반 회원 한 명
+  app.db.prepare(`INSERT INTO due (member_id, kind, period, amount, paid_at, method) VALUES (?,'monthly',?,200000,?,'cash')`)
+    .run(app.adminId, month, `${month}-02`);
+  const dms = () => app.db.prepare(`SELECT c.body FROM chat_msg c JOIN chat_room r ON r.id=c.room_id WHERE r.kind='dm'`).pluck().all();
+
+  let jobs = createJobs(app.db, app.notify, { now: clock(`${month}-05 11:00`) });
+  assert.strictEqual((await jobs.remindOverdue()).members, 0, '5일은 기한 당일 — 연체 알림 아님');
+  jobs = createJobs(app.db, app.notify, { now: clock(`${month}-06 09:00`) });
+  assert.strictEqual((await jobs.remindOverdue()).members, 0, '아침 10시 전에는 안 보낸다');
+
+  app.sent.length = 0;
+  jobs = createJobs(app.db, app.notify, { now: clock(`${month}-06 10:20`) });
+  const r = await jobs.remindOverdue();
+  assert.deepStrictEqual([r.members, r.pushed], [1, 1]);
+  assert.strictEqual(dms().length, 1);
+  assert.match(dms()[0], /200,000/);
+  assert.match(dms()[0], /deadline/);
+  assert.match(app.sent[0].payload.title, /Dues reminder/);
+
+  assert.strictEqual((await jobs.remindOverdue()).already, true, '같은 날 두 번 안 보낸다');
+  jobs = createJobs(app.db, app.notify, { now: clock(`${month}-07 10:20`) });
+  assert.strictEqual((await jobs.remindOverdue()).members, 0);
+
+  // 내고 나면 13일에도 안 보낸다
+  app.db.prepare(`INSERT INTO due (member_id, kind, period, amount, paid_at, method) VALUES (?,'monthly',?,200000,?,'cash')`)
+    .run(app.memberId, month, `${month}-10`);
+  jobs = createJobs(app.db, app.notify, { now: clock(`${month}-13 10:20`) });
+  assert.strictEqual((await jobs.remindOverdue()).members, 0);
+  assert.strictEqual(dms().length, 1);
+  app.close();
+});

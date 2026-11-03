@@ -3,7 +3,7 @@ import { api, esc, thisMonth, trText } from '../ui.js';
 import { t, fmtMonth, fmtMoney } from '../i18n.js';
 import { eventCard, bindEventCards } from './schedule.js';
 import { noticeForm } from './notices.js';
-import { canDues, remindUnpaid, openDonation, expenseModal } from './dues.js';
+import { canDues, remindUnpaid, openDonation } from './dues.js';
 
 export async function renderHome(el, state) {
   const isAdmin = state.me.role === 'admin';
@@ -59,8 +59,6 @@ export async function renderHome(el, state) {
   // 회비 담당 빠른 버튼 — 찬조금 바로 적기, 미납자 알림
   const db = el.querySelector('[data-home-donation]');
   if (db) db.onclick = () => openDonation(thisMonth(), () => renderHome(el, state));
-  const xb = el.querySelector('[data-home-expense]');
-  if (xb) xb.onclick = () => expenseModal({ month: thisMonth() }, () => renderHome(el, state));
   const rb = el.querySelector('[data-home-remind]');
   if (rb) rb.onclick = () => remindUnpaid(thisMonth(), rb);
 
@@ -127,7 +125,6 @@ function adminMoney(u, cur) {
   return `
     <div class="card" style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-primary" style="flex:1" data-home-donation>🎁 ${esc(t('addDonation'))}</button>
-      <button class="btn" style="flex:1" data-home-expense>💸 ${esc(t('addExpense'))}</button>
       ${u.count ? `<button class="btn" style="flex:1" data-home-remind>📣 ${esc(t('remindUnpaid'))}</button>` : ''}
     </div>
     <div class="section-head"><h2>${esc(t('quickUnpaid'))} · ${esc(fmtMonth(u.month))}</h2></div>
