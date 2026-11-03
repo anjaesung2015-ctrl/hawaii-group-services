@@ -6,7 +6,7 @@ const { getSettings, today, thisMonth, METHODS, DUE_KINDS, MONTHLY_EXEMPT_SQL, F
 
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
 
-module.exports = function dueRoutes(db, auth) {
+module.exports = function dueRoutes(db, auth, notify) {
   const router = express.Router();
   router.use(auth.requireClub);
 
@@ -74,7 +74,7 @@ module.exports = function dueRoutes(db, auth) {
     });
   });
 
-  // 정산 — 그 달에 실제로 받은 돈(받은 날 기준, 통장과 맞춘다): 월회비(몇 월치든) + 입회비 + 찬조금
+  // 정산 — 받은 날 기준(통장과 맞춘다). 회비 합계 = 월회비(몇 월치든) + 입회비, 찬조금·지출은 따로, 잔액 = 회비 + 찬조금 − 지출
   function settlement(month) {
     const like = `${month}%`;
     // 코치(선생님)·총무는 월회비·입회비 모두 정산 금액에서 뺀다 (2026-11-04 사장님 지시)
@@ -83,13 +83,58 @@ module.exports = function dueRoutes(db, auth) {
     const mo = sum('monthly');
     const jo = sum('joining');
     const dn = db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(amount),0) AS s FROM donation WHERE given_at LIKE ?').get(like);
+    const ex = db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(amount),0) AS s FROM expense WHERE spent_at LIKE ?').get(like);
+    const total = mo.s + jo.s;          // 회비 합계 — 찬조금은 넣지 않는다 (2026-11-04 사장님 지시)
     return {
       monthly: mo.s, monthly_n: mo.n,
       joining: jo.s, joining_n: jo.n,
       donation: dn.s, donation_n: dn.n,
-      total: mo.s + jo.s + dn.s,
+      total,
+      expense: ex.s, expense_n: ex.n,
+      balance: total + dn.s - ex.s,     // 잔액 = 회비 + 찬조금 − 지출
     };
   }
+
+  // 지출 — 관리자·회비 담당이 입력. 무엇에(title) 얼마를 언제 썼나
+  function expenseInput(b) {
+    const title = String(b.title || '').trim().slice(0, 120);
+    if (!title) return { error: 'title_required' };
+    const amount = Math.round(Number(b.amount));
+    if (!Number.isFinite(amount) || amount <= 0) return { error: 'bad_amount' };
+    const spent_at = DATE.test(b.spent_at || '') ? b.spent_at : today();
+    const method = METHODS.includes(b.method) ? b.method : 'cash';
+    const note = String(b.note || '').trim().slice(0, 300) || null;
+    return { title, amount, spent_at, method, note };
+  }
+
+  router.get('/expenses', auth.requireDues, (req, res) => {
+    const month = PERIOD.test(req.query.month || '') ? req.query.month : thisMonth();
+    res.json(db.prepare('SELECT * FROM expense WHERE spent_at LIKE ? ORDER BY spent_at DESC, id DESC').all(`${month}%`));
+  });
+
+  router.post('/expenses', auth.requireDues, (req, res) => {
+    const v = expenseInput(req.body || {});
+    if (v.error) return res.status(400).json({ error: v.error });
+    const r = db.prepare('INSERT INTO expense (title, amount, spent_at, method, note, created_by) VALUES (?,?,?,?,?,?)')
+      .run(v.title, v.amount, v.spent_at, v.method, v.note, req.me.id);
+    res.json(db.prepare('SELECT * FROM expense WHERE id=?').get(r.lastInsertRowid));
+  });
+
+  router.put('/expenses/:id', auth.requireDues, (req, res) => {
+    const id = Number(req.params.id);
+    if (!db.prepare('SELECT 1 FROM expense WHERE id=?').get(id)) return res.status(404).json({ error: 'not_found' });
+    const v = expenseInput(req.body || {});
+    if (v.error) return res.status(400).json({ error: v.error });
+    db.prepare(`UPDATE expense SET title=?, amount=?, spent_at=?, method=?, note=?, updated_at=datetime('now','localtime') WHERE id=?`)
+      .run(v.title, v.amount, v.spent_at, v.method, v.note, id);
+    res.json(db.prepare('SELECT * FROM expense WHERE id=?').get(id));
+  });
+
+  router.delete('/expenses/:id', auth.requireDues, (req, res) => {
+    const r = db.prepare('DELETE FROM expense WHERE id=?').run(Number(req.params.id));
+    if (!r.changes) return res.status(404).json({ error: 'not_found' });
+    res.json({ ok: true });
+  });
 
   // 찬조금 — 관리자·회비 담당이 입력. 회원을 고르거나(member_id) 외부인 이름을 직접 쓴다
   const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -152,6 +197,64 @@ module.exports = function dueRoutes(db, auth) {
       ORDER BY m.name`).all(month, month)   // 코치·총무와 옛 규칙으로 가입한 달(입회비에 포함)은 빠진다
       .map(({ joined_at, ...r }) => ({ ...r, amount: r.amount ?? monthlyFeeFor(joined_at, month, monthly_fee) }));
     res.json({ month, monthly_fee, count: rows.length, rows });
+  });
+
+  // 미납자에게 알림 (관리자·회비 담당) — 1:1 채팅 메시지(보낸 사람 이름으로) + 폰 알림.
+  // 폰 알림을 안 켠 회원도 앱 채팅에서 보게 하려고 채팅으로도 남긴다. 낼 금액 = 그 달 월회비 + 안 낸 입회비
+  router.post('/remind', auth.requireDues, async (req, res) => {
+    const month = PERIOD.test(req.body?.month || '') ? req.body.month : thisMonth();
+    const s = getSettings(db);
+    const monthly = db.prepare(`
+      SELECT m.id, m.name, m.joined_at, d.amount FROM member m
+      LEFT JOIN due d ON d.member_id = m.id AND d.kind='monthly' AND d.period = ?
+      WHERE m.status='active' AND m.program='club' AND (d.id IS NULL OR d.paid_at IS NULL)
+        AND NOT ${MONTHLY_EXEMPT_SQL}`).all(month, month);
+    const joining = db.prepare(`SELECT d.member_id, SUM(d.amount) AS amount FROM due d JOIN member m ON m.id = d.member_id
+                                WHERE d.kind='joining' AND d.paid_at IS NULL AND m.status='active' AND m.program='club'
+                                  AND NOT ${FEE_FREE_SQL} GROUP BY d.member_id`).all();
+    const owed = new Map();
+    for (const r of monthly) owed.set(r.id, { name: r.name, monthly: r.amount ?? monthlyFeeFor(r.joined_at, month, s.monthly_fee), joining: 0 });
+    for (const j of joining) {
+      const o = owed.get(j.member_id) || { name: db.prepare('SELECT name FROM member WHERE id=?').pluck().get(j.member_id), monthly: 0, joining: 0 };
+      o.joining = j.amount;
+      owed.set(j.member_id, o);
+    }
+    owed.delete(req.me.id);   // 보내는 사람 자신에게는 안 보낸다
+    if (!owed.size) return res.json({ ok: true, members: 0, pushed: 0, names: [] });
+
+    const money = (n) => `${Number(n).toLocaleString('en-US')}${s.currency}`;
+    const [y, mo] = month.split('-').map(Number);
+    const monthName = new Date(Date.UTC(y, mo - 1, 1)).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+    const bank = s.bank_account ? `\n\n🏦 ${s.bank_name || ''} ${s.bank_account}${s.bank_holder ? ` (${s.bank_holder})` : ''}\nPlease write your name in the transfer note.` : '';
+    const insRoom = db.prepare("INSERT OR IGNORE INTO chat_room (kind, a_id, b_id) VALUES ('dm',?,?)");
+    const getRoom = db.prepare("SELECT id FROM chat_room WHERE kind='dm' AND a_id=? AND b_id=?");
+    const insMsg = db.prepare('INSERT INTO chat_msg (room_id, member_id, body) VALUES (?,?,?)');
+
+    const sent = [];
+    db.transaction(() => {
+      for (const [id, o] of owed) {
+        const parts = [];
+        if (o.joining) parts.push(`Joining fee ${money(o.joining)}`);
+        if (o.monthly) parts.push(`${monthName} dues ${money(o.monthly)}`);
+        const total = o.joining + o.monthly;
+        const body = `Hello ${o.name}, this is a friendly reminder from Hawaii Tennis Club.\n` +
+          `Not paid yet: ${parts.join(' + ')} = ${money(total)}.\nPlease pay as soon as you can. Thank you! 🎾${bank}`;
+        const [a, b] = req.me.id < id ? [req.me.id, id] : [id, req.me.id];
+        insRoom.run(a, b);
+        const room = getRoom.get(a, b).id;
+        insMsg.run(room, req.me.id, body);
+        sent.push({ id, name: o.name, total, room, body });
+      }
+    })();
+
+    let pushed = 0;
+    if (notify) {
+      for (const x of sent) {
+        const r = await notify.toMembers([x.id], { title: '💳 Dues reminder', body: x.body.split('\n')[1].slice(0, 120), url: `#chat-${x.room}` });
+        pushed += r.sent ? 1 : 0;
+      }
+    }
+    res.json({ ok: true, members: sent.length, pushed, names: sent.map(x => x.name) });
   });
 
   // 완납/미납 체크 (관리자·회비 담당) — 같은 요청을 두 번 보내도 결과가 같다

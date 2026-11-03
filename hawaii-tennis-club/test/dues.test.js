@@ -289,9 +289,9 @@ test('정산 — 그 달에 받은 돈(받은 날 기준): 월회비(몇 월치�
   await a.call('/dues/donations', { method: 'POST', body: { donor_name: 'Old', amount: 70000, given_at: '2026-10-01' } });
 
   const nov = (await a.call('/dues/grid?month=2026-11')).data.settlement;
-  assert.deepStrictEqual(nov, { monthly: 400000, monthly_n: 2, joining: 100000, joining_n: 1, donation: 550000, donation_n: 2, total: 1050000 });
+  assert.deepStrictEqual(nov, { monthly: 400000, monthly_n: 2, joining: 100000, joining_n: 1, donation: 550000, donation_n: 2, total: 500000, expense: 0, expense_n: 0, balance: 1050000 });
   const oct = (await a.call('/dues/grid?month=2026-10')).data.settlement;
-  assert.deepStrictEqual([oct.monthly, oct.donation, oct.total], [200000, 70000, 270000]);
+  assert.deepStrictEqual([oct.monthly, oct.donation, oct.total, oct.balance], [200000, 70000, 200000, 270000]);
 
   const list = (await a.call('/dues/donations?month=2026-11')).data;
   assert.deepStrictEqual(list.map(x => x.amount), [50000, 500000]);
@@ -329,5 +329,50 @@ test('정산 — 코치(선생님)·총무가 낸 돈은 금액에서 뺀다, �
   const g = (await a.call(`/dues/grid?month=${month}`)).data;
   assert.deepStrictEqual([g.settlement.joining, g.settlement.joining_n, g.settlement.total], [0, 0, 200000]);
   assert.strictEqual(g.rows.find(r => r.member_id === app.memberId).joining, null);
+  app.close();
+});
+
+test('미납자 알림 — 1:1 채팅에 낼 금액(입회비 + 월회비)과 계좌를 남기고, 낸 사람·코치에게는 안 보낸다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const month = thisMonth();
+  // 오너(보내는 사람)는 냈고 회원은 안 냈다
+  await a.call('/dues/mark', { method: 'PUT', body: { member_id: app.adminId, kind: 'monthly', period: month, paid: true } });
+  const r = await a.call('/dues/remind', { method: 'POST', body: { month } });
+  assert.strictEqual(r.status, 200);
+  assert.deepStrictEqual([r.data.members, r.data.names.length], [1, 1]);
+
+  const m = await loginAs(app.base, '88110044', '1111');
+  const rooms = (await m.call('/chat/rooms')).data;
+  const dm = rooms.find(x => x.kind === 'dm');
+  assert.ok(dm, '1:1 방이 생긴다');
+  const msgs = (await m.call(`/chat/rooms/${dm.id}/messages`)).data;
+  const last = (msgs.messages || msgs).at(-1);
+  assert.match(last.body, /200,000/);
+  assert.match(last.body, /reminder/i);
+
+  // 일반 회원은 못 보낸다
+  assert.strictEqual((await m.call('/dues/remind', { method: 'POST', body: {} })).status, 403);
+  app.close();
+});
+
+test('지출 — 적으면 잔액에서 빠지고, 회비 합계(찬조금 제외)는 그대로', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const month = thisMonth();
+  await a.call('/dues/mark', { method: 'PUT', body: { member_id: app.memberId, kind: 'monthly', period: month, paid: true, paid_at: `${month}-02` } });
+  await a.call('/dues/donations', { method: 'POST', body: { donor_name: 'Dinner sponsor', amount: 300000, given_at: `${month}-03` } });
+  const x = await a.call('/dues/expenses', { method: 'POST', body: { title: 'Team dinner', amount: 450000, spent_at: `${month}-03`, method: 'cash' } });
+  assert.strictEqual(x.status, 200);
+  let st = (await a.call(`/dues/grid?month=${month}`)).data.settlement;
+  assert.deepStrictEqual([st.total, st.donation, st.expense, st.expense_n, st.balance], [200000, 300000, 450000, 1, 50000]);
+  assert.strictEqual((await a.call(`/dues/expenses/${x.data.id}`, { method: 'PUT', body: { title: 'Team dinner', amount: 400000, spent_at: `${month}-03` } })).data.amount, 400000);
+  assert.deepStrictEqual((await a.call(`/dues/expenses?month=${month}`)).data.map(e => e.title), ['Team dinner']);
+  assert.strictEqual((await a.call('/dues/expenses', { method: 'POST', body: { amount: 1000 } })).status, 400);
+  assert.strictEqual((await a.call(`/dues/expenses/${x.data.id}`, { method: 'DELETE' })).status, 200);
+  st = (await a.call(`/dues/grid?month=${month}`)).data.settlement;
+  assert.strictEqual(st.balance, 500000);
+  const m = await loginAs(app.base, '88110044', '1111');
+  assert.strictEqual((await m.call('/dues/expenses')).status, 403);
   app.close();
 });

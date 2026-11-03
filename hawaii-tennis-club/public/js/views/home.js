@@ -3,7 +3,7 @@ import { api, esc, thisMonth, trText } from '../ui.js';
 import { t, fmtMonth, fmtMoney } from '../i18n.js';
 import { eventCard, bindEventCards } from './schedule.js';
 import { noticeForm } from './notices.js';
-import { canDues } from './dues.js';
+import { canDues, remindUnpaid, openDonation, expenseModal } from './dues.js';
 
 export async function renderHome(el, state) {
   const isAdmin = state.me.role === 'admin';
@@ -56,6 +56,13 @@ export async function renderHome(el, state) {
     ${duesView ? adminMoney(money, cur) : myMoney(money, state, cur)}`;
 
   bindEventCards(el, state, () => renderHome(el, state));
+  // 회비 담당 빠른 버튼 — 찬조금 바로 적기, 미납자 알림
+  const db = el.querySelector('[data-home-donation]');
+  if (db) db.onclick = () => openDonation(thisMonth(), () => renderHome(el, state));
+  const xb = el.querySelector('[data-home-expense]');
+  if (xb) xb.onclick = () => expenseModal({ month: thisMonth() }, () => renderHome(el, state));
+  const rb = el.querySelector('[data-home-remind]');
+  if (rb) rb.onclick = () => remindUnpaid(thisMonth(), rb);
 
   // 가입 신청 카드를 누르면 회원 탭으로 (승인은 거기서 한다)
   const go = el.querySelector('[data-go-members]');
@@ -118,6 +125,11 @@ function bindSlider(el, state) {
 
 function adminMoney(u, cur) {
   return `
+    <div class="card" style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary" style="flex:1" data-home-donation>🎁 ${esc(t('addDonation'))}</button>
+      <button class="btn" style="flex:1" data-home-expense>💸 ${esc(t('addExpense'))}</button>
+      ${u.count ? `<button class="btn" style="flex:1" data-home-remind>📣 ${esc(t('remindUnpaid'))}</button>` : ''}
+    </div>
     <div class="section-head"><h2>${esc(t('quickUnpaid'))} · ${esc(fmtMonth(u.month))}</h2></div>
     ${u.count ? `<div class="card">
       ${u.rows.map(r => `<div class="member-row">

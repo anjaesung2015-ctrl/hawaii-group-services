@@ -44,7 +44,7 @@ function makeApp(opts = {}) {
   app.use('/api/settings', require('../routes/settings')(db, auth));
   app.use('/api/members', require('../routes/members')(db, auth));
   app.use('/api/events', require('../routes/events')(db, auth, notify, tr));
-  app.use('/api/dues', require('../routes/dues')(db, auth));
+  app.use('/api/dues', require('../routes/dues')(db, auth, notify));
   app.use('/api/notices', require('../routes/notices')(db, auth, notify, tr));
   app.use('/api/posts', require('../routes/posts')(db, auth, notify, tr));
   app.use('/api/push', require('../routes/push')(db, auth, notify));

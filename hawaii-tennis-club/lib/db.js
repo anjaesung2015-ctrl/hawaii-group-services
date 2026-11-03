@@ -334,6 +334,19 @@ function migrate(db) {
       updated_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_donation_given ON donation(given_at);
+    -- 지출 — 무엇에(title) 얼마를 언제 썼나. 정산 잔액 = 수입 − 지출
+    CREATE TABLE IF NOT EXISTS expense (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      title      TEXT NOT NULL,
+      amount     INTEGER NOT NULL CHECK (amount > 0),
+      spent_at   TEXT NOT NULL,
+      method     TEXT CHECK (method IN ('cash','transfer','qpay')),
+      note       TEXT,
+      created_by INTEGER REFERENCES member(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_expense_spent ON expense(spent_at);
   `);
 
   const put = db.prepare('INSERT INTO setting (k, v) VALUES (?, ?) ON CONFLICT(k) DO NOTHING');
