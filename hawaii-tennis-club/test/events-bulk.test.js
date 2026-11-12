@@ -156,3 +156,37 @@ test('반복으로 만든 일정도 참석 응답과 명단이 정상이다', as
   assert.deepStrictEqual(d.roster.yes.map(p => p.name), ['Батбаяр']);
   app.close();
 });
+
+test('정기모임을 반복 등록하면 그달 마지막 수요일은 월례대회(대회)가 된다', async () => {
+  const app = makeApp();
+  const a = await loginAs(app.base, '99000000', '1234');
+  const r = await a.call('/events/bulk', { method: 'POST', body: base({ title: 'Hawaiiclubday', weekdays: [3], from: '2026-12-01', to: '2027-01-31' }) });
+  assert.strictEqual(r.status, 200);
+  // 12월 수요일 2·9·16·23·30, 1월 6·13·20·27 → 마지막 수요일 12/30, 1/27
+  assert.strictEqual(r.data.count, 9);
+  assert.deepStrictEqual(r.data.tourneys, ['2026-12-30', '2027-01-27']);
+  const rows = app.db.prepare('SELECT event_date, kind, title FROM event ORDER BY event_date').all();
+  const t = rows.filter(x => x.kind === 'tournament');
+  assert.deepStrictEqual(t.map(x => x.event_date), ['2026-12-30', '2027-01-27']);
+  assert.ok(t.every(x => /월례대회/.test(x.title)));
+  assert.ok(rows.filter(x => x.kind === 'regular').every(x => x.title === 'Hawaiiclubday'));
+
+  // 다시 눌러도 겹치지 않는다
+  const again = await a.call('/events/bulk', { method: 'POST', body: base({ title: 'Hawaiiclubday', weekdays: [3], from: '2026-12-01', to: '2027-01-31' }) });
+  assert.strictEqual(again.data.count, 0);
+  assert.strictEqual(again.data.skipped, 9);
+
+  // 행사·대회로 반복 등록하면 손대지 않는다
+  await a.call('/events/bulk', { method: 'POST', body: base({ title: '레슨데이', kind: 'event', weekdays: [3], from: '2027-02-01', to: '2027-02-28' }) });
+  assert.strictEqual(app.db.prepare("SELECT COUNT(*) c FROM event WHERE title='레슨데이' AND kind='event'").get().c, 4);
+  app.close();
+});
+
+test('마지막 수요일 계산', () => {
+  const { isLastWednesday } = require('../routes/events');
+  assert.ok(isLastWednesday('2026-11-25'));
+  assert.ok(!isLastWednesday('2026-11-18'));
+  assert.ok(isLastWednesday('2027-03-31'));
+  assert.ok(!isLastWednesday('2027-03-30'));
+  assert.ok(isLastWednesday('2027-02-24'));
+});

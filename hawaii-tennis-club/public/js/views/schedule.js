@@ -150,6 +150,12 @@ function repeatBlock() {
     </div>`;
 }
 
+// 그달 마지막 수요일 — 정기모임 반복 등록 때 그날은 월례대회가 된다 (서버 routes/events.js 와 같은 규칙)
+function isLastWed(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay() === 3 && d + 7 > new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
 // 고른 요일·기간으로 만들어질 날짜를 화면에서 미리 센다 (서버와 같은 규칙)
 function repeatDates(from, to, days) {
   if (!from || !to || to < from || !days.length) return [];
@@ -229,12 +235,16 @@ export function eventForm(e, state, refresh, preset = {}) {
   const update = () => {
     const days = [...picked];
     const list = repeatDates(fromEl.value, toEl.value, days);
+    const kindEl = form.querySelector('[name="kind"]');
+    const monthly = kindEl?.value === 'regular' ? list.filter(isLastWed).length : 0;
     info.textContent = days.length
-      ? (list.length ? t('repeatPreview', { n: list.length }) : t('repeatNone'))
+      ? (list.length ? t('repeatPreview', { n: list.length }) + (monthly ? ' · ' + t('repeatMonthly', { n: monthly }) : '') : t('repeatNone'))
       : t('repeatNoDays');
     // 반복을 켜면 날짜 한 칸은 쓰지 않으므로 흐리게 둔다
     if (dateField) dateField.disabled = onBox.checked;
   };
+
+  form.querySelector('[name="kind"]')?.addEventListener('change', update);
 
   const paint = () => {
     form.querySelectorAll('[data-day]').forEach(b => {

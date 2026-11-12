@@ -4,7 +4,18 @@ const { today, EVENT_KINDS, ANSWERS } = require('../lib/db');
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
-module.exports = function eventRoutes(db, auth, notify, tr) {
+// 월례대회 = 매달 마지막 수요일 (2026-11-12 사장님 결정 — 월말 Club Night 자리를 대회로).
+// 정기모임(Club Night)을 반복 등록하면 그달 마지막 수요일은 자동으로 월례대회가 된다.
+const MONTHLY_TITLE = 'Hawaii game day (temtseen)(월례대회)';
+function isLastWednesday(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return dow === 3 && d + 7 > days;
+}
+
+module.exports = Object.assign(eventRoutes, { isLastWednesday, MONTHLY_TITLE });
+function eventRoutes(db, auth, notify, tr) {
   const router = express.Router();
   router.use(auth.requireClub);
 
@@ -90,18 +101,22 @@ module.exports = function eventRoutes(db, auth, notify, tr) {
 
     const run = db.transaction(() => {
       const created = [];
+      const tourneys = [];
       let skipped = 0;
       for (const d of dates) {
+        const monthly = base.kind === 'regular' && isLastWednesday(d);
+        const title = monthly ? MONTHLY_TITLE : base.title;
         // 같은 제목·날짜·시작시간이 이미 있으면 건너뛴다 (두 번 눌러도 겹쳐 쌓이지 않게)
-        if (dup.get(base.title, d, base.start_time)) { skipped += 1; continue; }
-        ins.run(base.title, base.kind, d, base.start_time, base.end_time, base.courts, base.memo, req.me.id);
+        if (dup.get(title, d, base.start_time)) { skipped += 1; continue; }
+        ins.run(title, monthly ? 'tournament' : base.kind, d, base.start_time, base.end_time, base.courts, base.memo, req.me.id);
         created.push(d);
+        if (monthly) tourneys.push(d);
       }
-      return { created, skipped };
+      return { created, skipped, tourneys };
     });
 
     const r = run();
-    res.json({ ok: true, count: r.created.length, skipped: r.skipped, dates: r.created });
+    res.json({ ok: true, count: r.created.length, skipped: r.skipped, dates: r.created, tourneys: r.tourneys });
 
     // 여러 개를 한 번에 만들었으니 알림도 한 번만 (폰이 수십 번 울리면 안 된다)
     if (r.created.length) {

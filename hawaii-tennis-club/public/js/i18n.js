@@ -190,6 +190,7 @@ export const DICT = {
     repeatPreview: '{n} events will be created',
     repeatNoDays: 'Pick the days of the week',
     repeatNone: 'No matching dates',
+    repeatMonthly: 'last Wednesday of the month = Monthly tournament ({n})',
     repeatBadRange: 'Check the date range',
     bulkDone: 'Created {n} events',
     bulkDoneSkip: 'Created {n} ({s} already existed)',
