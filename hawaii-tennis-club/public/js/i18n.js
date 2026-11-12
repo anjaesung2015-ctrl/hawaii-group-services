@@ -113,6 +113,7 @@ export const DICT = {
     role_external_asst: 'Partnerships Assistant',
     galleryTitle: 'Photos', galleryAdd: 'Add photos', galleryEmpty: 'No photos yet — add the first one',
     galleryPick: 'Choose photos', galleryPickHint: 'Up to {n} photos at a time.', galleryNone: 'Choose at least one photo',
+    gallerySave: 'Save', gallerySaved: 'Saved to your downloads',
     galleryUpload: 'Upload', galleryCaption: 'Caption', galleryCaptionHint: 'e.g. November tournament (optional)',
     calendarTab: 'Calendar', calToday: 'Today', calAddEvent: 'Add event', calNothing: 'Nothing on this day',
     role_honorary: 'Honorary Chairman',

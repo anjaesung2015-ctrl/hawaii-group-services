@@ -941,3 +941,15 @@ body.tabs-8 .tabbar .tab-icon { width: 21px; height: 21px; }
 .cal-legend { display: flex; align-items: center; gap: 8px; justify-content: center; margin-top: 9px; font-size: 11px; color: var(--muted); }
 .cal-legend .cal-ev { display: inline-block; font-size: 10px; }
 .gv-acts .btn:not(.btn-danger) { color: var(--ink); }
+
+/* 캘린더 칸 글자 — 두 줄까지 보이게 (2026-11-12 "글자가 보이게") */
+.cal-cell { min-height: 74px; padding: 3px 2px 4px; }
+.cal-ev {
+  font-size: 10px; line-height: 1.2; padding: 2px 3px; font-weight: 600;
+  white-space: normal; word-break: break-word;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.cal-ev.regular { background: var(--court-tint); color: var(--court-dark); }
+.cal-legend .cal-ev { display: inline-block; }
+.cal-cell { min-height: 82px; }
+.cal-ev { -webkit-line-clamp: 3; overflow-wrap: anywhere; font-size: 9.5px; padding: 2px 2px; }

@@ -84,9 +84,12 @@ function viewer(rows, start, state, refresh) {
       <div class="gv-info">
         ${p.caption ? `<div class="gv-cap">${esc(p.caption)}</div>` : ''}
         <div class="gv-meta">${esc(p.author || '')} · ${esc(timeAgo(p.created_at))} · ${i + 1}/${rows.length}</div>
-        ${canDelete(p, state.me) ? `<div class="gv-acts">
+        <div class="gv-acts">
+          <button class="btn btn-sm btn-primary" data-save>⬇ ${esc(t('gallerySave'))}</button>
+          ${canDelete(p, state.me) ? `
           <button class="btn btn-sm" data-cap>${esc(t('galleryCaption'))}</button>
-          <button class="btn btn-sm btn-danger" data-del>${esc(t('del'))}</button></div>` : ''}
+          <button class="btn btn-sm btn-danger" data-del>${esc(t('del'))}</button>` : ''}
+        </div>
       </div>`;
   };
   draw();
@@ -94,6 +97,8 @@ function viewer(rows, start, state, refresh) {
   const go = (d) => { const n = i + d; if (n >= 0 && n < rows.length) { i = n; draw(); } };
   v.onclick = async (e) => {
     if (e.target.closest('[data-x]')) return close();
+    const sv = e.target.closest('[data-save]');
+    if (sv) { sv.disabled = true; await savePhoto(rows[i]); sv.disabled = false; return; }
     if (e.target.closest('[data-prev]')) return go(-1);
     if (e.target.closest('[data-next]')) return go(1);
     const del = e.target.closest('[data-del]');
@@ -130,6 +135,38 @@ function viewer(rows, start, state, refresh) {
     x0 = null;
     if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
   });
+}
+
+// ---------- 폰에 저장 ----------
+// 아이폰: 공유 창(navigator.share)을 띄운다 → "이미지 저장"으로 사진 앱에 들어간다
+//   (홈 화면 앱에서는 <a download> 가 사진 앱에 저장되지 않는다)
+// 안드로이드·PC: 파일로 내려받는다(다운로드 폴더 → 갤러리에도 보인다)
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+async function savePhoto(p) {
+  try {
+    const res = await fetch(p.photo, { credentials: 'same-origin' });
+    if (!res.ok) throw new Error('fetch');
+    const blob = await res.blob();
+    const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+    const name = `hawaii-tennis-${p.id}.${ext}`;
+    const file = new File([blob], name, { type: blob.type || 'image/jpeg' });
+
+    if (isIOS() && navigator.canShare?.({ files: [file] })) {
+      try { await navigator.share({ files: [file] }); } catch (e) { /* 공유 창을 닫은 것 */ }
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast(t('gallerySaved'));
+  } catch (e) { toast(t('failed'), true); }
 }
 
 // ---------- 올리기 ----------
