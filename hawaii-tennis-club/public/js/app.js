@@ -21,6 +21,7 @@ import { renderChat } from './views/chat.js';
 import { renderTraining, renderMyFees, renderEliteNotices } from './views/elite-me.js';
 import { renderElite } from './views/elite.js';
 import { renderGallery } from './views/gallery.js';
+import { initTabSwipe } from './swipe.js';
 
 const state = { me: null, settings: { club_name: 'Hawaii Tennis Club', monthly_fee: 0, joining_fee: 0, currency: '₮' }, tab: 'home' };
 
@@ -290,6 +291,16 @@ $('#settingsBtn').onclick = () => {
 
 // ---------- 탭 · 언어 · 뒤로가기 ----------
 $$('#tabbar button').forEach(b => b.onclick = () => goTab(b.dataset.tab));
+
+// 옆으로 밀면 하단 탭 순서대로 — 창(모달·메뉴·사진)이 열려 있거나 채팅방 안에서는 안 넘긴다
+initTabSwipe($('#content'), {
+  canSwipe: () => !!state.me && !$('#modalRoot').innerHTML.trim() && $('#menuSheet').hidden
+    && !document.body.querySelector(':scope > .photo-view, :scope > .crop-ov')
+    && !document.body.classList.contains('in-room'),
+  tabs: () => $$('#tabbar button').filter(b => b.getClientRects().length).map(b => b.dataset.tab),
+  current: () => state.tab,
+  go: (tab) => goTab(tab),
+});
 
 // ← 버튼: 앞서 본 탭으로. 앱 안에서 옮긴 적이 없으면(바로 열었으면) 홈으로 — 앱 밖으로 나가지 않게
 $('#backBtn').onclick = () => {

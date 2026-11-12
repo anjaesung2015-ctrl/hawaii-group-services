@@ -5,6 +5,11 @@
 import { api, esc, today, thisMonth, shiftMonth, trText } from '../ui.js';
 import { t, fmtMonth, fmtDate } from '../i18n.js';
 import { eventCard, bindEventCards, eventForm } from './schedule.js';
+import { onSwipe } from '../swipe.js';
+
+// 월례대회는 노란색 — 종류를 Club Night 로 적었어도 제목에 대회 말이 있으면 대회 색으로 (2026-11-12 사장님)
+const TOURNEY = /월례대회|대회|tournament|тэмцээн|temtseen/i;
+const calKind = (e) => (e.kind === 'tournament' || TOURNEY.test(`${e.title || ''} ${e.title_tr || ''}`) ? 'tournament' : e.kind);
 
 export async function mountCalendar(box, state) {
   const ym = state.calMonth || thisMonth();
@@ -29,11 +34,11 @@ export async function mountCalendar(box, state) {
     const iso = `${ym}-${String(d).padStart(2, '0')}`;
     const list = byDay.get(iso) || [];
     // 행사·대회를 먼저, 그다음 정기모임 — 모두 제목 글자로 보인다 (2026-11-12 사장님 "글자가 보이게")
-    const shown = [...list.filter(e => e.kind !== 'regular'), ...list.filter(e => e.kind === 'regular')];
+    const shown = [...list.filter(e => calKind(e) !== 'regular'), ...list.filter(e => calKind(e) === 'regular')];
     const dow = (first + d - 1) % 7;
     cells.push(`<button class="cal-cell${iso === today() ? ' today' : ''}${iso === sel ? ' sel' : ''}${dow === 0 ? ' sun' : ''}${dow === 6 ? ' sat' : ''}" data-day="${iso}">
       <span class="cal-d">${d}</span>
-      ${shown.slice(0, 2).map(e => `<span class="cal-ev ${e.kind}">${esc(trText(e, 'title').text)}</span>`).join('')}
+      ${shown.slice(0, 2).map(e => `<span class="cal-ev ${calKind(e)}">${esc(trText(e, 'title').text)}</span>`).join('')}
       ${shown.length > 2 ? `<span class="cal-more">+${shown.length - 2}</span>` : ''}
     </button>`);
   }
@@ -62,6 +67,8 @@ export async function mountCalendar(box, state) {
     state.calDay = null;
     again();
   });
+  // 달력 위에서 옆으로 밀면 지난달·다음달
+  onSwipe(box.querySelector('.cal'), (dir) => { state.calMonth = shiftMonth(ym, dir); state.calDay = null; again(); });
   box.querySelectorAll('[data-day]').forEach(b => b.onclick = () => { state.calDay = b.dataset.day; again(); });
   const add = box.querySelector('[data-cal-add]');
   if (add) add.onclick = () => eventForm(null, state, again, { event_date: sel, kind: 'event' });
