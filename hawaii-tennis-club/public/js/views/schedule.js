@@ -2,25 +2,39 @@
 import { api, esc, toast, openModal, today, trText, origHtml, $$ } from '../ui.js';
 import { t, fmtDate, kindLabel } from '../i18n.js';
 import { weekdaysFromText, nextDateFor } from '../weekdays.js';
+import { mountCalendar } from './calendar.js';
 
 const KINDS = ['regular', 'event', 'tournament'];
 
 export async function renderSchedule(el, state) {
-  const past = state.schedulePast === true;
+  const seg = state.scheduleSeg || 'up';      // up | cal | past
+  const segs = `
+    <div class="seg">
+      <button data-seg="up" class="${seg === 'up' ? 'on' : ''}">${esc(t('upcomingTab'))}</button>
+      <button data-seg="cal" class="${seg === 'cal' ? 'on' : ''}">${esc(t('calendarTab'))}</button>
+      <button data-seg="past" class="${seg === 'past' ? 'on' : ''}">${esc(t('pastTab'))}</button>
+    </div>`;
+  const bindSeg = () => $$('[data-seg]', el).forEach(b => b.onclick = () => {
+    state.scheduleSeg = b.dataset.seg;
+    renderSchedule(el, state);
+  });
+
+  // 캘린더 — 달 칸에서 날짜를 골라 본다 (운영진은 그날 행사를 바로 추가)
+  if (seg === 'cal') {
+    el.innerHTML = `${segs}<div data-cal-box></div>`;
+    bindSeg();
+    return mountCalendar(el.querySelector('[data-cal-box]'), state);
+  }
+
+  const past = seg === 'past';
   const list = await api(`/events?lang=en${past ? '&past=1' : ''}`);
 
   el.innerHTML = `
-    <div class="seg">
-      <button data-seg="up" class="${past ? '' : 'on'}">${esc(t('upcomingTab'))}</button>
-      <button data-seg="past" class="${past ? 'on' : ''}">${esc(t('pastTab'))}</button>
-    </div>
+    ${segs}
     ${state.me.role === 'admin' ? `<div class="fab-row"><button class="btn btn-primary" style="width:100%" data-new>+ ${esc(t('newEvent'))}</button></div>` : ''}
     <div data-list>${list.length ? list.map(e => eventCard(e, { rsvp: !past })).join('') : `<div class="empty">${esc(t('noEvents'))}</div>`}</div>`;
 
-  $$('[data-seg]', el).forEach(b => b.onclick = () => {
-    state.schedulePast = b.dataset.seg === 'past';
-    renderSchedule(el, state);
-  });
+  bindSeg();
   const addBtn = el.querySelector('[data-new]');
   if (addBtn) addBtn.onclick = () => eventForm(null, state, () => renderSchedule(el, state));
   bindEventCards(el, state, () => renderSchedule(el, state));
@@ -151,16 +165,16 @@ function repeatDates(from, to, days) {
 }
 
 // 등록 · 수정 (관리자)
-export function eventForm(e, state, refresh) {
+export function eventForm(e, state, refresh, preset = {}) {
   const isNew = !e;
   const picked = new Set();
   const m = openModal({
     title: isNew ? t('newEvent') : t('editEvent'),
     fields: [
       { name: 'title', label: t('title'), value: e?.title || '', placeholder: t('title') },
-      { name: 'kind', label: t('kind'), type: 'select', value: e?.kind || 'regular',
+      { name: 'kind', label: t('kind'), type: 'select', value: e?.kind || preset.kind || 'regular',
         options: KINDS.map(k => ({ value: k, label: kindLabel(k) })) },
-      { name: 'event_date', label: t('date'), type: 'date', value: e?.event_date || today() },
+      { name: 'event_date', label: t('date'), type: 'date', value: e?.event_date || preset.event_date || today() },
       { name: 'start_time', label: t('startTime'), type: 'time', value: e?.start_time || '19:00' },
       { name: 'end_time', label: t('endTime'), type: 'time', value: e?.end_time || '21:00' },
       { name: 'courts', label: t('courts'), type: 'number', value: e?.courts ?? 2, min: 1, max: 20 },

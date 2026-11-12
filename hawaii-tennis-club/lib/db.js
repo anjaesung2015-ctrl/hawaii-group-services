@@ -347,6 +347,15 @@ function migrate(db) {
       updated_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_expense_spent ON expense(spent_at);
+
+    -- 사진첩 — 홈 화면에 최근 사진, 누르면 전체. 회원 누구나 올리고, 지우기는 올린 사람·운영진.
+    CREATE TABLE IF NOT EXISTS gallery_photo (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      member_id  INTEGER REFERENCES member(id) ON DELETE SET NULL,
+      photo      TEXT NOT NULL,
+      caption    TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    );
   `);
 
   const put = db.prepare('INSERT INTO setting (k, v) VALUES (?, ?) ON CONFLICT(k) DO NOTHING');
@@ -359,7 +368,7 @@ function migrate(db) {
   putDoc.run('mn', MN);
 
   // 조직도 자리 (회칙 제14조) — 사람은 비어 있고 자리만 먼저 만들어 둔다
-  const putOfficer = db.prepare('INSERT INTO officer (role, sort) VALUES (?,?) ON CONFLICT(role) DO NOTHING');
+  const putOfficer = db.prepare('INSERT INTO officer (role, sort) VALUES (?,?) ON CONFLICT(role) DO UPDATE SET sort=excluded.sort');
   OFFICER_ROLES.forEach((r, i) => putOfficer.run(r.role, i));
   // 회칙에서 없어진 자리(예: 총무2)는 비어 있을 때만 지운다 — 사람이 앉아 있으면 남겨 둔다
   const keep = OFFICER_ROLES.map(r => r.role);
@@ -376,6 +385,10 @@ const OFFICER_ROLES = [
   { role: 'match',     group: 'exec',     slots: 1 },
   { role: 'event',     group: 'exec',     slots: 1 },
   { role: 'external',  group: 'exec',     slots: 1 },
+  // 디렉터마다 보조 한 명 (2026-11-12 사장님 지시) — 조직도에서 각 디렉터 바로 아래
+  { role: 'match_asst',    group: 'exec', slots: 1, under: 'match' },
+  { role: 'event_asst',    group: 'exec', slots: 1, under: 'event' },
+  { role: 'external_asst', group: 'exec', slots: 1, under: 'external' },
   { role: 'honorary',  group: 'honorary', slots: 1 },
   { role: 'advisor1',  group: 'honorary', slots: 1 },
   { role: 'advisor2',  group: 'honorary', slots: 1 },

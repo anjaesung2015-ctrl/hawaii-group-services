@@ -855,3 +855,89 @@ body.tabs-8 .tabbar .tab-icon { width: 21px; height: 21px; }
 /* 가입 신청서 맨 위 — 동호인반 / 엘리트선수반 */
 .join-prog { display: flex; margin: 0 0 14px; }
 .join-prog .rl-lang { flex: 1; padding: 9px 12px; font-size: 14px; }
+
+/* 조직도 — 디렉터 아래 보조 한 명씩 (칸 하나에 디렉터 + 선 + 보조) */
+.org-col { flex: 1 1 30%; min-width: 96px; max-width: 180px; display: flex; flex-direction: column; align-items: stretch; }
+.org-col .org-slot { max-width: none; min-width: 0; }
+.org-sublink { width: 2px; height: 9px; background: var(--hair); margin: 0 auto; }
+.org-slot.asst { padding: 6px 6px; border-radius: 9px; }
+.org-slot.asst .org-role { font-size: 9.5px; }
+.org-slot.asst .org-name { font-size: 12.5px; }
+
+/* 사진첩 — 홈 화면 사진 줄 */
+.gstrip {
+  display: flex; gap: 7px; overflow-x: auto; margin: 0 -14px; padding: 2px 14px 6px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;
+}
+.gstrip::-webkit-scrollbar { display: none; }
+.gstrip img, .gadd {
+  flex: 0 0 auto; width: 96px; height: 96px; border-radius: 12px; object-fit: cover; cursor: pointer;
+  background: var(--court-tint);
+}
+.gadd {
+  border: 1.5px dashed #b9d6c5; color: var(--court-dark); font: inherit;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+}
+.gadd b { font-size: 26px; line-height: 1; font-weight: 500; }
+.gadd span { font-size: 11.5px; font-weight: 650; }
+.gstrip-empty { align-self: center; font-size: 13px; color: var(--muted); padding: 0 6px; }
+
+/* 사진첩 — 전체 */
+.ggrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 12px; }
+.gcell { padding: 0; border: 0; background: var(--court-tint); aspect-ratio: 1; border-radius: 6px; overflow: hidden; cursor: pointer; }
+.gcell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gpreview { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 10px 0 4px; }
+.gpreview:empty { display: none; }
+.gp { position: relative; aspect-ratio: 1; }
+.gp img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+.gp button {
+  position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%;
+  border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; line-height: 22px; padding: 0; cursor: pointer;
+}
+
+/* 사진첩 — 크게 보기 */
+.gview { grid-template-rows: 1fr auto; }
+.gview img { max-height: calc(100vh - 150px); }
+.gv-x, .gv-nav {
+  position: absolute; z-index: 2; border: 0; background: rgba(255,255,255,.14); color: #fff; cursor: pointer;
+  width: 40px; height: 40px; border-radius: 50%; font-size: 18px; line-height: 40px; padding: 0;
+}
+.gv-x { top: calc(12px + env(safe-area-inset-top)); right: 12px; }
+.gv-nav { top: 45%; font-size: 28px; }
+.gv-nav.prev { left: 8px; }
+.gv-nav.next { right: 8px; }
+.gv-info { width: 100%; max-width: 560px; padding: 10px 16px 16px; color: #fff; text-align: center; }
+.gv-cap { font-size: 15px; font-weight: 600; margin-bottom: 3px; }
+.gv-meta { font-size: 12px; opacity: .7; }
+.gv-acts { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+
+/* 캘린더 */
+.cal { padding: 12px 10px 10px; }
+.cal-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.cal-head b { flex: 1; text-align: center; font-size: 16px; color: var(--court-dark); }
+.cal-head .btn-ghost { font-size: 20px; padding: 2px 12px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.cal-dow span { text-align: center; font-size: 10.5px; color: var(--muted); padding-bottom: 4px; letter-spacing: .04em; }
+.cal-cell {
+  min-height: 58px; padding: 3px 2px; border: 1px solid transparent; border-radius: 8px;
+  background: #fafcfb; font: inherit; color: var(--ink); cursor: pointer; text-align: left;
+  display: flex; flex-direction: column; gap: 2px; overflow: hidden; min-width: 0;
+}
+.cal-cell.blank { background: transparent; cursor: default; }
+.cal-cell.sun .cal-d { color: var(--danger); }
+.cal-cell.sat .cal-d { color: #2563a8; }
+.cal-cell.today { border-color: var(--gold); background: var(--gold-tint); }
+.cal-cell.sel { border-color: var(--court-dark); background: var(--court-tint); }
+.cal-d { font-size: 12px; font-weight: 700; padding-left: 3px; }
+.cal-ev {
+  display: block; font-size: 9.5px; line-height: 1.25; padding: 1px 3px; border-radius: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: var(--court); color: #fff;
+}
+.cal-ev.tournament { background: var(--gold); }
+.cal-more { font-size: 9.5px; color: var(--muted); padding-left: 3px; }
+.cal-dots { display: inline-flex; gap: 2px; padding-left: 3px; }
+.cal-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--court); display: block; }
+.cal-legend { display: flex; align-items: center; gap: 8px; justify-content: center; margin-top: 9px; font-size: 11px; color: var(--muted); }
+.cal-legend .cal-ev { display: inline-block; font-size: 10px; }
+.gv-acts .btn:not(.btn-danger) { color: var(--ink); }

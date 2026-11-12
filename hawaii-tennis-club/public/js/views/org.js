@@ -18,18 +18,22 @@ export async function orgBlock(state) {
   const by = new Map(rows.map(r => [r.role, r]));
   const isAdmin = !!state.me.is_owner;   // 조직도 편집은 오너만 (회칙 제14조③·제16조)
 
-  const slot = (role) => {
+  const slot = (role, cls = '') => {
     const o = by.get(role) || {};
     const filled = !!o.name;
-    return `<div class="org-slot ${filled ? '' : 'empty'} ${isAdmin ? 'tap' : ''}" ${isAdmin ? `data-role="${role}"` : ''}>
+    return `<div class="org-slot ${cls} ${filled ? '' : 'empty'} ${isAdmin ? 'tap' : ''}" ${isAdmin ? `data-role="${role}"` : ''}>
       <div class="org-role">${esc(t('role_' + role))}</div>
       <div class="org-name">${filled ? esc(o.name) : (isAdmin ? esc(t('orgAssign')) : '—')}</div>
       ${o.note ? `<div class="org-note">${esc(o.note)}</div>` : ''}
     </div>`;
   };
+  // 디렉터는 바로 아래에 보조 한 명 (2026-11-12) — 디렉터 + 짧은 선 + 보조를 한 칸으로 묶는다
+  const cell = (role) => (by.has(role + '_asst')
+    ? `<div class="org-col">${slot(role)}<div class="org-sublink"></div>${slot(role + '_asst', 'asst')}</div>`
+    : slot(role));
 
   const lines = LAYOUT.map(({ group, roles }, i) => {
-    const inner = roles.map(slot).join('');
+    const inner = roles.map(cell).join('');
     const label = group === 'honorary' ? `<div class="org-label">${esc(t('orgHonorary'))}</div>` : '';
     return `${i > 0 && group !== 'honorary' ? '<div class="org-link"></div>' : ''}${label}<div class="org-row">${inner}</div>`;
   }).join('');

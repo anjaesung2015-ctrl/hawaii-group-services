@@ -50,6 +50,7 @@ function makeApp(opts = {}) {
   app.use('/api/push', require('../routes/push')(db, auth, notify));
   app.use('/api/docs', require('../routes/docs')(db, auth));
   app.use('/api/officers', require('../routes/officers')(db, auth));
+  app.use('/api/gallery', require('../routes/gallery')(db, auth));
   app.use('/api/chat', require('../routes/chat')(db, auth, notify, tr));
   app.use('/api/invite', require('../routes/invite')());
   app.use('/api/elite/sessions', require('../routes/elite-sessions')(db, auth, notify));

@@ -21,7 +21,11 @@ module.exports = function eventRoutes(db, auth, notify, tr) {
   // 목록 — 기본은 오늘부터. ?past=1 이면 지난 일정을 최근 것부터.
   router.get('/', async (req, res) => {
     const past = req.query.past === '1';
-    const rows = past
+    // 캘린더 — ?month=2026-11 이면 그 달 일정 전부 (지난 날 포함)
+    const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(String(req.query.month || '')) ? String(req.query.month) : null;
+    const rows = month
+      ? db.prepare("SELECT * FROM event WHERE substr(event_date,1,7)=? ORDER BY event_date, start_time").all(month)
+      : past
       ? db.prepare('SELECT * FROM event WHERE event_date < ? ORDER BY event_date DESC, start_time DESC LIMIT 60').all(today())
       : db.prepare('SELECT * FROM event WHERE event_date >= ? ORDER BY event_date, start_time').all(today());
     const out = rows.map(e => withCounts(db, e, req.me.id));

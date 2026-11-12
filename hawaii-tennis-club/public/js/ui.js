@@ -182,7 +182,7 @@ const ERRORS = {
   already_member: 'alreadyMember', already_requested: 'alreadyRequested', too_many_requests: 'tooManyRequests',
   bad_range: 'repeatBadRange', weekdays_required: 'repeatNoDays', no_dates: 'repeatNone',
   too_many_dates: 'repeatTooMany', no_device: 'pushNoDevice', bad_subscription: 'failed',
-  owner_only: 'ownerOnly', bad_photo: 'photoBad', cannot_delete_owner: 'cannotDeleteOwner',
+  photo_required: 'galleryNone', forbidden: 'adminOnly', owner_only: 'ownerOnly', bad_photo: 'photoBad', cannot_delete_owner: 'cannotDeleteOwner',
 };
 export const errText = (e) => t(ERRORS[e?.message] || 'failed');
 

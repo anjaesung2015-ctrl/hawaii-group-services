@@ -20,6 +20,7 @@ import { renderMembers } from './views/members.js';
 import { renderChat } from './views/chat.js';
 import { renderTraining, renderMyFees, renderEliteNotices } from './views/elite-me.js';
 import { renderElite } from './views/elite.js';
+import { renderGallery } from './views/gallery.js';
 
 const state = { me: null, settings: { club_name: 'Hawaii Tennis Club', monthly_fee: 0, joining_fee: 0, currency: '₮' }, tab: 'home' };
 
@@ -31,6 +32,7 @@ const VIEWS = {
   notices: renderNotices,
   members: renderMembers,
   chat: renderChat,          // 하단 Free Chat 탭
+  gallery: renderGallery,    // 사진첩 (홈 화면 사진 줄에서 들어온다)
   elite: renderElite,        // 오너·선수반 코치
   training: renderTraining,  // 선수(부모) 계정
   fees: renderMyFees,

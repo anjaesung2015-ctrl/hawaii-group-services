@@ -4,15 +4,18 @@ import { t, fmtMonth, fmtMoney } from '../i18n.js';
 import { eventCard, bindEventCards } from './schedule.js';
 import { noticeForm } from './notices.js';
 import { canDues, remindUnpaid, openDonation } from './dues.js';
+import { galleryStrip, bindGalleryStrip } from './gallery.js';
+import { mountCalendar } from './calendar.js';
 
 export async function renderHome(el, state) {
   const isAdmin = state.me.role === 'admin';
   const duesView = canDues(state.me);   // 회비 담당은 운영진이 아니어도 미납자 목록을 본다
-  const [events, notices, money, join] = await Promise.all([
+  const [events, notices, money, join, photos] = await Promise.all([
     api('/events/upcoming?limit=3&lang=en'),
     api('/notices?lang=en'),
     duesView ? api(`/dues/unpaid?month=${thisMonth()}`) : api('/dues/me'),
     isAdmin ? api('/join').catch(() => ({ count: 0 })) : Promise.resolve({ count: 0 }),
+    galleryStrip(),
   ]);
   const recent = notices.slice(0, 6);       // 서버가 고정 공지 먼저, 그다음 최신순으로 준다
   const cur = state.settings.currency;
@@ -48,6 +51,11 @@ export async function renderHome(el, state) {
       </div>
       ${recent.length > 1 ? `<div class="ndots" data-ndots>${recent.map((_, i) => `<i${i ? '' : ' class="on"'}></i>`).join('')}</div>` : ''}` : ''}
 
+    ${photos}
+
+    <div class="section-head"><h2>📅 ${esc(t('calendarTab'))}</h2></div>
+    <div data-home-cal></div>
+
     <div class="section-head"><h2>${esc(t('upcoming'))}</h2></div>
     <div data-events>
       ${events.length ? events.map(e => eventCard(e, { rsvp: true })).join('') : `<div class="empty">${esc(t('noUpcoming'))}</div>`}
@@ -56,6 +64,9 @@ export async function renderHome(el, state) {
     ${duesView ? adminMoney(money, cur) : myMoney(money, state, cur)}`;
 
   bindEventCards(el, state, () => renderHome(el, state));
+  bindGalleryStrip(el, state, () => renderHome(el, state));
+  // 캘린더는 자기 칸만 다시 그린다 (달을 넘겨도 홈 전체가 깜빡이지 않게)
+  mountCalendar(el.querySelector('[data-home-cal]'), state);
   // 회비 담당 빠른 버튼 — 찬조금 바로 적기, 미납자 알림
   const db = el.querySelector('[data-home-donation]');
   if (db) db.onclick = () => openDonation(thisMonth(), () => renderHome(el, state));

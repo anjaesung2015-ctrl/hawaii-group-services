@@ -39,6 +39,7 @@ app.use('/api/posts', require('./routes/posts')(db, auth, notify, tr));   // 자
 app.use('/api/push', require('./routes/push')(db, auth, notify));    // 폰 알림
 app.use('/api/docs', require('./routes/docs')(db, auth));            // 회칙 (읽기는 누구나)
 app.use('/api/officers', require('./routes/officers')(db, auth));    // 조직도
+app.use('/api/gallery', require('./routes/gallery')(db, auth));      // 사진첩
 app.use('/api/chat', require('./routes/chat')(db, auth, notify, tr));    // 채팅 (전체방 + 1:1)
 app.use('/api/invite', require('./routes/invite')());                    // 초대 링크 QR
 app.use('/api/elite/sessions', require('./routes/elite-sessions')(db, auth, notify));   // 선수반 훈련·출석

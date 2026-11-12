@@ -168,7 +168,7 @@ test('조직도 자리가 회칙 제14조대로 만들어져 있다', async () =
   const rows = (await m.call('/officers')).data;
   assert.deepStrictEqual(rows.map(r => r.role), [
     'owner', 'president', 'vice1', 'vice2', 'manager1',
-    'match', 'event', 'external', 'honorary', 'advisor1', 'advisor2', 'advisor3',
+    'match', 'event', 'external', 'match_asst', 'event_asst', 'external_asst', 'honorary', 'advisor1', 'advisor2', 'advisor3',
   ]);
   assert.ok(rows.every(r => r.name === null), '처음에는 비어 있어야 한다');
   app.close();
