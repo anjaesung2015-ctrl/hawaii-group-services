@@ -2,7 +2,7 @@
 // 행사·대회는 칸 안에 제목이 보이고, 정기모임은 점으로만 (칸이 좁으니까).
 // 운영진은 날짜를 고르고 "+ 이날 행사 추가"로 바로 적는다.
 // 홈 화면과 일정 탭(Calendar)이 같이 쓴다.
-import { api, esc, today, thisMonth, shiftMonth, trText } from '../ui.js';
+import { api, esc, today, thisMonth, shiftMonth, origText } from '../ui.js';
 import { t, fmtMonth, fmtDate } from '../i18n.js';
 import { eventCard, bindEventCards, eventForm } from './schedule.js';
 import { onSwipe } from '../swipe.js';
@@ -38,7 +38,7 @@ export async function mountCalendar(box, state) {
     const dow = (first + d - 1) % 7;
     cells.push(`<button class="cal-cell${iso === today() ? ' today' : ''}${iso === sel ? ' sel' : ''}${dow === 0 ? ' sun' : ''}${dow === 6 ? ' sat' : ''}" data-day="${iso}">
       <span class="cal-d">${d}</span>
-      ${shown.slice(0, 2).map(e => `<span class="cal-ev ${calKind(e)}">${esc(trText(e, 'title').text)}</span>`).join('')}
+      ${shown.slice(0, 2).map(e => `<span class="cal-ev ${calKind(e)}">${esc(origText(e, 'title').text)}</span>`).join('')}
       ${shown.length > 2 ? `<span class="cal-more">+${shown.length - 2}</span>` : ''}
     </button>`);
   }
