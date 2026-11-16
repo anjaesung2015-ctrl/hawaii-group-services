@@ -2,7 +2,7 @@
 // '오늘 하루 안 보기'·'다시 안 보기'는 이 폰에만 남긴다(localStorage). 폰을 바꾸면 다시 뜬다.
 // 관리(운영진): ☰ 메뉴 → Popups 화면(renderPopupAdmin).
 // 팝업은 #modalRoot 에 띄운다 — 폰 뒤로가기가 팝업부터 닫는다(backnav).
-import { api, esc, toast, openModal, pickPhoto, today, trText, origHtml } from '../ui.js';
+import { api, esc, toast, openModal, pickPhoto, today, origHtml } from '../ui.js';
 import { t } from '../i18n.js';
 
 const NEVER = 'htc_popup_never';     // [id, …]
@@ -53,7 +53,9 @@ export function showPopups(list, state, { preview = false } = {}) {
 
   const draw = () => {
     const p = list[i];
-    const title = trText(p, 'title'), body = trText(p, 'body');
+    // 원문(운영진이 쓴 한국어·몽골어)을 크게, 영어 번역은 아래 작게 (2026-11-16 사장님 지시)
+    const title = { text: p.title, orig: p.title_tr || null };
+    const body = { text: p.body || '', orig: p.body_tr || null };
     root.innerHTML = `
       <div class="popup-wrap" data-modal>
         <div class="popup-card${list.length > 1 && !p.photo ? ' counted' : ''}" role="dialog" aria-modal="true">
