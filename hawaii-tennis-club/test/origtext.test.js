@@ -14,7 +14,7 @@ test('origText — 원문이 크게, 번역은 다를 때만 작게', async () =
 
 test('공지·게시판·홈 피드·팝업·일정·캘린더는 원문 크게(origText)', () => {
   const read = (f) => fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'views', f), 'utf8');
-  for (const f of ['notices.js', 'board.js', 'home.js', 'popup.js', 'schedule.js', 'calendar.js', 'chat.js']) {
+  for (const f of ['notices.js', 'board.js', 'home.js', 'popup.js', 'schedule.js', 'chat.js']) {
     assert.match(read(f), /origText\(/, f);
     assert.doesNotMatch(read(f), /trText\(/, f);
   }

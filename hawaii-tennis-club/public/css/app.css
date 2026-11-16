@@ -1083,9 +1083,14 @@ body.tabs-8 .tabbar .tab-icon { width: 21px; height: 21px; }
 
 /* ---------- 홈 — 바로가기·작은 캘린더 ---------- */
 .mini-cal { padding: 6px 10px 6px; margin: 0 0 12px; }
-.mc-head { display: flex; width: 100%; align-items: center; justify-content: space-between; border: 0; background: none;
-  color: inherit; font-weight: 700; font-size: 14.5px; padding: 2px 2px 6px; cursor: pointer; }
-.mc-head span { color: var(--muted); font-size: 18px; }
+.mc-head { display: flex; align-items: center; gap: 6px; padding: 2px 0 6px; font-size: 14.5px; }
+.mc-head b { flex: 1; text-align: center; }
+.mc-head button { border: 0; background: var(--court-tint); color: var(--court-dark); border-radius: 9px; min-width: 32px; height: 28px;
+  font-size: 17px; font-weight: 700; cursor: pointer; }
+.mc-head .mc-today { font-size: 12px; padding: 0 9px; }
+.mc-grid button.sel { outline: 2px solid var(--court-dark); outline-offset: -2px; }
+.mc-day { margin-top: 8px; border-top: 1px solid var(--hair); padding-top: 8px; }
+.mc-day-head { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 6px; }
 .mc-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; text-align: center; }
 .mc-dow span { font-size: 10.5px; color: var(--muted); padding-bottom: 2px; }
 .mc-grid button { border: 0; background: none; color: inherit; padding: 2px 0 1px; border-radius: 9px; cursor: pointer;

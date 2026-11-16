@@ -2,29 +2,25 @@
 import { api, esc, toast, openModal, today, origText, origHtml, $$ } from '../ui.js';
 import { t, fmtDate, kindLabel } from '../i18n.js';
 import { weekdaysFromText, nextDateFor } from '../weekdays.js';
-import { mountCalendar } from './calendar.js';
 
 const KINDS = ['regular', 'event', 'tournament'];
 
+// 월례대회는 노란색 — 종류를 Club Night 로 적었어도 제목에 대회 말이 있으면 대회 색으로 (2026-11-12 사장님). 홈 작은 캘린더가 쓴다
+const TOURNEY = /월례대회|대회|tournament|тэмцээн|temtseen/i;
+export const calKind = (e) => (e.kind === 'tournament' || TOURNEY.test(`${e.title || ''} ${e.title_tr || ''}`) ? 'tournament' : e.kind);
+
 export async function renderSchedule(el, state) {
-  const seg = state.scheduleSeg || 'up';      // up | cal | past
+  // 캘린더는 홈 화면에만 (2026-11-16 사장님 "스케줄의 캘린더는 없애줘")
+  const seg = state.scheduleSeg === 'past' ? 'past' : 'up';
   const segs = `
     <div class="seg">
       <button data-seg="up" class="${seg === 'up' ? 'on' : ''}">${esc(t('upcomingTab'))}</button>
-      <button data-seg="cal" class="${seg === 'cal' ? 'on' : ''}">${esc(t('calendarTab'))}</button>
       <button data-seg="past" class="${seg === 'past' ? 'on' : ''}">${esc(t('pastTab'))}</button>
     </div>`;
   const bindSeg = () => $$('[data-seg]', el).forEach(b => b.onclick = () => {
     state.scheduleSeg = b.dataset.seg;
     renderSchedule(el, state);
   });
-
-  // 캘린더 — 달 칸에서 날짜를 골라 본다 (운영진은 그날 행사를 바로 추가)
-  if (seg === 'cal') {
-    el.innerHTML = `${segs}<div data-cal-box></div>`;
-    bindSeg();
-    return mountCalendar(el.querySelector('[data-cal-box]'), state);
-  }
 
   const past = seg === 'past';
   const list = await api(`/events?lang=en${past ? '&past=1' : ''}`);

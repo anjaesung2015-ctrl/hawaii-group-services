@@ -2,13 +2,13 @@
 // 카드 = 사진 + 제목 + 작성자. 사진 높이대로 짧은 열에 차곡차곡(메이슨리), 끝까지 내리면 다음 묶음(무한 스크롤).
 // 위쪽: 종류 칩(All·Board·Photos·Notices·Results) + 새 글(＋). 운영진은 가입 신청이 있으면 맨 위에 알림 한 줄.
 // 피드 위: 전광판 → 작은 캘린더(일정 제목이 칸에 보인다). 피드 맨 앞에 Free Chat 카드(전체방 최근 3개) (2026-11-16 사장님).
-import { api, esc, origText, avatar, openModal, toast, today, thisMonth } from '../ui.js';
-import { t, timeAgo, fmtMonth } from '../i18n.js';
+import { api, esc, origText, avatar, openModal, toast, today, thisMonth, shiftMonth } from '../ui.js';
+import { t, timeAgo, fmtMonth, fmtDate } from '../i18n.js';
 import { openPost, postForm } from './board.js';
 import { galleryViewer, uploadForm, fmtDur } from './gallery.js';
 import { noticeForm } from './notices.js';
 import { resultForm, canResults } from './results.js';
-import { calKind } from './calendar.js';
+import { calKind, eventCard, bindEventCards, eventForm } from './schedule.js';
 
 const KINDS = [['all', 'filterAll'], ['post', 'tabBoard'], ['photo', 'galleryTitle'], ['notice', 'tabNotices'], ['result', 'feedAwards']];
 const BADGE = { notice: '📣', result: '🏆', photo: '📷', video: '🎬' };
@@ -230,9 +230,11 @@ async function drawTicker(box, isAdmin) {
   });
 }
 
-// ---------- 작은 캘린더 — 이번 달, 칸마다 일정 제목(행사·대회 먼저, 2개까지). 날짜를 누르면 일정 탭 캘린더에서 그날을 연다 ----------
+// ---------- 작은 캘린더 — 칸마다 일정 제목(행사·대회 먼저, 2개까지). ‹ › 로 달을 넘기고,
+// 날짜를 누르면 그날 일정이 캘린더 바로 아래에 나온다(참석 버튼 그대로). 운영진은 그날 일정을 바로 추가.
+// 일정 탭에는 캘린더가 없다 — 캘린더는 여기 하나 (2026-11-16 사장님)
 async function drawMiniCal(box, state) {
-  const ym = thisMonth();
+  const ym = state.homeMonth || thisMonth();
   let events = [];
   try { events = await api(`/events?month=${ym}&lang=en`); } catch (e) { events = []; }
   const byDay = new Map();          // 날짜 → [일정]
@@ -240,6 +242,9 @@ async function drawMiniCal(box, state) {
     if (!byDay.has(e.event_date)) byDay.set(e.event_date, []);
     byDay.get(e.event_date).push(e);
   }
+  const sel = state.homeDay && state.homeDay.startsWith(ym) ? state.homeDay : null;
+  const isAdmin = state.me.role === 'admin';
+  const again = () => drawMiniCal(box, state);
   const [Y, M] = ym.split('-').map(Number);
   const first = new Date(Date.UTC(Y, M - 1, 1)).getUTCDay();
   const days = new Date(Date.UTC(Y, M, 0)).getUTCDate();
@@ -250,13 +255,32 @@ async function drawMiniCal(box, state) {
     const shown = [...list.filter(e => calKind(e) !== 'regular'), ...list.filter(e => calKind(e) === 'regular')];
     const labels = shown.slice(0, 2).map(e => `<span class="mc-ev ${calKind(e)}">${esc(origText(e, 'title').text)}</span>`).join('')
       + (shown.length > 2 ? `<span class="mc-more">+${shown.length - 2}</span>` : '');
-    cells.push(`<button type="button" data-d="${iso}" class="${iso === today() ? 'today' : ''}${iso < today() ? ' past' : ''}"><b>${d}</b>${labels}</button>`);
+    cells.push(`<button type="button" data-d="${iso}" class="${iso === today() ? 'today' : ''}${iso < today() ? ' past' : ''}${iso === sel ? ' sel' : ''}"><b>${d}</b>${labels}</button>`);
   }
+  const dayList = sel ? (byDay.get(sel) || []) : [];
   box.innerHTML = `
-    <button type="button" class="mc-head" data-open>📅 ${esc(fmtMonth(ym))}<span>›</span></button>
+    <div class="mc-head">
+      <button type="button" data-m="-1" aria-label="prev">‹</button>
+      <b>📅 ${esc(fmtMonth(ym))}</b>
+      ${ym !== thisMonth() ? `<button type="button" class="mc-today" data-m="0">${esc(t('calToday'))}</button>` : ''}
+      <button type="button" data-m="1" aria-label="next">›</button>
+    </div>
     <div class="mc-grid mc-dow">${t('dow').map(d => `<span>${esc(d.slice(0, 2))}</span>`).join('')}</div>
-    <div class="mc-grid">${cells.join('')}</div>`;
-  const open = (day) => { state.scheduleSeg = 'cal'; state.calMonth = ym; state.calDay = day || null; state.go('schedule'); };
-  box.querySelector('[data-open]').onclick = () => open(null);
-  box.querySelectorAll('[data-d]').forEach(b => b.onclick = () => open(b.dataset.d));
+    <div class="mc-grid">${cells.join('')}</div>
+    ${sel ? `<div class="mc-day">
+      <div class="mc-day-head"><b>${esc(fmtDate(sel))}</b>
+        ${isAdmin ? `<button type="button" class="btn btn-sm btn-primary" data-day-add>+ ${esc(t('calAddEvent'))}</button>` : ''}</div>
+      ${dayList.length ? dayList.map(e => eventCard(e, { rsvp: e.event_date >= today() })).join('') : `<div class="empty" style="padding:10px">${esc(t('calNothing'))}</div>`}
+    </div>` : ''}`;
+  box.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
+    const step = Number(b.dataset.m);
+    state.homeMonth = step ? shiftMonth(ym, step) : thisMonth();
+    state.homeDay = null;
+    again();
+  });
+  // 같은 날을 다시 누르면 접힌다
+  box.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { state.homeDay = state.homeDay === b.dataset.d ? null : b.dataset.d; again(); });
+  const add = box.querySelector('[data-day-add]');
+  if (add) add.onclick = () => eventForm(null, state, again, { event_date: sel, kind: 'event' });
+  bindEventCards(box, state, again);
 }
