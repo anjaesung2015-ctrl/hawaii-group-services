@@ -1,17 +1,23 @@
 // 홈 — 2열 카드 피드 (게시판 글·사진첩 사진·공지·대회 성적을 최신순으로 섞어서).
 // 카드 = 사진 + 제목 + 작성자. 사진 높이대로 짧은 열에 차곡차곡(메이슨리), 끝까지 내리면 다음 묶음(무한 스크롤).
 // 위쪽: 종류 칩(All·Board·Photos·Notices·Results) + 새 글(＋). 운영진은 가입 신청이 있으면 맨 위에 알림 한 줄.
-// 일정·캘린더·회비는 각 탭에서 본다 (2026-11-16 사장님 지시 "홈 전체를 피드로").
-import { api, esc, origText, avatar, openModal, toast } from '../ui.js';
-import { t, timeAgo } from '../i18n.js';
+// 피드 위: 전광판 → 각 화면 바로가기 → 작은 캘린더 (2026-11-16 사장님 "메인에 캘린더 작게, 각 창을 넣어줘").
+import { api, esc, origText, avatar, openModal, toast, today, thisMonth } from '../ui.js';
+import { t, timeAgo, fmtMonth } from '../i18n.js';
 import { openPost, postForm } from './board.js';
 import { galleryViewer, uploadForm, fmtDur } from './gallery.js';
 import { noticeForm } from './notices.js';
 import { resultForm, canResults } from './results.js';
+import { calKind } from './calendar.js';
 
 const KINDS = [['all', 'filterAll'], ['post', 'tabBoard'], ['photo', 'galleryTitle'], ['notice', 'tabNotices'], ['result', 'feedAwards']];
 const BADGE = { notice: '📣', result: '🏆', photo: '📷', video: '🎬' };
 const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉', 4: '🎖' };
+// 각 화면 바로가기 (아래 탭에 없는 사진첩·성적도 여기서)
+const SHORTCUTS = [
+  ['schedule', '📅', 'tabSchedule'], ['notices', '📣', 'tabNotices'], ['board', '📝', 'tabBoard'], ['chat', '💬', 'tabChat'],
+  ['gallery', '📷', 'galleryTitle'], ['results', '🏆', 'resultsTitle'], ['dues', '💰', 'tabDues'], ['members', '👥', 'tabMembers'],
+];
 
 let observer = null;     // 지난 화면의 무한 스크롤 감시 — 다시 그릴 때 끊는다
 let run = 0;             // 다시 그리면 이전 화면이 늦게 받은 묶음을 버린다
@@ -34,6 +40,8 @@ export async function renderHome(el, state) {
         </div>
       </div>` : ''}
     <div class="ticker" data-ticker hidden></div>
+    <div class="shortcuts">${SHORTCUTS.map(([tab, icon, label]) => `<button type="button" data-short="${tab}"><span>${icon}</span>${esc(t(label))}</button>`).join('')}</div>
+    <div class="card mini-cal" data-minical></div>
     <div class="feed-top">
       <div class="seg feed-seg no-tab-swipe">
         ${KINDS.map(([k, label]) => `<button data-kind="${k}" class="${kind === k ? 'on' : ''}">${esc(t(label))}</button>`).join('')}
@@ -48,6 +56,8 @@ export async function renderHome(el, state) {
   el.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { state.feedKind = b.dataset.kind; again(); });
   el.querySelector('[data-new]').onclick = () => newSheet(state, again);
   drawTicker(el.querySelector('[data-ticker]'), isAdmin);
+  el.querySelectorAll('[data-short]').forEach(b => b.onclick = () => state.go(b.dataset.short));
+  drawMiniCal(el.querySelector('[data-minical]'), state);
 
   const feed = el.querySelector('[data-feed]');
   const cols = [...feed.children];
@@ -212,4 +222,34 @@ async function drawTicker(box, isAdmin) {
       drawTicker(box, isAdmin);
     },
   });
+}
+
+// ---------- 작은 캘린더 — 이번 달, 일정 있는 날에 점. 날짜를 누르면 일정 탭 캘린더에서 그날을 연다 ----------
+async function drawMiniCal(box, state) {
+  const ym = thisMonth();
+  let events = [];
+  try { events = await api(`/events?month=${ym}`); } catch (e) { events = []; }
+  const kinds = new Map();          // 날짜 → Set(kind)
+  for (const e of events) {
+    const k = calKind(e);
+    if (!kinds.has(e.event_date)) kinds.set(e.event_date, new Set());
+    kinds.get(e.event_date).add(k);
+  }
+  const [Y, M] = ym.split('-').map(Number);
+  const first = new Date(Date.UTC(Y, M - 1, 1)).getUTCDay();
+  const days = new Date(Date.UTC(Y, M, 0)).getUTCDate();
+  const cells = Array.from({ length: first }, () => '<span></span>');
+  for (let d = 1; d <= days; d++) {
+    const iso = `${ym}-${String(d).padStart(2, '0')}`;
+    const ks = kinds.get(iso);
+    const dots = ks ? ['tournament', 'event', 'regular'].filter(k => ks.has(k)).map(k => `<i class="${k}"></i>`).join('') : '';
+    cells.push(`<button type="button" data-d="${iso}" class="${iso === today() ? 'today' : ''}${iso < today() ? ' past' : ''}"><b>${d}</b><span class="mc-dots">${dots}</span></button>`);
+  }
+  box.innerHTML = `
+    <button type="button" class="mc-head" data-open>📅 ${esc(fmtMonth(ym))}<span>›</span></button>
+    <div class="mc-grid mc-dow">${t('dow').map(d => `<span>${esc(d.slice(0, 2))}</span>`).join('')}</div>
+    <div class="mc-grid">${cells.join('')}</div>`;
+  const open = (day) => { state.scheduleSeg = 'cal'; state.calMonth = ym; state.calDay = day || null; state.go('schedule'); };
+  box.querySelector('[data-open]').onclick = () => open(null);
+  box.querySelectorAll('[data-d]').forEach(b => b.onclick = () => open(b.dataset.d));
 }

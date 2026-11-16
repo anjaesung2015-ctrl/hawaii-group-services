@@ -1,6 +1,6 @@
 const express = require('express');
 const { setMemberPhoto } = require('../lib/photos');
-const { checkPin, hashPin, normalizePhone, validPin, LEVELS } = require('../lib/db');
+const { checkPin, hashPin, normalizePhone, validPin, LEVELS, parseBirthday } = require('../lib/db');
 
 module.exports = function authRoutes(db, auth) {
   const router = express.Router();
@@ -75,12 +75,9 @@ module.exports = function authRoutes(db, auth) {
       f.push('name=?'); v.push(name);
     }
     if ('birthday' in b) {        // 'MM-DD' 또는 빈 값(지우기)
-      const s = String(b.birthday ?? '').trim();
-      // 2024(윤년)로 맞춰 봐서 02-30 같은 없는 날을 거른다 — 02-29 는 된다
-      const ok = /^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(s)
-        && new Date(`2024-${s}T00:00:00Z`).getUTCDate() === Number(s.slice(3));
-      if (s && !ok) return res.status(400).json({ error: 'bad_birthday' });
-      f.push('birthday=?'); v.push(s || null);
+      const bd = parseBirthday(b.birthday);
+      if (bd.error) return res.status(400).json({ error: bd.error });
+      f.push('birthday=?'); v.push(bd.value);
     }
     if ('level' in b) {
       if (!LEVELS.includes(b.level)) return res.status(400).json({ error: 'bad_level' });

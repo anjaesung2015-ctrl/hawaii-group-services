@@ -1,5 +1,5 @@
 const express = require('express');
-const { hashPin, normalizePhone, validPhone, validPin, today, LEVELS, getSettings, OFFICER_ROLE_SQL } = require('../lib/db');
+const { hashPin, normalizePhone, validPhone, validPin, today, LEVELS, getSettings, OFFICER_ROLE_SQL, parseBirthday } = require('../lib/db');
 const { removeChatPhoto, removePhoto, setMemberPhoto } = require('../lib/photos');
 
 module.exports = function memberRoutes(db, auth) {
@@ -77,6 +77,11 @@ module.exports = function memberRoutes(db, auth) {
     }
     if ('memo' in b) { f.push('memo=?'); v.push(String(b.memo || '').trim() || null); }
     if ('joined_at' in b && /^\d{4}-\d{2}-\d{2}$/.test(b.joined_at)) { f.push('joined_at=?'); v.push(b.joined_at); }
+    if ('birthday' in b) {          // 회원 본인이 적는 게 기본, 운영진도 대신 고쳐 줄 수 있다
+      const bd = parseBirthday(b.birthday);
+      if (bd.error) return res.status(400).json({ error: bd.error });
+      f.push('birthday=?'); v.push(bd.value);
+    }
     if ('role' in b) {
       // 운영진 권한을 주고 거두는 것은 오너만 (사장님이 직접 권한을 준 사람만 운영진이 된다)
       if (!req.me.is_owner) return res.status(403).json({ error: 'owner_only' });

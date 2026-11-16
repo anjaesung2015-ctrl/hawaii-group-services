@@ -1,5 +1,5 @@
 // 앱 시작 — 로그인 확인, 탭 전환, 상단 메뉴.
-import { $, $$, api, esc, toast, openModal, errText, pickFacePhoto, avatar } from './ui.js';
+import { $, $$, api, esc, toast, openModal, errText, pickFacePhoto, avatar, birthdayFields, takeBirthday } from './ui.js';
 import { t, applyStatic, levelLabel } from './i18n.js';
 import { renderHome } from './views/home.js';
 import { renderSchedule } from './views/schedule.js';
@@ -250,10 +250,7 @@ $('#levelBtn').onclick = () => {
       ...(isElite() ? [] : [{ name: 'level', label: t('level'), type: 'select', value: state.me.level,
         options: LV.map(l => ({ value: l, label: levelLabel(l) })) }]),
       // 생일 — 월·일만 (태어난 해는 받지 않는다). 생일날 홈 전광판과 명단에 🎂
-      { name: 'bmonth', label: t('birthMonth'), type: 'select', value: (state.me.birthday || '').slice(0, 2),
-        options: [{ value: '', label: '—' }, ...t('months').map((mo, k) => ({ value: String(k + 1).padStart(2, '0'), label: mo }))] },
-      { name: 'bday', label: t('birthDay'), type: 'select', value: (state.me.birthday || '').slice(3),
-        options: [{ value: '', label: '—' }, ...Array.from({ length: 31 }, (_, k) => ({ value: String(k + 1).padStart(2, '0'), label: String(k + 1) }))] },
+      ...birthdayFields(state.me.birthday),
     ],
     extra: `<button type="button" class="btn ghost" data-my-photo>📷 ${esc(t('myPhoto'))}</button>
       ${isElite() ? '' : `<div class="hint">${esc(t('myLevelHint'))}</div>`}
@@ -261,9 +258,9 @@ $('#levelBtn').onclick = () => {
     onSave: async (v) => {
       v.name = String(v.name || '').trim();
       if (!v.name) return t('nameRequired');
-      if (!v.bmonth !== !v.bday) return t('birthdayBoth');
-      v.birthday = v.bmonth ? `${v.bmonth}-${v.bday}` : '';
-      delete v.bmonth; delete v.bday;
+      const bd = takeBirthday(v);
+      if (bd === false) return t('birthdayBoth');
+      v.birthday = bd;
       const r = await api('/auth/profile', { method: 'PATCH', body: v });
       state.me = r.me;
       toast(t('saved'));

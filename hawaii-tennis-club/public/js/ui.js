@@ -324,3 +324,23 @@ export async function pickFacePhoto() {
     });
   });
 }
+
+// ---------- 생일 (월·일 두 칸) — 내 프로필과 회원 수정 창이 같이 쓴다 ----------
+export function birthdayFields(bd) {
+  const two = (n) => String(n).padStart(2, '0');
+  return [
+    { name: 'bmonth', label: t('birthMonth'), type: 'select', value: (bd || '').slice(0, 2),
+      options: [{ value: '', label: '—' }, ...t('months').map((mo, k) => ({ value: two(k + 1), label: mo }))] },
+    { name: 'bday', label: t('birthDay'), type: 'select', value: (bd || '').slice(3),
+      options: [{ value: '', label: '—' }, ...Array.from({ length: 31 }, (_, k) => ({ value: two(k + 1), label: String(k + 1) }))] },
+  ];
+}
+// 폼 값에서 꺼내 'MM-DD' / '' (지우기) / false (한 칸만 고름)
+export function takeBirthday(v) {
+  const { bmonth, bday } = v;
+  delete v.bmonth; delete v.bday;
+  if (!bmonth !== !bday) return false;
+  return bmonth ? `${bmonth}-${bday}` : '';
+}
+// '03-05' → 'Mar 5'
+export const fmtBirthday = (bd) => `${t('months')[Number(bd.slice(0, 2)) - 1].slice(0, 3)} ${Number(bd.slice(3))}`;

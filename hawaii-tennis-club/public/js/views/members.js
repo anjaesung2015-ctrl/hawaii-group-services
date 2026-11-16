@@ -1,5 +1,5 @@
 // 회원 명단 — 관리자는 추가·수정·삭제·PIN 재설정, 회원은 이름과 레벨만 본다.
-import { api, esc, toast, openModal, today, errText, pickFacePhoto, avatar, $$, officerPill } from '../ui.js';
+import { api, esc, toast, openModal, today, errText, pickFacePhoto, avatar, $$, officerPill, birthdayFields, takeBirthday, fmtBirthday } from '../ui.js';
 import { t, levelLabel } from '../i18n.js';
 import { orgBlock, bindOrg } from './org.js';
 import { openDm } from './chat.js';
@@ -130,7 +130,7 @@ function row(m, isAdmin, isOwner, meId) {
       ${avatar(m.name, m.photo, dormant ? 'dormant' : '')}
       <div class="who">
         <b>${esc(m.name)}${m.birthday && m.birthday === today().slice(5) ? ' 🎂' : ''}${m.is_owner ? ` <span class="pill solid">👑 ${esc(t('roleOwner'))}</span>` : (m.officer_role ? officerPill(m.officer_role) : (m.role === 'admin' ? ` <span class="pill gold">${esc(m.title || t('admin'))}</span>` : ''))}${m.is_coach ? ` <span class="pill coach">🎾 ${esc(t('coach'))}</span>` : ''}${m.dues_manager ? ` <span class="pill grey">💰 ${esc(t('duesManager'))}</span>` : ''}${m.results_manager ? ` <span class="pill grey">🏅 ${esc(t('resultsManager'))}</span>` : ''}${m.trophies ? ` <span class="pill gold" title="${esc(t('trophies'))}">🏆 ${m.trophies}</span>` : ''}</b>
-        <small>${esc(levelLabel(m.level))}${isAdmin && m.phone ? ` · ${esc(m.phone)}` : ''}${isAdmin && m.joined_at ? ` · ${esc(m.joined_at)}` : ''}</small>
+        <small>${esc(levelLabel(m.level))}${isAdmin && m.phone ? ` · ${esc(m.phone)}` : ''}${isAdmin && m.joined_at ? ` · ${esc(m.joined_at)}` : ''}${m.birthday ? ` · 🎂 ${esc(fmtBirthday(m.birthday))}` : ''}</small>
       </div>
       ${dormant ? `<span class="pill grey">${esc(t('stDormant'))}</span>` : ''}
       ${!dormant && m.id !== meId ? `<button type="button" class="btn btn-sm dm-btn" data-dm="${m.id}" aria-label="${esc(t('message'))}">💬</button>` : ''}
@@ -151,6 +151,7 @@ function memberForm(m, state, refresh) {
       ...(state.me.is_owner ? [{ name: 'is_coach', label: t('coach'), type: 'select', value: m?.is_coach ? '1' : '0',
         options: [{ value: '0', label: t('coachNo') }, { value: '1', label: t('coachYes') }] }] : []),
       { name: 'joined_at', label: t('joinedAt'), type: 'date', value: m?.joined_at || today() },
+      ...(isNew ? [] : birthdayFields(m.birthday)),     // 새 회원은 본인이 나중에 My profile 에서
       { name: 'status', label: t('status'), type: 'select', value: m?.status || 'active',
         options: [{ value: 'active', label: t('stActive') }, { value: 'dormant', label: t('stDormant') }] },
       // 운영진 권한을 주고 거두는 것은 오너만 — 다른 사람 화면에는 이 칸이 아예 없다
@@ -176,6 +177,9 @@ function memberForm(m, state, refresh) {
     },
     onSave: async (v) => {
       if (!v.name) return t('required');
+      const bd = takeBirthday(v);
+      if (bd === false) return t('birthdayBoth');
+      if (!isNew) v.birthday = bd;
       if (isNew) {
         const r = await api('/members', { method: 'POST', body: v });
         toast(t('firstPin', { pin: r.first_pin }));

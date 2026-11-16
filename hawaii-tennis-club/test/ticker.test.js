@@ -46,3 +46,15 @@ test('전광판 — 오늘 생일, 운영진 문구(줄마다), 30일 안 행사
   assert.strictEqual((await fetch(app.base + '/ticker')).status, 401);
   app.close();
 });
+
+test('생일 — 운영진은 회원 수정 창에서 대신 적어 줄 수 있고, 일반 회원은 남의 것을 못 고친다', async () => {
+  const app = makeApp();
+  const m = await loginAs(app.base, '88110044', '1111');
+  const a = await loginAs(app.base, '99000000', '1234');
+  const id = (await m.call('/auth/me')).data.me.id;
+  assert.strictEqual((await a.call(`/members/${id}`, { method: 'PATCH', body: { birthday: '02-30' } })).data.error, 'bad_birthday');
+  assert.strictEqual((await a.call(`/members/${id}`, { method: 'PATCH', body: { birthday: '07-14' } })).status, 200);
+  assert.strictEqual((await m.call('/auth/me')).data.me.birthday, '07-14');
+  assert.strictEqual((await m.call(`/members/${id}`, { method: 'PATCH', body: { birthday: '01-01' } })).status, 403);
+  app.close();
+});

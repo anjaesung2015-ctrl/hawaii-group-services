@@ -534,7 +534,15 @@ const MONTHLY_EXEMPT_SQL = `(${FEE_FREE_SQL} OR EXISTS (SELECT 1 FROM due j WHER
 // 오너 자리는 👑 배지가 따로 있어 뺀다. 두 자리면 조직도 위쪽 것
 const OFFICER_ROLE_SQL = `(SELECT o.role FROM officer o WHERE o.member_id = m.id AND o.role <> 'owner' ORDER BY o.sort LIMIT 1)`;
 
-module.exports = {
+// 생일 'MM-DD' — 2024(윤년)로 맞춰 봐서 02-30 같은 없는 날을 거른다. 빈 값은 '지우기'(null)
+function parseBirthday(raw) {
+  const s = String(raw ?? '').trim();
+  if (!s) return { value: null };
+  const ok = /^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(s) && new Date(`2024-${s}T00:00:00Z`).getUTCDate() === Number(s.slice(3));
+  return ok ? { value: s } : { error: 'bad_birthday' };
+}
+
+module.exports = { parseBirthday,
   MONTHLY_EXEMPT_SQL, FEE_FREE_SQL, LEGACY_JOIN_UNTIL, monthlyFeeFor, OFFICER_ROLE_SQL,
   open, migrate, ensureFirstAdmin, ensureOwner, getSettings, setSettings,
   hashPin, checkPin, normalizePhone, validPhone, validPin,

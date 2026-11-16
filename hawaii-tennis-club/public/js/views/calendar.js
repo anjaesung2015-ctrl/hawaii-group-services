@@ -9,7 +9,7 @@ import { onSwipe } from '../swipe.js';
 
 // 월례대회는 노란색 — 종류를 Club Night 로 적었어도 제목에 대회 말이 있으면 대회 색으로 (2026-11-12 사장님)
 const TOURNEY = /월례대회|대회|tournament|тэмцээн|temtseen/i;
-const calKind = (e) => (e.kind === 'tournament' || TOURNEY.test(`${e.title || ''} ${e.title_tr || ''}`) ? 'tournament' : e.kind);
+export const calKind = (e) => (e.kind === 'tournament' || TOURNEY.test(`${e.title || ''} ${e.title_tr || ''}`) ? 'tournament' : e.kind);
 
 export async function mountCalendar(box, state) {
   const ym = state.calMonth || thisMonth();

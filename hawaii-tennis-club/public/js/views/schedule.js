@@ -7,11 +7,11 @@ import { mountCalendar } from './calendar.js';
 const KINDS = ['regular', 'event', 'tournament'];
 
 export async function renderSchedule(el, state) {
-  const seg = state.scheduleSeg || 'cal';     // cal | up | past — 캘린더가 먼저 (2026-11-16 사장님)
+  const seg = state.scheduleSeg || 'up';      // up | cal | past
   const segs = `
     <div class="seg">
-      <button data-seg="cal" class="${seg === 'cal' ? 'on' : ''}">${esc(t('calendarTab'))}</button>
       <button data-seg="up" class="${seg === 'up' ? 'on' : ''}">${esc(t('upcomingTab'))}</button>
+      <button data-seg="cal" class="${seg === 'cal' ? 'on' : ''}">${esc(t('calendarTab'))}</button>
       <button data-seg="past" class="${seg === 'past' ? 'on' : ''}">${esc(t('pastTab'))}</button>
     </div>`;
   const bindSeg = () => $$('[data-seg]', el).forEach(b => b.onclick = () => {
