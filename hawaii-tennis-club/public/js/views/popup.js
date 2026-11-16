@@ -44,17 +44,17 @@ export function maybeShowPopups(state) {
     // 지난번에 띄운 것 다음 차례 하나만 (끝이면 처음으로)
     const last = load(SHOWN, {}).id;
     const pick = list[(list.findIndex(p => p.id === last) + 1) % list.length];
-    save(SHOWN, { date: today(), id: pick.id });
-    showPopups([pick], state);
+    // '오늘 봤다'는 회원이 닫거나 버튼을 눌렀을 때만 남긴다 — 뜨자마자 앱이 꺼지거나 새로고침되면 다시 뜬다
+    showPopups([pick], state, { onDone: () => save(SHOWN, { date: today(), id: pick.id }) });
   };
   setTimeout(tick, 600);
 }
 
 // list 를 차례로 보여준다. preview=true 면 '안 보기' 버튼 없이 (관리 화면 미리보기)
-export function showPopups(list, state, { preview = false } = {}) {
+export function showPopups(list, state, { preview = false, onDone = () => {} } = {}) {
   const root = document.getElementById('modalRoot');
   let i = 0;
-  const close = () => { root.innerHTML = ''; };
+  const close = () => { root.innerHTML = ''; onDone(); };
   const next = () => { i += 1; if (i < list.length) draw(); else close(); };
 
   const draw = () => {
