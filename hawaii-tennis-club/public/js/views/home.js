@@ -281,6 +281,6 @@ async function drawMiniCal(box, state) {
   // 같은 날을 다시 누르면 접힌다
   box.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { state.homeDay = state.homeDay === b.dataset.d ? null : b.dataset.d; again(); });
   const add = box.querySelector('[data-day-add]');
-  if (add) add.onclick = () => eventForm(null, state, again, { event_date: sel, kind: 'event' });
+  if (add) add.onclick = () => eventForm(null, state, again, { event_date: sel });
   bindEventCards(box, state, again);
 }

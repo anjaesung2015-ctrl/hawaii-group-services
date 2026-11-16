@@ -24,7 +24,7 @@ export const DICT = {
     pinnedNotice: 'Pinned notice', myDues: 'My dues', quickUnpaid: 'Unpaid this month',
     greetMorning: 'Hello', today: 'Today',
 
-    schedule: 'Schedule', newEvent: 'New event', editEvent: 'Edit event',
+    schedule: 'Schedule', newEvent: 'New schedule', editEvent: 'Edit schedule',
     kindRegular: 'Club Night', kindEvent: 'Event', kindTournament: 'Tournament',
     title: 'Title', kind: 'Type', date: 'Date', startTime: 'Start', endTime: 'End',
     courts: 'Courts', memo: 'Note', upcomingTab: 'Upcoming', pastTab: 'Past',
@@ -123,7 +123,7 @@ export const DICT = {
     videoBad: 'This phone could not open that video', video: 'Video', videoUploading: 'Uploading video… {p}%', galleryNone: 'Choose at least one photo',
     gallerySave: 'Save', gallerySaved: 'Saved to your downloads',
     galleryUpload: 'Upload', galleryCaption: 'Caption', galleryCaptionHint: 'e.g. November tournament (optional)',
-    calendarTab: 'Calendar', calToday: 'Today', calAddEvent: 'Add event', calNothing: 'Nothing on this day',
+    calendarTab: 'Calendar', calToday: 'Today', calAddEvent: 'Add schedule', calNothing: 'Nothing on this day',
     role_honorary: 'Honorary Chairman',
     role_advisor1: 'Advisor 1',
     role_advisor2: 'Advisor 2',
