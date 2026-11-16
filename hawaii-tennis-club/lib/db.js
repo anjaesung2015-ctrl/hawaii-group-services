@@ -405,6 +405,11 @@ function migrate(db) {
     );
   `);
 
+  // 사진첩 동영상 — video = uploads/…(mp4·mov·webm), photo 칸은 그 영상의 첫 장면(폰에서 만든 JPEG)
+  const gcols = db.prepare('PRAGMA table_info(gallery_photo)').all().map(c => c.name);
+  if (!gcols.includes('video')) db.exec('ALTER TABLE gallery_photo ADD COLUMN video TEXT');
+  if (!gcols.includes('duration')) db.exec('ALTER TABLE gallery_photo ADD COLUMN duration REAL');
+
   const put = db.prepare('INSERT INTO setting (k, v) VALUES (?, ?) ON CONFLICT(k) DO NOTHING');
   for (const [k, v] of Object.entries(DEFAULTS)) put.run(k, v);
 

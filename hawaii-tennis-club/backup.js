@@ -9,6 +9,10 @@ const ROOT = __dirname;
 const SRC = process.env.DB_PATH || path.join(ROOT, 'data', 'club.db');
 const OUT = process.env.BACKUP_DIR || path.join(process.env.HOME || ROOT, 'backups', 'hawaii-tennis-club');
 const KEEP_DAYS = 30;
+// 동영상은 크다 — 날마다 통째로 복사하면 30벌이 쌓인다. videos/ 에 한 번만 복사하고,
+// 앱에서 지운 영상은 30일 지나면 백업에서도 지운다.
+const VIDEO_EXT = /.(mp4|mov|webm|3gp|m4v)$/i;
+const VIDEOS = 'videos';
 
 function stamp() {
   const d = new Date();
@@ -32,7 +36,8 @@ async function main() {
   const up = path.join(ROOT, 'uploads');
   if (fs.existsSync(up)) {
     const upOut = path.join(OUT, `uploads-${stamp()}`);
-    fs.cpSync(up, upOut, { recursive: true });
+    fs.cpSync(up, upOut, { recursive: true, filter: (src) => !VIDEO_EXT.test(src) });
+    backupVideos(up);
   }
 
   // 채팅 사진 (data/chat-photos — 공개 폴더 밖에 따로 둔다)
@@ -43,6 +48,7 @@ async function main() {
   const cutoff = Date.now() - KEEP_DAYS * 86400 * 1000;
   let pruned = 0;
   for (const f of fs.readdirSync(OUT)) {
+    if (f === VIDEOS) continue;          // 동영상 폴더는 backupVideos 가 따로 정리한다
     const p = path.join(OUT, f);
     if (fs.statSync(p).mtimeMs < cutoff) {
       fs.rmSync(p, { recursive: true, force: true });
@@ -50,6 +56,29 @@ async function main() {
     }
   }
   console.log(`[backup] ${new Date().toISOString()} -> ${dest} (${fs.statSync(dest).size} bytes), pruned ${pruned}`);
+}
+
+// 새 영상만 videos/ 로 복사. 원본이 사라진 지(=앱에서 지운 지) 30일 넘은 백업 영상은 지운다.
+function backupVideos(up) {
+  const dir = path.join(OUT, VIDEOS);
+  fs.mkdirSync(dir, { recursive: true });
+  const live = new Set(fs.readdirSync(up).filter(f => VIDEO_EXT.test(f)));
+  let copied = 0, removed = 0;
+  for (const f of live) {
+    const to = path.join(dir, f);
+    if (!fs.existsSync(to)) { fs.copyFileSync(path.join(up, f), to); copied += 1; }
+  }
+  const cutoff = Date.now() - KEEP_DAYS * 86400 * 1000;
+  const gone = path.join(dir, '.gone.json');          // { 파일: 앱에서 사라진 걸 처음 본 시각 }
+  let seen = {};
+  try { seen = JSON.parse(fs.readFileSync(gone, 'utf8')); } catch (e) { seen = {}; }
+  for (const f of fs.readdirSync(dir).filter(x => VIDEO_EXT.test(x))) {
+    if (live.has(f)) { delete seen[f]; continue; }
+    seen[f] = seen[f] || Date.now();
+    if (seen[f] < cutoff) { fs.rmSync(path.join(dir, f), { force: true }); delete seen[f]; removed += 1; }
+  }
+  fs.writeFileSync(gone, JSON.stringify(seen));
+  console.log(`[backup] videos: +${copied} new, -${removed} expired, ${live.size} live`);
 }
 
 main().catch((e) => {

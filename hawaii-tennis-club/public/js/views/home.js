@@ -5,12 +5,12 @@
 import { api, esc, origText, avatar } from '../ui.js';
 import { t, timeAgo } from '../i18n.js';
 import { openPost, postForm } from './board.js';
-import { galleryViewer, uploadForm } from './gallery.js';
+import { galleryViewer, uploadForm, fmtDur } from './gallery.js';
 import { noticeForm } from './notices.js';
 import { resultForm, canResults } from './results.js';
 
 const KINDS = [['all', 'filterAll'], ['post', 'tabBoard'], ['photo', 'galleryTitle'], ['notice', 'tabNotices'], ['result', 'feedAwards']];
-const BADGE = { notice: '📣', result: '🏆', photo: '📷' };
+const BADGE = { notice: '📣', result: '🏆', photo: '📷', video: '🎬' };
 const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉', 4: '🎖' };
 
 let observer = null;     // 지난 화면의 무한 스크롤 감시 — 다시 그릴 때 끊는다
@@ -128,9 +128,10 @@ function card(r, ratio, i) {
   }
   return `<article class="fcard t-${r.type}" data-fi="${i}">
       ${r.photo ? `<div class="fimg" style="aspect-ratio:${ratio || 1}"><img src="${esc(r.photo)}" alt="" loading="lazy">
-        ${r.photos > 1 ? `<span class="fmulti">▣ ${r.photos}</span>` : ''}</div>` : ''}
+        ${r.photos > 1 ? `<span class="fmulti">▣ ${r.photos}</span>` : ''}
+        ${r.video ? `<span class="fplay">▶</span>${r.duration ? `<span class="vbadge">${fmtDur(r.duration)}</span>` : ''}` : ''}</div>` : ''}
       <div class="fbody">
-        ${BADGE[r.type] ? `<div class="fbadge b-${r.type}">${BADGE[r.type]} ${esc(t(r.type === 'notice' ? 'tabNotices' : r.type === 'result' ? 'resultsTitle' : 'galleryTitle'))}</div>` : ''}
+        ${BADGE[r.type] ? `<div class="fbadge b-${r.type}">${r.video ? `${BADGE.video} ${esc(t('video'))}` : `${BADGE[r.type]} ${esc(t(r.type === 'notice' ? 'tabNotices' : r.type === 'result' ? 'resultsTitle' : 'galleryTitle'))}`}</div>` : ''}
         ${title ? `<div class="ftitle">${esc(title)}</div>` : ''}
         ${sub}${counts}${meta}
       </div></article>`;
@@ -142,7 +143,7 @@ function open(r, items, state, again) {
   if (r.type === 'post') return openPost(r.id, state, () => {});
   if (r.type === 'photo') {
     const photos = items.filter(x => x.type === 'photo')
-      .map(x => ({ id: x.id, member_id: x.member_id, photo: x.photo, caption: x.title, author: x.author, created_at: x.created_at }));
+      .map(x => ({ id: x.id, member_id: x.member_id, photo: x.photo, video: x.video, duration: x.duration, caption: x.title, author: x.author, created_at: x.created_at }));
     return galleryViewer(photos, photos.findIndex(x => x.id === r.id), state, again);
   }
   if (r.type === 'notice') { state.focusNotice = String(r.id); return state.go('notices'); }

@@ -1,4 +1,4 @@
-// 사진첩 — 전체 사진첩(renderGallery). 홈 피드의 사진 카드도 여기 크게 보기(galleryViewer)를 쓴다.
+// 사진첩 — 사진·동영상, 전체 사진첩(renderGallery). 홈 피드의 사진 카드도 여기 크게 보기(galleryViewer)를 쓴다.
 // 회원 누구나 한 번에 여러 장 올리고, 지우기는 올린 사람·운영진.
 import { api, esc, toast, openModal, errText } from '../ui.js';
 import { t, timeAgo } from '../i18n.js';
@@ -40,7 +40,7 @@ export async function renderGallery(el, state) {
   };
 }
 
-const cell = (p, i) => `<button class="gcell" data-gi="${i}"><img src="${esc(p.photo)}" alt="" loading="lazy"></button>`;
+const cell = (p, i) => `<button class="gcell" data-gi="${i}"><img src="${esc(p.photo)}" alt="" loading="lazy">${p.video ? `<span class="vbadge">▶ ${fmtDur(p.duration)}</span>` : ''}</button>`;
 
 // ---------- 크게 보기 — 옆으로 넘기기·설명·지우기 ----------
 // body 바로 아래 .photo-view 라서 폰 뒤로가기가 이 창부터 닫는다(backnav).
@@ -57,7 +57,9 @@ export function galleryViewer(rows, start, state, refresh) {
       <button class="gv-x" data-x aria-label="${esc(t('close'))}">✕</button>
       ${i > 0 ? '<button class="gv-nav prev" data-prev aria-label="prev">‹</button>' : ''}
       ${i < rows.length - 1 ? '<button class="gv-nav next" data-next aria-label="next">›</button>' : ''}
-      <img src="${esc(p.photo)}" alt="">
+      ${p.video
+        ? `<video src="${esc(p.video)}" poster="${esc(p.photo)}" controls playsinline preload="metadata"></video>`
+        : `<img src="${esc(p.photo)}" alt="">`}
       <div class="gv-info">
         ${p.caption ? `<div class="gv-cap">${esc(p.caption)}</div>` : ''}
         <div class="gv-meta">${esc(p.author || '')} · ${esc(timeAgo(p.created_at))} · ${i + 1}/${rows.length}</div>
@@ -105,7 +107,8 @@ export function galleryViewer(rows, start, state, refresh) {
 
   // 손가락으로 옆으로 밀어 넘기기
   let x0 = null;
-  v.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+  // 영상 위에서 민 건 재생 막대 조작일 수 있어 넘기지 않는다
+  v.addEventListener('touchstart', (e) => { x0 = e.target.closest('video') ? null : e.touches[0].clientX; }, { passive: true });
   v.addEventListener('touchend', (e) => {
     if (x0 == null) return;
     const dx = e.changedTouches[0].clientX - x0;
@@ -123,10 +126,10 @@ const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent)
 
 async function savePhoto(p) {
   try {
-    const res = await fetch(p.photo, { credentials: 'same-origin' });
+    const res = await fetch(p.video || p.photo, { credentials: 'same-origin' });   // 동영상이면 영상 파일을
     if (!res.ok) throw new Error('fetch');
     const blob = await res.blob();
-    const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+    const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg').replace('quicktime', 'mov');
     const name = `hawaii-tennis-${p.id}.${ext}`;
     const file = new File([blob], name, { type: blob.type || 'image/jpeg' });
 
@@ -147,24 +150,85 @@ async function savePhoto(p) {
 }
 
 // ---------- 올리기 ----------
-// 사진 여러 장 고르기 — 폰 사진은 수 MB라 긴 변 1600px JPEG 로 줄여서 보낸다.
-function pickPhotos(max = 1600) {
+// ---------- 고르기 — 사진 여러 장 + 동영상 ----------
+// 사진: 폰 사진은 수 MB라 긴 변 1600px JPEG 로 줄여서 보낸다.
+// 동영상: 1분·50MB 까지. 서버에 변환 도구가 없어 그대로 올리고, 첫 장면(poster)은 폰에서 만든다.
+const VIDEO_MAX_MB = 50;
+const VIDEO_MAX_SEC = 60;
+const isVideo = (f) => /^video\//.test(f.type) || /\.(mp4|mov|webm|m4v|3gp)$/i.test(f.name || '');
+
+function pickMedia(max = 1600) {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/*';
+    input.accept = 'image/*,video/*';
     input.multiple = true;
     input.onchange = async () => {
       const files = [...(input.files || [])].slice(0, MAX_PICK);
       const out = [];
       for (const f of files) {
-        const d = await shrink(f, max);
-        if (d) out.push(d);
+        if (isVideo(f)) {
+          const v = await readVideo(f);
+          if (v.error) toast(t(v.error), true);
+          else out.push(v);
+        } else {
+          const d = await shrink(f, max);
+          if (d) out.push({ kind: 'photo', data: d });
+        }
       }
       resolve(out);
     };
     input.click();
   });
+}
+
+// 길이 재기 + 첫 장면 뽑기. 이 폰이 못 여는 영상(코덱)이면 거절한다.
+function readVideo(file) {
+  if (file.size > VIDEO_MAX_MB * 1024 * 1024) return Promise.resolve({ error: 'videoTooBig' });
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement('video');
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = 'auto';
+    let done = false;
+    const end = (r) => { if (done) return; done = true; URL.revokeObjectURL(url); resolve(r); };
+    const timer = setTimeout(() => end({ error: 'videoBad' }), 15000);
+    v.onerror = () => { clearTimeout(timer); end({ error: 'videoBad' }); };
+    v.onloadedmetadata = () => {
+      const duration = v.duration;
+      if (!isFinite(duration) || !duration) { clearTimeout(timer); return end({ error: 'videoBad' }); }
+      if (duration > VIDEO_MAX_SEC + 0.9) { clearTimeout(timer); return end({ error: 'videoTooLong' }); }
+      v.onseeked = () => {
+        clearTimeout(timer);
+        end({ kind: 'video', file, duration, poster: frame(v) });
+      };
+      v.currentTime = Math.min(0.5, duration / 2);
+    };
+    v.src = url;
+  });
+}
+
+// 지금 장면을 JPEG 로 — 못 그리면(일부 폰) 어두운 바탕에 ▶ 를 그린다
+function frame(v) {
+  const w = v.videoWidth || 640, h = v.videoHeight || 360;
+  const scale = Math.min(1, 1280 / Math.max(w, h));
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * scale);
+  c.height = Math.round(h * scale);
+  const g = c.getContext('2d');
+  g.fillStyle = '#16231c';
+  g.fillRect(0, 0, c.width, c.height);
+  try { g.drawImage(v, 0, 0, c.width, c.height); } catch (e) { return playCard(); }
+  try { return c.toDataURL('image/jpeg', 0.8); } catch (e) { return playCard(); }
+}
+function playCard() {
+  const c = document.createElement('canvas');
+  c.width = 640; c.height = 360;
+  const g = c.getContext('2d');
+  g.fillStyle = '#16231c'; g.fillRect(0, 0, 640, 360);
+  g.fillStyle = '#fff'; g.beginPath(); g.moveTo(290, 140); g.lineTo(290, 220); g.lineTo(360, 180); g.fill();
+  return c.toDataURL('image/jpeg', 0.8);
 }
 
 function shrink(file, max) {
@@ -186,8 +250,32 @@ function shrink(file, max) {
   });
 }
 
+// 동영상 한 개 올리기 — 진행률을 보려고 fetch 대신 XHR
+function sendVideo(item, caption, onProgress) {
+  return new Promise((resolve, reject) => {
+    const fd = new FormData();
+    if (caption) fd.append('caption', caption);
+    fd.append('duration', String(item.duration));
+    fd.append('poster', item.poster);
+    fd.append('video', item.file, item.file.name || 'video');
+    const x = new XMLHttpRequest();
+    x.open('POST', 'api/gallery/video');
+    x.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(Math.round(e.loaded / e.total * 100)); };
+    x.onload = () => {
+      let d = null;
+      try { d = JSON.parse(x.responseText); } catch (e) { /* nginx 가 막으면 HTML */ }
+      if (x.status >= 200 && x.status < 300) return resolve(d);
+      const err = new Error(d?.error || (x.status === 413 ? 'video_too_big' : `http_${x.status}`));
+      err.status = x.status;
+      reject(err);
+    };
+    x.onerror = () => reject(new Error('network'));
+    x.send(fd);
+  });
+}
+
 export function uploadForm(refresh) {
-  let picked = [];
+  let picked = [];      // { kind:'photo', data } | { kind:'video', file, duration, poster }
   const m = openModal({
     title: t('galleryAdd'),
     fields: [{ name: 'caption', label: t('galleryCaption'), placeholder: t('galleryCaptionHint') }],
@@ -199,9 +287,15 @@ export function uploadForm(refresh) {
     onSave: async (v, form) => {
       if (!picked.length) return t('galleryNone');
       const btn = form.querySelector('button[type=submit]');
-      for (let k = 0; k < picked.length; k += SEND_EACH) {
-        btn.textContent = `${Math.min(k + SEND_EACH, picked.length)}/${picked.length}…`;
-        await api('/gallery', { method: 'POST', body: { photos: picked.slice(k, k + SEND_EACH), caption: v.caption } });
+      const photos = picked.filter(p => p.kind === 'photo').map(p => p.data);
+      const videos = picked.filter(p => p.kind === 'video');
+      for (let k = 0; k < photos.length; k += SEND_EACH) {
+        btn.textContent = `${Math.min(k + SEND_EACH, photos.length)}/${photos.length}…`;
+        await api('/gallery', { method: 'POST', body: { photos: photos.slice(k, k + SEND_EACH), caption: v.caption } });
+      }
+      for (let k = 0; k < videos.length; k++) {
+        const label = videos.length > 1 ? ` ${k + 1}/${videos.length}` : '';
+        await sendVideo(videos[k], v.caption, (p) => { btn.textContent = t('videoUploading', { p }) + label; });
       }
       toast(t('saved'));
       refresh();
@@ -210,16 +304,28 @@ export function uploadForm(refresh) {
 
   const prev = m.form.querySelector('[data-preview]');
   const show = () => {
-    prev.innerHTML = picked.map((src, k) =>
-      `<div class="gp"><img src="${src}" alt=""><button type="button" data-rm="${k}" aria-label="remove">✕</button></div>`).join('');
+    prev.innerHTML = picked.map((p, k) =>
+      `<div class="gp"><img src="${p.kind === 'video' ? p.poster : p.data}" alt="">
+        ${p.kind === 'video' ? `<span class="vbadge">▶ ${fmtDur(p.duration)}</span>` : ''}
+        <button type="button" data-rm="${k}" aria-label="remove">✕</button></div>`).join('');
   };
   prev.onclick = (e) => {
     const b = e.target.closest('[data-rm]');
     if (b) { picked.splice(Number(b.dataset.rm), 1); show(); }
   };
-  m.form.querySelector('[data-pick]').onclick = async () => {
-    const more = await pickPhotos();
-    picked = [...picked, ...more].slice(0, MAX_PICK);
-    show();
+  const pick = m.form.querySelector('[data-pick]');
+  pick.onclick = async () => {
+    pick.disabled = true;
+    try {
+      const more = await pickMedia();
+      picked = [...picked, ...more].slice(0, MAX_PICK);
+      show();
+    } finally { pick.disabled = false; }
   };
+}
+
+// 0:42 처럼
+export function fmtDur(s) {
+  const n = Math.round(Number(s) || 0);
+  return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
 }
