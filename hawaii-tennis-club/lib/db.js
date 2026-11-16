@@ -409,6 +409,8 @@ function migrate(db) {
   const gcols = db.prepare('PRAGMA table_info(gallery_photo)').all().map(c => c.name);
   if (!gcols.includes('video')) db.exec('ALTER TABLE gallery_photo ADD COLUMN video TEXT');
   if (!gcols.includes('duration')) db.exec('ALTER TABLE gallery_photo ADD COLUMN duration REAL');
+  // 회원 생일 — 'MM-DD' (태어난 해는 받지 않는다). 본인이 ☰ → My profile 에서 적는다
+  if (!db.prepare('PRAGMA table_info(member)').all().some(c => c.name === 'birthday')) db.exec('ALTER TABLE member ADD COLUMN birthday TEXT');
 
   const put = db.prepare('INSERT INTO setting (k, v) VALUES (?, ?) ON CONFLICT(k) DO NOTHING');
   for (const [k, v] of Object.entries(DEFAULTS)) put.run(k, v);

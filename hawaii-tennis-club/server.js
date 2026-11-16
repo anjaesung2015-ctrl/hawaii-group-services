@@ -40,6 +40,7 @@ app.use('/api/push', require('./routes/push')(db, auth, notify));    // 폰 알�
 app.use('/api/docs', require('./routes/docs')(db, auth));            // 회칙 (읽기는 누구나)
 app.use('/api/officers', require('./routes/officers')(db, auth));    // 조직도
 app.use('/api/gallery', require('./routes/gallery')(db, auth));      // 사진첩
+app.use('/api/ticker', require('./routes/ticker')(db, auth));    // 홈 전광판 (생일·운영진 문구·D-day)
 app.use('/api/popups', require('./routes/popups')(db, auth, tr));    // 홈 팝업 (중요 행사·업데이트)
 app.use('/api/results', require('./routes/results')(db, auth));      // 대회 성적 (Hall of Fame)
 app.use('/api/feed', require('./routes/feed')(db, auth, tr));          // 홈 피드 (글·사진·공지·성적 2열 카드)

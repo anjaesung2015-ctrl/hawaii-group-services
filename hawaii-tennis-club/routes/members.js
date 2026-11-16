@@ -12,12 +12,12 @@ module.exports = function memberRoutes(db, auth) {
 
   // 명단 — 일반 회원에게는 이름·레벨만 보여준다 (전화번호는 관리자만)
   router.get('/', (req, res) => {
-    const rows = db.prepare(`SELECT id, name, phone, role, title, level, status, joined_at, memo, is_owner, is_coach, dues_manager, results_manager, photo,
+    const rows = db.prepare(`SELECT id, name, phone, role, title, level, status, joined_at, memo, is_owner, is_coach, dues_manager, results_manager, photo, birthday,
                                     ${OFFICER_ROLE_SQL} AS officer_role,
                                     (SELECT COUNT(*) FROM result_entry e WHERE e.member_id = m.id AND e.place <= 3) AS trophies
                              FROM member m WHERE program='club' ORDER BY is_owner DESC, role='member', is_coach DESC, status='dormant', name`).all();
     if (req.me.role === 'admin' || req.me.is_owner) return res.json(rows);
-    res.json(rows.map(m => ({ id: m.id, name: m.name, level: m.level, status: m.status, role: m.role, title: m.title, is_owner: m.is_owner, is_coach: m.is_coach, dues_manager: m.dues_manager, results_manager: m.results_manager, photo: m.photo, officer_role: m.officer_role, trophies: m.trophies })));
+    res.json(rows.map(m => ({ id: m.id, name: m.name, level: m.level, status: m.status, role: m.role, title: m.title, is_owner: m.is_owner, is_coach: m.is_coach, dues_manager: m.dues_manager, results_manager: m.results_manager, photo: m.photo, birthday: m.birthday, officer_role: m.officer_role, trophies: m.trophies })));
   });
 
   router.post('/', auth.requireAdmin, (req, res) => {

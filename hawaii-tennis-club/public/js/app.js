@@ -249,12 +249,21 @@ $('#levelBtn').onclick = () => {
       { name: 'name', label: t('name'), type: 'text', maxlength: 40, value: state.me.name || '' },
       ...(isElite() ? [] : [{ name: 'level', label: t('level'), type: 'select', value: state.me.level,
         options: LV.map(l => ({ value: l, label: levelLabel(l) })) }]),
+      // 생일 — 월·일만 (태어난 해는 받지 않는다). 생일날 홈 전광판과 명단에 🎂
+      { name: 'bmonth', label: t('birthMonth'), type: 'select', value: (state.me.birthday || '').slice(0, 2),
+        options: [{ value: '', label: '—' }, ...t('months').map((mo, k) => ({ value: String(k + 1).padStart(2, '0'), label: mo }))] },
+      { name: 'bday', label: t('birthDay'), type: 'select', value: (state.me.birthday || '').slice(3),
+        options: [{ value: '', label: '—' }, ...Array.from({ length: 31 }, (_, k) => ({ value: String(k + 1).padStart(2, '0'), label: String(k + 1) }))] },
     ],
     extra: `<button type="button" class="btn ghost" data-my-photo>📷 ${esc(t('myPhoto'))}</button>
-      ${isElite() ? '' : `<div class="hint">${esc(t('myLevelHint'))}</div>`}`,
+      ${isElite() ? '' : `<div class="hint">${esc(t('myLevelHint'))}</div>`}
+      <div class="hint">🎂 ${esc(t('birthdayHint'))}</div>`,
     onSave: async (v) => {
       v.name = String(v.name || '').trim();
       if (!v.name) return t('nameRequired');
+      if (!v.bmonth !== !v.bday) return t('birthdayBoth');
+      v.birthday = v.bmonth ? `${v.bmonth}-${v.bday}` : '';
+      delete v.bmonth; delete v.bday;
       const r = await api('/auth/profile', { method: 'PATCH', body: v });
       state.me = r.me;
       toast(t('saved'));

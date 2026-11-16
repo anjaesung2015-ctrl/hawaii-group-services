@@ -190,7 +190,7 @@ const ERRORS = {
   too_many_dates: 'repeatTooMany', no_device: 'pushNoDevice', bad_subscription: 'failed',
   photo_required: 'galleryNone', forbidden: 'adminOnly', owner_only: 'ownerOnly', bad_photo: 'photoBad', cannot_delete_owner: 'cannotDeleteOwner',
   bad_date: 'failed', bad_kind: 'failed', entries_required: 'resultNeedWinner', bad_place: 'failed', bad_member: 'failed',
-  too_many_photos: 'failed', results_only: 'adminOnly',
+  too_many_photos: 'failed', results_only: 'adminOnly', bad_birthday: 'birthdayBoth',
   video_too_big: 'videoTooBig', video_too_long: 'videoTooLong', bad_video: 'videoBad', video_required: 'galleryNone', poster_required: 'videoBad',
 };
 export const errText = (e) => t(ERRORS[e?.message] || 'failed');

@@ -51,6 +51,7 @@ function makeApp(opts = {}) {
   app.use('/api/docs', require('../routes/docs')(db, auth));
   app.use('/api/officers', require('../routes/officers')(db, auth));
   app.use('/api/gallery', require('../routes/gallery')(db, auth));
+  app.use('/api/ticker', require('../routes/ticker')(db, auth));
   app.use('/api/popups', require('../routes/popups')(db, auth, tr));
   app.use('/api/results', require('../routes/results')(db, auth));
   app.use('/api/feed', require('../routes/feed')(db, auth, tr));

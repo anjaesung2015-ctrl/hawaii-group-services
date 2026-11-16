@@ -2,7 +2,7 @@
 // 카드 = 사진 + 제목 + 작성자. 사진 높이대로 짧은 열에 차곡차곡(메이슨리), 끝까지 내리면 다음 묶음(무한 스크롤).
 // 위쪽: 종류 칩(All·Board·Photos·Notices·Results) + 새 글(＋). 운영진은 가입 신청이 있으면 맨 위에 알림 한 줄.
 // 일정·캘린더·회비는 각 탭에서 본다 (2026-11-16 사장님 지시 "홈 전체를 피드로").
-import { api, esc, origText, avatar } from '../ui.js';
+import { api, esc, origText, avatar, openModal, toast } from '../ui.js';
 import { t, timeAgo } from '../i18n.js';
 import { openPost, postForm } from './board.js';
 import { galleryViewer, uploadForm, fmtDur } from './gallery.js';
@@ -33,6 +33,7 @@ export async function renderHome(el, state) {
           <span class="pill gold">${join.count}</span>
         </div>
       </div>` : ''}
+    <div class="ticker" data-ticker hidden></div>
     <div class="feed-top">
       <div class="seg feed-seg no-tab-swipe">
         ${KINDS.map(([k, label]) => `<button data-kind="${k}" class="${kind === k ? 'on' : ''}">${esc(t(label))}</button>`).join('')}
@@ -46,6 +47,7 @@ export async function renderHome(el, state) {
   el.querySelector('[data-go-members]')?.addEventListener('click', () => state.go('members'));
   el.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { state.feedKind = b.dataset.kind; again(); });
   el.querySelector('[data-new]').onclick = () => newSheet(state, again);
+  drawTicker(el.querySelector('[data-ticker]'), isAdmin);
 
   const feed = el.querySelector('[data-feed]');
   const cols = [...feed.children];
@@ -180,3 +182,34 @@ function newSheet(state, again) {
   };
 }
 
+
+// ---------- 전광판 — 오늘 생일·운영진 문구·다가오는 행사 D-day 가 한 줄로 흘러간다 ----------
+// 운영진은 눌러서 문구를 고친다. 보여줄 게 없으면 숨긴다(운영진에겐 ✏️ 만 보이는 빈 띠).
+async function drawTicker(box, isAdmin) {
+  let d;
+  try { d = await api('/ticker'); } catch (e) { return; }
+  const items = [
+    ...d.birthdays.map(b => t('tickerBirthday', { name: b.name })),
+    ...d.messages,
+    ...d.events.map(e => (e.days === 0 ? t('tickerToday', { title: e.title }) : t('tickerDday', { title: e.title, n: e.days }))),
+  ];
+  if (!items.length && !isAdmin) return;
+  const line = items.map(s => `<span>${esc(s)}</span>`).join('<i>•</i>');
+  // 같은 줄을 두 번 이어 붙여 끊김 없이 돈다. 글자 수에 맞춰 속도를 일정하게
+  const secs = Math.max(12, Math.round(items.join('   ').length * 0.28));
+  box.innerHTML = `<div class="ticker-in">
+      ${items.length ? `<div class="ticker-run" style="animation-duration:${secs}s">${line}<i>•</i>${line}<i>•</i></div>`
+        : `<div class="ticker-empty">${esc(t('tickerHint'))}</div>`}
+    </div>${isAdmin ? '<button type="button" class="ticker-edit" aria-label="edit">✏️</button>' : ''}`;
+  box.hidden = false;
+  if (isAdmin) box.querySelector('.ticker-edit').onclick = () => openModal({
+    title: t('tickerEdit'),
+    fields: [{ name: 'text', label: t('tickerEdit'), type: 'textarea', value: d.text }],
+    extra: `<div class="hint">${esc(t('tickerHint'))}</div>`,
+    onSave: async (v) => {
+      await api('/ticker/text', { method: 'PUT', body: { text: v.text } });
+      toast(t('saved'));
+      drawTicker(box, isAdmin);
+    },
+  });
+}
