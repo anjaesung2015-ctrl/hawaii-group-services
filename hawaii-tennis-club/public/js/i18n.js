@@ -183,7 +183,7 @@ export const DICT = {
     popupsMenu: '📢 Popups', popupsTitle: 'Popups', popupNew: 'New popup', popupEdit: 'Edit popup',
     popupStarts: 'Show from', popupEnds: 'Show until (optional)', popupNoEnd: 'no end date',
     popupLink: 'Button opens', popupLinkNone: 'No button', popupActive: 'On — show to members',
-    popupHint: 'Live popups appear when members open the app. Each member can hide one for today or for good.',
+    popupHint: 'Members see one popup a day when they open the app — if several are live, they take turns day by day. Each member can hide one for today or for good.',
     popupLive: 'Live', popupScheduled: 'Scheduled', popupEnded: 'Ended', popupOff: 'Off',
     popupPreview: 'Preview', popupEmpty: 'No popups yet', popupOpen: 'Open {tab} →',
     popupHideToday: 'Hide for today', popupNever: "Don't show again", popupNext: 'Next',

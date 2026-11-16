@@ -1,4 +1,4 @@
-// 홈 팝업 — 앱을 열면 지금 게시 중인 팝업을 띄운다 (여러 개면 1/2 로 넘긴다).
+// 홈 팝업 — 하루에 한 개만 띄운다. 게시 중인 팝업이 여러 개면 날마다 돌아가며 하나씩.
 // '오늘 하루 안 보기'·'다시 안 보기'는 이 폰에만 남긴다(localStorage). 폰을 바꾸면 다시 뜬다.
 // 관리(운영진): ☰ 메뉴 → Popups 화면(renderPopupAdmin).
 // 팝업은 #modalRoot 에 띄운다 — 폰 뒤로가기가 팝업부터 닫는다(backnav).
@@ -7,6 +7,7 @@ import { t } from '../i18n.js';
 
 const NEVER = 'htc_popup_never';     // [id, …]
 const SKIP = 'htc_popup_today';      // { id: 'YYYY-MM-DD' }
+const SHOWN = 'htc_popup_shown';     // { date: 'YYYY-MM-DD', id } — 오늘 이미 띄웠는지, 마지막에 띄운 팝업
 
 const LINK_LABEL = {
   schedule: 'tabSchedule', notices: 'tabNotices', board: 'tabBoard', dues: 'tabDues', members: 'tabMembers',
@@ -28,6 +29,7 @@ let started = false;
 export function maybeShowPopups(state) {
   if (started) return;
   started = true;
+  if (load(SHOWN, {}).date === today()) return;     // 오늘은 이미 하나 봤다
   let list = null, tries = 0;
   const tick = async () => {
     if (!state.me) return;                      // 로그아웃
@@ -39,7 +41,11 @@ export function maybeShowPopups(state) {
     const busy = document.getElementById('modalRoot').innerHTML.trim() || !document.getElementById('menuSheet').hidden
       || !state.rules_agreed || state.tab !== 'home';
     if (busy) { if (tries++ < 600) setTimeout(tick, 1000); return; }
-    showPopups(list, state);
+    // 지난번에 띄운 것 다음 차례 하나만 (끝이면 처음으로)
+    const last = load(SHOWN, {}).id;
+    const pick = list[(list.findIndex(p => p.id === last) + 1) % list.length];
+    save(SHOWN, { date: today(), id: pick.id });
+    showPopups([pick], state);
   };
   setTimeout(tick, 600);
 }
