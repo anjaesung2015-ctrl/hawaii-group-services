@@ -100,6 +100,18 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
     res.json(out);
   });
 
+  // 홈 피드 카드 — 클럽 전체방 최근 몇 개. 읽음 표시는 건드리지 않는다(방을 연 게 아니니까)
+  router.get('/recent', async (req, res) => {
+    const room = db.prepare("SELECT id FROM chat_room WHERE kind='club' ORDER BY id LIMIT 1").get();
+    if (!room) return res.json({ room_id: null, messages: [], unread: 0 });
+    const limit = Math.min(10, Math.max(1, Number(req.query.limit) || 3));
+    const messages = db.prepare(`${SELECT_MSG} WHERE c.room_id=? ORDER BY c.id DESC LIMIT ${limit}`).all(room.id)
+      .reverse().map(m => msgRow(m, req.me.id));
+    const lang = langOf(req);
+    if (lang) await tr.attach(messages, ['body'], lang, 0);
+    res.json({ room_id: room.id, messages, unread: unreadIn(room.id, req.me.id) });
+  });
+
   // 상단 💬 숫자 — 내 방 전부의 안 읽은 메시지
   router.get('/unread', (req, res) => {
     const ids = db.prepare(`SELECT id FROM chat_room WHERE kind='club' OR a_id=? OR b_id=?`).pluck().all(req.me.id, req.me.id);

@@ -1,7 +1,7 @@
 // 홈 — 2열 카드 피드 (게시판 글·사진첩 사진·공지·대회 성적을 최신순으로 섞어서).
 // 카드 = 사진 + 제목 + 작성자. 사진 높이대로 짧은 열에 차곡차곡(메이슨리), 끝까지 내리면 다음 묶음(무한 스크롤).
 // 위쪽: 종류 칩(All·Board·Photos·Notices·Results) + 새 글(＋). 운영진은 가입 신청이 있으면 맨 위에 알림 한 줄.
-// 피드 위: 전광판 → 작은 캘린더. 각 화면 바로가기는 피드 첫 사진 카드 밑에 카드 한 장으로 (2026-11-16 사장님).
+// 피드 위: 전광판 → 작은 캘린더(일정 제목이 칸에 보인다). 피드 맨 앞에 Free Chat 카드(전체방 최근 3개) (2026-11-16 사장님).
 import { api, esc, origText, avatar, openModal, toast, today, thisMonth } from '../ui.js';
 import { t, timeAgo, fmtMonth } from '../i18n.js';
 import { openPost, postForm } from './board.js';
@@ -13,11 +13,6 @@ import { calKind } from './calendar.js';
 const KINDS = [['all', 'filterAll'], ['post', 'tabBoard'], ['photo', 'galleryTitle'], ['notice', 'tabNotices'], ['result', 'feedAwards']];
 const BADGE = { notice: '📣', result: '🏆', photo: '📷', video: '🎬' };
 const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉', 4: '🎖' };
-// 각 화면 바로가기 (아래 탭에 없는 사진첩·성적도 여기서)
-const SHORTCUTS = [
-  ['schedule', '📅', 'tabSchedule'], ['notices', '📣', 'tabNotices'], ['board', '📝', 'tabBoard'], ['chat', '💬', 'tabChat'],
-  ['gallery', '📷', 'galleryTitle'], ['results', '🏆', 'resultsTitle'], ['dues', '💰', 'tabDues'], ['members', '👥', 'tabMembers'],
-];
 
 let observer = null;     // 지난 화면의 무한 스크롤 감시 — 다시 그릴 때 끊는다
 let run = 0;             // 다시 그리면 이전 화면이 늦게 받은 묶음을 버린다
@@ -70,8 +65,10 @@ export async function renderHome(el, state) {
       const q = new URLSearchParams({ lang: 'en', limit: '20' });
       if (kind !== 'all') q.set('kind', kind);
       if (next) q.set('before', next);
-      const d = await api(`/feed?${q}`);
+      const first = !next && kind === 'all';
+      const [d, chat] = await Promise.all([api(`/feed?${q}`), first ? api('/chat/recent?limit=3&lang=en').catch(() => null) : null]);
       if (my !== run) return;
+      if (chat?.room_id && chat.messages.length) cols[0].insertAdjacentHTML('beforeend', chatCard(chat));
       const ratios = await Promise.all(d.rows.map(r => (r.photo ? ratioOf(r.photo) : null)));
       if (my !== run) return;
       d.rows.forEach((r, i) => {
@@ -80,8 +77,6 @@ export async function renderHome(el, state) {
         // 짧은 열에 붙인다 — 사진 비율을 미리 알아 두었으므로 붙이자마자 높이가 정해진다
         const col = cols[0].offsetHeight <= cols[1].offsetHeight ? cols[0] : cols[1];
         col.insertAdjacentHTML('beforeend', html);
-        // 맨 처음 카드 밑에 바로가기 카드
-        if (items.length === 1 && !next) col.insertAdjacentHTML('beforeend', shortcutCard());
       });
       next = d.next;
       done = !next;
@@ -96,8 +91,8 @@ export async function renderHome(el, state) {
   };
 
   feed.onclick = (e) => {
-    const sc = e.target.closest('[data-short]');
-    if (sc) return state.go(sc.dataset.short);
+    const ch = e.target.closest('[data-chat-room]');
+    if (ch) { state.chatRoom = Number(ch.dataset.chatRoom); return state.go('chat'); }
     const c = e.target.closest('[data-fi]');
     if (!c || e.target.closest('[data-view-photo]')) return;
     open(items[Number(c.dataset.fi)], items, state, again);
@@ -121,8 +116,14 @@ function ratioOf(src) {
   });
 }
 
-const shortcutCard = () => `<div class="fcard shortcuts">
-  ${SHORTCUTS.map(([tab, icon, label]) => `<button type="button" data-short="${tab}"><span>${icon}</span>${esc(t(label))}</button>`).join('')}</div>`;
+// Free Chat 카드 — 공지 카드처럼 피드 안에. 원문 그대로(짧게), 사진은 📷
+function chatCard(c) {
+  return `<div class="fcard ftext-card fchat" data-chat-room="${c.room_id}">
+    <div class="fbadge b-chat">💬 ${esc(t('tabChat'))}${c.unread ? ` <span class="pill solid">${c.unread}</span>` : ''}</div>
+    ${c.messages.map(m => `<div class="fchat-row"><b>${esc(m.name || t('formerMember'))}</b>
+      <span>${m.body ? esc(origText(m, 'body').text) : '📷'}</span><em>${esc(timeAgo(m.created_at))}</em></div>`).join('')}
+  </div>`;
+}
 
 function card(r, ratio, i) {
   const title = origText(r, 'title').text;
@@ -229,16 +230,15 @@ async function drawTicker(box, isAdmin) {
   });
 }
 
-// ---------- 작은 캘린더 — 이번 달, 일정 있는 날에 점. 날짜를 누르면 일정 탭 캘린더에서 그날을 연다 ----------
+// ---------- 작은 캘린더 — 이번 달, 칸마다 일정 제목(행사·대회 먼저, 2개까지). 날짜를 누르면 일정 탭 캘린더에서 그날을 연다 ----------
 async function drawMiniCal(box, state) {
   const ym = thisMonth();
   let events = [];
-  try { events = await api(`/events?month=${ym}`); } catch (e) { events = []; }
-  const kinds = new Map();          // 날짜 → Set(kind)
+  try { events = await api(`/events?month=${ym}&lang=en`); } catch (e) { events = []; }
+  const byDay = new Map();          // 날짜 → [일정]
   for (const e of events) {
-    const k = calKind(e);
-    if (!kinds.has(e.event_date)) kinds.set(e.event_date, new Set());
-    kinds.get(e.event_date).add(k);
+    if (!byDay.has(e.event_date)) byDay.set(e.event_date, []);
+    byDay.get(e.event_date).push(e);
   }
   const [Y, M] = ym.split('-').map(Number);
   const first = new Date(Date.UTC(Y, M - 1, 1)).getUTCDay();
@@ -246,9 +246,11 @@ async function drawMiniCal(box, state) {
   const cells = Array.from({ length: first }, () => '<span></span>');
   for (let d = 1; d <= days; d++) {
     const iso = `${ym}-${String(d).padStart(2, '0')}`;
-    const ks = kinds.get(iso);
-    const dots = ks ? ['tournament', 'event', 'regular'].filter(k => ks.has(k)).map(k => `<i class="${k}"></i>`).join('') : '';
-    cells.push(`<button type="button" data-d="${iso}" class="${iso === today() ? 'today' : ''}${iso < today() ? ' past' : ''}"><b>${d}</b><span class="mc-dots">${dots}</span></button>`);
+    const list = byDay.get(iso) || [];
+    const shown = [...list.filter(e => calKind(e) !== 'regular'), ...list.filter(e => calKind(e) === 'regular')];
+    const labels = shown.slice(0, 2).map(e => `<span class="mc-ev ${calKind(e)}">${esc(origText(e, 'title').text)}</span>`).join('')
+      + (shown.length > 2 ? `<span class="mc-more">+${shown.length - 2}</span>` : '');
+    cells.push(`<button type="button" data-d="${iso}" class="${iso === today() ? 'today' : ''}${iso < today() ? ' past' : ''}"><b>${d}</b>${labels}</button>`);
   }
   box.innerHTML = `
     <button type="button" class="mc-head" data-open>📅 ${esc(fmtMonth(ym))}<span>›</span></button>

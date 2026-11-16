@@ -1082,12 +1082,6 @@ body.tabs-8 .tabbar .tab-icon { width: 21px; height: 21px; }
 @media (prefers-reduced-motion: reduce) { .ticker-run { animation-duration: 0s !important; } }
 
 /* ---------- 홈 — 바로가기·작은 캘린더 ---------- */
-/* 피드 안 바로가기 카드 — 2칸 x 4줄 */
-.fcard.shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 8px; }
-.shortcuts button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 9px 2px 8px;
-  border: 0; border-radius: 12px; background: var(--court-tint); color: inherit;
-  font-size: 11.5px; font-weight: 600; line-height: 1.15; text-align: center; cursor: pointer; }
-.shortcuts button span { font-size: 22px; line-height: 1; }
 .mini-cal { padding: 6px 10px 6px; margin: 0 0 12px; }
 .mc-head { display: flex; width: 100%; align-items: center; justify-content: space-between; border: 0; background: none;
   color: inherit; font-weight: 700; font-size: 14.5px; padding: 2px 2px 6px; cursor: pointer; }
@@ -1099,8 +1093,21 @@ body.tabs-8 .tabbar .tab-icon { width: 21px; height: 21px; }
 .mc-grid button b { font-size: 12.5px; font-weight: 600; }
 .mc-grid button.past { opacity: .45; }
 .mc-grid button.today { background: var(--ok); color: #fff; opacity: 1; }
-.mc-dots { display: flex; gap: 2px; height: 5px; margin-top: 1px; }
-.mc-dots i { width: 5px; height: 5px; border-radius: 50%; background: #9db3a6; }
-.mc-dots i.tournament { background: #e0a400; }
-.mc-dots i.event { background: #d9534f; }
-.mc-grid button.today .mc-dots i { box-shadow: 0 0 0 1px #fff; }
+/* 칸 안 일정 제목 — 큰 캘린더와 같은 색, 두 줄까지 */
+.mc-grid button { justify-content: flex-start; min-height: 50px; min-width: 0; padding: 2px 1px 3px; }
+.mc-ev { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere;
+  width: 100%; margin-top: 1px; padding: 1px 2px; border-radius: 4px; font-size: 8.5px; font-weight: 600; line-height: 1.2;
+  background: var(--court); color: #fff; }
+.mc-ev.tournament { background: var(--gold); }
+.mc-ev.regular { background: var(--court-tint); color: var(--court-dark); }
+.mc-more { font-size: 8.5px; color: var(--muted); }
+.mc-grid button.today .mc-ev { box-shadow: 0 0 0 1px rgba(255,255,255,.75); }
+
+/* ---------- 홈 피드 Free Chat 카드 ---------- */
+.fchat { cursor: pointer; }
+.fbadge.b-chat { color: var(--court-dark); }
+.fchat-row { padding: 6px 0; border-top: 1px solid var(--hair); font-size: 13px; line-height: 1.35; }
+.fchat-row:first-of-type { border-top: 0; }
+.fchat-row b { display: block; font-size: 12px; color: var(--ink-soft); }
+.fchat-row span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.fchat-row em { display: block; font-style: normal; font-size: 11px; color: var(--muted); margin-top: 1px; }

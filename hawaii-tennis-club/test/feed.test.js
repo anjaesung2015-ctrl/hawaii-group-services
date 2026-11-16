@@ -79,3 +79,22 @@ test('피드 — 로그인한 동호인만', async () => {
   assert.strictEqual((await fetch(app.base + '/feed')).status, 401);
   app.close();
 });
+
+test('홈 Free Chat 카드 — 전체방 최근 메시지, 1:1 은 안 나오고, 읽음 처리도 안 한다', async () => {
+  const app = makeApp();
+  const m = await loginAs(app.base, '88110044', '1111');
+  const a = await loginAs(app.base, '99000000', '1234');
+  const rooms = (await m.call('/chat/rooms')).data;
+  const club = rooms.find(r => r.kind === 'club');
+  for (const body of ['one', 'two', 'three', 'four']) await a.call(`/chat/rooms/${club.id}/messages`, { method: 'POST', body: { body } });
+  const dm = (await a.call('/chat/dm', { method: 'POST', body: { member_id: (await m.call('/auth/me')).data.me.id } })).data.id;
+  await a.call(`/chat/rooms/${dm}/messages`, { method: 'POST', body: { body: 'secret' } });
+
+  const d = (await m.call('/chat/recent?limit=3')).data;
+  assert.strictEqual(d.room_id, club.id);
+  assert.deepStrictEqual(d.messages.map(x => x.body), ['two', 'three', 'four']);
+  assert.strictEqual(d.unread, 4);
+  assert.strictEqual((await m.call('/chat/recent')).data.unread, 4);     // 홈에서 봤다고 읽음이 되지 않는다
+  assert.strictEqual((await fetch(app.base + '/chat/recent')).status, 401);
+  app.close();
+});
