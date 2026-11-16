@@ -25,25 +25,25 @@ test('팝업 — 하루에 한 개, 같은 날 다시 열어도 안 뜨고, 다�
   assert.doesNotMatch(root.innerHTML, /popup-count|<h3>B/);          // 한 개만 (1/2 없음)
 
   // 닫기 전에 앱이 꺼지면(새로 열면) 다시 뜬다 — 아직 '봤다'가 아니다
-  assert.strictEqual(store.htc_popup_shown, undefined);
+  assert.strictEqual(store.htc_popup_seen, undefined);
   root.innerHTML = '';
   (await fresh()).maybeShowPopups(state); await wait(800);
   assert.match(root.innerHTML, /<h3>A<\/h3>/);
   const closeIt = () => root.firstElementChild.onclick({ target: { closest: (s) => (s === '[data-close]' ? {} : null) } });
   closeIt();                                                          // 닫으면 오늘은 끝
-  assert.strictEqual(JSON.parse(store.htc_popup_shown).id, 2);
+  assert.strictEqual(JSON.parse(store.htc_popup_seen).id, 2);
 
   root.innerHTML = '';
   (await fresh()).maybeShowPopups(state); await wait(800);
   assert.strictEqual(root.innerHTML, '');                             // 같은 날 또 열면 안 뜬다
 
-  store.htc_popup_shown = JSON.stringify({ date: '2000-01-01', id: 2 });   // 다음 날
+  store.htc_popup_seen = JSON.stringify({ date: '2000-01-01', id: 2 });   // 다음 날
   (await fresh()).maybeShowPopups(state); await wait(800);
   assert.match(root.innerHTML, /<h3>B<\/h3>/);
   closeIt();
-  assert.strictEqual(JSON.parse(store.htc_popup_shown).date, today());
+  assert.strictEqual(JSON.parse(store.htc_popup_seen).date, today());
 
-  store.htc_popup_shown = JSON.stringify({ date: '2000-01-02', id: 1 });   // 그 다음 날 — 처음으로
+  store.htc_popup_seen = JSON.stringify({ date: '2000-01-02', id: 1 });   // 그 다음 날 — 처음으로
   root.innerHTML = '';
   (await fresh()).maybeShowPopups(state); await wait(800);
   assert.match(root.innerHTML, /<h3>A<\/h3>/);

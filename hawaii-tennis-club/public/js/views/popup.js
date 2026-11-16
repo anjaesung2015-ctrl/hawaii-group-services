@@ -7,7 +7,7 @@ import { t } from '../i18n.js';
 
 const NEVER = 'htc_popup_never';     // [id, …]
 const SKIP = 'htc_popup_today';      // { id: 'YYYY-MM-DD' }
-const SHOWN = 'htc_popup_shown';     // { date: 'YYYY-MM-DD', id } — 오늘 이미 띄웠는지, 마지막에 띄운 팝업
+const SHOWN = 'htc_popup_seen';      // { date: 'YYYY-MM-DD', id } — 오늘 닫았는지, 마지막에 본 팝업 (옛 htc_popup_shown 은 뜨자마자 남겨서 버림)
 
 const LINK_LABEL = {
   schedule: 'tabSchedule', notices: 'tabNotices', board: 'tabBoard', dues: 'tabDues', members: 'tabMembers',
