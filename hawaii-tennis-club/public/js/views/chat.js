@@ -1,7 +1,7 @@
 // 채팅 — 방 목록(클럽 전체방 + 1:1) 과 방 안 화면.
 // 방을 연 동안 3초마다 새 메시지만 받아 온다. 다른 화면으로 가거나 앱을 내리면 멈춘다.
 // 한글·몽골어 메시지는 영어 번역을 크게, 원문을 작게 (내 메시지는 반대로 — 남에게 어떻게 보이는지 확인용).
-import { api, esc, toast, openModal, errText, pickPhoto, origHtml, avatar, $, $$, officerPill } from '../ui.js';
+import { api, esc, toast, openModal, errText, pickPhoto, origText, origHtml, avatar, $, $$, officerPill } from '../ui.js';
 import { t, levelLabel, timeAgo } from '../i18n.js';
 
 const POLL_MS = 3000;
@@ -38,7 +38,7 @@ function roomRow(r) {
   const club = r.kind === 'club';
   const name = club ? t('clubChat') : (r.other?.name || t('formerMember'));
   const last = r.last
-    ? `${r.last.mine ? `${t('you')}: ` : (club && r.last.name ? `${r.last.name}: ` : '')}${(!r.last.mine && r.last.body_tr) || r.last.body || `📷 ${t('photo')}`}`
+    ? `${r.last.mine ? `${t('you')}: ` : (club && r.last.name ? `${r.last.name}: ` : '')}${r.last.body || `📷 ${t('photo')}`}`
     : t('clubChatSub');
   return `
     <div class="member-row room-row" data-room="${r.id}" style="cursor:pointer">
@@ -331,10 +331,10 @@ async function renderRoom(el, state, roomId) {
   }, POLL_MS);
 }
 
-// 남의 말: 번역문 크게 + 🌐 원문 작게. 내 말: 내가 쓴 그대로 크게 + 🌐 영어 번역 작게
+// 누구 말이든 쓴 그대로(원문) 크게 + 🌐 영어 번역 작게 (2026-11-16 사장님 지시 — 공지·게시판·일정과 같게)
 function bubble(m) {
-  const [big, small] = m.mine ? [m.body, m.body_tr] : [m.body_tr || m.body, m.body_tr ? m.body : null];
-  return `<div class="bubble">${esc(big)}${origHtml(small)}</div>`;
+  const { text, orig } = origText(m, 'body');
+  return `<div class="bubble">${esc(text)}${origHtml(orig)}</div>`;
 }
 
 // 날짜가 바뀌면 가운데 날짜 줄. 같은 사람이 연달아 쓰면 이름은 처음 한 번만.
