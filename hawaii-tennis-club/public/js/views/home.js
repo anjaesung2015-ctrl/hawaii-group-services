@@ -1,7 +1,7 @@
 // 홈 — 2열 카드 피드 (게시판 글·사진첩 사진·공지·대회 성적을 최신순으로 섞어서).
 // 카드 = 사진 + 제목 + 작성자. 사진 높이대로 짧은 열에 차곡차곡(메이슨리), 끝까지 내리면 다음 묶음(무한 스크롤).
 // 위쪽: 종류 칩(All·Board·Photos·Notices·Results) + 새 글(＋). 운영진은 가입 신청이 있으면 맨 위에 알림 한 줄.
-// 피드 위: 전광판 → 각 화면 바로가기 → 작은 캘린더 (2026-11-16 사장님 "메인에 캘린더 작게, 각 창을 넣어줘").
+// 피드 위: 전광판 → 작은 캘린더. 각 화면 바로가기는 피드 첫 사진 카드 밑에 카드 한 장으로 (2026-11-16 사장님).
 import { api, esc, origText, avatar, openModal, toast, today, thisMonth } from '../ui.js';
 import { t, timeAgo, fmtMonth } from '../i18n.js';
 import { openPost, postForm } from './board.js';
@@ -40,7 +40,6 @@ export async function renderHome(el, state) {
         </div>
       </div>` : ''}
     <div class="ticker" data-ticker hidden></div>
-    <div class="shortcuts">${SHORTCUTS.map(([tab, icon, label]) => `<button type="button" data-short="${tab}"><span>${icon}</span>${esc(t(label))}</button>`).join('')}</div>
     <div class="card mini-cal" data-minical></div>
     <div class="feed-top">
       <div class="seg feed-seg no-tab-swipe">
@@ -56,7 +55,6 @@ export async function renderHome(el, state) {
   el.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { state.feedKind = b.dataset.kind; again(); });
   el.querySelector('[data-new]').onclick = () => newSheet(state, again);
   drawTicker(el.querySelector('[data-ticker]'), isAdmin);
-  el.querySelectorAll('[data-short]').forEach(b => b.onclick = () => state.go(b.dataset.short));
   drawMiniCal(el.querySelector('[data-minical]'), state);
 
   const feed = el.querySelector('[data-feed]');
@@ -82,6 +80,8 @@ export async function renderHome(el, state) {
         // 짧은 열에 붙인다 — 사진 비율을 미리 알아 두었으므로 붙이자마자 높이가 정해진다
         const col = cols[0].offsetHeight <= cols[1].offsetHeight ? cols[0] : cols[1];
         col.insertAdjacentHTML('beforeend', html);
+        // 맨 처음 카드 밑에 바로가기 카드
+        if (items.length === 1 && !next) col.insertAdjacentHTML('beforeend', shortcutCard());
       });
       next = d.next;
       done = !next;
@@ -96,6 +96,8 @@ export async function renderHome(el, state) {
   };
 
   feed.onclick = (e) => {
+    const sc = e.target.closest('[data-short]');
+    if (sc) return state.go(sc.dataset.short);
     const c = e.target.closest('[data-fi]');
     if (!c || e.target.closest('[data-view-photo]')) return;
     open(items[Number(c.dataset.fi)], items, state, again);
@@ -118,6 +120,9 @@ function ratioOf(src) {
     img.src = src;
   });
 }
+
+const shortcutCard = () => `<div class="fcard shortcuts">
+  ${SHORTCUTS.map(([tab, icon, label]) => `<button type="button" data-short="${tab}"><span>${icon}</span>${esc(t(label))}</button>`).join('')}</div>`;
 
 function card(r, ratio, i) {
   const title = origText(r, 'title').text;
