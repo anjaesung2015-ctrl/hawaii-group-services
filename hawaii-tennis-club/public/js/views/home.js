@@ -2,7 +2,7 @@
 // 카드 = 사진 + 제목 + 작성자. 사진 높이대로 짧은 열에 차곡차곡(메이슨리), 끝까지 내리면 다음 묶음(무한 스크롤).
 // 위쪽: 종류 칩(All·Board·Photos·Notices·Results) + 새 글(＋). 운영진은 가입 신청이 있으면 맨 위에 알림 한 줄.
 // 일정·캘린더·회비는 각 탭에서 본다 (2026-11-16 사장님 지시 "홈 전체를 피드로").
-import { api, esc, trText, avatar } from '../ui.js';
+import { api, esc, origText, avatar } from '../ui.js';
 import { t, timeAgo } from '../i18n.js';
 import { openPost, postForm } from './board.js';
 import { galleryViewer, uploadForm } from './gallery.js';
@@ -108,17 +108,17 @@ function ratioOf(src) {
 }
 
 function card(r, ratio, i) {
-  const title = trText(r, 'title').text;
+  const title = origText(r, 'title').text;
   const meta = `<div class="fmeta">${avatar(r.author || '?', r.author_photo, 'fav')}<span class="fwho">${esc(r.author || t('formerMember'))}</span>
       <span class="fwhen">${esc(timeAgo(r.created_at))}</span></div>`;
   const counts = r.type === 'post' && (r.likes || r.comments)
     ? `<div class="fcount">${r.likes ? `♥ ${r.likes}` : ''}${r.likes && r.comments ? ' · ' : ''}${r.comments ? `💬 ${r.comments}` : ''}</div>` : '';
   let sub = '';
   if (r.type === 'result') {
-    sub = `<div class="fsub">${esc(t(r.kind === 'external' ? 'kindExternal' : 'kindMonthly'))}${r.excerpt ? ` · ${esc(trText(r, 'excerpt').text)}` : ''}</div>
+    sub = `<div class="fsub">${esc(t(r.kind === 'external' ? 'kindExternal' : 'kindMonthly'))}${r.excerpt ? ` · ${esc(origText(r, 'excerpt').text)}` : ''}</div>
       ${r.winners?.length ? `<div class="fwin">${MEDAL[r.place] || ''} ${esc(r.winners.join(' · '))}</div>` : ''}`;
   } else if (r.type === 'notice' && !r.photo && r.excerpt) {
-    sub = `<div class="fexcerpt">${esc(trText(r, 'excerpt').text)}</div>`;
+    sub = `<div class="fexcerpt">${esc(origText(r, 'excerpt').text)}</div>`;
   }
 
   // 사진 없는 게시판 글 — 글을 크게 (카드 자체가 글)

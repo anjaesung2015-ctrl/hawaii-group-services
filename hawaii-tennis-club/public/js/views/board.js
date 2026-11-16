@@ -1,5 +1,5 @@
 // 자유게시판 — 회원끼리 글·사진·댓글·좋아요.
-import { api, esc, toast, openModal, pickPhoto, errText, trText, origHtml, avatar, $$, officerPill } from '../ui.js';
+import { api, esc, toast, openModal, pickPhoto, errText, origText, origHtml, avatar, $$, officerPill } from '../ui.js';
 import { t, timeAgo } from '../i18n.js';
 
 export async function renderBoard(el, state) {
@@ -42,7 +42,7 @@ export function postCard(p, state) {
         ${mine ? `<button class="btn btn-sm" data-edit="${p.id}">${esc(t('edit'))}</button>` : ''}
         ${canDelete ? `<button class="btn btn-sm btn-danger" data-del="${p.id}">${esc(t('del'))}</button>` : ''}
       </div>
-      ${p.body ? `<div class="post-body">${esc(trText(p, 'body').text)}</div>${origHtml(trText(p, 'body').orig)}` : ''}
+      ${p.body ? `<div class="post-body">${esc(origText(p, 'body').text)}</div>${origHtml(origText(p, 'body').orig)}` : ''}
       ${photos ? `<div class="post-photos ${(p.photos.length > 1) ? 'multi' : ''}">${photos}</div>` : ''}
       <div class="post-foot">
         <button class="react ${p.liked ? 'on' : ''}" data-like="${p.id}" data-on="${p.liked ? 1 : 0}">
@@ -93,7 +93,7 @@ export async function openPost(id, state, refresh) {
     fields: [],
     extra: `
       <div class="hint" style="margin:-8px 2px 8px">${esc(timeAgo(p.created_at))}</div>
-      ${p.body ? `<div class="post-body">${esc(trText(p, 'body').text)}</div>${origHtml(trText(p, 'body').orig)}` : ''}
+      ${p.body ? `<div class="post-body">${esc(origText(p, 'body').text)}</div>${origHtml(origText(p, 'body').orig)}` : ''}
       ${(p.photos || []).map(src => `<img class="post-photo" src="${esc(src)}" data-view-photo="${esc(src)}" style="width:100%;margin-top:8px;border-radius:12px" alt="">`).join('')}
       <div class="section-head" style="margin:16px 2px 8px"><h2>${esc(t('comments'))} · ${p.comments.length}</h2></div>
       <div data-comments>
@@ -101,7 +101,7 @@ export async function openPost(id, state, refresh) {
           <div class="cmt">
             <div class="cmt-top"><b>${esc(c.author)}</b><small>${esc(timeAgo(c.created_at))}</small>
               ${canDel(c) ? `<button class="cmt-del" data-cdel="${c.id}">×</button>` : ''}</div>
-            <div>${esc(trText(c, 'body').text)}</div>${origHtml(trText(c, 'body').orig)}
+            <div>${esc(origText(c, 'body').text)}</div>${origHtml(origText(c, 'body').orig)}
           </div>`).join('') : `<div class="empty">${esc(t('noComments'))}</div>`}
       </div>
       <div class="cmt-write">

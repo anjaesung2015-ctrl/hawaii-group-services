@@ -138,6 +138,12 @@ export function trText(row, field) {
   const en = row?.[field + '_tr'];
   return { text: en || orig || '', orig: en ? orig : null };
 }
+// 반대로 — 원문을 크게, 영어 번역을 작게 (팝업·공지·게시판·홈 피드, 2026-11-16 사장님 지시)
+export function origText(row, field) {
+  const orig = row?.[field];
+  const en = row?.[field + '_tr'];
+  return { text: orig || en || '', orig: orig && en && en !== orig ? en : null };
+}
 export function origHtml(orig) {
   return orig ? `<div class="src">🌐 ${esc(orig)}</div>` : '';
 }
