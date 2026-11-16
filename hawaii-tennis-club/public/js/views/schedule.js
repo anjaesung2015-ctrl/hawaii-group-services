@@ -3,11 +3,11 @@ import { api, esc, toast, openModal, today, origText, origHtml, $$ } from '../ui
 import { t, fmtDate, kindLabel } from '../i18n.js';
 import { weekdaysFromText, nextDateFor } from '../weekdays.js';
 
-const KINDS = ['regular', 'event', 'tournament'];
+const KINDS = ['regular', 'court', 'event', 'tournament'];
 
 // 월례대회는 노란색 — 종류를 Club Night 로 적었어도 제목에 대회 말이 있으면 대회 색으로 (2026-11-12 사장님). 홈 작은 캘린더가 쓴다
 const TOURNEY = /월례대회|대회|tournament|тэмцээн|temtseen/i;
-export const calKind = (e) => (e.kind === 'tournament' || TOURNEY.test(`${e.title || ''} ${e.title_tr || ''}`) ? 'tournament' : e.kind);
+export const calKind = (e) => (e.kind === 'court' ? 'court' : e.kind === 'tournament' || TOURNEY.test(`${e.title || ''} ${e.title_tr || ''}`) ? 'tournament' : e.kind);
 
 export async function renderSchedule(el, state) {
   // 캘린더는 홈 화면에만 (2026-11-16 사장님 "스케줄의 캘린더는 없애줘")
@@ -42,7 +42,8 @@ export function eventCard(e, { rsvp = true } = {}) {
   const d = D;
   const dowIdx = new Date(Date.UTC(Y, M - 1, D)).getUTCDay();
   const isToday = e.event_date === today();
-  const kindPill = e.kind === 'tournament' ? 'gold' : (e.kind === 'event' ? 'solid' : '');
+  const court = e.kind === 'court';        // 코트 예약·상황 — 참석 숫자·버튼 없이 보기만
+  const kindPill = e.kind === 'tournament' ? 'gold' : (e.kind === 'event' ? 'solid' : (court ? 'court' : ''));
   return `
     <div class="card tap" data-event="${e.id}">
       <div class="card-row">
@@ -56,12 +57,12 @@ export function eventCard(e, { rsvp = true } = {}) {
         <span class="pill ${kindPill}">${esc(kindLabel(e.kind))}</span>
       </div>
       ${e.memo ? `<div class="memo">${esc(origText(e, 'memo').text)}</div>${origHtml(origText(e, 'memo').orig)}` : ''}
-      <div class="counts">
+      ${court ? '' : `<div class="counts">
         <span>${esc(t('yes'))} <b>${e.counts.yes}</b></span>
         <span>${esc(t('maybe'))} <b>${e.counts.maybe}</b></span>
         <span>${esc(t('no'))} <b>${e.counts.no}</b></span>
-      </div>
-      ${rsvp ? rsvpRow(e) : ''}
+      </div>`}
+      ${rsvp && !court ? rsvpRow(e) : ''}
     </div>`;
 }
 
@@ -102,11 +103,11 @@ export async function openEvent(id, state, refresh) {
     extra: `
       <div class="meta" style="margin:-6px 2px 10px">
         ${esc(fmtDate(e.event_date))} · ${e.start_time}–${e.end_time} · ${esc(t('courtsN', { n: e.courts }))}
-        · <span class="pill ${e.kind === 'tournament' ? 'gold' : ''}">${esc(kindLabel(e.kind))}</span>
+        · <span class="pill ${e.kind === 'tournament' ? 'gold' : e.kind === 'court' ? 'court' : ''}">${esc(kindLabel(e.kind))}</span>
       </div>
       ${e.memo ? `<div class="memo" style="margin-bottom:8px">${esc(origText(e, 'memo').text)}</div>${origHtml(origText(e, 'memo').orig)}` : ''}
-      ${rsvpRow(e)}
-      <div class="roster">${any ? ['yes', 'maybe', 'no'].map(group).join('') : `<div class="empty">${esc(t('noAnswerYet'))}</div>`}</div>
+      ${e.kind === 'court' ? '' : `${rsvpRow(e)}
+      <div class="roster">${any ? ['yes', 'maybe', 'no'].map(group).join('') : `<div class="empty">${esc(t('noAnswerYet'))}</div>`}</div>`}
       ${state.me.role === 'admin' ? `<button type="button" class="btn btn-sm" style="margin-top:14px" data-edit>${esc(t('editEvent'))}</button>` : ''}`,
     saveLabel: t('close'),
     onSave: () => { m.close(); refresh(); },

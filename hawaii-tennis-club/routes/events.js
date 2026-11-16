@@ -147,6 +147,7 @@ function eventRoutes(db, auth, notify, tr) {
 
   // 참석/불참/미정 — 회원 한 사람당 한 줄, 다시 누르면 덮어쓴다
   router.put('/:id/rsvp', (req, res) => {
+    if (db.prepare('SELECT kind FROM event WHERE id=?').pluck().get(req.params.id) === 'court') return res.status(400).json({ error: 'no_rsvp' });
     const answer = String(req.body?.answer || '');
     if (!ANSWERS.includes(answer)) return res.status(400).json({ error: 'bad_answer' });
     const e = db.prepare('SELECT id FROM event WHERE id=?').get(req.params.id);

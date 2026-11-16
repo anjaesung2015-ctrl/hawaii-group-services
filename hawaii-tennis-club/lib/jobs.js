@@ -38,7 +38,7 @@ function createJobs(db, notify, opts = {}) {
     const t = ubNow(now());
     if (t.hour < EVENT_HOUR) return { sent: 0 };
     const tomorrow = addDays(t.date, 1);
-    const rows = db.prepare(`SELECT * FROM event WHERE event_date=? AND reminded_at IS NULL`).all(tomorrow);
+    const rows = db.prepare(`SELECT * FROM event WHERE event_date=? AND reminded_at IS NULL AND kind != 'court'`).all(tomorrow);
     let sent = 0;
     for (const e of rows) {
       // 먼저 보낸 표시를 남긴다 — 알림이 실패해도 다음 깨어남에 또 보내지 않게

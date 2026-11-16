@@ -25,7 +25,7 @@ export const DICT = {
     greetMorning: 'Hello', today: 'Today',
 
     schedule: 'Schedule', newEvent: 'New schedule', editEvent: 'Edit schedule',
-    kindRegular: 'Club Night', kindEvent: 'Event', kindTournament: 'Tournament',
+    kindRegular: 'Club Night', kindEvent: 'Event', kindTournament: 'Tournament', kindCourt: 'Court booking',
     title: 'Title', kind: 'Type', date: 'Date', startTime: 'Start', endTime: 'End',
     courts: 'Courts', memo: 'Note', upcomingTab: 'Upcoming', pastTab: 'Past',
     courtsN: '{n} courts', noEvents: 'No events', endBeforeStart: 'End time is before the start time',
@@ -327,5 +327,5 @@ export function timeAgo(stamp) {
 }
 
 export const levelLabel = (lv) => t({ newbie: 'lvNewbie', beginner: 'lvBeginner', intermediate: 'lvIntermediate', advanced: 'lvAdvanced' }[lv] || 'lvBeginner');
-export const kindLabel = (k) => t({ regular: 'kindRegular', event: 'kindEvent', tournament: 'kindTournament' }[k] || 'kindEvent');
+export const kindLabel = (k) => t({ regular: 'kindRegular', event: 'kindEvent', tournament: 'kindTournament', court: 'kindCourt' }[k] || 'kindEvent');
 export const methodLabel = (m) => (m ? t(m) : '');

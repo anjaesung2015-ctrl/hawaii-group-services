@@ -15,7 +15,7 @@ const today = () => DATE_FMT.format(new Date());
 const thisMonth = () => today().slice(0, 7);
 
 const LEVELS = ['newbie', 'beginner', 'intermediate', 'advanced'];
-const EVENT_KINDS = ['regular', 'event', 'tournament'];
+const EVENT_KINDS = ['regular', 'event', 'tournament', 'court'];   // court = 코트 예약·상황 (참석 버튼·알림 없음)
 const ANSWERS = ['yes', 'no', 'maybe'];
 const METHODS = ['cash', 'transfer', 'qpay'];
 const DUE_KINDS = ['monthly', 'joining'];
@@ -60,7 +60,7 @@ function migrate(db) {
     CREATE TABLE IF NOT EXISTS event (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       title      TEXT NOT NULL,
-      kind       TEXT NOT NULL CHECK (kind IN ('regular','event','tournament')),
+      kind       TEXT NOT NULL CHECK (kind IN ('regular','event','tournament','court')),
       event_date TEXT NOT NULL,
       start_time TEXT NOT NULL,
       end_time   TEXT NOT NULL,
@@ -236,6 +236,38 @@ function migrate(db) {
   // 이미 만들어진 DB 에도 새 칸을 더한다 (없을 때만)
   const cols = db.prepare('PRAGMA table_info(event)').all().map(c => c.name);
   if (!cols.includes('reminded_at')) db.exec('ALTER TABLE event ADD COLUMN reminded_at TEXT');
+
+  // 2026-11-16 — 일정 종류에 court 를 더한다. SQLite 는 CHECK 를 못 고쳐서 표를 새로 만들어 옮긴다.
+  // 옮기는 동안 외래키를 끈다 — 켜 둔 채 옛 표를 지우면 참석 기록(rsvp)이 같이 지워진다
+  const evSql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='event'").pluck().get() || '';
+  if (!evSql.includes("'court'")) {
+    db.pragma('foreign_keys = OFF');
+    db.transaction(() => {
+      db.exec(`
+        CREATE TABLE event_new (
+          id         INTEGER PRIMARY KEY AUTOINCREMENT,
+          title      TEXT NOT NULL,
+          kind       TEXT NOT NULL CHECK (kind IN ('regular','event','tournament','court')),
+          event_date TEXT NOT NULL,
+          start_time TEXT NOT NULL,
+          end_time   TEXT NOT NULL,
+          courts     INTEGER NOT NULL DEFAULT 1,
+          memo       TEXT,
+          created_by INTEGER REFERENCES member(id),
+          created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+          reminded_at TEXT
+        );
+        INSERT INTO event_new (id, title, kind, event_date, start_time, end_time, courts, memo, created_by, created_at, reminded_at)
+          SELECT id, title, kind, event_date, start_time, end_time, courts, memo, created_by, created_at, reminded_at FROM event;
+        DROP TABLE event;
+        ALTER TABLE event_new RENAME TO event;
+        CREATE INDEX IF NOT EXISTS idx_event_date ON event(event_date);
+      `);
+      const bad = db.pragma('foreign_key_check');
+      if (bad.length) throw new Error('event 옮기기 후 외래키 오류 ' + JSON.stringify(bad.slice(0, 3)));
+    })();
+    db.pragma('foreign_keys = ON');
+  }
 
   // 회칙 동의 — 언제, 어느 판(version)에 동의했는지
   const mcols = db.prepare('PRAGMA table_info(member)').all().map(c => c.name);
