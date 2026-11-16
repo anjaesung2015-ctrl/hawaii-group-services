@@ -107,4 +107,5 @@ const publicMe = (m) => ({
   title: m.title, level: m.level, status: m.status, joined_at: m.joined_at,
   is_owner: !!m.is_owner, is_coach: !!m.is_coach, photo: m.photo || null,
   program: m.program || 'club', elite_coach: !!m.elite_coach, dues_manager: !!m.dues_manager,
+  results_manager: !!m.results_manager,
 });

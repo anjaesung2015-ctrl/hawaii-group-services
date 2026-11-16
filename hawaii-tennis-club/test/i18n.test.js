@@ -62,7 +62,8 @@ test('화면 코드에서 쓰는 t() 키가 모두 사전에 있다', async () =
   const files = ['js/app.js', 'js/ui.js', 'js/views/home.js', 'js/views/schedule.js',
                  'js/views/dues.js', 'js/views/notices.js', 'js/views/members.js',
                  'js/views/board.js', 'js/views/rules.js', 'js/views/org.js', 'js/views/push.js',
-                 'js/views/install.js', 'js/views/join.js', 'js/views/elite.js', 'js/views/elite-me.js'];
+                 'js/views/install.js', 'js/views/join.js', 'js/views/elite.js', 'js/views/elite-me.js',
+                 'js/views/popup.js', 'js/views/results.js'];
   const missing = new Set();
   for (const f of files) {
     for (const m of read(f).matchAll(/\bt\(\s*'([A-Za-z_][A-Za-z0-9_]*)'\s*[,)]/g)) {
@@ -107,7 +108,7 @@ test('회원이 쓴 글은 lang=en 으로 요청한다 (자동 번역)', () => {
   assert.match(read('js/views/notices.js'), /notices\?lang=en/);
   assert.match(read('js/views/board.js'), /posts\?lang=en/);
   assert.match(read('js/views/schedule.js'), /events\?lang=en/);
-  assert.match(read('js/views/home.js'), /upcoming\?limit=3&lang=en/);
+  assert.match(read('js/views/home.js'), /lang: 'en'/);   // 홈 피드 (/feed?lang=en)
   // 번역문 옆에 원문을 함께 보여준다
   for (const f of ['js/views/notices.js', 'js/views/board.js', 'js/views/schedule.js']) {
     assert.match(read(f), /origHtml/, `${f} 에 원문 표시가 없다`);

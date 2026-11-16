@@ -21,6 +21,8 @@ import { renderChat } from './views/chat.js';
 import { renderTraining, renderMyFees, renderEliteNotices } from './views/elite-me.js';
 import { renderElite } from './views/elite.js';
 import { renderGallery } from './views/gallery.js';
+import { renderResults } from './views/results.js';
+import { maybeShowPopups, renderPopupAdmin } from './views/popup.js';
 import { initTabSwipe } from './swipe.js';
 
 const state = { me: null, settings: { club_name: 'Hawaii Tennis Club', monthly_fee: 0, joining_fee: 0, currency: '₮' }, tab: 'home' };
@@ -34,6 +36,8 @@ const VIEWS = {
   members: renderMembers,
   chat: renderChat,          // 하단 Free Chat 탭
   gallery: renderGallery,    // 사진첩 (홈 화면 사진 줄에서 들어온다)
+  results: renderResults,    // 대회 성적 Hall of Fame (홈 화면 줄에서)
+  popups: renderPopupAdmin,  // 홈 팝업 관리 (운영진, ☰ 메뉴에서)
   elite: renderElite,        // 오너·선수반 코치
   training: renderTraining,  // 선수(부모) 계정
   fees: renderMyFees,
@@ -131,6 +135,7 @@ function showApp() {
   $$('.elite-staff-only').forEach(el => { el.hidden = !isEliteStaff(); });
   state.tab = fromHash(location.hash);
   render();
+  if (!isElite()) maybeShowPopups(state);   // 중요한 행사·업데이트 팝업 (회칙 동의 창이 닫힌 뒤, 홈에서)
 }
 
 $('#loginForm').onsubmit = async (e) => {
@@ -185,6 +190,14 @@ $('#eliteBtn').onclick = () => {
   sheet.hidden = true;
   let tries = 0;
   const go = () => (history.state?.overlay && tries++ < 20 ? setTimeout(go, 30) : goTab('elite'));
+  setTimeout(go, 30);
+};
+
+// 홈 팝업 관리 — 운영진 (메뉴가 닫힌 뒤 이동: 위 eliteBtn 과 같은 이유)
+$('#popupsBtn').onclick = () => {
+  sheet.hidden = true;
+  let tries = 0;
+  const go = () => (history.state?.overlay && tries++ < 20 ? setTimeout(go, 30) : goTab('popups'));
   setTimeout(go, 30);
 };
 
@@ -321,6 +334,8 @@ window.addEventListener('popstate', () => {
 document.addEventListener('visibilitychange', () => {
   if (document.hidden || !state.me || $('#modalRoot').innerHTML) return;
   if (state.tab === 'chat' && state.chatRoom) return updateChatBadge();
+  // 홈 피드는 내려 본 자리를 지킨다 (새 글은 ↻ 나 당겨서 새로고침)
+  if (state.tab === 'home') return updateChatBadge();
   render();
 });
 

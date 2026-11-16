@@ -84,7 +84,7 @@ export function bindPosts(el, state, refresh) {
 }
 
 // 글 하나 + 댓글
-async function openPost(id, state, refresh) {
+export async function openPost(id, state, refresh) {
   const p = await api(`/posts/${id}?lang=en`);
   const canDel = (c) => c.member_id === state.me.id || state.me.role === 'admin';
 
@@ -135,7 +135,7 @@ async function openPost(id, state, refresh) {
 }
 
 // 글쓰기 · 고치기
-function postForm(p, state, refresh) {
+export function postForm(p, state, refresh) {
   const isNew = !p;
   const photos = [];        // 새로 고른 사진 (data:URL)
 

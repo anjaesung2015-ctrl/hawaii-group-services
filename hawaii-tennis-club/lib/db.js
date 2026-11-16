@@ -252,6 +252,8 @@ function migrate(db) {
   if (!mcols.includes('elite_coach')) db.exec('ALTER TABLE member ADD COLUMN elite_coach INTEGER NOT NULL DEFAULT 0');   // 선수반 관리 권한 (오너가 줌)
   // 회비 담당 — 운영진이 아니어도 회비 현황표를 보고 납부 체크를 한다 (오너가 줌, 총무 등)
   if (!mcols.includes('dues_manager')) db.exec('ALTER TABLE member ADD COLUMN dues_manager INTEGER NOT NULL DEFAULT 0');
+  // 성적 담당 — 운영진이 아니어도 대회 성적(Hall of Fame)을 올리고 고친다 (오너가 줌)
+  if (!mcols.includes('results_manager')) db.exec('ALTER TABLE member ADD COLUMN results_manager INTEGER NOT NULL DEFAULT 0');
   for (const [c, type] of [['birth_year', 'INTEGER'], ['parent_name', 'TEXT'], ['parent_phone', 'TEXT'], ['elite_fee', 'INTEGER'],
                            ['assigned_coach_id', 'INTEGER REFERENCES member(id) ON DELETE SET NULL']]) {
     if (!mcols.includes(c)) db.exec(`ALTER TABLE member ADD COLUMN ${c} ${type}`);
@@ -355,6 +357,51 @@ function migrate(db) {
       photo      TEXT NOT NULL,
       caption    TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    );
+
+    -- 홈 팝업 — 운영진이 만든다. 게시 기간(starts_on~ends_on) 안이고 켜져 있으면 앱을 열 때 뜬다.
+    -- '오늘 하루 안 보기'·'다시 안 보기'는 각 폰(localStorage)에 남긴다.
+    CREATE TABLE IF NOT EXISTS popup (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      title      TEXT NOT NULL,
+      body       TEXT,
+      photo      TEXT,
+      link_tab   TEXT,
+      starts_on  TEXT NOT NULL,
+      ends_on    TEXT,
+      active     INTEGER NOT NULL DEFAULT 1,
+      created_by INTEGER REFERENCES member(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      updated_at TEXT
+    );
+
+    -- 대회 성적 (Hall of Fame) — 월례대회·외부대회. 입상자는 클럽 회원(member_id) 또는 이름만.
+    -- person_name 은 올릴 때의 이름을 남긴다 (회원을 지워도 기록은 남는다)
+    CREATE TABLE IF NOT EXISTS result (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      title      TEXT NOT NULL,
+      held_on    TEXT NOT NULL,
+      kind       TEXT NOT NULL CHECK (kind IN ('monthly','external')),
+      division   TEXT,
+      note       TEXT,
+      created_by INTEGER REFERENCES member(id) ON DELETE SET NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      updated_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_result_held ON result(held_on);
+    CREATE TABLE IF NOT EXISTS result_entry (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      result_id   INTEGER NOT NULL REFERENCES result(id) ON DELETE CASCADE,
+      place       INTEGER NOT NULL CHECK (place BETWEEN 1 AND 4),   -- 1 우승 · 2 준우승 · 3 3위 · 4 기타(4강 등)
+      member_id   INTEGER REFERENCES member(id) ON DELETE SET NULL,
+      person_name TEXT NOT NULL,
+      sort        INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_result_entry_member ON result_entry(member_id);
+    CREATE TABLE IF NOT EXISTS result_photo (
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      result_id INTEGER NOT NULL REFERENCES result(id) ON DELETE CASCADE,
+      photo     TEXT NOT NULL
     );
   `);
 

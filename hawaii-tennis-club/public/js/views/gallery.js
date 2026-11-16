@@ -1,35 +1,12 @@
-// 사진첩 — 홈 화면에 최근 사진 줄(galleryStrip), 누르면 전체 사진첩(renderGallery).
+// 사진첩 — 전체 사진첩(renderGallery). 홈 피드의 사진 카드도 여기 크게 보기(galleryViewer)를 쓴다.
 // 회원 누구나 한 번에 여러 장 올리고, 지우기는 올린 사람·운영진.
-import { api, esc, toast, openModal, errText, $$ } from '../ui.js';
+import { api, esc, toast, openModal, errText } from '../ui.js';
 import { t, timeAgo } from '../i18n.js';
 
 const MAX_PICK = 10;
 const SEND_EACH = 3;     // 한 번에 보내는 장수 — 요청 하나가 너무 커지지 않게 나눠 보낸다
 
 const canDelete = (p, me) => p.member_id === me.id || me.role === 'admin' || !!me.is_owner;
-
-// ---------- 홈 화면 줄 ----------
-export async function galleryStrip() {
-  let d = { rows: [], total: 0 };
-  try { d = await api('/gallery?limit=12'); } catch (e) { /* 사진첩이 안 떠도 홈은 뜬다 */ }
-  return `
-    <div class="section-head"><h2>📷 ${esc(t('galleryTitle'))}${d.total ? ` · ${d.total}` : ''}</h2><span class="spacer"></span>
-      ${d.total ? `<button class="btn btn-sm btn-ghost" data-go-gallery>${esc(t('seeAll'))} →</button>` : ''}</div>
-    <div class="gstrip">
-      <button class="gadd" data-gallery-add aria-label="${esc(t('galleryAdd'))}"><b>+</b><span>${esc(t('galleryAdd'))}</span></button>
-      ${d.rows.map((p, i) => `<img src="${esc(p.photo)}" alt="" loading="lazy" data-gstrip="${i}">`).join('')}
-      ${d.rows.length ? '' : `<div class="gstrip-empty">${esc(t('galleryEmpty'))}</div>`}
-    </div>
-    <script type="application/json" data-gstrip-rows>${JSON.stringify(d.rows).replace(/</g, '\\u003c')}</script>`;
-}
-
-export function bindGalleryStrip(el, state, refresh) {
-  const json = el.querySelector('[data-gstrip-rows]');
-  const rows = json ? JSON.parse(json.textContent) : [];
-  el.querySelector('[data-go-gallery]')?.addEventListener('click', () => state.go('gallery'));
-  el.querySelector('[data-gallery-add]')?.addEventListener('click', () => uploadForm(refresh));
-  $$('[data-gstrip]', el).forEach(img => img.onclick = () => viewer(rows, Number(img.dataset.gstrip), state, refresh));
-}
 
 // ---------- 전체 사진첩 ----------
 export async function renderGallery(el, state) {
@@ -49,7 +26,7 @@ export async function renderGallery(el, state) {
   const grid = el.querySelector('[data-grid]');
   grid.onclick = (e) => {
     const c = e.target.closest('[data-gi]');
-    if (c) viewer(rows, Number(c.dataset.gi), state, again);
+    if (c) galleryViewer(rows, Number(c.dataset.gi), state, again);
   };
   const mb = el.querySelector('[data-more]');
   if (mb) mb.onclick = async () => {
@@ -67,7 +44,7 @@ const cell = (p, i) => `<button class="gcell" data-gi="${i}"><img src="${esc(p.p
 
 // ---------- 크게 보기 — 옆으로 넘기기·설명·지우기 ----------
 // body 바로 아래 .photo-view 라서 폰 뒤로가기가 이 창부터 닫는다(backnav).
-function viewer(rows, start, state, refresh) {
+export function galleryViewer(rows, start, state, refresh) {
   let i = start;
   const v = document.createElement('div');
   v.className = 'photo-view gview';
@@ -209,7 +186,7 @@ function shrink(file, max) {
   });
 }
 
-function uploadForm(refresh) {
+export function uploadForm(refresh) {
   let picked = [];
   const m = openModal({
     title: t('galleryAdd'),

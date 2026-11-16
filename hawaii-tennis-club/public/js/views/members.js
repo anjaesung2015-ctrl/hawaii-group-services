@@ -129,7 +129,7 @@ function row(m, isAdmin, isOwner, meId) {
     <div class="member-row" ${isAdmin ? `data-member="${m.id}" style="cursor:pointer"` : ''}>
       ${avatar(m.name, m.photo, dormant ? 'dormant' : '')}
       <div class="who">
-        <b>${esc(m.name)}${m.is_owner ? ` <span class="pill solid">👑 ${esc(t('roleOwner'))}</span>` : (m.officer_role ? officerPill(m.officer_role) : (m.role === 'admin' ? ` <span class="pill gold">${esc(m.title || t('admin'))}</span>` : ''))}${m.is_coach ? ` <span class="pill coach">🎾 ${esc(t('coach'))}</span>` : ''}${m.dues_manager ? ` <span class="pill grey">💰 ${esc(t('duesManager'))}</span>` : ''}</b>
+        <b>${esc(m.name)}${m.is_owner ? ` <span class="pill solid">👑 ${esc(t('roleOwner'))}</span>` : (m.officer_role ? officerPill(m.officer_role) : (m.role === 'admin' ? ` <span class="pill gold">${esc(m.title || t('admin'))}</span>` : ''))}${m.is_coach ? ` <span class="pill coach">🎾 ${esc(t('coach'))}</span>` : ''}${m.dues_manager ? ` <span class="pill grey">💰 ${esc(t('duesManager'))}</span>` : ''}${m.results_manager ? ` <span class="pill grey">🏅 ${esc(t('resultsManager'))}</span>` : ''}${m.trophies ? ` <span class="pill gold" title="${esc(t('trophies'))}">🏆 ${m.trophies}</span>` : ''}</b>
         <small>${esc(levelLabel(m.level))}${isAdmin && m.phone ? ` · ${esc(m.phone)}` : ''}${isAdmin && m.joined_at ? ` · ${esc(m.joined_at)}` : ''}</small>
       </div>
       ${dormant ? `<span class="pill grey">${esc(t('stDormant'))}</span>` : ''}
@@ -157,7 +157,9 @@ function memberForm(m, state, refresh) {
       ...(state.me.is_owner ? [{ name: 'role', label: t('role'), type: 'select', value: m?.role || 'member',
         options: [{ value: 'member', label: t('member') }, { value: 'admin', label: t('adminGive') }] },
       { name: 'dues_manager', label: t('duesManager'), type: 'select', value: m?.dues_manager ? '1' : '0',
-        options: [{ value: '0', label: t('coachNo') }, { value: '1', label: t('duesManagerYes') }] }] : []),
+        options: [{ value: '0', label: t('coachNo') }, { value: '1', label: t('duesManagerYes') }] },
+      { name: 'results_manager', label: t('resultsManager'), type: 'select', value: m?.results_manager ? '1' : '0',
+        options: [{ value: '0', label: t('coachNo') }, { value: '1', label: t('resultsManagerYes') }] }] : []),
       { name: 'title', label: t('titleRole'), value: m?.title || '', placeholder: '대표 / 코치' },
       { name: 'memo', label: t('memo'), value: m?.memo || '' },
     ],
