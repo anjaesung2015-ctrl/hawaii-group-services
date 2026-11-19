@@ -54,19 +54,17 @@ export async function renderNotices(el, state) {
 // 옛 공지에 '/uploads/…' 로 저장된 것이 있어도 하위 경로에서 열리게 앞의 / 를 떼어 쓴다
 const photoSrc = (p) => String(p || '').replace(/^\/+/, '');
 const MAX_PHOTOS = 10;   // 서버(routes/notices.js MAX_PHOTOS)와 같게
-const SHOW_PHOTOS = 4;   // 카드에 보이는 사진 수 — 넘으면 4번째 위에 +N
 const photosOf = (n) => (n?.photos?.length ? n.photos : (n?.photo ? [n.photo] : []));
 
-// 사진 묶음 — 1장은 크게, 여러 장은 2칸 격자. 누르면 크게 보고 넘길 수 있다(data-photo-set)
+// 사진 묶음 — 1장은 크게, 여러 장은 작은 격자. 누르면 크게 보고 넘길 수 있다(data-photo-set)
 function photosHtml(n) {
   const all = photosOf(n).map(photoSrc);
   if (!all.length) return '';
   if (all.length === 1) return `<img class="notice-photo" src="${esc(all[0])}" data-view-photo="${esc(all[0])}" alt="" loading="lazy">`;
-  const cells = all.slice(0, SHOW_PHOTOS).map((src, i) => {
-    const img = `<img class="post-photo" src="${esc(src)}" data-view-photo="${esc(src)}" alt="" loading="lazy">`;
-    return i === SHOW_PHOTOS - 1 && all.length > SHOW_PHOTOS ? `<div class="post-more" data-more="+${all.length - SHOW_PHOTOS}">${img}</div>` : img;
-  }).join('');
-  return `<div class="post-photos multi" data-photo-set="${esc(JSON.stringify(all))}">${cells}</div>`;
+  // 여러 장은 전부 작은 정사각 격자 (2·4장 2칸, 그 외 3칸) — 글 상세(board.js)와 같은 모양
+  const cols = (all.length === 2 || all.length === 4) ? 'c2' : 'c3';
+  return `<div class="post-grid ${cols}" data-photo-set="${esc(JSON.stringify(all))}">${all.map(src =>
+    `<img src="${esc(src)}" data-view-photo="${esc(src)}" alt="" loading="lazy">`).join('')}</div>`;
 }
 
 function noticeCard(n, state) {
