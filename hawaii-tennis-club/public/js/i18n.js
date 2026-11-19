@@ -207,6 +207,7 @@ export const DICT = {
     edited: 'edited',
     editBodyOnly: 'Only the text is edited (to change photos, delete the post and write it again)',
     photoMax: 'up to 10',
+    photoFailed: "{n} photo(s) couldn't be read — try a different photo",
     agoNow: 'just now',
     agoMin: '{n} min ago',
     agoHour: '{n} h ago',

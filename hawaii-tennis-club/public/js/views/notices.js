@@ -133,14 +133,24 @@ export function noticeForm(n, state, refresh) {
   };
   draw();
   const pick = m.form.querySelector('[data-pick]');
+  let ready = null;   // 사진 줄이는 중이면 저장이 기다린다
   pick.onclick = async () => {
     const room = MAX_PHOTOS - items.length;
     if (room <= 0) return toast(t('photoMax'), true);
     pick.disabled = true;
-    const { photos, cut } = await pickPhotos(room);
+    const label = pick.textContent;
+    let release = null;
+    const { photos, cut, failed } = await pickPhotos(room, 1280, (n, total) => {
+      if (n === 0) ready = new Promise(r => { release = r; });
+      pick.textContent = `⏳ ${n}/${total}`;
+    });
     pick.disabled = false;
+    pick.textContent = label;
     if (cut) toast(t('photoMax'), true);
+    if (failed) toast(t('photoFailed', { n: failed }), true);
     items.push(...photos.map(data => ({ data })));
     draw();
+    ready = null;
+    release?.();
   };
 }

@@ -146,6 +146,7 @@ export async function openPost(id, state, refresh) {
 export function postForm(p, state, refresh) {
   const isNew = !p;
   const photos = [];        // 새로 고른 사진 (data:URL)
+  let ready = null;         // 사진을 줄이는 중이면 끝날 때 풀리는 약속 — 저장은 이걸 기다린다
 
   const m = openModal({
     title: isNew ? t('newPost') : t('editPost'),
@@ -159,6 +160,7 @@ export function postForm(p, state, refresh) {
         <div class="post-preview" data-preview></div>
       </div>` : `<div class="hint">${esc(t('editBodyOnly'))}</div>`,
     onSave: async (v) => {
+      if (ready) await ready;   // 사진 줄이는 중에 올리기를 눌러도 사진이 빠지지 않게
       if (!v.body && !photos.length) return t('postEmpty');
       if (isNew) await api('/posts', { method: 'POST', body: { body: v.body, photos } });
       else await api(`/posts/${p.id}`, { method: 'PATCH', body: { body: v.body } });
@@ -179,10 +181,19 @@ export function postForm(p, state, refresh) {
     const room = MAX_PHOTOS - photos.length;
     if (room <= 0) return toast(t('photoMax'), true);
     pick.disabled = true;
-    const { photos: got, cut } = await pickPhotos(room);
+    const label = pick.textContent;
+    let release = null;
+    const { photos: got, cut, failed } = await pickPhotos(room, 1280, (n, total) => {
+      if (n === 0) ready = new Promise(r => { release = r; });
+      pick.textContent = `⏳ ${n}/${total}`;
+    });
     pick.disabled = false;
+    pick.textContent = label;
     if (cut) toast(t('photoMax'), true);
+    if (failed) toast(t('photoFailed', { n: failed }), true);
     photos.push(...got);
     drawPreview();
+    ready = null;
+    release?.();
   };
 }

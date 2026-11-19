@@ -264,17 +264,28 @@ function shrinkFile(file, max) {
     reader.readAsDataURL(file);
   });
 }
-export function pickPhotos(limit = 10, max = 1280) {
+// onProgress(n, total) — 고른 뒤 줄이는 동안 몇 장째인지 알려 준다 (0 이면 시작).
+// 고르기 창을 닫으면(cancel) 빈 결과로 끝낸다 — 안 그러면 📷 버튼이 계속 잠긴다.
+export function pickPhotos(limit = 10, max = 1280, onProgress) {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
     input.multiple = true;
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    input.addEventListener('cancel', () => finish({ photos: [], cut: false, failed: 0 }));
     input.onchange = async () => {
       const files = [...(input.files || [])];
+      const take = files.slice(0, limit);
       const out = [];
-      for (const f of files.slice(0, limit)) { const d = await shrinkFile(f, max); if (d) out.push(d); }
-      resolve({ photos: out, cut: files.length > limit });
+      onProgress?.(0, take.length);
+      for (let i = 0; i < take.length; i++) {
+        const d = await shrinkFile(take[i], max);
+        if (d) out.push(d);
+        onProgress?.(i + 1, take.length);
+      }
+      finish({ photos: out, cut: files.length > limit, failed: take.length - out.length });
     };
     input.click();
   });
