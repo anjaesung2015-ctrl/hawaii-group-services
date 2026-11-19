@@ -4,7 +4,7 @@ const express = require('express');
 const { OFFICER_ROLE_SQL } = require('../lib/db');
 const { savePhotos, removePhoto } = require('../lib/photos');
 
-const MAX_PHOTOS = 4;
+const MAX_PHOTOS = 10;
 const MAX_BODY = 2000;
 const MAX_COMMENT = 500;
 const PAGE = 20;

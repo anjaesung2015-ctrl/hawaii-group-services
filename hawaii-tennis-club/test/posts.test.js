@@ -53,16 +53,20 @@ test('사진만 올려도 된다 (글 없이)', async () => {
   app.close();
 });
 
-test('사진 여러 장을 순서대로 붙인다 (최대 4장)', async () => {
+test('사진 여러 장을 순서대로 붙인다 (최대 10장)', async () => {
   const app = makeApp();
   const m = await loginAs(app.base, '88110044', '1111');
   const r = await m.call('/posts', { method: 'POST', body: { body: '사진', photos: [TINY, TINY, TINY] } });
   const rows = (await m.call('/posts')).data.rows;
   assert.strictEqual(rows[0].photos.length, 3);
 
-  const over = await m.call('/posts', { method: 'POST', body: { body: 'x', photos: [TINY, TINY, TINY, TINY, TINY] } });
+  const over = await m.call('/posts', { method: 'POST', body: { body: 'x', photos: Array(11).fill(TINY) } });
   assert.strictEqual(over.status, 400);
   assert.strictEqual(over.data.error, 'too_many_photos');
+  const ten = await m.call('/posts', { method: 'POST', body: { body: '10', photos: Array(10).fill(TINY) } });
+  assert.strictEqual(ten.status, 200);
+  assert.strictEqual(ten.data.photos.length, 10);
+  for (const p of ten.data.photos) fs.rmSync(up(app, p), { force: true });
   for (const p of r.data.photos) fs.rmSync(up(app, p), { force: true });
   app.close();
 });

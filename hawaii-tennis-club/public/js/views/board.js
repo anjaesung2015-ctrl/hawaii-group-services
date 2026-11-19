@@ -1,5 +1,5 @@
 // 자유게시판 — 회원끼리 글·사진·댓글·좋아요.
-import { api, esc, toast, openModal, pickPhoto, errText, origText, origHtml, avatar, $$, officerPill } from '../ui.js';
+import { api, esc, toast, openModal, pickPhotos, errText, origText, origHtml, avatar, $$, officerPill } from '../ui.js';
 import { t, timeAgo } from '../i18n.js';
 
 export async function renderBoard(el, state) {
@@ -25,11 +25,19 @@ export async function renderBoard(el, state) {
   };
 }
 
+const MAX_PHOTOS = 10;   // 서버(routes/posts.js MAX_PHOTOS)와 같게
+const SHOW_PHOTOS = 4;   // 목록 카드에 보이는 사진 수
+
 export function postCard(p, state) {
   const mine = p.member_id === state.me.id;
   const canDelete = mine || state.me.role === 'admin';
-  const photos = (p.photos || []).map(src =>
-    `<img class="post-photo" src="${esc(src)}" data-view-photo="${esc(src)}" alt="" loading="lazy">`).join('');
+  // 목록에서는 4장까지만, 넘는 건 4번째 위에 +N (누르면 전부 넘겨 볼 수 있다)
+  const all = p.photos || [];
+  const shown = all.slice(0, SHOW_PHOTOS);
+  const photos = shown.map((src, i) => {
+    const img = `<img class="post-photo" src="${esc(src)}" data-view-photo="${esc(src)}" alt="" loading="lazy">`;
+    return i === SHOW_PHOTOS - 1 && all.length > SHOW_PHOTOS ? `<div class="post-more" data-more="+${all.length - SHOW_PHOTOS}">${img}</div>` : img;
+  }).join('');
 
   return `
     <div class="card post" data-post="${p.id}">
@@ -43,7 +51,7 @@ export function postCard(p, state) {
         ${canDelete ? `<button class="btn btn-sm btn-danger" data-del="${p.id}">${esc(t('del'))}</button>` : ''}
       </div>
       ${p.body ? `<div class="post-body">${esc(origText(p, 'body').text)}</div>${origHtml(origText(p, 'body').orig)}` : ''}
-      ${photos ? `<div class="post-photos ${(p.photos.length > 1) ? 'multi' : ''}">${photos}</div>` : ''}
+      ${photos ? `<div class="post-photos ${(all.length > 1) ? 'multi' : ''}" data-photo-set="${esc(JSON.stringify(all))}">${photos}</div>` : ''}
       <div class="post-foot">
         <button class="react ${p.liked ? 'on' : ''}" data-like="${p.id}" data-on="${p.liked ? 1 : 0}">
           ${p.liked ? '♥' : '♡'} <span>${p.likes || ''}</span>
@@ -94,7 +102,7 @@ export async function openPost(id, state, refresh) {
     extra: `
       <div class="hint" style="margin:-8px 2px 8px">${esc(timeAgo(p.created_at))}</div>
       ${p.body ? `<div class="post-body">${esc(origText(p, 'body').text)}</div>${origHtml(origText(p, 'body').orig)}` : ''}
-      ${(p.photos || []).map(src => `<img class="post-photo" src="${esc(src)}" data-view-photo="${esc(src)}" style="width:100%;margin-top:8px;border-radius:12px" alt="">`).join('')}
+      <div data-photo-set="${esc(JSON.stringify(p.photos || []))}">${(p.photos || []).map(src => `<img class="post-photo" src="${esc(src)}" data-view-photo="${esc(src)}" style="width:100%;margin-top:8px;border-radius:12px" alt="">`).join('')}</div>
       <div class="section-head" style="margin:16px 2px 8px"><h2>${esc(t('comments'))} · ${p.comments.length}</h2></div>
       <div data-comments>
         ${p.comments.length ? p.comments.map(c => `
@@ -147,8 +155,8 @@ export function postForm(p, state, refresh) {
     extra: isNew ? `
       <div class="field">
         <span>${esc(t('photo'))} <span class="hint" style="padding:0">(${esc(t('photoMax'))})</span></span>
-        <button type="button" class="btn btn-sm" data-pick>${esc(t('photoPick'))}</button>
-        <div class="post-photos multi" data-preview style="margin-top:8px"></div>
+        <button type="button" class="btn btn-sm" data-pick>📷 ${esc(t('photoPick'))}</button>
+        <div class="post-preview" data-preview></div>
       </div>` : `<div class="hint">${esc(t('editBodyOnly'))}</div>`,
     onSave: async (v) => {
       if (!v.body && !photos.length) return t('postEmpty');
@@ -159,13 +167,22 @@ export function postForm(p, state, refresh) {
     },
   });
 
+  // 여러 장 한 번에 고르기 — 미리보기에서 ✕ 로 뺄 수 있다
+  const box = m.form.querySelector('[data-preview]');
+  const drawPreview = () => {
+    box.innerHTML = photos.map((d, i) =>
+      `<div class="tray-thumb post-thumb"><img src="${d}" alt=""><button type="button" data-unpick="${i}" aria-label="Remove">✕</button></div>`).join('');
+    box.querySelectorAll('[data-unpick]').forEach(b => b.onclick = () => { photos.splice(Number(b.dataset.unpick), 1); drawPreview(); });
+  };
   const pick = m.form.querySelector('[data-pick]');
   if (pick) pick.onclick = async () => {
-    if (photos.length >= 4) return toast(t('photoMax'), true);
-    const data = await pickPhoto();
-    if (!data) return;
-    photos.push(data);
-    const box = m.form.querySelector('[data-preview]');
-    box.insertAdjacentHTML('beforeend', `<img class="post-photo" src="${data}" alt="">`);
+    const room = MAX_PHOTOS - photos.length;
+    if (room <= 0) return toast(t('photoMax'), true);
+    pick.disabled = true;
+    const { photos: got, cut } = await pickPhotos(room);
+    pick.disabled = false;
+    if (cut) toast(t('photoMax'), true);
+    photos.push(...got);
+    drawPreview();
   };
 }

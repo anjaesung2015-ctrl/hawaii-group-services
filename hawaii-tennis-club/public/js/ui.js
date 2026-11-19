@@ -161,11 +161,31 @@ export function avatar(name, photo, cls = '') {
 
 // 사진 크게 보기 — 아무 데나 누르면 닫힌다.
 // #modalRoot 가 아니라 body 에 따로 띄운다 (가입 신청서·수정 창 위에서 눌러도 창이 안 날아가게)
-export function showPhoto(src) {
+// list 를 주면(사진 묶음) ‹ › 나 옆으로 밀어 넘긴다
+export function showPhoto(src, list = null) {
+  const srcs = list?.length ? list : [src];
+  let i = Math.max(0, srcs.indexOf(src)), x0 = null, swiped = false;
   const v = document.createElement('div');
   v.className = 'photo-view';
-  v.innerHTML = `<img src="${esc(src)}" alt="">`;
-  v.onclick = () => v.remove();
+  const draw = () => {
+    const n = srcs.length;
+    v.innerHTML = `<img src="${esc(srcs[i])}" alt="">${n > 1 ? `
+      <button type="button" class="pv-nav prev" data-step="-1" aria-label="Previous">‹</button>
+      <button type="button" class="pv-nav next" data-step="1" aria-label="Next">›</button>
+      <div class="pv-count">${i + 1} / ${n}</div>` : ''}`;
+    v.querySelectorAll('[data-step]').forEach(b => b.onclick = (e) => { e.stopPropagation(); go(Number(b.dataset.step)); });
+  };
+  const go = (s) => { i = (i + s + srcs.length) % srcs.length; draw(); };
+  v.onclick = () => { if (swiped) { swiped = false; return; } v.remove(); };
+  if (srcs.length > 1) {
+    v.ontouchstart = (e) => { x0 = e.touches[0].clientX; };
+    v.ontouchend = (e) => {
+      const dx = e.changedTouches[0].clientX - (x0 ?? e.changedTouches[0].clientX);
+      x0 = null;
+      if (Math.abs(dx) > 50) { swiped = true; setTimeout(() => { swiped = false; }, 400); go(dx < 0 ? 1 : -1); }
+    };
+  }
+  draw();
   document.body.appendChild(v);
 }
 
@@ -176,7 +196,10 @@ if (typeof document !== 'undefined') document.addEventListener('click', (e) => {
   if (!a) return;
   e.stopPropagation();
   e.preventDefault();
-  showPhoto(a.dataset.viewPhoto);
+  // 묶음(data-photo-set = 사진 주소 JSON 배열) 안의 사진이면 그 묶음을 넘겨 볼 수 있게
+  let list = null;
+  try { list = JSON.parse(a.closest('[data-photo-set]')?.dataset.photoSet || 'null'); } catch { /* 한 장 */ }
+  showPhoto(a.dataset.viewPhoto, Array.isArray(list) ? list : null);
 }, true);
 
 // 서버가 돌려준 코드를 사람 말로

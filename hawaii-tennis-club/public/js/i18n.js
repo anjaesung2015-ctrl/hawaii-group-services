@@ -206,7 +206,7 @@ export const DICT = {
     resultsManager: 'Results manager', resultsManagerYes: 'Yes — can post results', trophies: 'Podium finishes',
     edited: 'edited',
     editBodyOnly: 'Only the text is edited (to change photos, delete the post and write it again)',
-    photoMax: 'up to 4',
+    photoMax: 'up to 10',
     agoNow: 'just now',
     agoMin: '{n} min ago',
     agoHour: '{n} h ago',
