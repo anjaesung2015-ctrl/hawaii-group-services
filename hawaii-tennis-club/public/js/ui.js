@@ -222,6 +222,41 @@ export function pickPhoto(max = 1280) {
   });
 }
 
+// 사진 여러 장 고르기 — 한 장씩 pickPhoto 와 같게 줄인다. limit 장까지만 (넘으면 앞에서부터)
+function shrinkFile(file, max) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = () => { img.src = reader.result; };
+    img.onload = () => {
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * scale);
+      c.height = Math.round(img.height * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      resolve(c.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = () => resolve(null);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+export function pickPhotos(limit = 10, max = 1280) {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true;
+    input.onchange = async () => {
+      const files = [...(input.files || [])];
+      const out = [];
+      for (const f of files.slice(0, limit)) { const d = await shrinkFile(f, max); if (d) out.push(d); }
+      resolve({ photos: out, cut: files.length > limit });
+    };
+    input.click();
+  });
+}
+
 // 얼굴 사진 고르기 + 맞추기 — 동그란 틀 안에서 끌어 옮기고, 두 손가락·막대로 키우고, 90° 돌린다.
 // 틀 안 그대로 512×512 JPEG 로 돌려준다 (취소하면 null).
 // 열려 있는 창(#modalRoot — 가입 신청서 등)을 덮어쓰지 않게 body 에 따로 띄운다.

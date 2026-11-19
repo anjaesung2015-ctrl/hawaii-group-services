@@ -1,13 +1,15 @@
 // 채팅 — 방 목록(클럽 전체방 + 1:1) 과 방 안 화면.
 // 방을 연 동안 3초마다 새 메시지만 받아 온다. 다른 화면으로 가거나 앱을 내리면 멈춘다.
 // 한글·몽골어 메시지는 영어 번역을 크게, 원문을 작게 (내 메시지는 반대로 — 남에게 어떻게 보이는지 확인용).
-import { api, esc, toast, openModal, errText, pickPhoto, origText, origHtml, avatar, $, $$, officerPill } from '../ui.js';
+import { api, esc, toast, openModal, errText, pickPhotos, origText, origHtml, avatar, $, $$, officerPill } from '../ui.js';
 import { t, levelLabel, timeAgo } from '../i18n.js';
 
 const POLL_MS = 3000;
 const TR_TRIES = 3;   // 번역이 안 붙은 메시지를 몇 번까지 다시 물어볼지
 const DOUBLE_MS = 280;   // 이 안에 두 번 누르면 '두 번 톡톡'
 const HEART = '❤️';
+const MAX_PHOTOS = 10;   // 한 번에 묶어 보내는 사진 — 서버(routes/chat.js MAX_PHOTOS)와 같게
+const MAX_FACES = 6;     // 한 메시지 아래 얼굴은 이만큼만, 나머지는 +N
 // 달 수 있는 이모지 — 서버(routes/chat.js REACTIONS)와 같아야 한다
 const REACTIONS = ['❤️', '👍', '😂', '😮', '😢', '🎾', '🔥', '👏'];
 let poller = 0;
@@ -17,6 +19,7 @@ const needsTr = (s) => !!s && s.length <= 1200 && /[가-힣Ѐ-ӿ]/.test(s);
 
 export async function renderChat(el, state) {
   clearInterval(poller);
+  document.body.classList.remove('tray-open');
   if (state.chatRoom) return renderRoom(el, state, state.chatRoom);
   return renderRooms(el, state);
 }
@@ -38,7 +41,7 @@ function roomRow(r) {
   const club = r.kind === 'club';
   const name = club ? t('clubChat') : (r.other?.name || t('formerMember'));
   const last = r.last
-    ? `${r.last.mine ? `${t('you')}: ` : (club && r.last.name ? `${r.last.name}: ` : '')}${r.last.body || `📷 ${t('photo')}`}`
+    ? `${r.last.mine ? `${t('you')}: ` : (club && r.last.name ? `${r.last.name}: ` : '')}${r.last.body || (r.last.photos?.length > 1 ? `📷 ${t('photosN', { n: r.last.photos.length })}` : `📷 ${t('photo')}`)}`
     : t('clubChatSub');
   return `
     <div class="member-row room-row" data-room="${r.id}" style="cursor:pointer">
@@ -99,6 +102,7 @@ async function renderRoom(el, state, roomId) {
     ${d.has_more ? `<button class="btn btn-sm" style="width:100%;margin-bottom:8px" data-older>${esc(t('chatEarlier'))}</button>` : ''}
     <div class="chat-msgs" data-msgs></div>
     <form class="composer" data-composer>
+      <div class="chat-tray" data-tray hidden></div>
       <div class="composer-inner">
         <button class="btn photo-btn" type="button" data-photo aria-label="${esc(t('photo'))}">📷</button>
         <textarea name="body" rows="1" maxlength="1000" placeholder="${esc(t('chatPlaceholder'))}" enterkeyhint="send"></textarea>
@@ -112,24 +116,44 @@ async function renderRoom(el, state, roomId) {
   let msgs = d.messages;
   let lastId = msgs.length ? msgs.at(-1).id : 0;
   let reacts = d.reacts || {};   // { 메시지 id: [{ e, n, mine }] } — 폴링 때마다 서버 것으로 갈아 끼운다
-  let reads = d.reads || {};     // { 메시지 id: 읽은 사람 수 } — 이것도 폴링 때마다 통째로
+  let seen = d.seen || [];       // [{ id, name, photo, last_id }] 나 말고 읽은 사람들 — 폴링 때마다 통째로
   let openId = null;             // 한 번 눌러 이모지 줄을 펼친 메시지
   let reacting = 0;              // 보내는 중인 반응 수 — 그동안은 폴링 결과로 덮지 않는다(눌렀다 깜빡 돌아가지 않게)
 
   const draw = () => {
     const stick = nearBottom();
-    box.innerHTML = msgs.length ? msgHtml(msgs, club, officer, reacts, openId, reads) : `<div class="empty">${esc(t('chatEmpty'))}</div>`;
+    box.innerHTML = msgs.length ? msgHtml(msgs, club, officer, reacts, openId, seen) : `<div class="empty">${esc(t('chatEmpty'))}</div>`;
     bindMsgs();
     // 사진은 늦게 뜬다 — 맨 아래를 보고 있었으면 뜬 뒤에도 맨 아래로
-    $$('.chat-photo', box).forEach(img => { if (!img.complete) img.onload = () => { if (stick) toBottom(); }; });
+    $$('.chat-photo, .chat-cell', box).forEach(img => { if (!img.complete) img.onload = () => { if (stick) toBottom(); }; });
   };
   const nearBottom = () => window.innerHeight + window.scrollY >= document.body.scrollHeight - 120;
   const toBottom = () => window.scrollTo({ top: document.body.scrollHeight });
 
-  // 사진을 크게 (창 바깥 아무 데나 누르거나 폰 뒤로가기로 닫힌다)
-  const openPhoto = (src) => {
-    $('#modalRoot').innerHTML = `<div class="photo-view" data-close><img src="${esc(src)}" alt=""></div>`;
-    $('#modalRoot [data-close]').onclick = () => { $('#modalRoot').innerHTML = ''; };
+  // 사진을 크게 (아무 데나 누르거나 폰 뒤로가기로 닫힌다). 묶음이면 ‹ › 나 옆으로 밀어 넘긴다
+  const openPhoto = (srcs, start = 0) => {
+    const root = $('#modalRoot');
+    let i = start, x0 = null, swiped = false;
+    const show = () => {
+      const n = srcs.length;
+      root.innerHTML = `<div class="photo-view" data-close><img src="${esc(srcs[i])}" alt="">
+        ${n > 1 ? `<button type="button" class="pv-nav prev" data-step="-1" aria-label="Previous">‹</button>
+        <button type="button" class="pv-nav next" data-step="1" aria-label="Next">›</button>
+        <div class="pv-count">${i + 1} / ${n}</div>` : ''}</div>`;
+      const v = root.querySelector('[data-close]');
+      const go = (s) => { i = (i + s + n) % n; show(); };
+      v.onclick = () => { if (swiped) { swiped = false; return; } root.innerHTML = ''; };
+      v.querySelectorAll('[data-step]').forEach(b => b.onclick = (e) => { e.stopPropagation(); go(Number(b.dataset.step)); });
+      if (n > 1) {
+        v.ontouchstart = (e) => { x0 = e.touches[0].clientX; };
+        v.ontouchend = (e) => {
+          const dx = e.changedTouches[0].clientX - (x0 ?? e.changedTouches[0].clientX);
+          x0 = null;
+          if (Math.abs(dx) > 50) { swiped = true; setTimeout(() => { swiped = false; }, 400); go(dx < 0 ? 1 : -1); }
+        };
+      }
+    };
+    show();
   };
 
   // 반응 달기/떼기 — 화면부터 바로 바꾸고(기다리지 않게) 서버 답으로 맞춘다
@@ -167,7 +191,7 @@ async function renderRoom(el, state, roomId) {
         draw();
       } catch (err) { toast(errText(err), true); }
     });
-    // 읽음 숫자 — 누르면 누가 읽었는지
+    // 읽은 사람 얼굴 — 누르면 누가 읽었는지
     $$('[data-readers]', box).forEach(b => b.onclick = (e) => { e.stopPropagation(); showReaders(Number(b.dataset.readers)); });
     // 말풍선 아래 달린 이모지 — 누르면 내 것 켜기/끄기
     $$('[data-react]', box).forEach(b => b.onclick = (e) => {
@@ -197,7 +221,11 @@ async function renderRoom(el, state, roomId) {
         last = now;
         const img = e.target.closest('[data-full]');
         timer = setTimeout(() => {
-          if (img) return openPhoto(img.dataset.full);
+          if (img) {
+            const m = msgs.find(x => x.id === id);
+            const srcs = m?.photos?.length ? m.photos : [img.dataset.full];
+            return openPhoto(srcs, Math.max(0, srcs.indexOf(img.dataset.full)));
+          }
           openId = openId === id ? null : id;
           draw();
         }, DOUBLE_MS);
@@ -210,7 +238,7 @@ async function renderRoom(el, state, roomId) {
     try { list = await api(`/chat/messages/${id}/readers`); }
     catch (err) { return toast(errText(err), true); }
     const md = openModal({
-      title: `${t('readBy')} · ${list.length}`,
+      title: `${t('seenBy')} · ${list.length}`,
       fields: [],
       extra: list.length
         ? list.map(p => `<div class="member-row">${avatar(p.name, p.photo)}<div class="who"><b>${esc(p.name)}</b></div></div>`).join('')
@@ -256,7 +284,7 @@ async function renderRoom(el, state, roomId) {
     const o = await api(`/chat/rooms/${roomId}/messages?lang=en&before=${msgs[0].id}`);
     msgs = [...o.messages, ...msgs];
     reacts = o.reacts || reacts;   // 새로 받은 가장 옛 메시지부터 끝까지 다 들어 있다
-    reads = o.reads || reads;
+    seen = o.seen || seen;
     draw();
     window.scrollTo({ top: document.body.scrollHeight - h });   // 보던 자리 그대로
     if (!o.has_more) older.remove(); else older.disabled = false;
@@ -273,24 +301,48 @@ async function renderRoom(el, state, roomId) {
   };
 
   let sending = false;
+  let pending = [];   // 보내기 전 고른 사진들(data:URL) — 보내기를 누르면 글과 함께 한 메시지로
   const photoBtn = form.querySelector('[data-photo]');
-  // 📷 — 고르면 바로 보낸다. 입력칸에 써 둔 글이 있으면 사진 설명으로 같이 간다
+  const sendBtn = form.querySelector('[type="submit"]');
+  const tray = form.querySelector('[data-tray]');
+  const drawTray = () => {
+    tray.hidden = !pending.length;
+    document.body.classList.toggle('tray-open', pending.length > 0);
+    tray.innerHTML = pending.map((p, i) =>
+      `<div class="tray-thumb"><img src="${p}" alt=""><button type="button" data-unpick="${i}" aria-label="Remove">✕</button></div>`).join('')
+      + (pending.length < MAX_PHOTOS ? '<button type="button" class="tray-add" data-more aria-label="Add">＋</button>' : '');
+    tray.querySelectorAll('[data-unpick]').forEach(b => b.onclick = () => { pending.splice(Number(b.dataset.unpick), 1); drawTray(); });
+    const more = tray.querySelector('[data-more]');
+    if (more) more.onclick = () => photoBtn.click();
+  };
+  // 📷 — 여러 장 골라 아래 줄에 모아 둔다. 보내기를 누르면 입력칸 글과 함께 한 번에
   photoBtn.onclick = async () => {
     if (sending) return;
-    const photo = await pickPhoto();
-    if (!photo) return;
+    const room = MAX_PHOTOS - pending.length;
+    if (room <= 0) return toast(t('chatMaxPhotos', { n: MAX_PHOTOS }), true);
     photoBtn.disabled = true;
     photoBtn.textContent = '⏳';
-    await post({ body: input.value.trim(), photo });
+    const { photos, cut } = await pickPhotos(room);
     photoBtn.disabled = false;
     photoBtn.textContent = '📷';
+    if (cut) toast(t('chatMaxPhotos', { n: MAX_PHOTOS }), true);
+    if (!photos.length) return;
+    pending.push(...photos);
+    drawTray();
+    toBottom();
   };
 
   form.onsubmit = async (e) => {
     e.preventDefault();
     const body = input.value.trim();
-    if (!body || sending) return;
-    await post({ body });
+    if ((!body && !pending.length) || sending) return;
+    if (!pending.length) return post({ body });
+    sendBtn.disabled = true;
+    photoBtn.disabled = true;
+    const ok = await post({ body, photos: pending });
+    sendBtn.disabled = false;
+    photoBtn.disabled = false;
+    if (ok) { pending = []; drawTray(); }
   };
 
   async function post(payload) {
@@ -304,8 +356,9 @@ async function renderRoom(el, state, roomId) {
       draw();
       toBottom();
       fillTr();
-    } catch (err) { toast(errText(err), true); }
-    finally { sending = false; if (!payload.photo) input.focus(); }
+      return true;
+    } catch (err) { toast(errText(err), true); return false; }
+    finally { sending = false; if (!payload.photos) input.focus(); }
   }
 
   // 3초마다 새 메시지 — 화면을 떠났으면 멈춘다
@@ -319,8 +372,8 @@ async function renderRoom(el, state, roomId) {
       // 남이 단 반응 — 내가 보내는 중이면 이번엔 건너뛴다
       const reactsChanged = !reacting && n.reacts && JSON.stringify(n.reacts) !== JSON.stringify(reacts);
       if (reactsChanged) reacts = n.reacts;
-      const readsChanged = n.reads && JSON.stringify(n.reads) !== JSON.stringify(reads);
-      if (readsChanged) reads = n.reads;
+      const readsChanged = n.seen && JSON.stringify(n.seen) !== JSON.stringify(seen);
+      if (readsChanged) seen = n.seen;
       if (!fresh.length && !reactsChanged && !readsChanged) return;
       const stick = nearBottom();
       msgs.push(...fresh);
@@ -353,14 +406,42 @@ function actionsHtml(m, canDel) {
     </div>`;
 }
 
-// 읽음 — 전체방은 몇 명이 읽었는지(누르면 이름), 1:1 은 내 메시지에 상대가 읽었으면 'Read'
-function readHtml(m, club, n) {
-  if (club) return n ? `<button type="button" class="read-n" data-readers="${m.id}">${esc(t('readN', { n }))}</button>` : '';
-  return m.mine && n ? `<span class="read-n">${esc(t('read'))}</span>` : '';
+// 읽음 — 페이스북처럼 각자 마지막으로 읽은 메시지 아래 작은 얼굴. 누르면 그 메시지를 읽은 사람 이름 전부
+// 자기 메시지는 당연히 봤으니, 그 사람이 쓴 게 아닌 메시지 중 마지막으로 읽은 것에 붙인다
+function seenMap(msgs, seen) {
+  const at = {};
+  for (const p of seen) {
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const m = msgs[i];
+      if (m.id <= p.last_id && m.member_id !== p.id) { (at[m.id] ||= []).push(p); break; }
+    }
+  }
+  return at;
+}
+function face(p) {
+  return p.photo
+    ? `<span class="face"><img src="${esc(p.photo)}" alt="${esc(p.name)}" loading="lazy"></span>`
+    : `<span class="face">${esc(String(p.name || '?').slice(0, 1))}</span>`;
+}
+function seenHtml(m, list) {
+  if (!list?.length) return '';
+  const more = list.length - MAX_FACES;
+  return `<button type="button" class="seen" data-readers="${m.id}" aria-label="${esc(t('seenBy'))}">${
+    list.slice(0, more > 0 ? MAX_FACES - 1 : MAX_FACES).map(face).join('')}${more > 0 ? `<span class="face more">+${more + 1}</span>` : ''}</button>`;
+}
+// 사진 — 한 장은 크게, 여러 장은 격자 (2·4장은 2칸, 그 외 3칸)
+function photosHtml(m) {
+  const ps = m.photos?.length ? m.photos : (m.photo ? [m.photo] : []);
+  if (!ps.length) return '';
+  const img = (src, cls) => `<img class="${cls}" src="${esc(src)}" data-full="${esc(src)}" alt="" loading="lazy">`;
+  if (ps.length === 1) return img(ps[0], 'chat-photo');
+  const cols = ps.length === 2 || ps.length === 4 ? 2 : 3;
+  return `<div class="chat-grid c${cols}">${ps.map(s => img(s, 'chat-cell')).join('')}</div>`;
 }
 
-function msgHtml(msgs, club, officer, reacts, openId, reads = {}) {
+function msgHtml(msgs, club, officer, reacts, openId, seen = []) {
   let day = '', prev = null;
+  const faces = seenMap(msgs, seen);
   return msgs.map(m => {
     const d = String(m.created_at).slice(0, 10);
     const sep = d !== day ? `<div class="chat-day">${esc(d)}</div>` : '';
@@ -369,11 +450,12 @@ function msgHtml(msgs, club, officer, reacts, openId, reads = {}) {
     return `${sep}
       <div class="msg ${m.mine ? 'mine' : ''}" data-id="${m.id}">
         ${showName ? `<div class="msg-who">${esc(m.name || t('formerMember'))}${m.is_coach ? ' 🎾' : ''}${officerPill(m.officer_role)}</div>` : ''}
-        ${m.photo ? `<img class="chat-photo" src="${esc(m.photo)}" data-full="${esc(m.photo)}" alt="" loading="lazy">` : ''}
+        ${photosHtml(m)}
         ${m.body ? bubble(m) : ''}
         ${reactsHtml(m.id, reacts[m.id])}
-        <time>${readHtml(m, club, reads[m.id])}${esc(String(m.created_at).slice(11, 16))}</time>
+        <time>${esc(String(m.created_at).slice(11, 16))}</time>
         ${openId === m.id ? actionsHtml(m, m.mine || (club && officer)) : ''}
-      </div>`;
+      </div>
+      ${seenHtml(m, faces[m.id])}`;
   }).join('');
 }

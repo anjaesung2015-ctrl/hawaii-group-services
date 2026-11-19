@@ -36,7 +36,7 @@ function makeApp(opts = {}) {
   const tr = createTranslator(db, { budgetMs: 2000, translate: async (text) => '[en] ' + text });
 
   const app = express();
-  app.use(express.json({ limit: '6mb' }));
+  app.use(express.json({ limit: '15mb' }));
   app.use(cookieParser());
   app.use(auth.attach);
   app.use('/api/auth', require('../routes/auth')(db, auth));

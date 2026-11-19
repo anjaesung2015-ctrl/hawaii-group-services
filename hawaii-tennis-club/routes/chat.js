@@ -12,6 +12,7 @@ const MAX_BODY = 1000;
 const PAGE = 50;
 const WATCHING_SEC = 20;
 const TR_IDS = 50;
+const MAX_PHOTOS = 10;   // 한 번에 묶어 보내는 사진 수
 // 달 수 있는 이모지 — 화면(public/js/views/chat.js REACTIONS)과 같아야 한다
 const REACTIONS = ['❤️', '👍', '😂', '😮', '😢', '🎾', '🔥', '👏'];
 
@@ -45,11 +46,18 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
     ON CONFLICT(room_id, member_id) DO UPDATE SET last_id=MAX(last_id, excluded.last_id), seen_at=excluded.seen_at`)
     .run(roomId, meId, lastId || 0);
 
+  // 메시지 하나의 사진 파일들 — 여러 장 묶음이면 photos(JSON 배열, 첫 장 = photo), 한 장이면 photo 만
+  const filesOf = (m) => {
+    try { const a = m.photos ? JSON.parse(m.photos) : null; if (Array.isArray(a) && a.length) return a; } catch { /* 옛 글 */ }
+    return m.photo ? [m.photo] : [];
+  };
+  const photoUrl = (id, i) => (i ? `api/chat/photo/${id}?i=${i}` : `api/chat/photo/${id}`);
   const msgRow = (m, meId) => ({
     id: m.id, member_id: m.member_id, name: m.name, is_coach: !!m.is_coach, officer_role: m.officer_role || null,
-    body: m.body, photo: m.photo ? `api/chat/photo/${m.id}` : null, created_at: m.created_at, mine: m.member_id === meId,
+    body: m.body, photo: m.photo ? photoUrl(m.id, 0) : null, photos: filesOf(m).map((_, i) => photoUrl(m.id, i)),
+    created_at: m.created_at, mine: m.member_id === meId,
   });
-  const SELECT_MSG = `SELECT c.id, c.member_id, c.body, c.photo, c.created_at, m.name, m.is_coach, ${OFFICER_ROLE_SQL} AS officer_role
+  const SELECT_MSG = `SELECT c.id, c.member_id, c.body, c.photo, c.photos, c.created_at, m.name, m.is_coach, ${OFFICER_ROLE_SQL} AS officer_role
                       FROM chat_msg c LEFT JOIN member m ON m.id = c.member_id`;
 
   // 이모지 반응 — 이 방에서 id >= fromId 인 메시지 중 반응이 있는 것만 { id: [{ e, n, mine }] } (먼저 달린 이모지가 앞).
@@ -77,6 +85,13 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
     }
     return out;
   };
+
+  // 페이스북처럼 '어디까지 읽었나' 얼굴 — 나 말고 이 방을 연 사람들과 그 사람이 마지막으로 읽은 메시지 id.
+  // 화면이 각자 마지막으로 읽은 메시지 아래에 작은 얼굴을 붙인다. 화면에 있는 메시지(fromId~)까지 읽은 사람만
+  const seenIn = (roomId, meId, fromId) => db.prepare(`
+    SELECT m.id, m.name, m.photo, r.last_id FROM chat_read r JOIN member m ON m.id = r.member_id
+    WHERE r.room_id=? AND r.member_id<>? AND r.last_id>=? AND r.last_id>0 ORDER BY r.seen_at DESC, m.id`)
+    .all(roomId, meId, fromId || 0);
 
   const langOf = (req) => (tr && req.query.lang ? String(req.query.lang) : null);
 
@@ -154,6 +169,7 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
       messages,
       reacts: reactsIn(r.id, req.me.id, from),
       reads: readsIn(r.id, from),
+      seen: seenIn(r.id, req.me.id, from),
       has_more: !after && rows.length === PAGE,
     });
   });
@@ -175,20 +191,22 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
     const r = roomFor(req.me, req.params.id);
     if (!r) return res.status(404).json({ error: 'not_found' });
     const body = String(req.body?.body || '').trim();
-    const hasPhoto = !!req.body?.photo;
+    // 사진은 photos(여러 장, 최대 MAX_PHOTOS) 또는 예전처럼 photo 한 장
+    const list = Array.isArray(req.body?.photos) ? req.body.photos.filter(Boolean) : (req.body?.photo ? [req.body.photo] : []);
+    const hasPhoto = list.length > 0;
+    if (list.length > MAX_PHOTOS) return res.status(400).json({ error: 'too_many_photos' });
     if (!body && !hasPhoto) return res.status(400).json({ error: 'body_required' });
     if (body.length > MAX_BODY) return res.status(400).json({ error: 'too_long' });
     const other = otherOf(r, req.me);
     if (r.kind === 'dm' && (!other || other.status !== 'active')) return res.status(409).json({ error: 'member_gone' });
 
-    // 사진은 폰에서 줄인 JPEG(data:URL) 한 장 — 공개 폴더가 아니라 chat-photos/ 에 (DB 에는 파일 이름만)
-    let photo = null;
-    if (hasPhoto) {
-      try { photo = writePhoto(req.body.photo, chatPhotoDir(db)); }
-      catch (e) { return res.status(400).json({ error: e.message }); }
-    }
-    const id = db.prepare('INSERT INTO chat_msg (room_id, member_id, body, photo) VALUES (?,?,?,?)')
-      .run(r.id, req.me.id, body, photo).lastInsertRowid;
+    // 사진은 폰에서 줄인 JPEG(data:URL) — 공개 폴더가 아니라 chat-photos/ 에 (DB 에는 파일 이름만).
+    // 한 장이라도 잘못되면 이미 쓴 파일까지 지우고 통째로 거절
+    const files = [];
+    try { for (const d of list) files.push(writePhoto(d, chatPhotoDir(db))); }
+    catch (e) { files.forEach(f => removeChatPhoto(db, f)); return res.status(400).json({ error: e.message }); }
+    const id = db.prepare('INSERT INTO chat_msg (room_id, member_id, body, photo, photos) VALUES (?,?,?,?,?)')
+      .run(r.id, req.me.id, body, files[0] || null, files.length > 1 ? JSON.stringify(files) : null).lastInsertRowid;
     markRead(r.id, req.me.id, id);
     const m = db.prepare(`${SELECT_MSG} WHERE c.id=?`).get(id);
     res.json(msgRow(m, req.me.id));
@@ -201,7 +219,7 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
                                  WHERE room_id=? AND seen_at >= strftime('%s','now') - ?`).pluck().all(r.id, WATCHING_SEC);
     const payload = {
       title: r.kind === 'club' ? `💬 Club chat · ${req.me.name}` : `💬 ${req.me.name}`,
-      body: body ? body.slice(0, 120) : '📷 Photo',
+      body: body ? body.slice(0, 120) : (files.length > 1 ? `📷 ${files.length} photos` : '📷 Photo'),
       url: `#chat-${r.id}`,
     };
     if (r.kind === 'dm') {
@@ -241,16 +259,18 @@ module.exports = function chatRoutes(db, auth, notify, tr) {
     const officer = req.me.role === 'admin' || req.me.is_owner;
     if (m.member_id !== req.me.id && !(m.kind === 'club' && officer)) return res.status(403).json({ error: 'forbidden' });
     db.prepare('DELETE FROM chat_msg WHERE id=?').run(m.id);
-    removeChatPhoto(db, m.photo);
+    for (const f of filesOf(m)) removeChatPhoto(db, f);
     res.json({ ok: true });
   });
 
   // 사진 — 그 방에 들어갈 수 있는 사람만 (1:1 사진은 두 사람만). 남에게는 있는지조차 알리지 않는다(404)
+  // 묶음 사진은 ?i=<0부터 순서>
   router.get('/photo/:id', (req, res) => {
-    const m = db.prepare('SELECT room_id, photo FROM chat_msg WHERE id=?').get(req.params.id);
-    if (!m?.photo || !roomFor(req.me, m.room_id)) return res.status(404).json({ error: 'not_found' });
+    const m = db.prepare('SELECT room_id, photo, photos FROM chat_msg WHERE id=?').get(req.params.id);
+    const file = m && filesOf(m)[Number(req.query.i) || 0];
+    if (!file || !roomFor(req.me, m.room_id)) return res.status(404).json({ error: 'not_found' });
     res.set('Cache-Control', 'private, max-age=604800');
-    res.sendFile(path.join(chatPhotoDir(db), path.basename(m.photo)), (err) => {
+    res.sendFile(path.join(chatPhotoDir(db), path.basename(file)), (err) => {
       if (err && !res.headersSent) res.status(404).json({ error: 'not_found' });
     });
   });

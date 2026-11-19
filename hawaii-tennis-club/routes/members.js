@@ -142,8 +142,9 @@ module.exports = function memberRoutes(db, auth) {
     // 지우면 그 사람의 회비·참석 기록도 함께 사라진다. 기록을 남기려면 '휴면'으로 돌린다.
     // 그 사람이 쓴 일정·공지는 남긴다 — 작성자 표시만 지운다.
     // (그냥 지우면 event.created_by·notice.created_by 가 막아서 삭제가 실패한다)
-    const dmPhotos = db.prepare(`SELECT c.photo FROM chat_msg c JOIN chat_room r ON r.id=c.room_id
-                                  WHERE r.kind='dm' AND (r.a_id=? OR r.b_id=?) AND c.photo IS NOT NULL`).pluck().all(m.id, m.id);
+    const dmPhotos = db.prepare(`SELECT c.photo, c.photos FROM chat_msg c JOIN chat_room r ON r.id=c.room_id
+                                  WHERE r.kind='dm' AND (r.a_id=? OR r.b_id=?) AND c.photo IS NOT NULL`).all(m.id, m.id)
+      .flatMap(c => { try { const a = JSON.parse(c.photos || 'null'); if (Array.isArray(a)) return a; } catch { /* 한 장 */ } return [c.photo]; });
     db.transaction(() => {
       db.prepare('UPDATE event  SET created_by=NULL WHERE created_by=?').run(m.id);
       db.prepare('UPDATE notice SET created_by=NULL WHERE created_by=?').run(m.id);

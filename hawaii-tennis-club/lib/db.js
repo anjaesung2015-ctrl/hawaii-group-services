@@ -340,6 +340,8 @@ function migrate(db) {
   // 채팅 사진 (uploads/ 경로). 사진만 보내면 body 는 빈 글자
   const ccols = db.prepare('PRAGMA table_info(chat_msg)').all().map(c => c.name);
   if (!ccols.includes('photo')) db.exec('ALTER TABLE chat_msg ADD COLUMN photo TEXT');
+  // 사진 여러 장 묶음 — 파일 이름 JSON 배열 (첫 장은 photo 에도). 한 장짜리는 NULL
+  if (!ccols.includes('photos')) db.exec('ALTER TABLE chat_msg ADD COLUMN photos TEXT');
   const jcols = db.prepare('PRAGMA table_info(join_request)').all().map(c => c.name);
   if (!jcols.includes('agreed_at')) db.exec('ALTER TABLE join_request ADD COLUMN agreed_at TEXT');
   if (!jcols.includes('agreed_version')) db.exec('ALTER TABLE join_request ADD COLUMN agreed_version INTEGER');

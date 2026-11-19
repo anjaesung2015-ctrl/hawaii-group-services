@@ -24,7 +24,7 @@ const newOwner = ensureOwner(db);   // 오너가 없으면 첫 관리자를 오�
 const app = express();
 app.set('trust proxy', 1);
 // 공지 사진이 base64로 들어오므로 본문 한도를 조금 넉넉하게 둔다
-app.use(express.json({ limit: '6mb' }));
+app.use(express.json({ limit: '15mb' }));
 app.use(cookieParser());
 app.use(auth.attach);
 

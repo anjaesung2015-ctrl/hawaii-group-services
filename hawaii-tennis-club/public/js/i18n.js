@@ -177,7 +177,7 @@ export const DICT = {
     send: 'Send',
     chat: 'Chat', chats: 'Free Chat', clubChat: 'Club chat', clubChatSub: 'Everyone in the club',
     newChat: 'New chat', chatPick: 'Chat with', chatOpen: 'Open chat', chatNoMembers: 'No other members yet',
-    chatPlaceholder: 'Message…', chatEmpty: 'No messages yet. Say hi! 👋', chatEarlier: 'Earlier messages',
+    chatPlaceholder: 'Message…', chatMaxPhotos: 'Up to {n} photos at a time', photosN: '{n} photos', seenBy: 'Seen by', chatEmpty: 'No messages yet. Say hi! 👋', chatEarlier: 'Earlier messages',
     read: 'Read', readN: 'Read {n}', readBy: 'Read by', readNobody: 'No one has read this yet',
     chatHint: 'Tap 💬 next to a name in Members, or + New chat, to talk one-on-one.',
     chatGone: 'This chat is no longer available', formerMember: 'Former member', you: 'You', message: 'Message',
