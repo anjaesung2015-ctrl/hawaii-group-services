@@ -1,5 +1,5 @@
 // 공지 — 관리자가 쓰고(사진 1장·상단 고정) 회원은 읽는다.
-import { api, esc, toast, openModal, pickPhoto, origText, origHtml, $$ } from '../ui.js';
+import { api, esc, toast, openModal, pickPhotos, origText, origHtml, $$ } from '../ui.js';
 import { t } from '../i18n.js';
 import { openRules, editRulesNow } from './rules.js';
 
@@ -53,6 +53,21 @@ export async function renderNotices(el, state) {
 
 // 옛 공지에 '/uploads/…' 로 저장된 것이 있어도 하위 경로에서 열리게 앞의 / 를 떼어 쓴다
 const photoSrc = (p) => String(p || '').replace(/^\/+/, '');
+const MAX_PHOTOS = 10;   // 서버(routes/notices.js MAX_PHOTOS)와 같게
+const SHOW_PHOTOS = 4;   // 카드에 보이는 사진 수 — 넘으면 4번째 위에 +N
+const photosOf = (n) => (n?.photos?.length ? n.photos : (n?.photo ? [n.photo] : []));
+
+// 사진 묶음 — 1장은 크게, 여러 장은 2칸 격자. 누르면 크게 보고 넘길 수 있다(data-photo-set)
+function photosHtml(n) {
+  const all = photosOf(n).map(photoSrc);
+  if (!all.length) return '';
+  if (all.length === 1) return `<img class="notice-photo" src="${esc(all[0])}" data-view-photo="${esc(all[0])}" alt="" loading="lazy">`;
+  const cells = all.slice(0, SHOW_PHOTOS).map((src, i) => {
+    const img = `<img class="post-photo" src="${esc(src)}" data-view-photo="${esc(src)}" alt="" loading="lazy">`;
+    return i === SHOW_PHOTOS - 1 && all.length > SHOW_PHOTOS ? `<div class="post-more" data-more="+${all.length - SHOW_PHOTOS}">${img}</div>` : img;
+  }).join('');
+  return `<div class="post-photos multi" data-photo-set="${esc(JSON.stringify(all))}">${cells}</div>`;
+}
 
 function noticeCard(n, state) {
   return `
@@ -66,15 +81,15 @@ function noticeCard(n, state) {
       </div>
       <div class="notice-body">${esc(origText(n, 'body').text)}</div>
       ${origHtml(origText(n, 'body').orig)}
-      ${n.photo ? `<img class="notice-photo" src="${esc(photoSrc(n.photo))}" data-view-photo="${esc(photoSrc(n.photo))}" alt="" loading="lazy">` : ''}
+      ${photosHtml(n)}
     </div>`;
 }
 
 // 홈 화면 공지 카드에서도 바로 고칠 수 있게 내보낸다
 export function noticeForm(n, state, refresh) {
   const isNew = !n;
-  let photoData = null;       // 새로 고른 사진 (data:URL)
-  let removePhoto = false;
+  // 사진 목록 — 이미 있던 것은 { path }, 새로 고른 것은 { data }. 보낼 때 남길 것·새 것으로 나눈다
+  let items = photosOf(n).map(path => ({ path }));
 
   const m = openModal({
     title: isNew ? t('newNotice') : t('editNotice'),
@@ -85,13 +100,9 @@ export function noticeForm(n, state, refresh) {
     ],
     extra: `
       <div class="field">
-        <span>${esc(t('photo'))}</span>
-        <div style="display:flex;gap:8px;align-items:center">
-          <button type="button" class="btn btn-sm" data-pick>${esc(t('photoPick'))}</button>
-          ${n?.photo ? `<button type="button" class="btn btn-sm btn-danger" data-rm>${esc(t('photoRemove'))}</button>` : ''}
-          <span class="hint" data-photo-name style="padding:0">${n?.photo ? '1' : ''}</span>
-        </div>
-        <img data-preview src="${esc(photoSrc(n?.photo))}" class="notice-photo" ${n?.photo ? '' : 'hidden'} alt="">
+        <span>${esc(t('photo'))} <span class="hint" style="padding:0">(${esc(t('photoMax'))})</span></span>
+        <button type="button" class="btn btn-sm" data-pick>📷 ${esc(t('photoPick'))}</button>
+        <div class="post-preview" data-preview></div>
       </div>`,
     onDelete: isNew ? null : async () => {
       await api(`/notices/${n.id}`, { method: 'DELETE' });
@@ -101,8 +112,9 @@ export function noticeForm(n, state, refresh) {
     onSave: async (v) => {
       if (!v.title || !v.body) return t('required');
       const body = { title: v.title, body: v.body, pinned: v.pinned };
-      if (photoData) body.photo_data = photoData;
-      if (removePhoto) body.remove_photo = true;
+      const add = items.filter(x => x.data).map(x => x.data);
+      if (isNew) body.photos_data = add;
+      else { body.photos_keep = items.filter(x => x.path).map(x => x.path); body.photos_data = add; }
       if (isNew) await api('/notices', { method: 'POST', body });
       else await api(`/notices/${n.id}`, { method: 'PATCH', body });
       toast(t('saved'));
@@ -112,20 +124,23 @@ export function noticeForm(n, state, refresh) {
 
   m.form.querySelector('textarea[name="body"]').classList.add('long-edit');   // 긴 공지도 폰에서 고치기 쉽게
 
+  // 여러 장 한 번에 고르기 — 미리보기 ✕ 로 뺀다(있던 사진도)
   const preview = m.form.querySelector('[data-preview]');
-  m.form.querySelector('[data-pick]').onclick = async () => {
-    const data = await pickPhoto();
-    if (!data) return;
-    photoData = data;
-    removePhoto = false;
-    preview.src = data;
-    preview.hidden = false;
+  const draw = () => {
+    preview.innerHTML = items.map((x, i) =>
+      `<div class="tray-thumb post-thumb"><img src="${esc(x.data || photoSrc(x.path))}" alt=""><button type="button" data-unpick="${i}" aria-label="Remove">✕</button></div>`).join('');
+    preview.querySelectorAll('[data-unpick]').forEach(b => b.onclick = () => { items.splice(Number(b.dataset.unpick), 1); draw(); });
   };
-  const rm = m.form.querySelector('[data-rm]');
-  if (rm) rm.onclick = () => {
-    removePhoto = true;
-    photoData = null;
-    preview.hidden = true;
-    m.form.querySelector('[data-photo-name]').textContent = '';
+  draw();
+  const pick = m.form.querySelector('[data-pick]');
+  pick.onclick = async () => {
+    const room = MAX_PHOTOS - items.length;
+    if (room <= 0) return toast(t('photoMax'), true);
+    pick.disabled = true;
+    const { photos, cut } = await pickPhotos(room);
+    pick.disabled = false;
+    if (cut) toast(t('photoMax'), true);
+    items.push(...photos.map(data => ({ data })));
+    draw();
   };
 }

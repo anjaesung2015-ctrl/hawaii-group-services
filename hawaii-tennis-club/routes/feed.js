@@ -20,7 +20,7 @@ const PARTS = {
            NULL AS sub, m.name AS author, m.photo AS author_photo, g.created_at || '#photo#' || printf('%010d', g.id) AS skey
          FROM gallery_photo g LEFT JOIN member m ON m.id = g.member_id`,
   notice: `SELECT 'notice' AS type, n.id, n.created_by AS member_id, n.created_at, n.title, substr(n.body, 1, 160) AS excerpt, NULL AS video, n.photo,
-           (n.photo IS NOT NULL) AS photos, 0 AS likes, 0 AS comments, NULL AS sub, m.name AS author, m.photo AS author_photo,
+           COALESCE(json_array_length(n.photos), n.photo IS NOT NULL) AS photos, 0 AS likes, 0 AS comments, NULL AS sub, m.name AS author, m.photo AS author_photo,
            n.created_at || '#notice#' || printf('%010d', n.id) AS skey
          FROM notice n LEFT JOIN member m ON m.id = n.created_by`,
   result: `SELECT 'result' AS type, r.id, r.created_by AS member_id, r.created_at, r.title, r.division AS excerpt, NULL AS video,

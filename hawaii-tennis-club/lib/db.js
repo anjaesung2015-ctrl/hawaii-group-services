@@ -342,6 +342,9 @@ function migrate(db) {
   if (!ccols.includes('photo')) db.exec('ALTER TABLE chat_msg ADD COLUMN photo TEXT');
   // 사진 여러 장 묶음 — 파일 이름 JSON 배열 (첫 장은 photo 에도). 한 장짜리는 NULL
   if (!ccols.includes('photos')) db.exec('ALTER TABLE chat_msg ADD COLUMN photos TEXT');
+  // 공지 사진 여러 장 — 경로 JSON 배열 (첫 장은 photo 에도)
+  const ncols = db.prepare('PRAGMA table_info(notice)').all().map(c => c.name);
+  if (!ncols.includes('photos')) db.exec('ALTER TABLE notice ADD COLUMN photos TEXT');
   const jcols = db.prepare('PRAGMA table_info(join_request)').all().map(c => c.name);
   if (!jcols.includes('agreed_at')) db.exec('ALTER TABLE join_request ADD COLUMN agreed_at TEXT');
   if (!jcols.includes('agreed_version')) db.exec('ALTER TABLE join_request ADD COLUMN agreed_version INTEGER');
