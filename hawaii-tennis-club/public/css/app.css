@@ -590,6 +590,11 @@ main {
   display: block;
 }
 .post-photos:not(.multi) .post-photo { aspect-ratio: 3 / 2; }
+/* 글 상세 — 사진 여러 장은 작은 정사각 격자 */
+.post-grid { display: grid; gap: 4px; margin-top: 8px; }
+.post-grid.c2 { grid-template-columns: 1fr 1fr; }
+.post-grid.c3 { grid-template-columns: repeat(3, 1fr); }
+.post-grid img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 8px; background: #eef1ef; cursor: pointer; display: block; }
 .post-foot { display: flex; gap: 6px; margin-top: 11px; padding-top: 9px; border-top: 1px solid #f1f4f2; }
 .react {
   display: inline-flex; align-items: center; gap: 5px;

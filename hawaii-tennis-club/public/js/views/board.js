@@ -92,6 +92,18 @@ export function bindPosts(el, state, refresh) {
 }
 
 // 글 하나 + 댓글
+// 상세 화면 사진 — 1장은 크게, 여러 장은 작은 정사각 격자(2·4장 2칸, 그 외 3칸). 누르면 크게 + 넘기기.
+function detailPhotos(list) {
+  if (!list.length) return '';
+  const set = `data-photo-set="${esc(JSON.stringify(list))}"`;
+  if (list.length === 1) {
+    return `<div ${set}><img class="post-photo" src="${esc(list[0])}" data-view-photo="${esc(list[0])}" style="width:100%;margin-top:8px;border-radius:12px;aspect-ratio:auto" alt=""></div>`;
+  }
+  const cols = (list.length === 2 || list.length === 4) ? 'c2' : 'c3';
+  return `<div class="post-grid ${cols}" ${set}>${list.map(src =>
+    `<img src="${esc(src)}" data-view-photo="${esc(src)}" alt="" loading="lazy">`).join('')}</div>`;
+}
+
 export async function openPost(id, state, refresh) {
   const p = await api(`/posts/${id}?lang=en`);
   const canDel = (c) => c.member_id === state.me.id || state.me.role === 'admin';
@@ -102,7 +114,7 @@ export async function openPost(id, state, refresh) {
     extra: `
       <div class="hint" style="margin:-8px 2px 8px">${esc(timeAgo(p.created_at))}</div>
       ${p.body ? `<div class="post-body">${esc(origText(p, 'body').text)}</div>${origHtml(origText(p, 'body').orig)}` : ''}
-      <div data-photo-set="${esc(JSON.stringify(p.photos || []))}">${(p.photos || []).map(src => `<img class="post-photo" src="${esc(src)}" data-view-photo="${esc(src)}" style="width:100%;margin-top:8px;border-radius:12px" alt="">`).join('')}</div>
+      ${detailPhotos(p.photos || [])}
       <div class="section-head" style="margin:16px 2px 8px"><h2>${esc(t('comments'))} · ${p.comments.length}</h2></div>
       <div data-comments>
         ${p.comments.length ? p.comments.map(c => `
