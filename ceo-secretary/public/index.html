@@ -88,7 +88,7 @@ if(id==='home')loadHome();else if(id==='todo')loadTodo();else if(id==='money')lo
 // ========== 홈 (Notion 위젯 대시보드) ==========
 // ========== 포탈(바로가기) 편집 헬퍼 ==========
 function getPortalApps(){
-  var def = [{n:'POS',e:'🛒',u:'/pos/'},{n:'재무',e:'💵',u:'/finance/'},{n:'레슨',e:'📚',u:'/lesson-manager/'},{n:'테니스',e:'🎾',u:'/tennis/'},{n:'샵',e:'📦',u:'/shop/'},{n:'채팅',e:'💬',u:'/chat/'}];
+  var def = [{n:'POS',e:'🛒',u:'/pos/'},{n:'재무',e:'💵',u:'/finance/'},{n:'테니스',e:'🎾',u:'/tennis/'},{n:'샵',e:'📦',u:'/shop/'},{n:'채팅',e:'💬',u:'/chat/'}];
   try { var s = localStorage.getItem('portalApps'); if (s) { var a = JSON.parse(s); if (Array.isArray(a)) return a; } } catch(e){}
   return def;
 }
