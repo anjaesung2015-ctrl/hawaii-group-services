@@ -1,0 +1,9 @@
+{
+  "name": "money",
+  "version": "1.0.0",
+  "private": true,
+  "description": "나의 가계부 — 사장님 개인 수입·지출",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "better-sqlite3": "^13.0.3", "express": "^4.21.2" }
+}
