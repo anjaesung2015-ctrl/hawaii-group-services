@@ -446,6 +446,16 @@ function migrate(db) {
   const gcols = db.prepare('PRAGMA table_info(gallery_photo)').all().map(c => c.name);
   if (!gcols.includes('video')) db.exec('ALTER TABLE gallery_photo ADD COLUMN video TEXT');
   if (!gcols.includes('duration')) db.exec('ALTER TABLE gallery_photo ADD COLUMN duration REAL');
+  // 묶음 — 한 번에 올린 사진들은 batch(첫 사진 id)가 같다. 홈 피드에 카드 하나(콜라주)로 보인다.
+  // 예전 사진은 같은 사람·같은 시각에 올린 것을 한 묶음으로 본다 (동영상은 따로).
+  if (!gcols.includes('batch')) {
+    db.exec('ALTER TABLE gallery_photo ADD COLUMN batch INTEGER');
+    db.exec(`UPDATE gallery_photo SET batch = CASE WHEN video IS NOT NULL THEN id ELSE
+               (SELECT MIN(x.id) FROM gallery_photo x WHERE x.video IS NULL AND x.member_id IS gallery_photo.member_id
+                 AND x.created_at = gallery_photo.created_at) END`);
+  }
+  db.exec('UPDATE gallery_photo SET batch = id WHERE batch IS NULL');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_gallery_batch ON gallery_photo(batch)');
   // 회원 생일 — 'MM-DD' (태어난 해는 받지 않는다). 본인이 ☰ → My profile 에서 적는다
   if (!db.prepare('PRAGMA table_info(member)').all().some(c => c.name === 'birthday')) db.exec('ALTER TABLE member ADD COLUMN birthday TEXT');
 

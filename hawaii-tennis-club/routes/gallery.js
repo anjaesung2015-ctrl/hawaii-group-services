@@ -15,6 +15,14 @@ module.exports = function galleryRoutes(db, auth) {
 
   // 최신 사진부터. ?before=<id> 로 그보다 오래된 사진을 이어 받는다.
   router.get('/', (req, res) => {
+    // ?group=<사진 id> — 그 사진과 한 번에 올린 묶음 전부 (홈 피드 콜라주를 눌렀을 때)
+    if (req.query.group) {
+      const rows = db.prepare(`
+        SELECT g.id, g.member_id, g.photo, g.video, g.duration, g.caption, g.created_at, m.name AS author
+        FROM gallery_photo g LEFT JOIN member m ON m.id = g.member_id
+        WHERE g.batch = (SELECT batch FROM gallery_photo WHERE id = ?) ORDER BY g.id`).all(Number(req.query.group) || 0);
+      return res.json({ rows, has_more: false, total: rows.length });
+    }
     const before = Number(req.query.before) || 0;
     const limit = Math.min(60, Math.max(1, Number(req.query.limit) || PAGE));
     const rows = db.prepare(`
@@ -36,7 +44,11 @@ module.exports = function galleryRoutes(db, auth) {
     try { saved = savePhotos(list, MAX_PHOTOS); } catch (e) { return res.status(400).json({ error: e.message }); }
 
     const ins = db.prepare('INSERT INTO gallery_photo (member_id, photo, caption) VALUES (?,?,?)');
-    const ids = db.transaction(() => saved.map(p => ins.run(req.me.id, p, caption).lastInsertRowid))();
+    const ids = db.transaction(() => {
+      const got = saved.map(p => ins.run(req.me.id, p, caption).lastInsertRowid);
+      db.prepare(`UPDATE gallery_photo SET batch=? WHERE id IN (${got.map(() => '?').join(',')})`).run(got[0], ...got);
+      return got;
+    })();
     res.json({ ok: true, ids });
   });
 
@@ -57,6 +69,7 @@ module.exports = function galleryRoutes(db, auth) {
 
     const r = db.prepare('INSERT INTO gallery_photo (member_id, photo, video, duration, caption) VALUES (?,?,?,?,?)')
       .run(req.me.id, poster, got.file, Math.round(duration * 10) / 10, caption);
+    db.prepare('UPDATE gallery_photo SET batch=id WHERE id=?').run(r.lastInsertRowid);
     res.json({ ok: true, id: r.lastInsertRowid, video: got.file, photo: poster });
   });
 

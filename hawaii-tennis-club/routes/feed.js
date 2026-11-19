@@ -17,9 +17,14 @@ const PARTS = {
            (SELECT json_group_array(path) FROM (SELECT pp.path FROM post_photo pp WHERE pp.post_id = p.id ORDER BY pp.sort, pp.id LIMIT 4)) AS thumbs,
            p.created_at || '#post#' || printf('%010d', p.id) AS skey
          FROM post p JOIN member m ON m.id = p.member_id`,
-  photo: `SELECT 'photo' AS type, g.id, g.member_id, g.created_at, g.caption AS title, NULL AS excerpt, g.video, g.photo, 1 AS photos, 0 AS likes, 0 AS comments,
-           NULL AS sub, m.name AS author, m.photo AS author_photo, NULL AS thumbs, g.created_at || '#photo#' || printf('%010d', g.id) AS skey
-         FROM gallery_photo g LEFT JOIN member m ON m.id = g.member_id`,
+  // 사진첩은 한 번에 올린 묶음(batch)마다 카드 하나 — 묶음에서 가장 앞 사진이 대표
+  photo: `SELECT 'photo' AS type, g.id, g.member_id, g.created_at, g.caption AS title, NULL AS excerpt, g.video, g.photo,
+           (SELECT COUNT(*) FROM gallery_photo x WHERE x.batch = g.batch) AS photos, 0 AS likes, 0 AS comments,
+           NULL AS sub, m.name AS author, m.photo AS author_photo,
+           (SELECT json_group_array(photo) FROM (SELECT x.photo FROM gallery_photo x WHERE x.batch = g.batch ORDER BY x.id LIMIT 4)) AS thumbs,
+           g.created_at || '#photo#' || printf('%010d', g.id) AS skey
+         FROM gallery_photo g LEFT JOIN member m ON m.id = g.member_id
+         WHERE g.id = (SELECT MIN(x.id) FROM gallery_photo x WHERE x.batch = g.batch)`,
   notice: `SELECT 'notice' AS type, n.id, n.created_by AS member_id, n.created_at, n.title, substr(n.body, 1, 160) AS excerpt, NULL AS video, n.photo,
            COALESCE(json_array_length(n.photos), n.photo IS NOT NULL) AS photos, 0 AS likes, 0 AS comments, NULL AS sub, m.name AS author, m.photo AS author_photo,
            CASE WHEN json_array_length(n.photos) > 1 THEN (SELECT json_group_array(value) FROM (SELECT value FROM json_each(n.photos) ORDER BY key LIMIT 4)) END AS thumbs,

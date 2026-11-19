@@ -2,7 +2,7 @@
 // 카드 = 사진 + 제목 + 작성자. 사진 높이대로 짧은 열에 차곡차곡(메이슨리), 끝까지 내리면 다음 묶음(무한 스크롤).
 // 위쪽: 종류 칩(All·Board·Photos·Notices·Results) + 새 글(＋). 운영진은 가입 신청이 있으면 맨 위에 알림 한 줄.
 // 피드 위: 전광판 → 작은 캘린더(일정 제목이 칸에 보인다). 피드 맨 앞에 Free Chat 카드(전체방 최근 3개) (2026-11-16 사장님).
-import { api, esc, origText, avatar, openModal, toast, today, thisMonth, shiftMonth } from '../ui.js';
+import { api, esc, origText, avatar, openModal, toast, errText, today, thisMonth, shiftMonth } from '../ui.js';
 import { t, timeAgo, fmtMonth, fmtDate } from '../i18n.js';
 import { openPost, postForm } from './board.js';
 import { galleryViewer, uploadForm, fmtDur } from './gallery.js';
@@ -168,7 +168,11 @@ function open(r, items, state, again) {
   if (!r) return;
   if (r.type === 'post') return openPost(r.id, state, () => {});
   if (r.type === 'photo') {
-    const photos = items.filter(x => x.type === 'photo')
+    // 묶음(여러 장) — 그 묶음 사진 전부를 받아 넘겨 본다
+    if (r.photos > 1) {
+      return api(`/gallery?group=${r.id}`).then(d => galleryViewer(d.rows, 0, state, again)).catch(e => toast(errText(e), true));
+    }
+    const photos = items.filter(x => x.type === 'photo' && !(x.photos > 1))
       .map(x => ({ id: x.id, member_id: x.member_id, photo: x.photo, video: x.video, duration: x.duration, caption: x.title, author: x.author, created_at: x.created_at }));
     return galleryViewer(photos, photos.findIndex(x => x.id === r.id), state, again);
   }
