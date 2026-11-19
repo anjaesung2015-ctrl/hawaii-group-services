@@ -1,4 +1,4 @@
-// 홈 팝업 — 하루에 한 개만 띄운다. 게시 중인 팝업이 여러 개면 날마다 돌아가며 하나씩.
+// 홈 팝업 — 앱을 열면 오늘 아직 안 본 팝업을 전부 차례로 띄운다(1/2 → 다음). 닫은 것은 그날 다시 안 뜬다.
 // '오늘 하루 안 보기'·'다시 안 보기'는 이 폰에만 남긴다(localStorage). 폰을 바꾸면 다시 뜬다.
 // 관리(운영진): ☰ 메뉴 → Popups 화면(renderPopupAdmin).
 // 팝업은 #modalRoot 에 띄운다 — 폰 뒤로가기가 팝업부터 닫는다(backnav).
@@ -7,7 +7,7 @@ import { t } from '../i18n.js';
 
 const NEVER = 'htc_popup_never';     // [id, …]
 const SKIP = 'htc_popup_today';      // { id: 'YYYY-MM-DD' }
-const SHOWN = 'htc_popup_seen';      // { date: 'YYYY-MM-DD', id } — 오늘 닫았는지, 마지막에 본 팝업 (옛 htc_popup_shown 은 뜨자마자 남겨서 버림)
+const SHOWN = 'htc_popup_seen';      // { date: 'YYYY-MM-DD', ids: [...] } — 오늘 닫은 팝업들 (옛 { date, id } 도 읽음)
 
 const LINK_LABEL = {
   schedule: 'tabSchedule', notices: 'tabNotices', board: 'tabBoard', dues: 'tabDues', members: 'tabMembers',
@@ -29,23 +29,24 @@ let started = false;
 export function maybeShowPopups(state) {
   if (started) return;
   started = true;
-  if (load(SHOWN, {}).date === today()) return;     // 오늘은 이미 하나 봤다
+  // 오늘 이미 본(닫은) 팝업 id — 옛 저장 형식 { date, id } 도 읽는다
+  const seen = load(SHOWN, {});
+  const seenToday = seen.date === today() ? (Array.isArray(seen.ids) ? seen.ids : (seen.id != null ? [seen.id] : [])) : [];
   let list = null, tries = 0;
   const tick = async () => {
     if (!state.me) return;                      // 로그아웃
     if (list === null) {
-      try { list = (await api('/popups/active?lang=en')).filter(p => !hidden(p)); }
+      try { list = (await api('/popups/active?lang=en')).filter(p => !hidden(p) && !seenToday.includes(p.id)); }
       catch (e) { return; }                      // 팝업이 안 떠도 앱은 쓴다
       if (!list.length) return;
     }
     const busy = document.getElementById('modalRoot').innerHTML.trim() || !document.getElementById('menuSheet').hidden
       || !state.rules_agreed || state.tab !== 'home';
     if (busy) { if (tries++ < 600) setTimeout(tick, 1000); return; }
-    // 지난번에 띄운 것 다음 차례 하나만 (끝이면 처음으로)
-    const last = load(SHOWN, {}).id;
-    const pick = list[(list.findIndex(p => p.id === last) + 1) % list.length];
-    // '오늘 봤다'는 회원이 닫거나 버튼을 눌렀을 때만 남긴다 — 뜨자마자 앱이 꺼지거나 새로고침되면 다시 뜬다
-    showPopups([pick], state, { onDone: () => save(SHOWN, { date: today(), id: pick.id }) });
+    // 오늘 아직 안 본 것 전부 차례로 — '봤다'는 회원이 닫거나 버튼을 눌렀을 때만 남긴다
+    // (뜨자마자 앱이 꺼지거나 새로고침되면 다시 뜬다). 새 팝업은 오늘 다른 팝업을 닫았어도 뜬다.
+    const ids = list.map(p => p.id);
+    showPopups(list, state, { onDone: () => save(SHOWN, { date: today(), ids: [...new Set([...seenToday, ...ids])] }) });
   };
   setTimeout(tick, 600);
 }
