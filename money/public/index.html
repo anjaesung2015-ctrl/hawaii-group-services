@@ -56,7 +56,9 @@ section h2 { font-size: 13px; color: var(--muted); font-weight: 600; margin: 4px
 .cats { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px }
 .cat { display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: center; font-size: 14px }
 .bar { height: 8px; background: var(--soft); border-radius: 4px; overflow: hidden }
-.bar i { display: block; height: 100%; background: var(--out); border-radius: 4px }
+.bar i { display: block; height: 100%; background: var(--c-out); border-radius: 4px }
+.bar.in i { background: var(--c-in) }
+.cat { grid-template-columns: 78px 1fr auto }
 .cat .num { font-size: 13px }
 
 .day { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden }
@@ -191,6 +193,11 @@ body { margin: 0; padding-top: calc(12px + env(safe-area-inset-top, 0px)); paddi
     </div>
   </section>
 
+  <section id="inSec" hidden>
+    <h2>어디서 벌었나</h2>
+    <div class="cats" id="inCats"></div>
+  </section>
+
   <section id="catSec" hidden>
     <h2>어디에 썼나</h2>
     <div class="cats" id="cats"></div>
@@ -240,7 +247,7 @@ body { margin: 0; padding-top: calc(12px + env(safe-area-inset-top, 0px)); paddi
   </div>
 </div>
 <script>
-const CATS = { out: ["식비","카페","교통","생활","쇼핑","주거","의료","경조사","기타"], in: ["급여","사업","용돈","기타"] };
+const CATS = { out: ["Fitness","센터","Shop","Tennis","개인","기타"], in: ["Fitness","센터 대관","센터 매점","센터 식당","Shop","Tennis","기타"] };
 const QUICK = { "₮": [1000, 10000, 100000], "원": [1000, 10000, 50000] };
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, "0");
@@ -311,13 +318,16 @@ function render() {
   const key = `${view.y}-${pad(view.m)}`;
   const rows = entries.filter(e => typeof e.date === "string" && e.date.startsWith(key))
     .sort((a, b) => b.date.localeCompare(a.date) || (b.ts || 0) - (a.ts || 0));
-  let sIn = 0, sOut = 0; const byCat = {};
-  rows.forEach(e => { const a = Number(e.amount) || 0; if (e.type === "in") sIn += a; else { sOut += a; byCat[e.cat] = (byCat[e.cat] || 0) + a; } });
+  let sIn = 0, sOut = 0; const byCat = {}, byIn = {};
+  rows.forEach(e => { const a = Number(e.amount) || 0; if (e.type === "in") { sIn += a; byIn[e.cat] = (byIn[e.cat] || 0) + a; } else { sOut += a; byCat[e.cat] = (byCat[e.cat] || 0) + a; } });
   $("#sumIn").textContent = fmt(sIn); $("#sumOut").textContent = fmt(sOut);
   $("#bal").textContent = (sIn - sOut < 0 ? "-" : "") + fmt(Math.abs(sIn - sOut));
 
   renderCompare(sIn, sOut);
 
+  const ins = Object.entries(byIn).sort((a, b) => b[1] - a[1]);
+  $("#inSec").hidden = !ins.length;
+  $("#inCats").innerHTML = ins.map(([c, v]) => `<div class="cat"><span>${esc(c)}</span><div class="bar in"><i style="width:${Math.max(3, v / sIn * 100).toFixed(1)}%"></i></div><span class="num">${fmt(v)}</span></div>`).join("");
   const cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
   $("#catSec").hidden = !cats.length;
   $("#cats").innerHTML = cats.map(([c, v]) => `<div class="cat"><span>${esc(c)}</span><div class="bar"><i style="width:${Math.max(3, v / sOut * 100).toFixed(1)}%"></i></div><span class="num">${fmt(v)}</span></div>`).join("");

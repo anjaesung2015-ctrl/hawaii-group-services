@@ -1,5 +1,5 @@
 // 화면 파일만 캐시(오프라인일 때 앱 껍데기라도 뜨게). api는 절대 캐시하지 않는다.
-const CACHE = 'money-v1';
+const CACHE = 'money-v2';
 const SHELL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon.svg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
