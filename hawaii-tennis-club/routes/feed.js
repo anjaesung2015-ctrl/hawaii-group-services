@@ -14,19 +14,23 @@ const PARTS = {
            (SELECT COUNT(*) FROM post_like l WHERE l.post_id = p.id) AS likes,
            (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.id) AS comments,
            NULL AS sub, m.name AS author, m.photo AS author_photo,
+           (SELECT json_group_array(path) FROM (SELECT pp.path FROM post_photo pp WHERE pp.post_id = p.id ORDER BY pp.sort, pp.id LIMIT 4)) AS thumbs,
            p.created_at || '#post#' || printf('%010d', p.id) AS skey
          FROM post p JOIN member m ON m.id = p.member_id`,
   photo: `SELECT 'photo' AS type, g.id, g.member_id, g.created_at, g.caption AS title, NULL AS excerpt, g.video, g.photo, 1 AS photos, 0 AS likes, 0 AS comments,
-           NULL AS sub, m.name AS author, m.photo AS author_photo, g.created_at || '#photo#' || printf('%010d', g.id) AS skey
+           NULL AS sub, m.name AS author, m.photo AS author_photo, NULL AS thumbs, g.created_at || '#photo#' || printf('%010d', g.id) AS skey
          FROM gallery_photo g LEFT JOIN member m ON m.id = g.member_id`,
   notice: `SELECT 'notice' AS type, n.id, n.created_by AS member_id, n.created_at, n.title, substr(n.body, 1, 160) AS excerpt, NULL AS video, n.photo,
            COALESCE(json_array_length(n.photos), n.photo IS NOT NULL) AS photos, 0 AS likes, 0 AS comments, NULL AS sub, m.name AS author, m.photo AS author_photo,
+           CASE WHEN json_array_length(n.photos) > 1 THEN (SELECT json_group_array(value) FROM (SELECT value FROM json_each(n.photos) ORDER BY key LIMIT 4)) END AS thumbs,
            n.created_at || '#notice#' || printf('%010d', n.id) AS skey
          FROM notice n LEFT JOIN member m ON m.id = n.created_by`,
   result: `SELECT 'result' AS type, r.id, r.created_by AS member_id, r.created_at, r.title, r.division AS excerpt, NULL AS video,
            (SELECT rp.photo FROM result_photo rp WHERE rp.result_id = r.id ORDER BY rp.id LIMIT 1) AS photo,
            (SELECT COUNT(*) FROM result_photo rp WHERE rp.result_id = r.id) AS photos, 0 AS likes, 0 AS comments, r.kind AS sub,
-           m.name AS author, m.photo AS author_photo, r.created_at || '#result#' || printf('%010d', r.id) AS skey
+           m.name AS author, m.photo AS author_photo,
+           (SELECT json_group_array(photo) FROM (SELECT rp.photo FROM result_photo rp WHERE rp.result_id = r.id ORDER BY rp.id LIMIT 4)) AS thumbs,
+           r.created_at || '#result#' || printf('%010d', r.id) AS skey
          FROM result r LEFT JOIN member m ON m.id = r.created_by`,
 };
 
@@ -67,7 +71,12 @@ module.exports = function feedRoutes(db, auth, tr) {
 
     // 회원이 쓴 글은 화면 언어로 번역한 title_tr·excerpt_tr 를 덧붙인다 (원문은 그대로)
     if (tr && req.query.lang) await tr.attach(rows, ['title', 'excerpt'], String(req.query.lang));
-    const out = rows.map(({ skey: _skey, ...r }) => r);
+    // 사진 여러 장인 카드는 앞 4장 주소(thumbs)로 콜라주를 그린다 — 1장 이하면 뺀다
+    const out = rows.map(({ skey: _skey, thumbs, ...r }) => {
+      let list = null;
+      try { list = thumbs ? JSON.parse(thumbs) : null; } catch (e) { list = null; }
+      return r.photos > 1 && Array.isArray(list) && list.length > 1 ? { ...r, thumbs: list } : r;
+    });
     res.json({ rows: out, next: rows.length === limit ? rows[rows.length - 1].skey : null });
   });
 

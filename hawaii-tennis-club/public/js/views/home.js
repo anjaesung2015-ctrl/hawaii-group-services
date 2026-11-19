@@ -125,6 +125,14 @@ function chatCard(c) {
   </div>`;
 }
 
+// 사진 여러 장 — 쪼개서 보여 준다 (2장 좌우, 3장 큰 1 + 작은 2, 4장 이상 2×2, 넘치면 마지막 칸에 +N)
+function collage(r) {
+  const list = r.thumbs.slice(0, 4);
+  const more = r.photos - list.length;
+  return `<div class="fimg fcollage n${list.length}">${list.map((src, k) =>
+    `<div class="fcell"${k === list.length - 1 && more > 0 ? ` data-more="+${more}"` : ''}><img src="${esc(src)}" alt="" loading="lazy"></div>`).join('')}</div>`;
+}
+
 function card(r, ratio, i) {
   const title = origText(r, 'title').text;
   const meta = `<div class="fmeta">${avatar(r.author || '?', r.author_photo, 'fav')}<span class="fwho">${esc(r.author || t('formerMember'))}</span>
@@ -145,7 +153,7 @@ function card(r, ratio, i) {
         <div class="ftext">${esc(title)}</div>${counts}${meta}</article>`;
   }
   return `<article class="fcard t-${r.type}" data-fi="${i}">
-      ${r.photo ? `<div class="fimg" style="aspect-ratio:${ratio || 1}"><img src="${esc(r.photo)}" alt="" loading="lazy">
+      ${r.thumbs?.length > 1 ? collage(r) : r.photo ? `<div class="fimg" style="aspect-ratio:${ratio || 1}"><img src="${esc(r.photo)}" alt="" loading="lazy">
         ${r.photos > 1 ? `<span class="fmulti">▣ ${r.photos}</span>` : ''}
         ${r.video ? `<span class="fplay">▶</span>${r.duration ? `<span class="vbadge">${fmtDur(r.duration)}</span>` : ''}` : ''}</div>` : ''}
       <div class="fbody">

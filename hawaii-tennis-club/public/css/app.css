@@ -1021,6 +1021,17 @@ body.tabs-8 .tabbar .tab-icon { width: 21px; height: 21px; }
 .fcard:active { transform: scale(.985); }
 .fimg { position: relative; width: 100%; background: var(--court-tint); }
 .fimg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* 홈 피드 — 사진 여러 장 콜라주 */
+.fcollage { display: grid; gap: 2px; aspect-ratio: 1 / 1; }
+.fcollage.n2 { grid-template-columns: 1fr 1fr; }
+.fcollage.n3 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
+.fcollage.n3 .fcell:first-child { grid-row: span 2; }
+.fcollage.n4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.fcollage .fcell { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.fcollage .fcell[data-more]::after {
+  content: attr(data-more); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, .45); color: #fff; font-size: 20px; font-weight: 700;
+}
 .fmulti {
   position: absolute; top: 7px; right: 7px; padding: 2px 7px; border-radius: 10px;
   background: rgba(0, 0, 0, .55); color: #fff; font-size: 11px; font-weight: 650;
