@@ -5,7 +5,7 @@ const express = require('express');
 const { savePhotos, removePhoto } = require('../lib/photos');
 
 const KINDS = ['monthly', 'external'];
-const MAX_PHOTOS = 4;
+const MAX_PHOTOS = 10;
 const MAX_ENTRIES = 40;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 

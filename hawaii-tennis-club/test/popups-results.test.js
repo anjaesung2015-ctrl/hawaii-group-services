@@ -138,7 +138,7 @@ test('성적 — 일반 회원은 못 올리고, 오너가 성적 담당으로 �
   app.close();
 });
 
-test('성적 — 잘못된 값 거절, 사진 4장 제한, 지우면 사진도 사라진다, 회원을 지워도 기록은 남는다', async () => {
+test('성적 — 잘못된 값 거절, 사진 10장 제한, 지우면 사진도 사라진다, 회원을 지워도 기록은 남는다', async () => {
   const app = makeApp();
   const a = await loginAs(app.base, '99000000', '1234');
   const ok = { title: 'T', held_on: '2026-11-01', kind: 'external', entries: [{ place: 1, member_id: app.memberId }] };
@@ -149,9 +149,9 @@ test('성적 — 잘못된 값 거절, 사진 4장 제한, 지우면 사진도 �
   await bad({ entries: [] }, 'entries_required');
   await bad({ entries: [{ place: 5, name: 'x' }] }, 'bad_place');
   await bad({ entries: [{ place: 1, member_id: 9999 }] }, 'bad_member');
-  await bad({ photos: Array(5).fill(TINY) }, 'too_many_photos');
+  await bad({ photos: Array(11).fill(TINY) }, 'too_many_photos');
 
-  const id = (await a.call('/results', { method: 'POST', body: { ...ok, photos: [TINY, TINY, TINY] } })).data.id;
+  const id = (await a.call('/results', { method: 'POST', body: { ...ok, photos: Array(9).fill(TINY) } })).data.id;
   const ph = (await a.call('/results')).data.rows[0].photos;
   // 남은 자리는 1장 — 2장 더하면 거절, 1장 빼고 2장 더하면 통과
   assert.strictEqual((await a.call(`/results/${id}`, { method: 'PATCH', body: { photos: [TINY, TINY] } })).data.error, 'too_many_photos');
@@ -159,7 +159,7 @@ test('성적 — 잘못된 값 거절, 사진 4장 제한, 지우면 사진도 �
   await app.settle();
   assert.ok(!fs.existsSync(up(app, ph[0].photo)));
   const now = (await a.call('/results')).data.rows[0].photos;
-  assert.strictEqual(now.length, 4);
+  assert.strictEqual(now.length, 10);
 
   // 회원을 지워도 입상 기록은 이름으로 남는다
   assert.strictEqual((await a.call(`/members/${app.memberId}`, { method: 'DELETE' })).status, 200);

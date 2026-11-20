@@ -1,13 +1,25 @@
 // 대회 성적 (Hall of Fame) — 월례대회·외부대회 입상 기록.
 // 홈 피드의 성적 카드를 누르면 전체 목록(renderResults)의 그 대회로.
 // 올리기·고치기 = 운영진 + 오너가 지정한 성적 담당 (서버가 다시 확인한다).
-import { api, esc, toast, openModal, pickPhoto, today, errText } from '../ui.js';
+import { api, esc, toast, openModal, pickPhotos, today, errText } from '../ui.js';
 import { t, fmtDate } from '../i18n.js';
 
-const MAX_PHOTOS = 4;
+const MAX_PHOTOS = 10;   // 서버(routes/results.js)와 같게
 const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉', 4: '🎖' };
 const placeName = (n) => t(`place${n}`);
 const kindName = (k) => t(k === 'external' ? 'kindExternal' : 'kindMonthly');
+
+// 사진 — 1장은 크게, 여러 장은 작은 정사각 격자(2·4장 2칸, 그 외 3칸). 누르면 크게 + 넘기기(data-photo-set)
+function photoGrid(list) {
+  if (!list.length) return '';
+  const set = `data-photo-set="${esc(JSON.stringify(list))}"`;
+  if (list.length === 1) {
+    return `<div ${set}><img class="notice-photo" src="${esc(list[0])}" data-view-photo="${esc(list[0])}" alt="" loading="lazy"></div>`;
+  }
+  const cols = (list.length === 2 || list.length === 4) ? 'c2' : 'c3';
+  return `<div class="post-grid ${cols}" ${set}>${list.map(src =>
+    `<img src="${esc(src)}" data-view-photo="${esc(src)}" alt="" loading="lazy">`).join('')}</div>`;
+}
 
 export const canResults = (me) => !!me && (me.role === 'admin' || !!me.is_owner || !!me.results_manager);
 
@@ -72,7 +84,7 @@ function card(r, can) {
             <span class="pl-name">${esc(placeName(place))}</span>
             <b>${esc(list.map(e => e.name).join(' · '))}</b></div>`).join('')}
       </div>
-      ${r.photos.length ? `<div class="rphotos">${r.photos.map(p => `<img src="${esc(p.photo)}" data-view-photo="${esc(p.photo)}" alt="" loading="lazy">`).join('')}</div>` : ''}
+      ${photoGrid(r.photos.map(p => p.photo))}
       ${r.note ? `<div class="memo">${esc(r.note)}</div>` : ''}
     </div>`;
 }
@@ -139,6 +151,7 @@ export async function resultForm(r, refresh) {
         return who ? { place, member_id: Number(who) } : null;
       }).filter(e => e && (e.member_id || e.name));
       if (!entries.length) return t('resultNeedWinner');
+      if (ready) await ready;   // 사진 줄이는 중이면 끝날 때까지 기다린다
       const body = { ...v, note: form.querySelector('[data-note]').value.trim(), entries, photos: added };
       if (isNew) await api('/results', { method: 'POST', body });
       else await api(`/results/${r.id}`, { method: 'PATCH', body: { ...body, remove_photos: removed } });
@@ -164,6 +177,7 @@ export async function resultForm(r, refresh) {
     box.insertAdjacentHTML('beforeend', entryRow({ place: last ? Number(last.value) : 1 }));
   };
 
+  let ready = null;   // 사진 줄이는 중이면 저장이 기다린다
   const ph = m.form.querySelector('[data-photos]');
   const pick = m.form.querySelector('[data-pick]');
   const drawPhotos = () => {
@@ -181,8 +195,23 @@ export async function resultForm(r, refresh) {
     drawPhotos();
   };
   pick.onclick = async () => {
-    const d = await pickPhoto(1600);
-    if (d) { added = [...added, d].slice(0, MAX_PHOTOS - keep.length); drawPhotos(); }
+    const room = MAX_PHOTOS - keep.length - added.length;
+    if (room <= 0) return;
+    pick.disabled = true;
+    const label = pick.textContent;
+    let release = null;
+    const { photos, cut, failed } = await pickPhotos(room, 1600, (n, total) => {
+      if (n === 0) ready = new Promise(r => { release = r; });
+      pick.textContent = `⏳ ${n}/${total}`;
+    });
+    pick.disabled = false;
+    pick.textContent = label;
+    if (cut) toast(t('resultPhotos', { n: MAX_PHOTOS }), true);
+    if (failed) toast(t('photoFailed', { n: failed }), true);
+    added = [...added, ...photos].slice(0, MAX_PHOTOS - keep.length);
+    drawPhotos();
+    ready = null;
+    release?.();
   };
   drawPhotos();
 }
