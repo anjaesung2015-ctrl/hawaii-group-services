@@ -302,6 +302,7 @@ async function renderRoom(el, state, roomId) {
 
   let sending = false;
   let pending = [];   // 보내기 전 고른 사진들(data:URL) — 보내기를 누르면 글과 함께 한 메시지로
+  let ready = null;   // 사진 줄이는 중이면 끝날 때 풀리는 약속 — 보내기가 기다린다
   const photoBtn = form.querySelector('[data-photo]');
   const sendBtn = form.querySelector('[type="submit"]');
   const tray = form.querySelector('[data-tray]');
@@ -322,18 +323,28 @@ async function renderRoom(el, state, roomId) {
     if (room <= 0) return toast(t('chatMaxPhotos', { n: MAX_PHOTOS }), true);
     photoBtn.disabled = true;
     photoBtn.textContent = '⏳';
-    const { photos, cut } = await pickPhotos(room);
+    let release = null;
+    const { photos, cut, failed } = await pickPhotos(room, 1280, (n, total) => {
+      if (n === 0) ready = new Promise(r => { release = r; });
+      photoBtn.textContent = total > 1 ? `${n}/${total}` : '⏳';
+    });
     photoBtn.disabled = false;
     photoBtn.textContent = '📷';
     if (cut) toast(t('chatMaxPhotos', { n: MAX_PHOTOS }), true);
-    if (!photos.length) return;
+    if (failed) toast(t('photoFailed', { n: failed }), true);
     pending.push(...photos);
-    drawTray();
-    toBottom();
+    if (photos.length) { drawTray(); toBottom(); }
+    ready = null;
+    release?.();
   };
 
   form.onsubmit = async (e) => {
     e.preventDefault();
+    if (ready && !sending) {   // 사진 줄이는 중 — 끝나면 글과 함께 보낸다 (사진이 빠지지 않게)
+      sendBtn.disabled = true;
+      await ready;
+      sendBtn.disabled = false;
+    }
     const body = input.value.trim();
     if ((!body && !pending.length) || sending) return;
     if (!pending.length) return post({ body });
