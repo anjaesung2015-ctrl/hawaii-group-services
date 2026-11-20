@@ -43,6 +43,11 @@ function roomRow(r) {
   const last = r.last
     ? `${r.last.mine ? `${t('you')}: ` : (club && r.last.name ? `${r.last.name}: ` : '')}${r.last.body || (r.last.photos?.length > 1 ? `📷 ${t('photosN', { n: r.last.photos.length })}` : `📷 ${t('photo')}`)}`
     : t('clubChatSub');
+  // 마지막 메시지 사진 — 작은 미리보기 (여러 장이면 +N). 주소는 방 사람만 열린다(api/chat/photo)
+  const shots = r.last ? (r.last.photos?.length ? r.last.photos : (r.last.photo ? [r.last.photo] : [])) : [];
+  const thumb = shots.length
+    ? `<div class="room-thumb"${shots.length > 1 ? ` data-more="+${shots.length - 1}"` : ''}><img src="${esc(shots[0])}" alt="" loading="lazy"></div>`
+    : '';
   return `
     <div class="member-row room-row" data-room="${r.id}" style="cursor:pointer">
       ${club ? '<div class="avatar club">🎾</div>' : avatar(name, r.other?.photo)}
@@ -50,6 +55,7 @@ function roomRow(r) {
         <b>${esc(name)}${!club && r.other?.is_coach ? ` <span class="pill coach">🎾 ${esc(t('coach'))}</span>` : ''}</b>
         <small class="room-last">${esc(last)}</small>
       </div>
+      ${thumb}
       <div class="room-side">
         ${r.last ? `<small>${esc(timeAgo(r.last.created_at))}</small>` : ''}
         ${r.unread ? `<span class="unread">${r.unread > 99 ? '99+' : r.unread}</span>` : ''}
