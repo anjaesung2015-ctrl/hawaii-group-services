@@ -248,7 +248,17 @@ async function drawTicker(box, isAdmin) {
 async function drawMiniCal(box, state) {
   const ym = state.homeMonth || thisMonth();
   let events = [];
-  try { events = await api(`/events?month=${ym}&lang=en`); } catch (e) { events = []; }
+  let bdays = [];
+  [events, bdays] = await Promise.all([
+    api(`/events?month=${ym}&lang=en`).catch(() => []),
+    api(`/ticker/birthdays?month=${ym}`).catch(() => []),
+  ]);
+  const bdayBy = new Map();         // 날짜 → [생일 회원]
+  for (const b of bdays) {
+    const iso = `${ym.slice(0, 4)}-${b.birthday}`;
+    if (!bdayBy.has(iso)) bdayBy.set(iso, []);
+    bdayBy.get(iso).push(b);
+  }
   const byDay = new Map();          // 날짜 → [일정]
   for (const e of events) {
     if (!byDay.has(e.event_date)) byDay.set(e.event_date, []);
@@ -265,11 +275,14 @@ async function drawMiniCal(box, state) {
     const iso = `${ym}-${String(d).padStart(2, '0')}`;
     const list = byDay.get(iso) || [];
     const shown = [...list.filter(e => calKind(e) !== 'regular'), ...list.filter(e => calKind(e) === 'regular')];
-    const labels = shown.slice(0, 2).map(e => `<span class="mc-ev ${calKind(e)}">${esc(origText(e, 'title').text)}</span>`).join('')
-      + (shown.length > 2 ? `<span class="mc-more">+${shown.length - 2}</span>` : '');
+    const bd = bdayBy.get(iso) || [];
+    const all = [...bd.map(b => `<span class="mc-ev bday">🎂 ${esc(b.name)}</span>`),
+      ...shown.map(e => `<span class="mc-ev ${calKind(e)}">${esc(origText(e, 'title').text)}</span>`)];
+    const labels = all.slice(0, 2).join('') + (all.length > 2 ? `<span class="mc-more">+${all.length - 2}</span>` : '');
     cells.push(`<button type="button" data-d="${iso}" class="${iso === today() ? 'today' : ''}${iso < today() ? ' past' : ''}${iso === sel ? ' sel' : ''}"><b>${d}</b>${labels}</button>`);
   }
   const dayList = sel ? (byDay.get(sel) || []) : [];
+  const dayBdays = sel ? (bdayBy.get(sel) || []) : [];
   box.innerHTML = `
     <div class="mc-head">
       <button type="button" data-m="-1" aria-label="prev">‹</button>
@@ -282,7 +295,8 @@ async function drawMiniCal(box, state) {
     ${sel ? `<div class="mc-day">
       <div class="mc-day-head"><b>${esc(fmtDate(sel))}</b>
         ${isAdmin ? `<button type="button" class="btn btn-sm btn-primary" data-day-add>+ ${esc(t('calAddEvent'))}</button>` : ''}</div>
-      ${dayList.length ? dayList.map(e => eventCard(e, { rsvp: e.event_date >= today() })).join('') : `<div class="empty" style="padding:10px">${esc(t('calNothing'))}</div>`}
+      ${dayBdays.map(b => `<div class="mc-bday">${esc(t('tickerBirthday', { name: b.name }))}</div>`).join('')}
+      ${dayList.length ? dayList.map(e => eventCard(e, { rsvp: e.event_date >= today() })).join('') : (dayBdays.length ? '' : `<div class="empty" style="padding:10px">${esc(t('calNothing'))}</div>`)}
     </div>` : ''}`;
   box.querySelectorAll('[data-m]').forEach(b => b.onclick = () => {
     const step = Number(b.dataset.m);

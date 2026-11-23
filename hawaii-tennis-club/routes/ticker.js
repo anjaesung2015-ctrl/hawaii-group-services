@@ -24,6 +24,14 @@ module.exports = function tickerRoutes(db, auth) {
     res.json({ today: d, birthdays, messages: text.split('\n').map(s => s.trim()).filter(Boolean), text, events });
   });
 
+  // 캘린더용 — 그 달 생일인 동호인 회원 (?month=MM 또는 YYYY-MM)
+  router.get('/birthdays', (req, res) => {
+    const m = String(req.query.month || '').match(/(?:^\d{4}-)?(0[1-9]|1[0-2])$/);
+    if (!m) return res.status(400).json({ error: 'bad_month' });
+    res.json(db.prepare(`SELECT id, name, birthday FROM member
+      WHERE program='club' AND status='active' AND substr(birthday,1,2)=? ORDER BY birthday, name`).all(m[1]));
+  });
+
   // 운영진 문구 — 빈 칸이면 문구 없이 생일·일정만
   router.put('/text', auth.requireAdmin, (req, res) => {
     const text = String(req.body?.text ?? '').replace(/\r/g, '').trim();
