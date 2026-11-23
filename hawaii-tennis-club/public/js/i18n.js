@@ -27,7 +27,7 @@ export const DICT = {
     schedule: 'Schedule', newEvent: 'New schedule', editEvent: 'Edit schedule',
     kindRegular: 'Club Night', kindEvent: 'Event', kindTournament: 'Tournament', kindCourt: 'Court booking',
     title: 'Title', kind: 'Type', date: 'Date', startTime: 'Start', endTime: 'End',
-    courts: 'Courts', memo: 'Note', upcomingTab: 'Upcoming', pastTab: 'Past',
+    courts: 'Courts', location: 'Location', locationHint: 'Optional — shown instead of courts', memo: 'Note', upcomingTab: 'Upcoming', pastTab: 'Past',
     courtsN: '{n} courts', noEvents: 'No events', endBeforeStart: 'End time is before the start time',
     yes: 'Going', no: 'Not going', maybe: 'Maybe',
     attendCount: '{n} going', roster: 'Who is coming', noAnswerYet: 'No answers yet', myAnswer: 'My answer',

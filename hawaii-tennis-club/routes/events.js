@@ -61,9 +61,9 @@ function eventRoutes(db, auth, notify, tr) {
   router.post('/', auth.requireAdmin, (req, res) => {
     const b = parseEvent(req.body);
     if (b.error) return res.status(400).json({ error: b.error });
-    const r = db.prepare(`INSERT INTO event (title, kind, event_date, start_time, end_time, courts, memo, created_by)
-                          VALUES (?,?,?,?,?,?,?,?)`)
-      .run(b.title, b.kind, b.event_date, b.start_time, b.end_time, b.courts, b.memo, req.me.id);
+    const r = db.prepare(`INSERT INTO event (title, kind, event_date, start_time, end_time, courts, memo, created_by, location)
+                          VALUES (?,?,?,?,?,?,?,?,?)`)
+      .run(b.title, b.kind, b.event_date, b.start_time, b.end_time, b.courts, b.memo, req.me.id, b.location);
     res.json({ ok: true, id: r.lastInsertRowid });
 
     notify?.toAll({
@@ -96,8 +96,8 @@ function eventRoutes(db, auth, notify, tr) {
     if (dates.length > 120) return res.status(400).json({ error: 'too_many_dates', count: dates.length });
 
     const dup = db.prepare('SELECT id FROM event WHERE title=? AND event_date=? AND start_time=?');
-    const ins = db.prepare(`INSERT INTO event (title, kind, event_date, start_time, end_time, courts, memo, created_by)
-                            VALUES (?,?,?,?,?,?,?,?)`);
+    const ins = db.prepare(`INSERT INTO event (title, kind, event_date, start_time, end_time, courts, memo, created_by, location)
+                            VALUES (?,?,?,?,?,?,?,?,?)`);
 
     const run = db.transaction(() => {
       const created = [];
@@ -108,7 +108,7 @@ function eventRoutes(db, auth, notify, tr) {
         const title = monthly ? MONTHLY_TITLE : base.title;
         // 같은 제목·날짜·시작시간이 이미 있으면 건너뛴다 (두 번 눌러도 겹쳐 쌓이지 않게)
         if (dup.get(title, d, base.start_time)) { skipped += 1; continue; }
-        ins.run(title, monthly ? 'tournament' : base.kind, d, base.start_time, base.end_time, base.courts, base.memo, req.me.id);
+        ins.run(title, monthly ? 'tournament' : base.kind, d, base.start_time, base.end_time, base.courts, base.memo, req.me.id, base.location);
         created.push(d);
         if (monthly) tourneys.push(d);
       }
@@ -134,8 +134,8 @@ function eventRoutes(db, auth, notify, tr) {
     // 보내준 칸만 바꾼다 — 나머지는 지금 값을 그대로 다시 검사에 통과시킨다
     const b = parseEvent({ ...e, ...req.body });
     if (b.error) return res.status(400).json({ error: b.error });
-    db.prepare(`UPDATE event SET title=?, kind=?, event_date=?, start_time=?, end_time=?, courts=?, memo=? WHERE id=?`)
-      .run(b.title, b.kind, b.event_date, b.start_time, b.end_time, b.courts, b.memo, e.id);
+    db.prepare(`UPDATE event SET title=?, kind=?, event_date=?, start_time=?, end_time=?, courts=?, memo=?, location=? WHERE id=?`)
+      .run(b.title, b.kind, b.event_date, b.start_time, b.end_time, b.courts, b.memo, b.location, e.id);
     res.json({ ok: true });
   });
 
@@ -176,7 +176,8 @@ function parseEvent(b = {}) {
   if (!start_time || !end_time) return { error: 'bad_time' };
   if (end_time <= start_time) return { error: 'end_before_start' };
 
-  return { title, kind, event_date, start_time, end_time, courts, memo: String(b.memo || '').trim() || null };
+  const location = String(b.location || '').trim().slice(0, 100) || null;
+  return { title, kind, event_date, start_time, end_time, courts, memo: String(b.memo || '').trim() || null, location };
 }
 
 // from~to 사이에서 고른 요일(0=일 … 6=토)에 해당하는 날짜만 모은다. UTC로만 계산해 시간대에 안 흔들린다.

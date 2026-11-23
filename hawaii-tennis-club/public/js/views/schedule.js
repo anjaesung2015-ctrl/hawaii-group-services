@@ -37,6 +37,9 @@ export async function renderSchedule(el, state) {
 }
 
 // 일정 카드 한 장 — 홈 화면도 이걸 쓴다
+// 장소가 있으면 📍장소, 없으면 코트 수
+const placeOf = (e) => e.location ? `📍 ${esc(e.location)}` : esc(t('courtsN', { n: e.courts }));
+
 export function eventCard(e, { rsvp = true } = {}) {
   const [Y, M, D] = e.event_date.split('-').map(Number);
   const d = D;
@@ -52,7 +55,7 @@ export function eventCard(e, { rsvp = true } = {}) {
         </div>
         <div style="flex:1;min-width:0">
           <h3>${esc(origText(e, 'title').text)}</h3>
-          <div class="meta">${e.start_time}–${e.end_time} · ${esc(t('courtsN', { n: e.courts }))}</div>
+          <div class="meta">${e.start_time}–${e.end_time} · ${placeOf(e)}</div>
         </div>
         <span class="pill ${kindPill}">${esc(kindLabel(e.kind))}</span>
       </div>
@@ -118,7 +121,7 @@ export async function openEvent(id, state, refresh) {
     fields: [],
     extra: `
       <div class="meta" style="margin:-6px 2px 10px">
-        ${esc(fmtDate(e.event_date))} · ${e.start_time}–${e.end_time} · ${esc(t('courtsN', { n: e.courts }))}
+        ${esc(fmtDate(e.event_date))} · ${e.start_time}–${e.end_time} · ${placeOf(e)}
         · <span class="pill ${e.kind === 'tournament' ? 'gold' : e.kind === 'court' ? 'court' : ''}">${esc(kindLabel(e.kind))}</span>
       </div>
       ${e.memo ? `<div class="memo" style="margin-bottom:8px">${esc(origText(e, 'memo').text)}</div>${origHtml(origText(e, 'memo').orig)}` : ''}
@@ -197,6 +200,7 @@ export function eventForm(e, state, refresh, preset = {}) {
       { name: 'start_time', label: t('startTime'), type: 'time', value: e?.start_time || '19:00' },
       { name: 'end_time', label: t('endTime'), type: 'time', value: e?.end_time || '21:00' },
       { name: 'courts', label: t('courts'), type: 'number', value: e?.courts ?? 2, min: 1, max: 20 },
+      { name: 'location', label: t('location'), value: e?.location || '', placeholder: t('locationHint') },
       { name: 'memo', label: t('memo'), type: 'textarea', value: e?.memo || '' },
     ],
     extra: isNew ? repeatBlock() : '',

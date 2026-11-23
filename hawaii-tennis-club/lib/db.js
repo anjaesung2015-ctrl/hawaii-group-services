@@ -269,6 +269,9 @@ function migrate(db) {
     db.pragma('foreign_keys = ON');
   }
 
+  // 2026-11-23 — 일정 장소. 있으면 카드에 코트 수 대신 📍장소
+  if (!db.prepare('PRAGMA table_info(event)').all().some(c => c.name === 'location')) db.exec('ALTER TABLE event ADD COLUMN location TEXT');
+
   // 회칙 동의 — 언제, 어느 판(version)에 동의했는지
   const mcols = db.prepare('PRAGMA table_info(member)').all().map(c => c.name);
   // 오너(사장님) 표시 — role 의 CHECK 제약을 건드리지 않으려고 별도 칸으로 둔다.
