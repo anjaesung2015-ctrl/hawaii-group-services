@@ -86,10 +86,10 @@ export function bindEventCards(el, state, refresh) {
       refresh();
     } catch (e) { toast(t('failed'), true); }
   });
-  $('[data-event]', el).forEach(c => c.onclick = () => openEvent(c.dataset.event, state, refresh));
+  $$('[data-event]', el).forEach(c => c.onclick = () => openEvent(c.dataset.event, state, refresh));
   // 운영진은 카드에서 바로 수정 (상세 창 맨 아래까지 안 내려가도 되게 — 2026-11-23 사장님)
   if (state.me.role === 'admin' || state.me.is_owner) {
-    $('[data-event]', el).forEach(c => {
+    $$('[data-event]', el).forEach(c => {
       const row = c.querySelector('.card-row');
       if (!row || row.querySelector('[data-ev-edit]')) return;
       const b = document.createElement('button');
