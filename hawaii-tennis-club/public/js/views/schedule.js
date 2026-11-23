@@ -83,7 +83,23 @@ export function bindEventCards(el, state, refresh) {
       refresh();
     } catch (e) { toast(t('failed'), true); }
   });
-  $$('[data-event]', el).forEach(c => c.onclick = () => openEvent(c.dataset.event, state, refresh));
+  $('[data-event]', el).forEach(c => c.onclick = () => openEvent(c.dataset.event, state, refresh));
+  // 운영진은 카드에서 바로 수정 (상세 창 맨 아래까지 안 내려가도 되게 — 2026-11-23 사장님)
+  if (state.me.role === 'admin' || state.me.is_owner) {
+    $('[data-event]', el).forEach(c => {
+      const row = c.querySelector('.card-row');
+      if (!row || row.querySelector('[data-ev-edit]')) return;
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'ev-edit'; b.dataset.evEdit = '1';
+      b.textContent = '✏️ ' + t('edit');
+      b.onclick = async (ev) => {
+        ev.stopPropagation();
+        try { eventForm(await api(`/events/${c.dataset.event}?lang=en`), state, refresh); }
+        catch (err) { toast(t('failed'), true); }
+      };
+      row.appendChild(b);
+    });
+  }
 }
 
 // 상세 — 참석 명단까지
@@ -108,7 +124,7 @@ export async function openEvent(id, state, refresh) {
       ${e.memo ? `<div class="memo" style="margin-bottom:8px">${esc(origText(e, 'memo').text)}</div>${origHtml(origText(e, 'memo').orig)}` : ''}
       ${e.kind === 'court' ? '' : `${rsvpRow(e)}
       <div class="roster">${any ? ['yes', 'maybe', 'no'].map(group).join('') : `<div class="empty">${esc(t('noAnswerYet'))}</div>`}</div>`}
-      ${state.me.role === 'admin' ? `<button type="button" class="btn btn-sm" style="margin-top:14px" data-edit>${esc(t('editEvent'))}</button>` : ''}`,
+      ${state.me.role === 'admin' ? `<button type="button" class="btn btn-sm btn-primary" style="margin-top:14px" data-edit>✏️ ${esc(t('editEvent'))}</button>` : ''}`,
     saveLabel: t('close'),
     onSave: () => { m.close(); refresh(); },
   });
