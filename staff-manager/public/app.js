@@ -1236,7 +1236,7 @@ async function renderStaffPanel() {
     const res = await api('/staff', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: $('#stName').value.trim(), password: $('#stPw').value, job: $('#stJob').value || null }) });
     if (res.ok) { msg.style.color = '#16a34a'; msg.textContent = t('staffAdded'); await renderStaffPanel(); loadStaffList(); }
-    else { msg.style.color = '#dc2626'; msg.textContent = res.status === 409 ? t('staffDup') : t('pwTooShort'); }
+    else { msg.style.color = '#dc2626'; msg.textContent = res.status === 409 ? t('staffDup') : res.status === 403 ? t('staffNoJob') : t('pwTooShort'); }
   };
   // 직무를 고르면 바로 저장 — 오늘 체크리스트도 새 직무로 바뀐다
   box.querySelectorAll('[data-job]').forEach(s => s.onchange = async () => {
