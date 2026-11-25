@@ -349,7 +349,26 @@ module.exports = function createReportRoutes(db, opts = {}) {
   // 업무표의 예시 18개와 규칙 (모든 직원이 본다)
   router.get('/guide', (req, res) => res.json({ examples: chk.examples(), rules: chk.rules() }));
   // 직무별 일주일 업무표 (모든 파트 — 누구나 볼 수 있는 참고표)
-  router.get('/jobtable', (req, res) => res.json(chk.table()));
+  router.get('/jobtable', (req, res) => {
+    const scope = staffScope(req);
+    res.json(chk.table().map(j => ({ ...j, editable: !!scope && (scope.all || jobAllowed(scope, j.key)) })));
+  });
+  router.get('/jobtable/when', (req, res) => res.json(chk.whenOptions()));
+  const canEditJob = (req, key) => { const s = staffScope(req); return !!s && (s.all || jobAllowed(s, key)) && chk.isJob(key); };
+  const editorName = (req) => req.rsess.isBoss ? (req.rsess.admin ? (req.rsess.name || '사장님') : '대표') : (req.rsess.name || '');
+  router.post('/jobtable/:key/tasks', (req, res) => {
+    if (!canEditJob(req, req.params.key)) return res.status(403).json({ error: 'forbidden' });
+    const r = chk.addTask(req.params.key, req.body || {}, editorName(req));
+    if (r.error) return res.status(r.error === 'duplicate' ? 409 : 400).json(r);
+    r.added_today = chk.ensureJob(req.params.key, bizToday());
+    res.json(r);
+  });
+  router.delete('/jobtable/:key/tasks', (req, res) => {
+    if (!canEditJob(req, req.params.key)) return res.status(403).json({ error: 'forbidden' });
+    const r = chk.removeTask(req.params.key, String(req.body?.ko || ''), bizToday());
+    if (r.error) return res.status(404).json(r);
+    res.json(r);
+  });
 
   router.post('/staff', (req, res) => {
     const scope = staffScope(req);

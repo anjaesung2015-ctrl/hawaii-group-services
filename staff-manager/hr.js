@@ -1,14 +1,10 @@
 'use strict';
-// 인사 관리: 근무표 · 휴가 · 결재 · 구성원 · 급여
+// 인사 관리: 근무표 · 결재 · 구성원
 // 권한은 직원 관리와 같은 범위를 쓴다
 //   대표·사장님(isBoss) : 전부 / 총매니저 : 두 사업장 일반 직원 / 매니저 : 자기 사업장 일반 직원 / 직원 : 본인
-// 급여는 대표·사장님만 만들고, 직원은 확정된 자기 명세서만 본다.
 
-const LEAVE_KINDS = ['연차', '반차', '병가', '무급', '경조사'];
 const APPR_KINDS = ['구매·발주', '비용', '근무 변경', '기타'];
 const DAYS = 6;   // 월~토 (일요일 휴무)
-// 몽골 근로자 부담: 사회보험 11.5%, 소득세 10% (사회보험 뺀 금액에) — 화면에서 끌 수 있다
-const SI_RATE = 0.115, PIT_RATE = 0.10;
 
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
 const isHM = (s) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(s || ''));
@@ -35,27 +31,15 @@ module.exports = function mountHR(router, db, ctx) {
     id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id INTEGER NOT NULL, wdate TEXT NOT NULL,
     start TEXT NOT NULL, end TEXT NOT NULL, note TEXT, updated_at TEXT DEFAULT (datetime('now','localtime')),
     UNIQUE(staff_id, wdate))`);
-  db.exec(`CREATE TABLE IF NOT EXISTS report_leave (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id INTEGER NOT NULL, kind TEXT NOT NULL,
-    start_date TEXT NOT NULL, end_date TEXT NOT NULL, days REAL NOT NULL, reason TEXT,
-    status TEXT NOT NULL DEFAULT 'pending', decided_by TEXT, decided_at TEXT, comment TEXT,
-    created_at TEXT DEFAULT (datetime('now','localtime')))`);
   db.exec(`CREATE TABLE IF NOT EXISTS report_approvals (
     id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id INTEGER NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL,
     amount INTEGER, body TEXT, status TEXT NOT NULL,
     mgr_by TEXT, mgr_at TEXT, mgr_comment TEXT, boss_by TEXT, boss_at TEXT, boss_comment TEXT,
     created_at TEXT DEFAULT (datetime('now','localtime')))`);
-  db.exec(`CREATE TABLE IF NOT EXISTS report_payroll (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id INTEGER NOT NULL, month TEXT NOT NULL,
-    pay_type TEXT, pay_rate INTEGER, hours REAL, work_days INTEGER, unpaid_days REAL,
-    base INTEGER, unpaid_deduct INTEGER, bonus INTEGER DEFAULT 0, gross INTEGER,
-    tax INTEGER DEFAULT 1, si INTEGER, pit INTEGER, other_deduct INTEGER DEFAULT 0, net INTEGER,
-    note TEXT, confirmed INTEGER DEFAULT 0, updated_at TEXT DEFAULT (datetime('now','localtime')),
-    UNIQUE(staff_id, month))`);
   const cols = () => db.prepare("PRAGMA table_info(report_users)").all().map(c => c.name);
   const have = cols();
   for (const [c, def] of [['phone', 'TEXT'], ['hire_date', 'TEXT'], ['birth', 'TEXT'], ['profile_memo', 'TEXT'],
-    ['left_date', 'TEXT'], ['annual_leave', 'REAL DEFAULT 15'], ['pay_type', "TEXT DEFAULT 'month'"], ['pay_rate', 'INTEGER']]) {
+    ['left_date', 'TEXT']]) {
     if (!have.includes(c)) db.exec(`ALTER TABLE report_users ADD COLUMN ${c} ${def}`);
   }
 
@@ -96,7 +80,6 @@ module.exports = function mountHR(router, db, ctx) {
   const label = (u) => { const j = jobOf(u); return j ? j.label_ko : ''; };
 
   // ================= 근무표 =================
-  const leaveOn = db.prepare("SELECT kind FROM report_leave WHERE staff_id=? AND status='approved' AND start_date<=? AND end_date>=?");
   const attOn = (sid, d) => { try { return db.prepare("SELECT check_in, check_out FROM report_attendance WHERE staff_id=? AND work_date=?").get(sid, d); } catch (e) { return null; } };
 
   router.get('/hr/shifts', (req, res) => {
@@ -105,19 +88,17 @@ module.exports = function mountHR(router, db, ctx) {
     const today = bizToday();
     const q = db.prepare("SELECT wdate, start, end, note FROM report_shifts WHERE staff_id=? AND wdate>=? AND wdate<=?");
     const rows = visible(req).map(u => {
-      const cells = {}, leave = {}, att = {};
+      const cells = {}, att = {};
       for (const s of q.all(u.id, days[0], days[DAYS - 1])) cells[s.wdate] = { start: s.start, end: s.end, note: s.note || '' };
       for (const d of days) {
-        const l = leaveOn.get(u.id, d, d);
-        if (l) leave[d] = l.kind;
         const a = attOn(u.id, d), sh = cells[d];
         if (sh && d <= today) {
           const late = a?.check_in ? Math.max(0, toMin(a.check_in) - toMin(sh.start)) : null;
           att[d] = { in: a?.check_in || null, out: a?.check_out || null, late,
-            absent: !a?.check_in && !l && d < today };
+            absent: !a?.check_in && d < today };
         } else if (a?.check_in) att[d] = { in: a.check_in, out: a.check_out || null, late: null, absent: false };
       }
-      return { staff_id: u.id, name: u.name, job: u.job, label: label(u), site: siteOf(u), cells, leave, att, editable: canManage(req, u) && (req.rsess.isBoss || u.id !== Number(req.rsess.staff_id)) };
+      return { staff_id: u.id, name: u.name, job: u.job, label: label(u), site: siteOf(u), cells, att, editable: canManage(req, u) && (req.rsess.isBoss || u.id !== Number(req.rsess.staff_id)) };
     });
     res.json({ week, days, today, rows });
   });
@@ -149,74 +130,6 @@ module.exports = function mountHR(router, db, ctx) {
       }
     }
     res.json({ ok: true, copied: n });
-  });
-
-  // ================= 휴가 =================
-  function leaveDays(kind, from, to) { return kind === '반차' ? 0.5 : workDates(from, to).length; }
-  function balance(u, year) {
-    const used = db.prepare(`SELECT COALESCE(SUM(days),0) n FROM report_leave WHERE staff_id=? AND kind IN ('연차','반차')
-      AND status IN ('approved','pending') AND substr(start_date,1,4)=?`).get(u.id, year).n;
-    const allow = u.annual_leave ?? 15;
-    return { allow, used, left: allow - used };
-  }
-  const leaveRow = (l) => { const u = user(l.staff_id); return { ...l, name: u?.name || '', label: label(u) }; };
-
-  router.get('/hr/leave', (req, res) => {
-    const me = Number(req.rsess.staff_id);
-    const year = bizToday().slice(0, 4);
-    const mine = req.rsess.isBoss && !req.rsess.admin ? [] : db.prepare("SELECT * FROM report_leave WHERE staff_id=? ORDER BY id DESC LIMIT 50").all(me).map(leaveRow);
-    const meU = user(me);
-    const others = visible(req, { inactive: true }).filter(u => u.id !== me);
-    const ids = new Set(others.map(u => u.id));
-    const all = ids.size ? db.prepare(`SELECT * FROM report_leave WHERE staff_id IN (${[...ids].join(',')}) ORDER BY id DESC LIMIT 200`).all() : [];
-    res.json({
-      kinds: LEAVE_KINDS,
-      balance: meU && meU.role === 'staff' ? balance(meU, year) : null,
-      mine,
-      todo: all.filter(l => l.status === 'pending' && canManage(req, user(l.staff_id))).map(leaveRow),
-      team: all.filter(l => l.status !== 'pending' || !canManage(req, user(l.staff_id))).slice(0, 60).map(leaveRow),
-      balances: others.filter(u => u.is_active).map(u => ({ staff_id: u.id, name: u.name, ...balance(u, year) })),
-    });
-  });
-
-  router.post('/hr/leave', async (req, res) => {
-    if (req.rsess.isBoss && !req.rsess.admin) return res.status(400).json({ error: 'boss_no_leave' });
-    const u = user(req.rsess.staff_id);
-    if (!u) return res.status(404).json({ error: 'not_found' });
-    const { kind, start_date } = req.body || {};
-    const end_date = kind === '반차' ? start_date : (req.body?.end_date || start_date);
-    if (!LEAVE_KINDS.includes(kind)) return res.status(400).json({ error: 'bad_kind' });
-    if (!isDate(start_date) || !isDate(end_date) || end_date < start_date) return res.status(400).json({ error: 'bad_date' });
-    const days = leaveDays(kind, start_date, end_date);
-    if (!days) return res.status(400).json({ error: 'no_workdays' });
-    if (['연차', '반차'].includes(kind) && balance(u, start_date.slice(0, 4)).left < days) return res.status(400).json({ error: 'no_balance' });
-    const r = db.prepare("INSERT INTO report_leave (staff_id, kind, start_date, end_date, days, reason) VALUES (?,?,?,?,?,?)")
-      .run(u.id, kind, start_date, end_date, days, clip(req.body?.reason));
-    const mg = managersOf(u);
-    await send(mg.length ? mg : bossTargets(),
-      `🌴 휴가 신청: ${u.name} ${kind} ${start_date.slice(5)}${end_date !== start_date ? '~' + end_date.slice(5) : ''} (${days}일)` + (req.body?.reason ? `\n${clip(req.body.reason)}` : ''), '휴가 신청');
-    res.json({ ok: true, id: r.lastInsertRowid, days });
-  });
-
-  router.patch('/hr/leave/:id', async (req, res) => {
-    const l = db.prepare("SELECT * FROM report_leave WHERE id=?").get(req.params.id);
-    if (!l) return res.status(404).json({ error: 'not_found' });
-    const act = req.body?.action;
-    const u = user(l.staff_id);
-    if (act === 'cancel') {
-      if (l.staff_id !== Number(req.rsess.staff_id) || l.status !== 'pending') return res.status(403).json({ error: 'forbidden' });
-      db.prepare("UPDATE report_leave SET status='cancelled' WHERE id=?").run(l.id);
-      return res.json({ ok: true });
-    }
-    if (!['approve', 'reject'].includes(act)) return res.status(400).json({ error: 'bad_action' });
-    if (!canManage(req, u)) return res.status(403).json({ error: 'forbidden' });
-    if (l.status !== 'pending' && !req.rsess.isBoss) return res.status(409).json({ error: 'decided' });
-    const st = act === 'approve' ? 'approved' : 'rejected';
-    db.prepare("UPDATE report_leave SET status=?, decided_by=?, decided_at=datetime('now','localtime'), comment=? WHERE id=?")
-      .run(st, actorName(req), clip(req.body?.comment), l.id);
-    await send([l.staff_id], `🌴 휴가 ${st === 'approved' ? '승인 ✅' : '반려 ❌'}: ${l.kind} ${l.start_date.slice(5)}${l.end_date !== l.start_date ? '~' + l.end_date.slice(5) : ''}` +
-      (req.body?.comment ? `\n${clip(req.body.comment)}` : ''), '휴가');
-    res.json({ ok: true, status: st });
   });
 
   // ================= 결재 =================
@@ -305,16 +218,13 @@ module.exports = function mountHR(router, db, ctx) {
   });
 
   const PROFILE = ['phone', 'hire_date', 'birth', 'profile_memo', 'left_date'];
-  const PAYF = ['annual_leave', 'pay_type', 'pay_rate'];
   router.get('/hr/members', (req, res) => {
     const scope = staffScope(req);
     if (!scope) return res.status(403).json({ error: 'forbidden' });
-    const year = bizToday().slice(0, 4);
     const rows = visible(req, { inactive: true }).filter(u => req.rsess.isBoss || u.id !== Number(req.rsess.staff_id));
     res.json(rows.map(u => {
-      const o = { id: u.id, name: u.name, job: u.job, label: label(u), is_active: u.is_active, leave: balance(u, year) };
+      const o = { id: u.id, name: u.name, job: u.job, label: label(u), is_active: u.is_active };
       for (const k of PROFILE) o[k] = u[k] ?? null;
-      if (req.rsess.isBoss) for (const k of PAYF) o[k] = u[k] ?? null;
       return o;
     }));
   });
@@ -328,89 +238,10 @@ module.exports = function mountHR(router, db, ctx) {
       if (['hire_date', 'birth', 'left_date'].includes(k) && val && !isDate(val)) return res.status(400).json({ error: 'bad_date' });
       f.push(k + '=?'); v.push(val);
     }
-    if (req.rsess.isBoss) {
-      if ('pay_type' in b) { if (!['month', 'hour'].includes(b.pay_type)) return res.status(400).json({ error: 'bad_pay_type' }); f.push('pay_type=?'); v.push(b.pay_type); }
-      for (const k of ['pay_rate', 'annual_leave']) if (k in b) {
-        const n = num(b[k]);
-        if (Number.isNaN(n) || (n != null && n < 0)) return res.status(400).json({ error: 'bad_number' });
-        f.push(k + '=?'); v.push(n);
-      }
-    } else if (PAYF.some(k => k in b)) return res.status(403).json({ error: 'boss_only' });
     if (!f.length) return res.status(400).json({ error: 'no_changes' });
     db.prepare(`UPDATE report_users SET ${f.join(', ')} WHERE id=?`).run(...v, u.id);
     res.json({ ok: true });
   });
 
-  // ================= 급여 =================
-  function monthRange(month) { return [`${month}-01`, addDays(addDays(`${month}-01`, 32).slice(0, 8) + '01', -1)]; }
-  function workOf(u, month) {
-    const [from, to] = monthRange(month);
-    let minutes = 0, days = 0;
-    try {
-      for (const a of db.prepare("SELECT check_in, check_out FROM report_attendance WHERE staff_id=? AND work_date>=? AND work_date<=?").all(u.id, from, to)) {
-        if (a.check_in) days++;
-        if (a.check_in && a.check_out) minutes += Math.max(0, toMin(a.check_out) - toMin(a.check_in));
-      }
-    } catch (e) { /* 근태 표 없음 */ }
-    let unpaid = 0;
-    for (const l of db.prepare("SELECT kind, start_date, end_date, days FROM report_leave WHERE staff_id=? AND status='approved' AND kind='무급' AND end_date>=? AND start_date<=?").all(u.id, from, to)) {
-      unpaid += workDates(l.start_date < from ? from : l.start_date, l.end_date > to ? to : l.end_date).length;
-    }
-    return { hours: Math.round(minutes / 6) / 10, work_days: days, unpaid_days: unpaid };
-  }
-  function calc(u, month, adj = {}) {
-    const w = workOf(u, month);
-    const type = u.pay_type || 'month', rate = u.pay_rate || 0;
-    const base = type === 'hour' ? Math.round(w.hours * rate) : rate;
-    const unpaid_deduct = type === 'month' ? Math.round(rate / 26 * w.unpaid_days) : 0;
-    const bonus = adj.bonus || 0, other = adj.other_deduct || 0, tax = adj.tax === 0 ? 0 : 1;
-    const gross = Math.max(0, base - unpaid_deduct + bonus);
-    const si = tax ? Math.round(gross * SI_RATE) : 0;
-    const pit = tax ? Math.round((gross - si) * PIT_RATE) : 0;
-    return { pay_type: type, pay_rate: rate, ...w, base, unpaid_deduct, bonus, gross, tax, si, pit, other_deduct: other, net: gross - si - pit - other };
-  }
-  const isMonth = (m) => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(m || ''));
-
-  router.get('/hr/payroll', (req, res) => {
-    if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
-    const month = isMonth(req.query.month) ? req.query.month : bizToday().slice(0, 7);
-    const saved = db.prepare("SELECT * FROM report_payroll WHERE staff_id=? AND month=?");
-    const rows = db.prepare("SELECT * FROM report_users WHERE role IN ('staff','admin') ORDER BY role<>'admin', id").all()
-      .map(u => ({ u, s: saved.get(u.id, month) }))
-      .filter(({ u, s }) => u.is_active || s)
-      .map(({ u, s }) => ({ staff_id: u.id, name: u.name, label: u.role === 'admin' ? '사장님' : label(u),
-        calc: calc(u, month, s ? { bonus: s.bonus, other_deduct: s.other_deduct, tax: s.tax } : {}),
-        saved: s ? { ...s } : null, note: s?.note || '', confirmed: s?.confirmed || 0 }));
-    const tot = rows.reduce((a, r) => { const c = r.saved && r.confirmed ? r.saved : r.calc; a.gross += c.gross; a.net += c.net; return a; }, { gross: 0, net: 0 });
-    res.json({ month, rows, total: tot, rates: { si: SI_RATE, pit: PIT_RATE } });
-  });
-
-  router.put('/hr/payroll', (req, res) => {
-    if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
-    const b = req.body || {};
-    const u = user(b.staff_id);
-    if (!u || !['staff', 'admin'].includes(u.role)) return res.status(404).json({ error: 'not_found' });
-    if (!isMonth(b.month)) return res.status(400).json({ error: 'bad_month' });
-    const bonus = num(b.bonus) ?? 0, other = num(b.other_deduct) ?? 0;
-    if ([bonus, other].some(n => Number.isNaN(n) || n < 0)) return res.status(400).json({ error: 'bad_number' });
-    const c = calc(u, b.month, { bonus, other_deduct: other, tax: b.tax === false || b.tax === 0 ? 0 : 1 });
-    db.prepare(`INSERT INTO report_payroll (staff_id, month, pay_type, pay_rate, hours, work_days, unpaid_days, base, unpaid_deduct, bonus, gross, tax, si, pit, other_deduct, net, note, confirmed)
-      VALUES (@staff_id,@month,@pay_type,@pay_rate,@hours,@work_days,@unpaid_days,@base,@unpaid_deduct,@bonus,@gross,@tax,@si,@pit,@other_deduct,@net,@note,@confirmed)
-      ON CONFLICT(staff_id, month) DO UPDATE SET pay_type=excluded.pay_type, pay_rate=excluded.pay_rate, hours=excluded.hours, work_days=excluded.work_days,
-        unpaid_days=excluded.unpaid_days, base=excluded.base, unpaid_deduct=excluded.unpaid_deduct, bonus=excluded.bonus, gross=excluded.gross, tax=excluded.tax,
-        si=excluded.si, pit=excluded.pit, other_deduct=excluded.other_deduct, net=excluded.net, note=excluded.note, confirmed=excluded.confirmed,
-        updated_at=datetime('now','localtime')`)
-      .run({ staff_id: u.id, month: b.month, ...c, note: clip(b.note, 300), confirmed: b.confirm ? 1 : 0 });
-    if (b.confirm && notify) send([u.id], `💰 ${b.month} 급여 명세가 나왔습니다. 실수령 ${c.net.toLocaleString('ko-KR')}₮`, '급여 명세');
-    res.json({ ok: true, ...c });
-  });
-
-  // 내 급여 명세 (확정된 것만)
-  router.get('/hr/payslips', (req, res) => {
-    if (req.rsess.isBoss && !req.rsess.admin) return res.json([]);
-    res.json(db.prepare("SELECT * FROM report_payroll WHERE staff_id=? AND confirmed=1 ORDER BY month DESC LIMIT 24").all(Number(req.rsess.staff_id)));
-  });
-
-  return { mondayOf, workDates, calc };
+  return { mondayOf };
 };
-module.exports.LEAVE_KINDS = LEAVE_KINDS;

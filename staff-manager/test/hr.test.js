@@ -6,7 +6,7 @@ const Database = require('better-sqlite3');
 const jwt = require('jsonwebtoken');
 const createReportRoutes = require('../report-simple');
 
-// 인사: 근무표·휴가·결재·구성원·급여 (실제 jobs.json)
+// 인사: 근무표·결재·구성원 (실제 jobs.json)
 const SECRET = 'test-secret';
 const TODAY = '2026-12-02';   // 수요일
 const MON = '2026-11-30';
@@ -64,36 +64,6 @@ test('근무표: 매니저는 자기 직원만 편집, 지각·결근 표시, �
   } finally { server.close(); }
 });
 
-test('휴가: 신청 → 담당 매니저 알림 → 승인, 연차 잔여, 매니저 휴가는 대표에게', async () => {
-  const { server, base, ids, sent, bossId } = makeServer();
-  try {
-    const b = as(ids.바트, '바트');
-    const r = await call(base, 'POST', '/hr/leave', b, { kind: '연차', start_date: '2026-12-05', end_date: '2026-12-08', reason: '가족 행사' });
-    assert.strictEqual(r.data.days, 3, '토·월·화 (일요일 제외)');
-    assert.deepStrictEqual(sent.filter(s => s.title === '휴가 신청').map(s => s.id).sort(), [ids.미가, ids.구엔].sort());
-    assert.strictEqual((await call(base, 'POST', '/hr/leave', b, { kind: '연차', start_date: '2026-12-09', end_date: '2026-12-31' })).data.error, 'no_balance');
-    const half = (await call(base, 'POST', '/hr/leave', b, { kind: '반차', start_date: '2026-12-10' })).data;
-    assert.strictEqual(half.days, 0.5);
-    const mineBefore = (await call(base, 'GET', '/hr/leave', b)).data;
-    assert.deepStrictEqual([mineBefore.balance.used, mineBefore.balance.left], [3.5, 11.5]);
-
-    assert.strictEqual((await call(base, 'PATCH', `/hr/leave/${r.data.id}`, as(ids.톨가, '톨가'), { action: 'approve' })).status, 403);
-    const g = as(ids.구엔, '구엔');
-    const todo = (await call(base, 'GET', '/hr/leave', g)).data.todo;
-    assert.strictEqual(todo.length, 2);
-    assert.strictEqual((await call(base, 'PATCH', `/hr/leave/${r.data.id}`, g, { action: 'approve', comment: 'OK' })).data.status, 'approved');
-    assert.ok(sent.some(s => s.id === ids.바트 && s.text.includes('승인')));
-    assert.strictEqual((await call(base, 'PATCH', `/hr/leave/${half.id}`, b, { action: 'cancel' })).status, 200);
-    // 승인된 휴가는 근무표에
-    const w = (await call(base, 'GET', '/hr/shifts?week=2026-12-07', g)).data;
-    assert.strictEqual(w.rows.find(x => x.name === '바트').leave['2026-12-07'], '연차');
-    // 매니저 휴가 → 대표·사장님
-    sent.length = 0;
-    await call(base, 'POST', '/hr/leave', g, { kind: '병가', start_date: '2026-12-03' });
-    assert.deepStrictEqual(sent.map(s => s.id).sort(), [bossId, ids.전아름].sort());
-  } finally { server.close(); }
-});
-
 test('결재: 직원 → 매니저 승인 → 대표 최종, 반려, 매니저 요청은 바로 대표', async () => {
   const { server, base, ids, sent, bossId } = makeServer();
   try {
@@ -115,7 +85,7 @@ test('결재: 직원 → 매니저 승인 → 대표 최종, 반려, 매니저 �
   } finally { server.close(); }
 });
 
-test('구성원: 매니저는 자기 직원 정보만, 급여 칸은 대표만 / 조직도는 누구나', async () => {
+test('구성원: 매니저는 자기 직원 정보만 / 조직도는 누구나', async () => {
   const { server, base, ids } = makeServer();
   try {
     const g = as(ids.구엔, '구엔');
@@ -123,7 +93,6 @@ test('구성원: 매니저는 자기 직원 정보만, 급여 칸은 대표만 /
     assert.deepStrictEqual(list.map(u => u.name), ['바트']);
     assert.ok(!('pay_rate' in list[0]));
     assert.strictEqual((await call(base, 'PATCH', `/hr/members/${ids.바트}`, g, { phone: '9911-2233', hire_date: '2026-03-01' })).status, 200);
-    assert.strictEqual((await call(base, 'PATCH', `/hr/members/${ids.바트}`, g, { pay_rate: 1 })).status, 403);
     assert.strictEqual((await call(base, 'PATCH', `/hr/members/${ids.잉해}`, g, { phone: 'x' })).status, 403);
     assert.strictEqual((await call(base, 'GET', '/hr/members', as(ids.바트, '바트'))).status, 403);
     const org = (await call(base, 'GET', '/hr/org', as(ids.잉해, '잉해'))).data;
@@ -134,29 +103,3 @@ test('구성원: 매니저는 자기 직원 정보만, 급여 칸은 대표만 /
   } finally { server.close(); }
 });
 
-test('급여: 월급·시급 계산, 무급 공제, 세금, 확정해야 직원에게 보임', async () => {
-  const { server, base, ids, db } = makeServer();
-  try {
-    await call(base, 'PATCH', `/hr/members/${ids.바트}`, boss(), { pay_type: 'month', pay_rate: '1,300,000' });
-    await call(base, 'PATCH', `/hr/members/${ids.잉해}`, boss(), { pay_type: 'hour', pay_rate: 8000 });
-    db.prepare("INSERT INTO report_attendance (staff_id, work_date, check_in, check_out) VALUES (?,?,?,?)").run(ids.잉해, '2026-12-01', '09:00', '17:30');
-    db.prepare("INSERT INTO report_leave (staff_id, kind, start_date, end_date, days, status) VALUES (?,?,?,?,?,'approved')").run(ids.바트, '무급', '2026-12-03', '2026-12-04', 2);
-    const p = (await call(base, 'GET', '/hr/payroll?month=2026-12', boss())).data;
-    const bat = p.rows.find(r => r.name === '바트').calc;
-    assert.strictEqual(bat.unpaid_deduct, 100000);
-    assert.strictEqual(bat.gross, 1200000);
-    assert.strictEqual(bat.si, 138000);
-    assert.strictEqual(bat.pit, 106200);
-    assert.strictEqual(bat.net, 955800);
-    const ing = p.rows.find(r => r.name === '잉해').calc;
-    assert.deepStrictEqual([ing.hours, ing.base], [8.5, 68000]);
-    assert.strictEqual((await call(base, 'GET', '/hr/payroll', as(ids.구엔, '구엔'))).status, 403);
-
-    assert.strictEqual((await call(base, 'PUT', '/hr/payroll', boss(), { staff_id: ids.바트, month: '2026-12', bonus: '50,000', tax: false })).data.net, 1250000);
-    assert.deepStrictEqual((await call(base, 'GET', '/hr/payslips', as(ids.바트, '바트'))).data, [], '확정 전엔 안 보임');
-    await call(base, 'PUT', '/hr/payroll', boss(), { staff_id: ids.바트, month: '2026-12', bonus: 50000, tax: false, confirm: true });
-    const slips = (await call(base, 'GET', '/hr/payslips', as(ids.바트, '바트'))).data;
-    assert.strictEqual(slips[0].net, 1250000);
-    assert.deepStrictEqual((await call(base, 'GET', '/hr/payslips', as(ids.잉해, '잉해'))).data, []);
-  } finally { server.close(); }
-});

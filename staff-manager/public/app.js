@@ -880,25 +880,40 @@ function tableGroups(tasks) {
   }
   return { daily, byDay, monthly };
 }
-function tableRow(x) {
+function tableRow(x, editable) {
   const when = LANG === 'mn' ? (x.when_mn || x.when) : x.when;
   return `<div class="trow"><span class="tag tpl">${escapeHtml(when)}</span><span class="tx">${escapeHtml(LANG === 'mn' ? (x.mn || x.ko) : x.ko)}` +
-    `${x.out ? ` <span class="m">→ ${escapeHtml(x.out)}</span>` : ''}${exBtn(x.ex)}</span></div>`;
+    `${x.photo ? ' 📷' : ''}${x.custom ? ` <span class="tag new">${t('tableNew')}</span>` : ''}` +
+    `${x.out ? ` <span class="m">→ ${escapeHtml(x.out)}</span>` : ''}${exBtn(x.ex)}</span>` +
+    (editable ? `<button class="tdel" data-tdel="${escapeHtml(x.ko)}" title="${t('tableDel')}">×</button>` : '') + `</div>`;
+}
+let WHEN_OPTS = null;
+function tableEditor(job) {
+  const opts = (WHEN_OPTS || ['매일']).map(w => `<option value="${escapeHtml(w)}">${escapeHtml(w)}</option>`).join('');
+  const rem = (job.removed || []);
+  return `<div class="tedit"><b>➕ ${t('tableAdd')}</b>
+    <div class="row"><select id="teWhen">${opts}</select>
+    <select id="tePhoto"><option value="">${t('tableNoPhoto')}</option><option value="open">📷 ${t('repOpen')}</option><option value="close">📷 ${t('repClose')}</option></select></div>
+    <input id="teKo" placeholder="${t('tableKo')}"><input id="teMn" placeholder="${t('tableMn')}">
+    <button class="save" id="teAdd">${t('tableAddBtn')}</button><span id="teMsg" class="m"></span>` +
+    (rem.length ? `<div class="trem"><b>${t('tableRemoved')}</b>` + rem.map(r => `<div class="trow"><span class="tag tpl">${escapeHtml(r.when)}</span><span class="tx">${escapeHtml(r.ko)}</span><button class="mini" data-trest="${escapeHtml(r.ko)}">↩ ${t('tableRestore')}</button></div>`).join('') + `</div>` : '') +
+    `</div>`;
 }
 function jobTableHtml(job) {
   if (!job) return `<div class="empty">${t('noEntry')}</div>`;
   const g = tableGroups(job.tasks);
-  const sec = (title, rows) => rows.length ? `<div class="tsec"><h4>${title} <span class="m">${rows.length}</span></h4>${rows.map(tableRow).join('')}</div>` : '';
+  const sec = (title, rows) => rows.length ? `<div class="tsec"><h4>${title} <span class="m">${rows.length}</span></h4>${rows.map(x => tableRow(x, job.editable)).join('')}</div>` : '';
   return `<div class="card jtable"><h3>${escapeHtml(LANG === 'mn' ? job.label_mn : job.label_ko)} <span class="m">${t('tableTotal', { n: job.tasks.length })}</span></h3>` +
     sec(t('tableDaily'), g.daily) +
     WHEN_DAYS.map(d => sec(t('tableDay', { d: t('dow' + (WHEN_DAYS.indexOf(d) + 1)) }), g.byDay[d] || [])).join('') +
-    sec(t('tableMonthly'), g.monthly) + `</div>`;
+    sec(t('tableMonthly'), g.monthly) + (job.editable ? tableEditor(job) : '') + `</div>`;
 }
 let JOBTABLE = null;
 async function renderJobTable() {
   const el = $('#content');
   if (!JOBTABLE) {
-    const [r] = await Promise.all([api('/jobtable'), loadGuide()]);
+    const [r, w] = await Promise.all([api('/jobtable'), api('/jobtable/when'), loadGuide()]);
+    if (w && w.ok) WHEN_OPTS = await w.json();
     if (r.status === 401) { location.reload(); return; }
     if (!r.ok) { el.innerHTML = `<div class="empty">${t('noEntry')}</div>`; return; }
     JOBTABLE = await r.json();
@@ -909,6 +924,21 @@ async function renderJobTable() {
     jobTableHtml(JOBTABLE.find(j => j.key === state.tableJob)) + rulesHtml();
   $('#tableJob').onchange = (e) => { state.tableJob = e.target.value; renderJobTable(); };
   bindExBtns(el);
+  const reload = async () => { JOBTABLE = null; await renderJobTable(); };
+  const key = encodeURIComponent(state.tableJob);
+  el.querySelectorAll('[data-tdel]').forEach(b => b.onclick = async () => {
+    const r = await api(`/jobtable/${key}/tasks`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ko: b.dataset.tdel }) });
+    if (r.ok) { flashSaved(); reload(); }
+  });
+  const add = async (body) => {
+    const r = await api(`/jobtable/${key}/tasks`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const m = $('#teMsg');
+    if (r.ok) { flashSaved(); reload(); }
+    else if (m) { m.style.color = '#dc2626'; m.textContent = r.status === 409 ? t('tableDup') : t('tableNeedText'); }
+  };
+  const ab = el.querySelector('#teAdd');
+  if (ab) ab.onclick = () => add({ when: $('#teWhen').value, ko: $('#teKo').value, mn: $('#teMn').value, photo: $('#tePhoto').value });
+  el.querySelectorAll('[data-trest]').forEach(b => b.onclick = () => add({ ko: b.dataset.trest }));
 }
 
 // ---- 업무표 예시·규칙 ----

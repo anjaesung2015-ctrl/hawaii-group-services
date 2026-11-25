@@ -1,4 +1,4 @@
-// 인사 탭: 근무표 · 휴가 · 결재 · 구성원 · 급여  (app.js 다음에 불러온다)
+// 인사 탭: 근무표 · 결재 · 구성원  (app.js 다음에 불러온다)
 const HR_T = {
   ko: {
     shift: '근무표', leave: '휴가', appr: '결재', member: '구성원', pay: '급여', myPay: '내 명세서',
@@ -52,7 +52,7 @@ async function hrCall(path, method, body) {
   let data = null; try { data = await r.json(); } catch (e) { }
   return { ok: r.ok, status: r.status, data };
 }
-const hrState = { tab: 'shift', weekOff: 0, edit: null, monthOff: 0 };
+const hrState = { tab: 'shift', weekOff: 0, edit: null };
 const isCeo = () => state.isBoss && state.name === '대표';   // 대표 본인(휴가·결재 신청 없음)
 const isMgrUser = () => state.isBoss || !!state.managerSite;
 const fmtN = (n) => n == null ? '-' : Number(n).toLocaleString('ko-KR');
@@ -60,18 +60,18 @@ const dshort = (iso) => iso ? iso.slice(5).replace('-', '/') : '';
 const stBadge = (s) => `<span class="hst ${s}">${ht('st_' + s)}</span>`;
 
 function hrTabs() {
-  const tabs = [['shift', ht('shift')], ['leave', ht('leave')], ['appr', ht('appr')], ['member', ht('member')], ['pay', state.isBoss ? ht('pay') : ht('myPay')]];
+  const tabs = [['shift', ht('shift')], ['appr', ht('appr')], ['member', ht('member')]];
   return `<div class="hrtabs">` + tabs.map(([k, l]) => `<button data-hr="${k}" class="${hrState.tab === k ? 'on' : ''}">${l}</button>`).join('') + `</div>`;
 }
 async function renderHR() {
   const el = $('#content');
-  const fn = { shift: hrShift, leave: hrLeave, appr: hrAppr, member: hrMember, pay: hrPay }[hrState.tab] || hrShift;
+  const fn = { shift: hrShift, appr: hrAppr, member: hrMember }[hrState.tab] || hrShift;
   let body = '';
   try { body = await fn(); } catch (e) { body = `<div class="empty">${t('noEntry')}</div>`; }
   if (body === null) { location.reload(); return; }
   el.innerHTML = hrTabs() + body;
   el.querySelectorAll('[data-hr]').forEach(b => b.onclick = () => { hrState.tab = b.dataset.hr; hrState.edit = null; renderHR(); });
-  const bind = { shift: bindShift, leave: bindLeave, appr: bindAppr, member: bindMember, pay: bindPay }[hrState.tab];
+  const bind = { shift: bindShift, appr: bindAppr, member: bindMember }[hrState.tab];
   if (bind) bind(el);
 }
 
@@ -83,7 +83,7 @@ function weekStart(off) {
 }
 let SHIFTS = null;
 function shiftCell(r, d, today) {
-  const s = r.cells[d], lv = r.leave[d], a = r.att[d];
+  const s = r.cells[d], lv = (r.leave || {})[d], a = r.att[d];
   let main = lv ? `<span class="lv">🌴 ${escapeHtml(kindL(lv))}</span>` : s ? `<b>${s.start}–${s.end}</b>` : `<span class="m">${ht('off')}</span>`;
   if (s && s.note) main += `<div class="m">${escapeHtml(s.note)}</div>`;
   let st = '';
@@ -144,55 +144,9 @@ function bindShift(el) {
   };
 }
 
-// ---------- 휴가 ----------
-function leaveLine(l, acts) {
-  const span = l.start_date === l.end_date ? dshort(l.start_date) : `${dshort(l.start_date)}~${dshort(l.end_date)}`;
-  return `<div class="hline"><div><b>${escapeHtml(l.name)}</b> ${escapeHtml(kindL(l.kind))} ${span} <span class="m">(${ht('days', { n: l.days })})</span> ${stBadge(l.status)}` +
-    (l.reason ? `<div class="m">${escapeHtml(l.reason)}</div>` : '') +
-    (l.decided_by ? `<div class="m">✍ ${escapeHtml(l.decided_by)}${l.comment ? ' · ' + escapeHtml(l.comment) : ''}</div>` : '') + `</div>${acts || ''}</div>`;
-}
+// ---------- 결재 ----------
 const decideBtns = (kind, id) => `<div class="acts"><input class="cmt" data-cmt="${id}" placeholder="${ht('comment')}">` +
   `<button class="ok" data-${kind}="${id}" data-act="approve">${ht('approve')}</button><button class="no" data-${kind}="${id}" data-act="reject">${ht('reject')}</button></div>`;
-async function hrLeave() {
-  const r = await hrCall('/hr/leave');
-  if (r.status === 401) return null;
-  const d = r.data;
-  let h = '';
-  if (!isCeo()) {
-    const b = d.balance;
-    const today = kst(0);
-    h += `<div class="card"><h3>🌴 ${ht('leave')}` + (b ? ` <span class="m">${ht('balance')}: <b>${ht('left', { n: b.left })}</b> · ${ht('used', { n: b.used, a: b.allow })}</span>` : '') + `</h3>
-      <div class="row"><label>${ht('kind')}<select id="lvK">${d.kinds.map(k => `<option value="${k}">${escapeHtml(kindL(k))}</option>`).join('')}</select></label>
-      <label>${ht('from')}<input type="date" id="lvS" value="${today}"></label><label id="lvEw">${ht('to')}<input type="date" id="lvE" value="${today}"></label></div>
-      <input id="lvR" placeholder="${ht('reason')}"><button class="save" id="lvGo">${ht('request')}</button><span id="lvMsg" class="m"></span>
-      ${d.mine.length ? `<h4>${ht('myList')}</h4>` + d.mine.map(l => leaveLine(l, l.status === 'pending' ? `<div class="acts"><button data-lvc="${l.id}">${ht('cancel')}</button></div>` : '')).join('') : ''}</div>`;
-  }
-  if (d.todo.length) h += `<div class="card"><h3>✅ ${ht('todo')} <span class="m">${d.todo.length}</span></h3>` + d.todo.map(l => leaveLine(l, decideBtns('lv', l.id))).join('') + `</div>`;
-  if (d.balances.length) h += `<div class="card"><h3>${ht('balances')}</h3><table class="htab">` +
-    d.balances.map(b => `<tr><td>${escapeHtml(b.name)}</td><td>${ht('left', { n: b.left })}</td><td class="m">${ht('used', { n: b.used, a: b.allow })}</td></tr>`).join('') + `</table></div>`;
-  if (d.team.length) h += `<div class="card"><h3>${ht('team')}</h3>` + d.team.map(l => leaveLine(l)).join('') + `</div>`;
-  return h || `<div class="empty">${ht('none')}</div>`;
-}
-function bindLeave(el) {
-  const k = el.querySelector('#lvK');
-  if (k) {
-    const sync = () => { const w = $('#lvEw'); if (w) w.style.display = k.value === '반차' ? 'none' : ''; };
-    k.onchange = sync; sync();
-    $('#lvGo').onclick = async () => {
-      const r = await hrCall('/hr/leave', 'POST', { kind: k.value, start_date: $('#lvS').value, end_date: $('#lvE').value, reason: $('#lvR').value });
-      const m = $('#lvMsg');
-      if (r.ok) { flashSaved(); renderHR(); }
-      else if (m) { m.style.color = '#dc2626'; m.textContent = r.data && r.data.error === 'no_balance' ? ht('noBalance') : r.data && /date|workdays/.test(r.data.error) ? ht('badDate') : ht('fail'); }
-    };
-  }
-  el.querySelectorAll('[data-lvc]').forEach(b => b.onclick = async () => { await hrCall(`/hr/leave/${b.dataset.lvc}`, 'PATCH', { action: 'cancel' }); renderHR(); });
-  el.querySelectorAll('[data-lv]').forEach(b => b.onclick = async () => {
-    const c = el.querySelector(`[data-cmt="${b.dataset.lv}"]`);
-    await hrCall(`/hr/leave/${b.dataset.lv}`, 'PATCH', { action: b.dataset.act, comment: c ? c.value : '' }); flashSaved(); renderHR();
-  });
-}
-
-// ---------- 결재 ----------
 function apLine(a, acts) {
   const steps = (a.mgr_by ? `<div class="m">① ${escapeHtml(a.mgr_by)} ${a.status === 'rejected' && !a.boss_by ? '❌' : '✅'}${a.mgr_comment ? ' · ' + escapeHtml(a.mgr_comment) : ''}</div>` : '') +
     (a.boss_by ? `<div class="m">② ${escapeHtml(a.boss_by)} ${a.status === 'approved' ? '✅' : '❌'}${a.boss_comment ? ' · ' + escapeHtml(a.boss_comment) : ''}</div>` : '');
@@ -243,10 +197,8 @@ function orgHtml(o) {
 }
 function memberForm(u) {
   const f = (k, lab, type = 'text') => `<label>${lab}<input data-mf="${k}" type="${type}" value="${escapeHtml(u[k] ?? '')}"></label>`;
-  const pay = state.isBoss ? `<label>${ht('payType')}<select data-mf="pay_type"><option value="month" ${u.pay_type !== 'hour' ? 'selected' : ''}>${ht('perMonth')}</option><option value="hour" ${u.pay_type === 'hour' ? 'selected' : ''}>${ht('perHour')}</option></select></label>` +
-    f('pay_rate', ht('payRate')) + f('annual_leave', ht('annual')) : '';
-  return `<details class="memrow ${u.is_active ? '' : 'off'}"><summary><b>${escapeHtml(u.name)}</b> <span class="m">${escapeHtml(u.label || '')}${u.is_active ? '' : ' · ' + ht('inactive')} · ${ht('left', { n: u.leave.left })}</span></summary>
-    <div class="grid">${f('phone', ht('phone'), 'tel')}${f('hire_date', ht('hire'), 'date')}${f('birth', ht('birth'), 'date')}${f('left_date', ht('leftDate'), 'date')}${pay}
+  return `<details class="memrow ${u.is_active ? '' : 'off'}"><summary><b>${escapeHtml(u.name)}</b> <span class="m">${escapeHtml(u.label || '')}${u.is_active ? '' : ' · ' + ht('inactive')}</span></summary>
+    <div class="grid">${f('phone', ht('phone'), 'tel')}${f('hire_date', ht('hire'), 'date')}${f('birth', ht('birth'), 'date')}${f('left_date', ht('leftDate'), 'date')}
     <label class="full">${ht('memo')}<textarea data-mf="profile_memo">${escapeHtml(u.profile_memo || '')}</textarea></label></div>
     <button class="save" data-msave="${u.id}">${ht('save')}</button><span class="m" data-mmsg="${u.id}"></span></details>`;
 }
@@ -270,58 +222,3 @@ function bindMember(el) {
   });
 }
 
-// ---------- 급여 ----------
-function monthOf(off) {
-  const [y, m] = kst(0).split('-').map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + off, 1));
-  return d.toISOString().slice(0, 7);
-}
-function slipHtml(s) {
-  const [y, m] = s.month.split('-');
-  const row = (k, v, cls) => `<tr class="${cls || ''}"><td>${k}</td><td>${fmtN(v)}₮</td></tr>`;
-  return `<div class="card slip"><h3>💰 ${ht('month', { y, m: Number(m) })}</h3><table class="htab">` +
-    `<tr><td class="m" colspan="2">${ht('hours', { h: s.hours, d: s.work_days })}${s.unpaid_days ? ' · ' + ht('unpaid', { n: s.unpaid_days }) : ''}</td></tr>` +
-    row(ht('base'), s.base) + (s.unpaid_deduct ? row(ht('unpaid', { n: s.unpaid_days }), -s.unpaid_deduct) : '') + (s.bonus ? row(ht('bonus'), s.bonus) : '') +
-    row(ht('gross'), s.gross, 'b') + (s.tax ? row(ht('si'), -s.si) + row(ht('pit'), -s.pit) : '') + (s.other_deduct ? row(ht('otherDed'), -s.other_deduct) : '') +
-    row(ht('net'), s.net, 'net') + `</table>${s.note ? `<div class="m">${escapeHtml(s.note)}</div>` : ''}</div>`;
-}
-async function hrPay() {
-  if (!state.isBoss) {
-    const r = await hrCall('/hr/payslips');
-    if (r.status === 401) return null;
-    return r.data.length ? r.data.map(slipHtml).join('') : `<div class="empty">${ht('noSlip')}</div>`;
-  }
-  const month = monthOf(hrState.monthOff);
-  const r = await hrCall(`/hr/payroll?month=${month}`);
-  if (r.status === 401) return null;
-  const d = r.data;
-  const [y, m] = month.split('-');
-  const bar = `<div class="daybar${hrState.monthOff ? ' past' : ''}"><button data-mo="-1">‹</button><span>${ht('month', { y, m: Number(m) })}</span><button data-mo="1">›</button>` +
-    (hrState.monthOff ? `<button class="back" data-mo="0">${t('goToday')}</button>` : '') + `</div>`;
-  const rows = d.rows.map(x => {
-    const c = x.calc, s = x.saved || {};
-    return `<div class="card payrow" data-pr="${x.staff_id}"><h3>${escapeHtml(x.name)} <span class="m">${escapeHtml(x.label || '')}</span> ` +
-      `<span class="hst ${x.confirmed ? 'approved' : 'pending'}">${x.confirmed ? ht('confirmed') : ht('draft')}</span></h3>` +
-      (c.pay_rate ? '' : `<div class="hint bad">${ht('noRate')}</div>`) +
-      `<div class="m">${c.pay_type === 'hour' ? ht('perHour') : ht('perMonth')} ${fmtN(c.pay_rate)}₮ · ${ht('hours', { h: c.hours, d: c.work_days })}${c.unpaid_days ? ' · ' + ht('unpaid', { n: c.unpaid_days }) : ''}</div>
-      <div class="grid"><label>${ht('bonus')}<input data-pf="bonus" inputmode="numeric" value="${fmtN(s.bonus || 0)}"></label>
-      <label>${ht('otherDed')}<input data-pf="other_deduct" inputmode="numeric" value="${fmtN(s.other_deduct || 0)}"></label>
-      <label class="full">${ht('note')}<input data-pf="note" value="${escapeHtml(x.note || '')}"></label></div>
-      <label class="ok"><input type="checkbox" data-pf="tax" ${c.tax ? 'checked' : ''}>${ht('tax')}</label>
-      <div class="sum"><span>${ht('base')} <b>${fmtN(c.base)}</b></span>${c.unpaid_deduct ? `<span>-${fmtN(c.unpaid_deduct)}</span>` : ''}<span>${ht('gross')} <b>${fmtN(c.gross)}</b></span>` +
-      `<span>${ht('si')} -${fmtN(c.si)}</span><span>${ht('pit')} -${fmtN(c.pit)}</span><span>${ht('net')} <b>${fmtN(c.net)}₮</b></span></div>
-      <div class="row"><button data-psave="0">${ht('save')}</button><button class="save" data-psave="1">${ht('confirm')}</button></div></div>`;
-  }).join('');
-  return bar + `<div class="hint">${ht('payHint')}</div><div class="card"><b>${ht('total', { g: fmtN(d.total.gross) + '₮', n: fmtN(d.total.net) + '₮' })}</b></div>` + rows;
-}
-function bindPay(el) {
-  el.querySelectorAll('[data-mo]').forEach(b => b.onclick = () => {
-    const v = Number(b.dataset.mo); hrState.monthOff = v === 0 ? 0 : hrState.monthOff + v; renderHR();
-  });
-  el.querySelectorAll('[data-psave]').forEach(b => b.onclick = async () => {
-    const box = b.closest('[data-pr]'), body = { staff_id: Number(box.dataset.pr), month: monthOf(hrState.monthOff), confirm: b.dataset.psave === '1' };
-    box.querySelectorAll('[data-pf]').forEach(i => { body[i.dataset.pf] = i.type === 'checkbox' ? i.checked : i.value; });
-    const r = await hrCall('/hr/payroll', 'PUT', body);
-    if (r.ok) { flashSaved(); renderHR(); }
-  });
-}
