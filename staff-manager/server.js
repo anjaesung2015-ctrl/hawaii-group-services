@@ -13,7 +13,7 @@ const BOSS_PW = process.env.BOSS_REPORT_PW || '';
 const db = new Database(path.join(__dirname, 'staff.db'));
 db.pragma('journal_mode = WAL');
 
-app.use(express.json());
+app.use(express.json({ limit: '8mb' }));   // 인증 사진(base64) 때문에 넉넉히
 app.use(cookieParser());
 app.use((req, res, next) => {
   if (req.path.endsWith('.html') || req.path === '/' || req.path === '') {

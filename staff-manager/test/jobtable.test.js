@@ -12,7 +12,7 @@ test('업무표 데이터: 10개 직무, 업무 전부', () => {
   db.exec(`CREATE TABLE report_items (id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id INTEGER, period TEXT, item_date TEXT, title TEXT, memo TEXT, done INTEGER DEFAULT 0, from_boss INTEGER DEFAULT 0)`);
   const tb = createChecklist(db, {}).table();
   assert.strictEqual(tb.length, 10);
-  assert.strictEqual(tb.reduce((n, j) => n + j.tasks.length, 0), 118);
+  assert.strictEqual(tb.reduce((n, j) => n + j.tasks.length, 0), 123);   // 업무표 118 + 마감 인증 6 - 단톡 마감 사진 1
   const clean = tb.find(j => j.key === '피트-청소');
   assert.ok(clean.tasks.every(x => x.ko && x.when));
 });

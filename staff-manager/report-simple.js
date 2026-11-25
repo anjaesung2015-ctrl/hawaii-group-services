@@ -10,6 +10,7 @@ const createChecklist = require('./checklist');
 const mountDailyReport = require('./dailyreport');
 const mountWeekly = require('./weekly');
 const createReminders = require('./reminders');
+const createPhotos = require('./photos');
 
 module.exports = function createReportRoutes(db, opts = {}) {
   const secret = opts.secret || 'staff-mgr-2026-secret';
@@ -130,6 +131,9 @@ module.exports = function createReportRoutes(db, opts = {}) {
 
   // 직무별 매일 체크리스트 (jobs.json)
   const chk = createChecklist(db, { jobs: opts.jobs, file: opts.jobsFile });
+  // 오픈·마감 인증 사진 — 목록을 내보낼 때 사진·출근 대비 시간을 붙인다
+  const photos = createPhotos(db, { dir: opts.photoDir, clock: opts.clock });
+  const deco = (items) => photos.attach(chk.decorate(items));
   // 오늘 날짜를 볼 때만 채운다. 지난 날짜·미래 날짜를 넘겨볼 때 새로 만들지 않는다.
   function ensureToday(sids, date) {
     if (date !== bizToday()) return;
@@ -503,7 +507,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const items = db.prepare(
       "SELECT id, staff_id, title, memo, done, from_boss, tpl_key FROM report_items WHERE period IN ('today','tomorrow') AND item_date=? AND staff_id IN (" + ph + ") ORDER BY id"
     ).all(date, ...ids);
-    chk.decorate(items);
+    deco(items);
 
     const all = db.prepare(
       "SELECT id, staff_id, period, item_date, title, memo FROM report_items WHERE tpl_key IS NULL AND staff_id IN (" + ph + ") ORDER BY id"
@@ -568,7 +572,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
       if (!row) { row = { date: it.item_date, total: 0, done: 0, items: [] }; byDate.set(it.item_date, row); rows.push(row); }
       row.total++;
       if (it.done) row.done++;
-      row.items.push(chk.decorate([{ ...it, name: names.get(it.staff_id) || '' }])[0]);
+      row.items.push(deco([{ ...it, name: names.get(it.staff_id) || '' }])[0]);
     }
     res.json({ month, people: staffList, rows });
   });
@@ -592,7 +596,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
       for (const it of carryOver(staff.map(s => s.id), date)) byStaff.get(it.staff_id).push(it);
     }
     for (const it of items) if (byStaff.has(it.staff_id)) byStaff.get(it.staff_id).push(it);
-    const rows = staff.map(s => ({ staff_id: s.id, name: s.name, job: s.job || null, items: chk.decorate(byStaff.get(s.id)) }));
+    const rows = staff.map(s => ({ staff_id: s.id, name: s.name, job: s.job || null, items: deco(byStaff.get(s.id)) }));
 
     // 화면 언어와 다른 언어로 적힌 글에 번역문(title_tr/memo_tr)을 덧붙인다. 원문은 그대로 둔다.
     const lang = req.query.lang;
@@ -632,7 +636,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     if (date) { sql += " AND item_date=?"; p.push(date); }
     sql += " ORDER BY id";
     if (date && (many ? many.includes('today') : DAILY.includes(period))) ensureToday([sid], date);
-    const rows = chk.decorate(db.prepare(sql).all(...p));
+    const rows = deco(db.prepare(sql).all(...p));
     const carried = (period === 'today' && !many) ? carryOver([sid], date) : [];
     res.json([...carried, ...rows]);
   });
@@ -660,6 +664,10 @@ module.exports = function createReportRoutes(db, opts = {}) {
     if (!onlyDone && pastLocked(req, item.period, item.item_date)) return res.status(403).json({ error: 'past_locked' });
     // 체크리스트 문구는 업무표에서 온다 — 직원은 체크·메모만
     if (!req.rsess.isBoss && item.tpl_key && 'title' in body) return res.status(403).json({ error: 'checklist_locked' });
+    if (!req.rsess.isBoss && item.tpl_key && body.done) {
+      const d = chk.decorate([{ ...item }])[0];
+      if (d.tpl_photo && !photos.count(item.id)) return res.status(403).json({ error: 'photo_required' });
+    }
     const fields = []; const vals = [];
     for (const k of ['title', 'memo', 'done']) if (k in body) { fields.push(k + '=?'); vals.push(k === 'done' ? (body[k] ? 1 : 0) : body[k]); }
     if (!fields.length) return res.status(400).json({ error: 'no_changes' });
@@ -667,6 +675,31 @@ module.exports = function createReportRoutes(db, opts = {}) {
     vals.push(req.params.id);
     db.prepare("UPDATE report_items SET " + fields.join(', ') + " WHERE id=?").run(...vals);
     res.json({ ok: true });
+  });
+
+  // 인증 사진 올리기 — 본인 것, 오늘 것만. 올리면 그 줄은 완료
+  router.post('/items/:id/photo', (req, res) => {
+    const item = db.prepare("SELECT * FROM report_items WHERE id=?").get(req.params.id);
+    if (!item) return res.status(404).json({ error: 'not_found' });
+    if (item.staff_id !== Number(req.rsess.staff_id)) return res.status(403).json({ error: 'forbidden' });
+    if (item.item_date !== bizToday()) return res.status(403).json({ error: 'past_locked' });
+    const d = chk.decorate([{ ...item }])[0];
+    if (!d.tpl_photo) return res.status(400).json({ error: 'not_photo_item' });
+    const r = photos.save(d, req.body);
+    if (!r.ok) return res.status(r.code).json({ error: r.error });
+    res.json(r);
+  });
+  // 사진 보기 — 본인, 대표·사장님, 그 직원을 맡은 매니저
+  router.get('/photo/:id', (req, res) => {
+    const p = photos.get(Number(req.params.id));
+    if (!p) return res.status(404).end();
+    if (p.staff_id !== Number(req.rsess.staff_id)) {
+      const scope = staffScope(req);
+      const owner = db.prepare("SELECT id, role, job FROM report_users WHERE id=?").get(p.staff_id);
+      if (!scope || !userAllowed(scope, owner)) return res.status(403).end();
+    }
+    res.set('Cache-Control', 'private, max-age=86400');
+    res.sendFile(photos.fileOf(p), (err) => { if (err && !res.headersSent) res.status(404).end(); });
   });
 
   router.delete('/items/:id', (req, res) => {
@@ -708,7 +741,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
   });
 
   // 매니저 일일 보고 (/daily)
-  const daily = mountDailyReport(router, db, { bizToday, notify: opts.notify, bossRowId, chk });
+  const daily = mountDailyReport(router, db, { bizToday, notify: opts.notify, bossRowId, chk, photos });
   // 주간 KPI (월요일 목표·과제 3개 → 대표 승인, 토요일 결산)
   mountWeekly(router, db, { bizToday, notify: opts.notify, bossRowId, chk, daily });
   // 대표 리마인드 09:40 / 21:30 (server.js 가 cron 으로 부른다)

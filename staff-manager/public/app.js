@@ -233,7 +233,9 @@ function overviewCards(rows, isCheck) {
           // 사장님이 내린 지시는 여기서 바로 지울 수 있다 (직원이 적은 건 건드리지 않는다)
           const del = (state.isBoss && i.from_boss) ? `<button class="ovdel" data-del="${i.id}">×</button>` : '';
           return `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
-                 `<span class="tx">${tag}${title}${memo}${orig}</span>${del}</div>`;
+                 `<span class="tx">${tag}${title}${memo}${orig}` +
+                 (i.tpl_photo ? `<div class="pblock">${i.tpl_photo === 'open' ? openBadge(i.open) : ''}${(i.photos || []).length ? '' : `<span class="pbad warn">${t('repNoPhoto')}</span>`}<div class="thumbs">${photoThumbs(i.photos)}</div></div>` : '') +
+                 `</span>${del}</div>`;
         }).join('');
       }
     } else {
@@ -676,7 +678,15 @@ function repChecklist(c) {
     const low = p.total && p.done < p.total;
     return `<span class="${low ? 'low' : ''}">${escapeHtml(p.name)} ${p.done}/${p.total}</span>`;
   }).join(' · ');
-  return `<div class="chk">📋 ${t('repChk')} <b>${c.done}/${c.total}</b><br>${who}</div>`;
+  // 오픈(출근 대비 분)·마감 인증 사진
+  const pics = c.people.filter(p => 'open_at' in p).map(p => {
+    const open = p.open_at
+      ? `<span class="pbad ${p.open_ok === false ? 'late' : p.open_ok ? 'ok' : 'warn'}">${t('repOpen')} ${p.open_at}${p.open_min != null ? ` (${t('repAfterIn', { m: p.open_min })})` : ''}</span>`
+      : `<span class="pbad warn">${t('repOpen')} ${t('repNoPhoto')}</span>`;
+    const close = p.close_at ? `<span class="pbad ok">${t('repClose')} ${p.close_at}</span>` : `<span class="pbad warn">${t('repClose')} ${t('repNoPhoto')}</span>`;
+    return `<div class="ppl"><b>${escapeHtml(p.name)}</b>${p.check_in ? ` <span class="m">${t('repIn')} ${p.check_in}</span>` : ''} ${open} ${close}<div class="thumbs">${photoThumbs(p.photos)}</div></div>`;
+  }).join('');
+  return `<div class="chk">📋 ${t('repChk')} <b>${c.done}/${c.total}</b><br>${who}${pics ? `<div class="pics"><b>📷 ${t('repPhotos')}</b>${pics}</div>` : ''}</div>`;
 }
 // 오늘 요일 관리 과제 (업무표 '매니저 업무')
 function repTasks(tasks) {
@@ -946,13 +956,65 @@ function chkHead(items) {
   const pct = Math.round(done / c.length * 100);
   return rules + `<div class="chkhead">📋 ${t('checklist')} <b>${done}/${c.length}</b><div class="bar"><i style="width:${pct}%"></i></div></div>`;
 }
+// ---- 오픈·마감 인증 사진 ----
+function photoThumbs(list) {
+  return (list || []).map(p => `<a class="thumb" href="${API}/photo/${p.id}" target="_blank" rel="noopener"><img src="${API}/photo/${p.id}" loading="lazy" alt=""><span>${escapeHtml(p.at)}</span></a>`).join('');
+}
+// 오픈 사진: 출근 몇 분 뒤에 찍었나
+function openBadge(o) {
+  if (!o) return '';
+  if (o.minutes == null) return `<span class="pbad warn">${t('photoNoIn')}</span>`;
+  return `<span class="pbad ${o.ok ? 'ok' : 'late'}">${t(o.ok ? 'photoOpenOk' : 'photoOpenLate', { ci: o.check_in, m: o.minutes })}</span>`;
+}
+function photoBlock(it, past) {
+  const n = (it.photos || []).length;
+  const cam = (!past && !state.isBoss && n < 4)
+    ? `<label class="cam">${n ? t('photoMore') : t('photoTake')}<input class="camIn" type="file" accept="image/*" capture="environment" hidden></label>` : '';
+  const need = !n ? `<span class="pbad warn">${t(it.tpl_photo === 'close' ? 'photoNeedClose' : 'photoNeedOpen')}</span>` : '';
+  return `<div class="pblock">${cam}${need}${it.tpl_photo === 'open' ? openBadge(it.open) : ''}<span class="pmsg"></span><div class="thumbs">${photoThumbs(it.photos)}</div></div>`;
+}
+// 찍은 사진을 줄이고 아래에 이름·날짜·시각을 찍어 넣는다
+async function stampPhoto(file, label) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, bad) => { const im = new Image(); im.onload = () => ok(im); im.onerror = bad; im.src = url; });
+    const sc = Math.min(1, 1280 / Math.max(img.width, img.height));
+    const w = Math.round(img.width * sc), h = Math.round(img.height * sc);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0, w, h);
+    const band = Math.max(30, Math.round(h * 0.06));
+    g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, h - band, w, band);
+    g.fillStyle = '#fff'; g.font = `bold ${Math.round(band * 0.5)}px sans-serif`; g.textBaseline = 'middle';
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    g.fillText(`${label} · ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`, Math.round(band * 0.3), h - band / 2);
+    return c.toDataURL('image/jpeg', 0.72);
+  } finally { URL.revokeObjectURL(url); }
+}
+async function uploadPhoto(node, id, file) {
+  const msg = node.querySelector('.pmsg');
+  const say = (k, bad) => { if (msg) { msg.textContent = t(k); msg.style.color = bad ? '#dc2626' : '#2563eb'; } };
+  // 갤러리의 옛 사진은 안 받는다
+  if (file.lastModified && Date.now() - file.lastModified > 10 * 60 * 1000) { say('photoOld', true); return; }
+  say('photoUp');
+  try {
+    const data = await stampPhoto(file, state.name || '');
+    const r = await api(`/items/${id}/photo`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data, shot_at: file.lastModified || Date.now() }) });
+    if (!r.ok) { const e = await r.json().catch(() => ({})); say(e.error === 'old_photo' ? 'photoOld' : 'photoFail', true); return; }
+    flashSaved(); render();
+  } catch (e) { say('photoFail', true); }
+}
+
 function renderTplItem(it) {
   const past = viewLocked();
-  return `<div class="item tpl ${it.done ? 'done' : ''}" data-id="${it.id}">
-    <input type="checkbox" ${it.done ? 'checked' : ''} ${past ? 'disabled' : ''}>
+  const pic = !!it.tpl_photo;
+  return `<div class="item tpl ${it.done ? 'done' : ''}${pic ? ' pic' : ''}" data-id="${it.id}">
+    <input type="checkbox" ${it.done ? 'checked' : ''} ${(past || (pic && !state.isBoss)) ? 'disabled' : ''}>
     <span class="tx"><span class="tag tpl">${escapeHtml(tplWhen(it))}</span>${escapeHtml(tplText(it))}${exBtn(it.tpl_ex)}</span>
     ${(state.isBoss && !past) ? '<button class="del">×</button>' : ''}
     <input class="memo" value="${escapeHtml(it.memo || '')}" placeholder="${t('memo')}" ${past ? 'readonly' : ''}>
+    ${pic ? photoBlock(it, past) : ''}
   </div>`;
 }
 
@@ -978,6 +1040,8 @@ function bindCheckItem(node) {
   const id = node.dataset.id;
   if (viewLocked()) return;                     // 지난 날짜는 아무것도 연결하지 않는다
   node.querySelector('input[type=checkbox]').onchange = (e) => patch(id, { done: e.target.checked }).then(render);
+  const cam = node.querySelector('.camIn');
+  if (cam) cam.onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) uploadPhoto(node, id, f); };
   const ti = node.querySelector('.ti');
   if (ti && !ti.readOnly) ti.onblur = (e) => patch(id, { title: e.target.value });
   const mm = node.querySelector('.memo');

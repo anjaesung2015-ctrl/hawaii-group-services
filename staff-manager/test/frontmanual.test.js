@@ -66,3 +66,17 @@ test('주간KPI 탭은 매니저·대표만, 일일보고 센터엔 가동률 �
   assert.ok(run(ctx, 'repForm')('센터', null, '2026-12-01').includes('data-k="court_util"'));
   assert.ok(run(ctx, 'repTasks')([{ ko: '대관 영업', mn: 'Түрээс', out: '연락처', ex: '예시 13' }]).includes('대관 영업'));
 });
+
+test('사진 줄: 직원은 카메라 버튼·체크 잠금, 오픈은 출근 대비 분 표시', () => {
+  const ctx = loadApp();
+  ctx.state.period = 'today';
+  const it = { id: 3, title: '셋팅 사진', tpl_key: 'k', tpl_when: '출근 15분 내', tpl_photo: 'open', item_date: ctx.itemDateFor('today'),
+    photos: [{ id: 9, at: '09:10' }], open: { check_in: '09:00', minutes: 10, ok: true } };
+  const html = ctx.renderCheckItem(it);
+  assert.ok(html.includes('capture="environment"'));
+  assert.ok(/type="checkbox"[^>]*disabled/.test(html));
+  assert.ok(html.includes('photo/9'));
+  assert.ok(html.includes('출근 09:00 후 10분 ✓'));
+  const late = ctx.renderCheckItem({ ...it, photos: [], open: null, tpl_photo: 'close' });
+  assert.ok(late.includes('마감 사진 필요'));
+});

@@ -11,7 +11,7 @@ function addDays(iso, n) {
   return t.toISOString().slice(0, 10);
 }
 
-module.exports = function mountDailyReport(router, db, { bizToday, notify, bossRowId, chk }) {
+module.exports = function mountDailyReport(router, db, { bizToday, notify, bossRowId, chk, photos }) {
   db.exec(`CREATE TABLE IF NOT EXISTS report_daily (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     site TEXT NOT NULL,
@@ -66,7 +66,7 @@ module.exports = function mountDailyReport(router, db, { bizToday, notify, bossR
     const list = people.map(p => {
       const c = cnt.get(p.id, date);
       total += c.total; done += c.done;
-      return { staff_id: p.id, name: p.name, job: p.job, total: c.total, done: c.done };
+      return { staff_id: p.id, name: p.name, job: p.job, total: c.total, done: c.done, ...(photos ? photos.summary(p.id, date) : {}) };
     });
     return { total, done, people: list };
   }

@@ -73,6 +73,7 @@ module.exports = function createChecklist(db, opts = {}) {
       it.tpl_when_mn = t.when_mn;
       it.tpl_mn = t.mn;
       if (t.ex) it.tpl_ex = t.ex;
+      if (t.photo) it.tpl_photo = t.photo;
     }
     return items;
   }
