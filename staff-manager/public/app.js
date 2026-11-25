@@ -172,6 +172,7 @@ async function render() {
   if (state.period === 'rep') return renderDaily();
   if (state.period === 'kpi') return renderWeekly();
   if (state.period === 'table') return renderJobTable();
+  if (state.period === 'hr' && typeof renderHR === 'function') return renderHR();
   if (period === 'month') return renderMonth();
   if (state.isBoss && state.targetStaff === ALL) return renderOverview();
   const [r] = await Promise.all([api('/items' + qs(period)), loadGuide()]);

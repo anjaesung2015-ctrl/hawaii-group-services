@@ -11,6 +11,7 @@ const mountDailyReport = require('./dailyreport');
 const mountWeekly = require('./weekly');
 const createReminders = require('./reminders');
 const createPhotos = require('./photos');
+const mountHR = require('./hr');
 
 module.exports = function createReportRoutes(db, opts = {}) {
   const secret = opts.secret || 'staff-mgr-2026-secret';
@@ -743,6 +744,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
   // 매니저 일일 보고 (/daily)
   const daily = mountDailyReport(router, db, { bizToday, notify: opts.notify, bossRowId, chk, photos });
   // 주간 KPI (월요일 목표·과제 3개 → 대표 승인, 토요일 결산)
+  mountHR(router, db, { bizToday, notify: opts.notify, bossRowId, staffScope, userAllowed, chk });
   mountWeekly(router, db, { bizToday, notify: opts.notify, bossRowId, chk, daily });
   // 대표 리마인드 09:40 / 21:30 (server.js 가 cron 으로 부른다)
   // 직무가 있는 직원 전원의 오늘 체크리스트를 미리 만든다 (앱을 안 열어도 대표 화면에 보이게)
