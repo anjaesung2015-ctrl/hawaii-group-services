@@ -83,6 +83,7 @@ async function doLogin(body, btn) {
 
 // 기록은 직원도 자기 것만 본다 (서버가 본인으로 강제). 근태·종합은 사장님 화면에만.
 const BOSS_TABS = ['att', 'score'];
+const BOSS_OPT = '__boss__';
 
 // 일일보고 탭은 사장님과 매니저만
 function tabHidden(p) {
@@ -819,9 +820,11 @@ function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;
 $('#staffLoginBtn').onclick = () => {
   const n = $('#nameSel').value;
   if (!n) { $('#loginErr').textContent = t('selectName'); return; }
-  doLogin({ name: n, password: $('#staffPw').value }, $('#staffLoginBtn'));
+  // 로그인 칸은 하나 — 이름 목록 맨 위 '사장님'을 고르면 사장님 비밀번호로 확인한다
+  const pw = $('#staffPw').value;
+  doLogin(n === BOSS_OPT ? { boss_pw: pw } : { name: n, password: pw }, $('#staffLoginBtn'));
 };
-$('#bossLoginBtn').onclick = () => doLogin({ boss_pw: $('#bossPw').value }, $('#bossLoginBtn'));
+$('#staffPw').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#staffLoginBtn').onclick(); });
 $('#logoutBtn').onclick = async () => { await api('/logout', { method: 'POST' }); location.reload(); };
 $('#bossStaffSel').onchange = (e) => { state.targetStaff = selVal(e.target.value); $('#pwPanel').style.display = 'none'; render(); };
 $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => {

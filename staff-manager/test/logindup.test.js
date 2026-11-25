@@ -85,13 +85,16 @@ test('직원 로그인 버튼을 연타해도 요청은 한 번만 나간다', a
   assert.strictEqual(loginCalls().length, 1, `연타 3번에 요청이 ${loginCalls().length}건 나갔다`);
 });
 
-test('사장님 로그인 버튼도 연타에 한 번만 나간다', async () => {
+test('로그인 칸 하나: 이름 목록에서 사장님을 고르면 사장님 비번으로 보내고, 연타해도 한 번만', async () => {
   const { el, loginCalls } = bootApp();
   await tick(10);
-  el('#bossPw').value = 'wrong';
+  el('#nameSel').value = '__boss__';
+  el('#staffPw').value = 'wrong';
 
-  const click = el('#bossLoginBtn').onclick;
+  const click = el('#staffLoginBtn').onclick;
   click(); click();
+  await tick(LOGIN_DELAY + 40);
+  assert.deepStrictEqual(JSON.parse(loginCalls()[0].opts.body), { boss_pw: 'wrong' });
 
   await tick(LOGIN_DELAY + 40);
   assert.strictEqual(loginCalls().length, 1, `연타 2번에 요청이 ${loginCalls().length}건 나갔다`);
