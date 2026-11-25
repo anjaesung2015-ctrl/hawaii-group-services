@@ -88,6 +88,10 @@
   .saved{color:#16a34a;font-size:12px;margin-left:8px}
   #reloadBtn{padding:6px 10px;font-size:16px;line-height:1;color:#374151}
   #reloadBtn.spin{animation:sp .6s linear}
+  #ptr{position:fixed;top:6px;left:50%;transform:translate(-50%,0);opacity:0;z-index:50;width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;font-size:18px;color:#6b7280;pointer-events:none;transition:opacity .15s}
+  #ptr.ready{color:#2563eb}
+  #ptr.spin{opacity:1!important;color:#2563eb;animation:ptrsp .6s linear infinite}
+  @keyframes ptrsp{from{transform:translate(-50%,40px) rotate(0)}to{transform:translate(-50%,40px) rotate(360deg)}}
   @keyframes sp{from{transform:rotate(0)}to{transform:rotate(360deg)}}
   .langBtn{padding:6px 11px!important;font-size:13px!important;background:#fff!important;color:#374151!important;border:1px solid #d1d5db!important;border-radius:8px;cursor:pointer;width:auto!important;align-self:flex-end}
   /* 직원 현황판 (읽기 전용) */
@@ -195,6 +199,7 @@
     <div class="err" id="loginErr" style="color:#dc2626;text-align:center;font-size:13px"></div>
   </div>
 
+  <div id="ptr">↻</div>
   <div id="appView" style="display:none">
     <header>
       <strong id="whoami"></strong>

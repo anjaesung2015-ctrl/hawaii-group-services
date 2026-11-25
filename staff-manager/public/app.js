@@ -1303,6 +1303,37 @@ async function refreshNow() {
 }
 $('#reloadBtn').onclick = refreshNow;
 
+// 화면을 맨 위에서 아래로 당기면 새로고침 (홈 화면 앱에는 브라우저 새로고침이 없어서)
+(function pullToRefresh() {
+  const bar = document.getElementById && document.getElementById('ptr');
+  if (!bar) return;
+  const LIMIT = 70;
+  let y0 = null, dy = 0;
+  document.addEventListener('touchstart', (e) => {
+    y0 = (appOpen() && window.scrollY <= 0 && e.touches.length === 1 && !isTyping()) ? e.touches[0].clientY : null;
+    dy = 0;
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (y0 == null) return;
+    dy = e.touches[0].clientY - y0;
+    if (dy <= 0 || window.scrollY > 0) { bar.style.opacity = 0; bar.style.transform = ''; return; }
+    const d = Math.min(dy, LIMIT * 1.5);
+    bar.style.opacity = Math.min(1, d / LIMIT);
+    bar.style.transform = 'translate(-50%,' + (d * 0.6) + 'px) rotate(' + (d * 4) + 'deg)';
+    bar.classList.toggle('ready', dy >= LIMIT);
+  }, { passive: true });
+  document.addEventListener('touchend', async () => {
+    if (y0 == null) return;
+    const go = dy >= LIMIT;
+    y0 = null;
+    if (!go) { bar.style.opacity = 0; bar.style.transform = ''; return; }
+    bar.classList.add('spin');
+    try { await refreshNow(); } finally {
+      bar.classList.remove('spin', 'ready'); bar.style.opacity = 0; bar.style.transform = '';
+    }
+  });
+})();
+
 // 앱으로 돌아오면 최신 내용을 다시 불러온다 (입력 중이면 건드리지 않는다)
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && appOpen() && !isTyping()) render();
