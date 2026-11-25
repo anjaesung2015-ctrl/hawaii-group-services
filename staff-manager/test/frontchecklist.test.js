@@ -72,3 +72,13 @@ test('기록 탭: 매니저는 맡은 직원 줄만 체크, 지우기는 체크�
   assert.ok(html.includes('data-hdone="32"') && !html.includes('data-hdel="32"'));
   assert.ok(!html.includes('data-hdone="33"'));
 });
+
+test('대표 직원 현황(오늘): 완료 바꾸기 버튼', () => {
+  const { loadApp } = require('./apphost');
+  const ctx = loadApp();
+  ctx.state.isBoss = true; ctx.state.period = 'today';
+  const html = ctx.overviewCards([{ staff_id: 1, name: '잉해', items: [{ id: 41, title: '청소', tpl_key: 'k', done: 0 }] }], true);
+  assert.ok(html.includes('data-odone="41" data-to="1"'));
+  ctx.state.isBoss = false;
+  assert.ok(!ctx.overviewCards([{ staff_id: 1, name: '잉해', items: [{ id: 41, title: '청소', done: 0 }] }], true).includes('data-odone'));
+});

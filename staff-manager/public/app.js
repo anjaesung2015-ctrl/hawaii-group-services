@@ -233,7 +233,10 @@ function overviewCards(rows, isCheck) {
             ((i.item_date && i.item_date !== itemDateFor(state.period)) ? `<span class="from">${dayTag(i.item_date)}</span>` : '');
           // 대표가 내린 지시와 직무 체크리스트는 여기서 바로 지울 수 있다 (직원이 적은 건 건드리지 않는다)
           const del = (state.isBoss && (i.from_boss || i.tpl_key)) ? `<button class="ovdel" data-del="${i.id}">×</button>` : '';
-          return `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
+          const mk = state.isBoss
+            ? `<button class="mk hchk" data-odone="${i.id}" data-to="${i.done ? 0 : 1}">${i.done ? '✓' : '○'}</button>`
+            : `<span class="mk">${i.done ? '✓' : '○'}</span>`;
+          return `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}">${mk}` +
                  `<span class="tx">${tag}${title}${memo}${orig}` +
                  (i.tpl_photo ? `<div class="pblock">${i.tpl_photo === 'open' ? openBadge(i.open) : ''}${(i.photos || []).length ? '' : `<span class="pbad warn">${t('repNoPhoto')}</span>`}<div class="thumbs">${photoThumbs(i.photos)}</div></div>` : '') +
                  `</span>${del}</div>`;
@@ -258,6 +261,10 @@ function bindAssign(scope) {
   const root = scope || document;
   root.querySelectorAll('[data-asg]').forEach(b => {
     b.onclick = () => openAssign(b, Number(b.dataset.asg), b.dataset.name);
+  });
+  root.querySelectorAll('[data-odone]').forEach(b => b.onclick = async () => {
+    await patch(b.dataset.odone, { done: b.dataset.to === '1' });
+    render();
   });
   // 읽기 전용 화면이라 실수로 눌릴 수 있으니 두 번 눌러야 지워진다
   root.querySelectorAll('[data-del]').forEach(b => {
@@ -1395,9 +1402,18 @@ async function renderStaffPanel() {
     const r = await api(`/staff/${b.dataset.chk}/today`);
     const items = r.ok ? await r.json() : [];
     row.insertAdjacentHTML('beforeend', `<div class="stchk">` + (items.length ? items.map(i =>
-      `<div class="ov ${i.done ? 'done' : 'undone'}"><span class="mk">${i.done ? '✓' : '○'}</span><span class="tx">` +
+      `<div class="ov ${i.done ? 'done' : 'undone'}"><button class="mk hchk" data-sdone="${i.id}" data-to="${i.done ? 0 : 1}">${i.done ? '✓' : '○'}</button><span class="tx">` +
       (i.tpl_key ? `<span class="tag tpl">${escapeHtml(tplWhen(i))}</span>${escapeHtml(tplText(i))}` : `<span class="tag">${t('boss1')}</span>${escapeHtml(i.title || '')}`) +
       `</span><button class="ovdel" data-sdel="${i.id}">×</button></div>`).join('') : `<div class="empty">${t('noEntry')}</div>`) + `</div>`);
+    row.querySelectorAll('[data-sdone]').forEach(x => x.onclick = async () => {
+      const to = x.dataset.to === '1';
+      const r = await api(`/items/${x.dataset.sdone}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ done: to }) });
+      if (!r.ok) return;
+      flashSaved();
+      x.dataset.to = to ? '0' : '1';
+      x.textContent = to ? '✓' : '○';
+      const ov = x.closest('.ov'); ov.classList.toggle('done', to); ov.classList.toggle('undone', !to);
+    });
     row.querySelectorAll('[data-sdel]').forEach(x => x.onclick = async () => {
       if (!x.classList.contains('ask')) {
         x.classList.add('ask'); x.textContent = t('delAsk');
