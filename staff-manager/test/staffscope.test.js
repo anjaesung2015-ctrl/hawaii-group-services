@@ -101,3 +101,21 @@ test('매니저 지시: 자기 직원에게만, 알림 제목은 매니저 이�
     assert.strictEqual(list.find(u => u.name === '바트').asg_total, 1);
   } finally { server.close(); }
 });
+
+test('매니저: 맡은 직원의 오늘 체크리스트 보기·지우기, 다른 사업장·직원이 적은 줄은 불가', async () => {
+  const { server, base, ids, db } = makeServer();
+  try {
+    const g = as(ids.구엔, '구엔');
+    await req(base, 'GET', '/items?period=today&date=2026-12-01', as(ids.바트, '바트'));
+    const list = await (await req(base, 'GET', `/staff/${ids.바트}/today`, g)).json();
+    assert.ok(list.length > 0 && list.every(i => i.tpl_key || i.from_boss));
+    assert.strictEqual((await req(base, 'DELETE', `/items/${list[0].id}`, g)).status, 200);
+    assert.strictEqual((await req(base, 'GET', `/staff/${ids.잠스랑}/today`, g)).status, 403);
+    await req(base, 'GET', '/items?period=today&date=2026-12-01', as(ids.잠스랑, '잠스랑'));
+    const other = db.prepare("SELECT id FROM report_items WHERE staff_id=? AND tpl_key IS NOT NULL").get(ids.잠스랑);
+    assert.strictEqual((await req(base, 'DELETE', `/items/${other.id}`, g)).status, 403, '다른 사업장');
+    assert.strictEqual((await req(base, 'DELETE', `/items/${other.id}`, as(ids.톨가, '톨가'))).status, 200, '센터 매니저는 가능');
+    const own = db.prepare("INSERT INTO report_items (staff_id, period, item_date, title) VALUES (?,'today','2026-12-01','바트 메모')").run(ids.바트).lastInsertRowid;
+    assert.strictEqual((await req(base, 'DELETE', `/items/${own}`, g)).status, 403, '직원이 적은 줄');
+  } finally { server.close(); }
+});

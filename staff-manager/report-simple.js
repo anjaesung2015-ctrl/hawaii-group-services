@@ -722,13 +722,25 @@ module.exports = function createReportRoutes(db, opts = {}) {
     res.sendFile(photos.fileOf(p), (err) => { if (err && !res.headersSent) res.status(404).end(); });
   });
 
+  // 매니저·대표: 맡은 직원의 오늘 체크리스트·지시 보기 (직원 화면에서 지우기용)
+  router.get('/staff/:id/today', (req, res) => {
+    const scope = staffScope(req);
+    const u = db.prepare("SELECT id, role, job FROM report_users WHERE id=?").get(Number(req.params.id));
+    if (!scope || !u || !userAllowed(scope, u)) return res.status(403).json({ error: 'forbidden' });
+    const rows = db.prepare("SELECT * FROM report_items WHERE staff_id=? AND item_date=? AND (tpl_key IS NOT NULL OR from_boss=1) ORDER BY id").all(u.id, bizToday());
+    res.json(deco(rows));
+  });
+
   router.delete('/items/:id', (req, res) => {
     const item = db.prepare("SELECT * FROM report_items WHERE id=?").get(req.params.id);
     if (!item) return res.status(404).json({ error: 'not_found' });
-    if (!req.rsess.isBoss && item.staff_id !== Number(req.rsess.staff_id)) return res.status(403).json({ error: 'forbidden' });
+    // 매니저는 맡은 직원의 체크리스트·지시 줄을 지울 수 있다
+    const mgrDel = !req.rsess.isBoss && item.staff_id !== Number(req.rsess.staff_id) && !!(item.tpl_key || item.from_boss) &&
+      (() => { const s = staffScope(req); return !!s && userAllowed(s, db.prepare("SELECT id, role, job FROM report_users WHERE id=?").get(item.staff_id)); })();
+    if (!req.rsess.isBoss && !mgrDel && item.staff_id !== Number(req.rsess.staff_id)) return res.status(403).json({ error: 'forbidden' });
     // 사장님 지시는 받은 직원이 지울 수 없다 (완료 체크는 가능)
-    if (!req.rsess.isBoss && item.from_boss) return res.status(403).json({ error: 'assigned_by_boss' });
-    if (!req.rsess.isBoss && item.tpl_key) return res.status(403).json({ error: 'checklist_locked' });
+    if (!req.rsess.isBoss && !mgrDel && item.from_boss) return res.status(403).json({ error: 'assigned_by_boss' });
+    if (!req.rsess.isBoss && !mgrDel && item.tpl_key) return res.status(403).json({ error: 'checklist_locked' });
     if (pastLocked(req, item.period, item.item_date)) return res.status(403).json({ error: 'past_locked' });
     db.prepare("DELETE FROM report_items WHERE id=?").run(req.params.id);
     res.json({ ok: true });

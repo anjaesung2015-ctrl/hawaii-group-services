@@ -1312,7 +1312,7 @@ async function renderStaffPanel() {
   box.innerHTML =
     rows.map(u => `<div class="strow ${u.is_active ? '' : 'off'}">
       <span class="nm">${escapeHtml(u.name)}</span>${u.asg_total ? `<span class="asg">📌 ${u.asg_done}/${u.asg_total}</span>` : ''}
-      ${u.is_active ? `<button data-asg="${u.id}">${t('staffAssign')}</button>` : ''}
+      ${u.is_active ? `<button data-asg="${u.id}">${t('staffAssign')}</button><button data-chk="${u.id}">📋 ${t('staffToday')}</button>` : ''}
       <select class="jobSel" data-job="${u.id}" title="${t('staffJob')}">${jobOpts(u.job)}</select>
       <button data-ren="${u.id}">${t('staffRename')}</button>
       <button data-pw="${u.id}">${t('staffPwSet')}</button>
@@ -1365,6 +1365,27 @@ async function renderStaffPanel() {
     };
   });
 
+  // 그 직원의 오늘 체크리스트·지시 — ×를 두 번 눌러 지운다
+  box.querySelectorAll('[data-chk]').forEach(b => b.onclick = async () => {
+    const row = b.closest('.strow');
+    const open = row.querySelector('.stchk');
+    if (open) { open.remove(); return; }
+    const r = await api(`/staff/${b.dataset.chk}/today`);
+    const items = r.ok ? await r.json() : [];
+    row.insertAdjacentHTML('beforeend', `<div class="stchk">` + (items.length ? items.map(i =>
+      `<div class="ov ${i.done ? 'done' : 'undone'}"><span class="mk">${i.done ? '✓' : '○'}</span><span class="tx">` +
+      (i.tpl_key ? `<span class="tag tpl">${escapeHtml(tplWhen(i))}</span>${escapeHtml(tplText(i))}` : `<span class="tag">${t('boss1')}</span>${escapeHtml(i.title || '')}`) +
+      `</span><button class="ovdel" data-sdel="${i.id}">×</button></div>`).join('') : `<div class="empty">${t('noEntry')}</div>`) + `</div>`);
+    row.querySelectorAll('[data-sdel]').forEach(x => x.onclick = async () => {
+      if (!x.classList.contains('ask')) {
+        x.classList.add('ask'); x.textContent = t('delAsk');
+        setTimeout(() => { if (x.isConnected) { x.classList.remove('ask'); x.textContent = '×'; } }, 3000);
+        return;
+      }
+      const d = await api(`/items/${x.dataset.sdel}`, { method: 'DELETE' });
+      if (d.ok) { x.closest('.ov').remove(); flashSaved(); }
+    });
+  });
   // 오늘 할 일 지시 — 엔터로 보내면 직원 폰으로 알림이 간다
   box.querySelectorAll('[data-asg]').forEach(b => b.onclick = () => {
     const row = b.closest('.strow');
