@@ -327,7 +327,12 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const scope = staffScope(req);
     if (!scope) return res.status(403).json({ error: 'boss_only' });
     const rows = db.prepare("SELECT id, name, is_active, job, role FROM report_users WHERE role='staff' ORDER BY is_active DESC, id").all();
-    res.json(rows.filter(u => userAllowed(scope, u)).map(({ role, ...u }) => u));
+    const asg = db.prepare("SELECT COUNT(*) n, COALESCE(SUM(done),0) d FROM report_items WHERE staff_id=? AND item_date=? AND from_boss=1");
+    const today = bizToday();
+    res.json(rows.filter(u => userAllowed(scope, u)).map(({ role, ...u }) => {
+      const a = asg.get(u.id, today);
+      return { ...u, asg_total: a.n, asg_done: a.d };
+    }));
   });
 
   // 고를 수 있는 직무 목록 — 매니저에게는 자기가 줄 수 있는 직무만
@@ -450,14 +455,16 @@ module.exports = function createReportRoutes(db, opts = {}) {
 
   // 사장님 지시 — 그 직원의 '오늘 할 일'로 바로 들어가고 텔레그램으로 알린다
   router.post('/assign', async (req, res) => {
-    if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
+    const scope = staffScope(req);
+    if (!scope) return res.status(403).json({ error: 'boss_only' });
     const { staff_id, title, memo } = req.body || {};
     const text = String(title || '').trim();
     if (!text) return res.status(400).json({ error: 'title_required' });
     const date = String(req.body?.date || bizToday());
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'bad_date' });
-    const who = db.prepare("SELECT id, name FROM report_users WHERE id=? AND is_active=1").get(Number(staff_id));
+    const who = db.prepare("SELECT id, name, role, job FROM report_users WHERE id=? AND is_active=1").get(Number(staff_id));
     if (!who) return res.status(404).json({ error: 'staff_not_found' });
+    if (!scope.all && !userAllowed(scope, who)) return res.status(403).json({ error: 'not_your_staff' });
 
     const r = db.prepare(
       "INSERT INTO report_items (staff_id, period, item_date, title, memo, from_boss) VALUES (?,'today',?,?,?,1)"
@@ -467,7 +474,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     let notified = false;
     if (opts.notify) {
       try {
-        const from = req.rsess.admin ? (req.rsess.name || '') : '대표';
+        const from = (req.rsess.admin || !req.rsess.isBoss) ? (req.rsess.name || '') : '대표';
         await opts.notify(who.id, `📌 ${from} 지시 (${date.slice(5).replace('-', '/')})\n${text}` + (memo ? `\n${memo}` : ''), `${from} 지시`);
         notified = true;
       } catch (e) { console.error('[assign] 알림 실패 staff', who.id, e.message); }

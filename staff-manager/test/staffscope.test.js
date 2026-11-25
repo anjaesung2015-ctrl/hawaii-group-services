@@ -87,3 +87,17 @@ test('매니저가 직무 변경·비번 재설정·퇴사: 자기 직원만, �
     assert.strictEqual((await req(base, 'PATCH', `/staff/${ids.무직}`, boss(), { job: '센터-매니저' })).status, 200);
   } finally { server.close(); }
 });
+
+test('매니저 지시: 자기 직원에게만, 알림 제목은 매니저 이름, 목록에 현황', async () => {
+  const { server, base, ids } = makeServer();
+  try {
+    const g = as(ids.구엔, '구엔');
+    assert.strictEqual((await req(base, 'POST', '/assign', g, { staff_id: ids.바트, title: '거울 닦기' })).status, 200);
+    assert.strictEqual((await req(base, 'POST', '/assign', g, { staff_id: ids.잠스랑, title: 'x' })).status, 403);
+    assert.strictEqual((await req(base, 'POST', '/assign', g, { staff_id: ids.톨가, title: 'x' })).status, 403);
+    assert.strictEqual((await req(base, 'POST', '/assign', as(ids.바트, '바트'), { staff_id: ids.바트, title: 'x' })).status, 403);
+    assert.strictEqual((await req(base, 'POST', '/assign', as(ids.미가, '미가'), { staff_id: ids.잠스랑, title: '코트 정리' })).status, 200);
+    const list = await (await req(base, 'GET', '/staff', g)).json();
+    assert.strictEqual(list.find(u => u.name === '바트').asg_total, 1);
+  } finally { server.close(); }
+});

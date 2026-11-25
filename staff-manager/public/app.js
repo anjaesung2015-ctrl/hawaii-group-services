@@ -1216,7 +1216,8 @@ async function renderStaffPanel() {
   const go = 'padding:8px 12px;border:0;border-radius:8px;background:#7c3aed;color:#fff;cursor:pointer';
   box.innerHTML =
     rows.map(u => `<div class="strow ${u.is_active ? '' : 'off'}">
-      <span class="nm">${escapeHtml(u.name)}</span>
+      <span class="nm">${escapeHtml(u.name)}</span>${u.asg_total ? `<span class="asg">📌 ${u.asg_done}/${u.asg_total}</span>` : ''}
+      ${u.is_active ? `<button data-asg="${u.id}">${t('staffAssign')}</button>` : ''}
       <select class="jobSel" data-job="${u.id}" title="${t('staffJob')}">${jobOpts(u.job)}</select>
       <button data-ren="${u.id}">${t('staffRename')}</button>
       <button data-pw="${u.id}">${t('staffPwSet')}</button>
@@ -1269,6 +1270,24 @@ async function renderStaffPanel() {
     };
   });
 
+  // 오늘 할 일 지시 — 엔터로 보내면 직원 폰으로 알림이 간다
+  box.querySelectorAll('[data-asg]').forEach(b => b.onclick = () => {
+    const row = b.closest('.strow');
+    const open = row.querySelector('.asgin');
+    if (open) { open.remove(); return; }
+    b.insertAdjacentHTML('afterend', `<input class="asgin" placeholder="${t('staffAssignPh')}" style="${inp};width:100%;margin-top:6px;box-sizing:border-box">`);
+    const el = row.querySelector('.asgin');
+    el.focus();
+    el.onkeydown = async (e) => {
+      if (e.key !== 'Enter' || !el.value.trim()) return;
+      el.disabled = true;
+      const res = await api('/assign', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staff_id: Number(b.dataset.asg), title: el.value.trim() }) });
+      if (!res.ok) { el.disabled = false; el.style.borderColor = '#dc2626'; return; }
+      flashSaved();
+      await renderStaffPanel();
+    };
+  });
   box.querySelectorAll('[data-ren]').forEach(b => b.onclick = async () => {
     const row = b.closest('.strow');
     const cur = row.querySelector('.nm').textContent;
