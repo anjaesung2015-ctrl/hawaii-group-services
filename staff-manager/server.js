@@ -76,6 +76,7 @@ cron.schedule('*/5 * * * *', async () => {
     const n = await alarm.tick(date, time);
     if (n) console.log(`[alarm] ${date} ${time} — ${n}건 발송`);
   } catch (e) { console.error('[alarm] tick 오류:', e.message); }
+  try { reportRouter.ensureAll(date); } catch (e) { console.error('[checklist] 오류:', e.message); }
   // 대표 리마인드 09:40 / 21:30 (월~토)
   try {
     const r = await reportRouter.reminders.tick(date, time);

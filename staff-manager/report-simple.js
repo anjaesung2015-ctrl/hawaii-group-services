@@ -351,6 +351,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     if (db.prepare("SELECT id FROM report_users WHERE name=?").get(name)) return res.status(409).json({ error: 'name_taken' });
     const r = db.prepare("INSERT INTO report_users (name, pin_hash, is_active, role, job) VALUES (?,?,1,'staff',?)")
       .run(name, bcrypt.hashSync(password, 10), job);
+    if (job) ensureToday([r.lastInsertRowid], bizToday());
     res.json({ ok: true, id: r.lastInsertRowid });
   });
 
@@ -382,7 +383,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     if (!f.length) return res.status(400).json({ error: 'no_changes' });
     v.push(u.id);
     db.prepare("UPDATE report_users SET " + f.join(', ') + " WHERE id=?").run(...v);
-    if ('job' in body) chk.clearUntouched(u.id, bizToday(), newJob);
+    if ('job' in body) { chk.clearUntouched(u.id, bizToday(), newJob); ensureToday([u.id], bizToday()); }
     res.json({ ok: true });
   });
 
@@ -701,6 +702,12 @@ module.exports = function createReportRoutes(db, opts = {}) {
   // 주간 KPI (월요일 목표·과제 3개 → 대표 승인, 토요일 결산)
   mountWeekly(router, db, { bizToday, notify: opts.notify, bossRowId, chk, daily });
   // 대표 리마인드 09:40 / 21:30 (server.js 가 cron 으로 부른다)
+  // 직무가 있는 직원 전원의 오늘 체크리스트를 미리 만든다 (앱을 안 열어도 대표 화면에 보이게)
+  router.ensureAll = (date) => {
+    const ids = db.prepare("SELECT id FROM report_users WHERE is_active=1 AND role='staff' AND job IS NOT NULL").all().map(r => r.id);
+    ensureToday(ids, date);
+    return ids.length;
+  };
   router.reminders = createReminders(db, { bizToday, notify: opts.notify, bossRowId, chk, daily });
 
   return router;
