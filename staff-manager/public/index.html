@@ -38,6 +38,22 @@
   .chkhead .bar{height:6px;background:#e5e7eb;border-radius:3px;margin-top:4px;overflow:hidden}
   .chkhead .bar i{display:block;height:100%;background:#2563eb}
   .strow{flex-wrap:wrap}
+  .rep .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin:6px 0 10px}
+  .rep label{display:flex;flex-direction:column;font-size:12px;color:#6b7280;gap:3px}
+  .rep input[type=text],.rep input[inputmode],.rep textarea{padding:8px;border:1px solid #d1d5db;border-radius:8px;font-size:15px;font-family:inherit;width:100%;box-sizing:border-box;color:#111}
+  .rep textarea{min-height:58px;resize:vertical}
+  .rep .full{grid-column:1/-1}
+  .rep .sum{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;margin:4px 0 8px}
+  .rep .sum b{font-size:16px}
+  .rep .chk{font-size:13px;color:#374151;background:#f8fafc;border-radius:8px;padding:8px 10px;margin:6px 0}
+  .rep .chk .low{color:#dc2626}
+  .rep .kv{font-size:14px;margin:6px 0;white-space:pre-wrap}
+  .rep .kv span{display:block;font-size:12px;color:#6b7280}
+  .rep .save{width:100%;padding:12px;border:0;border-radius:10px;background:#2563eb;color:#fff;font-size:15px;cursor:pointer;margin-top:6px}
+  .rep .ok{display:flex;align-items:center;gap:8px;font-size:14px;margin:8px 0}
+  .rep .ok input{width:20px;height:20px}
+  .rep .badge{font-size:11px;padding:1px 7px;border-radius:10px;background:#fee2e2;color:#b91c1c;margin-left:auto;font-weight:400}
+  .rep .badge.on{background:#dcfce7;color:#15803d}
   .strow .jobSel{font-size:12px;padding:4px;border:1px solid #d1d5db;border-radius:7px;max-width:160px}
   .add{width:100%;padding:11px;border:1px dashed #cbd5e1;border-radius:10px;background:#fff;color:#2563eb;font-size:14px;cursor:pointer;margin-top:4px}
   textarea.free{width:100%;min-height:180px;border:1px solid #e5e7eb;border-radius:10px;padding:12px;font-size:15px;font-family:inherit;margin-top:8px}
@@ -188,6 +204,7 @@
       <button data-p="month" data-i18n="month">월간</button>
       <button data-p="year" data-i18n="year">연간</button>
       <button data-p="hist" data-i18n="hist">기록</button>
+      <button data-p="rep" data-i18n="rep">일일보고</button>
       <button data-p="att" data-i18n="att">근태</button>
       <button data-p="score" data-i18n="score">종합</button>
     </div>

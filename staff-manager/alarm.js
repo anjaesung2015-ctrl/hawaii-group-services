@@ -175,7 +175,7 @@ module.exports = function createAlarm(db, opts = {}) {
   });
 
   // 다른 기능(사장님 지시 등)이 특정 직원에게 즉시 알릴 때 쓴다
-  async function notify(staffId, text) {
+  async function notify(staffId, text, title = '사장님 지시') {
     let ok = false;
     const row = db.prepare("SELECT chat_id FROM report_alarm WHERE staff_id=? AND enabled=1").get(staffId);
     if (row && row.chat_id) {
@@ -183,7 +183,7 @@ module.exports = function createAlarm(db, opts = {}) {
       catch (e) { console.error('[notify] 텔레그램 실패:', e.message); }
     }
     if (pushTo) {
-      try { if (await pushTo(staffId, { title: '사장님 지시', body: text.replace(/^📌[^\n]*\n/, '') })) ok = true; }
+      try { if (await pushTo(staffId, { title, body: text.replace(/^📌[^\n]*\n/, '') })) ok = true; }
       catch (e) { console.error('[notify] 폰 알림 실패:', e.message); }
     }
     if (!ok) throw new Error('알림 보낼 곳 없음');

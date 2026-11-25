@@ -10,7 +10,7 @@ if ('serviceWorker' in navigator) {
 // 상대 경로 API (nginx가 /staff-manager/ 프리픽스를 벗김)
 const API = 'api/report';
 const CHECK_PERIODS = ['today', 'tomorrow'];
-const state = { isBoss: false, staffId: null, myId: null, name: '', targetStaff: null, period: 'today', calMonth: null, calDay: null, dayOffset: 0 };
+const state = { isBoss: false, staffId: null, myId: null, name: '', targetStaff: null, period: 'today', calMonth: null, calDay: null, dayOffset: 0, managerSite: null, repOffset: 0 };
 
 const $ = (s) => document.querySelector(s);
 async function api(pathAndQuery, opts) {
@@ -84,12 +84,18 @@ async function doLogin(body, btn) {
 // 기록은 직원도 자기 것만 본다 (서버가 본인으로 강제). 근태·종합은 사장님 화면에만.
 const BOSS_TABS = ['att', 'score'];
 
+// 일일보고 탭은 사장님과 매니저만
+function tabHidden(p) {
+  if (state.isBoss) return false;
+  if (p === 'rep') return !state.managerSite;
+  return BOSS_TABS.includes(p);
+}
 function applyTabVisibility() {
   $('#tabs').querySelectorAll('button').forEach(b => {
-    b.style.display = (!state.isBoss && BOSS_TABS.includes(b.dataset.p)) ? 'none' : '';
+    b.style.display = tabHidden(b.dataset.p) ? 'none' : '';
   });
   // 감춰진 탭이 선택돼 있으면 오늘로 되돌린다
-  if (!state.isBoss && BOSS_TABS.includes(state.period)) {
+  if (tabHidden(state.period)) {
     state.period = 'today';
     const act = $('#tabs').querySelector('.active');
     if (act) act.classList.remove('active');
@@ -160,6 +166,7 @@ async function render() {
   if (state.period === 'score') return renderScore();
   if (state.period === 'att') return renderAttendance();
   if (state.period === 'hist') return renderHistory();
+  if (state.period === 'rep') return renderDaily();
   if (period === 'month') return renderMonth();
   if (state.isBoss && state.targetStaff === ALL) return renderOverview();
   const r = await api('/items' + qs(period));
@@ -642,6 +649,96 @@ async function renderDay(date) {
   bindAssign(box);
 }
 
+// ---- 매니저 일일 보고 ----
+const REP_NUM = ['headcount', 'cash', 'card', 'transfer', 'target', 'new_members', 'renewals'];
+const REP_TEXT = ['missing', 'progress', 'solved', 'decision'];
+const SITE_KEY = { '피트니스': 'siteFit', '센터': 'siteCen' };
+function money(n) { return n == null ? '-' : Number(n).toLocaleString('ko-KR') + '₮'; }
+function repDayBar(date) {
+  const [y, m, d] = date.split('-').map(Number);
+  const w = t('dow' + new Date(Date.UTC(y, m - 1, d)).getUTCDay());
+  const past = state.repOffset !== 0;
+  return `<div class="daybar${past ? ' past' : ''}"><button data-rday="-1">‹</button><span>${t('dayFmt', { m, d, w })}</span>` +
+    `<button data-rday="1">›</button>` + (past ? `<button class="back" data-rday="0">${t('goToday')}</button>` : '') + `</div>`;
+}
+function repChecklist(c) {
+  if (!c || !c.people.length) return `<div class="chk">📋 ${t('repChk')}: ${t('repNoStaff')}</div>`;
+  const who = c.people.map(p => {
+    const low = p.total && p.done < p.total;
+    return `<span class="${low ? 'low' : ''}">${escapeHtml(p.name)} ${p.done}/${p.total}</span>`;
+  }).join(' · ');
+  return `<div class="chk">📋 ${t('repChk')} <b>${c.done}/${c.total}</b><br>${who}</div>`;
+}
+function repSummary(r) {
+  if (!r) return '';
+  return `<div class="sum"><span>${t('repSales')} <b>${money(r.sales)}</b></span>` +
+    (r.rate != null ? `<span>${t('repRate')} <b>${r.rate}%</b></span>` : '') +
+    `<span>${t('repSettle')} ${r.settle_ok ? '✓' : '✗'}</span></div>`;
+}
+function repForm(site, r, date) {
+  const v = k => (r && r[k] != null) ? r[k] : '';
+  const num = k => `<label>${t('rep_' + k)}<input inputmode="numeric" data-k="${k}" value="${escapeHtml(String(v(k) === '' ? '' : Number(v(k)).toLocaleString('ko-KR')))}"></label>`;
+  const txt = k => `<label class="full">${t('rep_' + k)}<textarea data-k="${k}">${escapeHtml(String(v(k)))}</textarea></label>`;
+  return `<div class="grid">${REP_NUM.map(num).join('')}${REP_TEXT.map(txt).join('')}</div>` +
+    `<label class="ok"><input type="checkbox" data-k="settle_ok" ${r && r.settle_ok ? 'checked' : ''}>${t('repSettleQ')}</label>` +
+    (r && r.boss_comment ? `<div class="kv"><span>${t('repBossComment')}</span>${escapeHtml(r.boss_comment)}</div>` : '') +
+    `<button class="save" data-save="${escapeHtml(site)}" data-date="${date}">${r ? t('repUpdate') : t('repSubmit')}</button>` +
+    `<div class="hint" id="repMsg"></div>`;
+}
+function repView(site, r, date) {
+  if (!r) return `<div class="empty">${t('repNone')}</div>`;
+  const kv = k => r[k] ? `<div class="kv"><span>${t('rep_' + k)}</span>${escapeHtml(r[k])}</div>` : '';
+  const nums = ['headcount', 'new_members', 'renewals'].map(k => `<span>${t('rep_' + k)} <b>${r[k] ?? '-'}</b></span>`).join('');
+  const pay = `<div class="hint">${t('rep_cash')} ${money(r.cash)} · ${t('rep_card')} ${money(r.card)} · ${t('rep_transfer')} ${money(r.transfer)} · ${t('rep_target')} ${money(r.target)}</div>`;
+  return pay + `<div class="sum">${nums}</div>` + REP_TEXT.map(kv).join('') +
+    (r.by ? `<div class="hint">✍ ${escapeHtml(r.by)} · ${escapeHtml((r.updated_at || r.submitted_at || '').slice(11, 16))}</div>` : '') +
+    (state.isBoss
+      ? `<label class="ok"><input type="checkbox" data-bok="${escapeHtml(site)}" ${r.boss_ok ? 'checked' : ''}>${t('repBossOk')}</label>` +
+        `<label style="display:block;font-size:12px;color:#6b7280">${t('repBossComment')}<textarea data-bcm="${escapeHtml(site)}" style="width:100%;min-height:50px;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-family:inherit;box-sizing:border-box">${escapeHtml(r.boss_comment || '')}</textarea></label>`
+      : (r.boss_comment ? `<div class="kv"><span>${t('repBossComment')}</span>${escapeHtml(r.boss_comment)}</div>` : ''));
+}
+async function renderDaily() {
+  const el = $('#content');
+  const date = kst(state.repOffset);
+  const r = await api(`/daily?date=${date}`);
+  if (r.status === 401) { location.reload(); return; }
+  if (!r.ok) { el.innerHTML = `<div class="empty">${t('noEntry')}</div>`; return; }
+  const d = await r.json();
+  el.innerHTML = repDayBar(date) + d.sites.map(s => {
+    const rep = s.report;
+    const edit = (d.editable || []).includes(s.site);
+    const badge = rep ? `<span class="badge ${rep.boss_ok ? 'on' : ''}">${rep.boss_ok ? t('repChecked') : t('repSubmitted')}</span>`
+                      : `<span class="badge">${t('repMissing')}</span>`;
+    return `<div class="card rep"><h3>📊 ${t(SITE_KEY[s.site] || 'siteFit')}${badge}</h3>` +
+      repSummary(rep) + repChecklist(s.checklist) +
+      (edit ? repForm(s.site, rep, date) : repView(s.site, rep, date)) + `</div>`;
+  }).join('') + (!(d.editable || []).length && !state.isBoss ? `<div class="hint">🔒 ${t('pastLocked')}</div>` : '');
+
+  el.querySelectorAll('[data-rday]').forEach(b => b.onclick = () => {
+    const v = Number(b.dataset.rday);
+    state.repOffset = v === 0 ? 0 : Math.min(0, state.repOffset + v);
+    render();
+  });
+  const save = el.querySelector('[data-save]');
+  if (save) save.onclick = async () => {
+    const box = save.closest('.card');
+    const body = { date: save.dataset.date };
+    box.querySelectorAll('[data-k]').forEach(i => { body[i.dataset.k] = i.type === 'checkbox' ? i.checked : i.value; });
+    save.disabled = true;
+    const res = await api('/daily', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    save.disabled = false;
+    const msg = $('#repMsg');
+    if (res.ok) { render(); flashSaved(); }
+    else if (msg) { msg.style.color = '#dc2626'; msg.textContent = res.status === 400 ? t('repBadNum') : t('loginFail'); }
+  };
+  el.querySelectorAll('[data-bok]').forEach(c => c.onchange = () =>
+    api('/daily/boss', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ site: c.dataset.bok, date, boss_ok: c.checked }) }).then(render));
+  el.querySelectorAll('[data-bcm]').forEach(c => c.onblur = () =>
+    api('/daily/boss', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ site: c.dataset.bcm, date, boss_comment: c.value }) }).then(flashSaved));
+}
+
 // 직무 체크리스트 (업무표에서 매일 자동으로 들어오는 항목)
 function tplText(it) { return (LANG === 'mn' && it.tpl_mn) ? it.tpl_mn : (it.title || ''); }
 function tplWhen(it) { return (LANG === 'mn' && it.tpl_when_mn) ? it.tpl_when_mn : (it.tpl_when || ''); }
@@ -1021,6 +1118,7 @@ function applySession(d) {
   state.staffId = d.staff_id || null;
   state.myId = d.my_id || null;
   state.name = d.name || '사장님';
+  state.managerSite = d.manager_site || null;
   enterApp();
 }
 document.querySelectorAll('.langBtn').forEach(b => {

@@ -7,6 +7,7 @@ const DAILY = ['today', 'tomorrow'];   // 달력 한 칸에 들어가는 기간
 
 const { extractDates, stripLeadingDate } = require('./dates');
 const createChecklist = require('./checklist');
+const mountDailyReport = require('./dailyreport');
 
 module.exports = function createReportRoutes(db, opts = {}) {
   const secret = opts.secret || 'staff-mgr-2026-secret';
@@ -187,7 +188,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     }
     const token = jwt.sign({ staff_id: u.id, name: u.name, isBoss: false }, secret, { expiresIn: '30d' });
     res.cookie('report_sess', token, COOKIE);
-    res.json({ ok: true, isBoss: false, staff_id: u.id, name: u.name });
+    res.json({ ok: true, isBoss: false, staff_id: u.id, name: u.name, manager_site: daily.managerSite(u.id) });
   });
 
   router.post('/logout', (req, res) => {
@@ -221,7 +222,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
   // 세션 복원 — 앱을 벗어났다 돌아와도 다시 로그인하지 않도록
   router.get('/me', (req, res) => {
     if (req.rsess.isBoss) return res.json({ isBoss: true, my_id: bossRowId(), name: '사장님' });
-    res.json({ isBoss: false, staff_id: Number(req.rsess.staff_id), name: req.rsess.name || '' });
+    res.json({ isBoss: false, staff_id: Number(req.rsess.staff_id), name: req.rsess.name || '', manager_site: daily.managerSite(Number(req.rsess.staff_id)) });
   });
 
   // 사장님 전용 직원 현황판 — 활성 직원 전원을 항목과 함께 한 번에 반환
@@ -643,6 +644,9 @@ module.exports = function createReportRoutes(db, opts = {}) {
     db.prepare("UPDATE report_users SET pin_hash=? WHERE id=?").run(bcrypt.hashSync(String(new_password), 10), u.id);
     res.json({ ok: true });
   });
+
+  // 매니저 일일 보고 (/daily)
+  const daily = mountDailyReport(router, db, { bizToday, notify: opts.notify, bossRowId, chk });
 
   return router;
 };
