@@ -34,3 +34,15 @@ test('완료율 머리줄은 체크리스트만 센다', () => {
   assert.ok(html.includes('1/2'));
   assert.strictEqual(chkHead([{ id: 11, title: '내 일' }]), '');
 });
+
+test('대표 직원 현황: 체크리스트 줄에도 지우기 버튼, 직원이 적은 줄엔 없음', () => {
+  const { loadApp } = require('./apphost');
+  const ctx = loadApp();
+  ctx.state.isBoss = true;
+  ctx.state.period = 'today';
+  const html = ctx.overviewCards([{ staff_id: 1, name: '잉해', items: [
+    { id: 11, title: '바닥 청소', tpl_key: '센터-청소|바닥 청소', tpl_when: '출근 15분 내', done: 0 },
+    { id: 12, title: '내가 적은 것', done: 0 }] }], true);
+  assert.ok(html.includes('data-del="11"'));
+  assert.ok(!html.includes('data-del="12"'));
+});

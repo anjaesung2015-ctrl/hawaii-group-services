@@ -231,8 +231,8 @@ function overviewCards(rows, isCheck) {
           const tag = (i.tpl_key ? `<span class="tag tpl">${escapeHtml(tplWhen(i))}</span>` : '') +
             (i.from_boss ? `<span class="tag">${t('boss1')}</span>` : '') +
             ((i.item_date && i.item_date !== itemDateFor(state.period)) ? `<span class="from">${dayTag(i.item_date)}</span>` : '');
-          // 사장님이 내린 지시는 여기서 바로 지울 수 있다 (직원이 적은 건 건드리지 않는다)
-          const del = (state.isBoss && i.from_boss) ? `<button class="ovdel" data-del="${i.id}">×</button>` : '';
+          // 대표가 내린 지시와 직무 체크리스트는 여기서 바로 지울 수 있다 (직원이 적은 건 건드리지 않는다)
+          const del = (state.isBoss && (i.from_boss || i.tpl_key)) ? `<button class="ovdel" data-del="${i.id}">×</button>` : '';
           return `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
                  `<span class="tx">${tag}${title}${memo}${orig}` +
                  (i.tpl_photo ? `<div class="pblock">${i.tpl_photo === 'open' ? openBadge(i.open) : ''}${(i.photos || []).length ? '' : `<span class="pbad warn">${t('repNoPhoto')}</span>`}<div class="thumbs">${photoThumbs(i.photos)}</div></div>` : '') +
