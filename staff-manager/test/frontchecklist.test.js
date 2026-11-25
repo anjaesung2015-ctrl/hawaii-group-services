@@ -61,3 +61,14 @@ test('기록 탭: 대표는 완료 바꾸기·지우기 버튼, 직원은 보기
   const s = ctx.historyCards(rows, false);
   assert.ok(!s.includes('data-hdone') && !s.includes('data-hdel'));
 });
+
+test('기록 탭: 매니저는 맡은 직원 줄만 체크, 지우기는 체크리스트·지시 줄만', () => {
+  const { loadApp } = require('./apphost');
+  const ctx = loadApp();
+  ctx.state.isBoss = false; ctx.state.managerSite = '피트니스'; ctx.state.staffId = 9;
+  const html = ctx.historyCards([{ date: '2026-11-20', done: 0, total: 3, items: [
+    { id: 31, title: '청소', tpl_key: 'k', done: 0, staff_id: 5 }, { id: 32, title: '메모', done: 0, staff_id: 5 }, { id: 33, title: '내 것', done: 0, staff_id: 9 }] }], true);
+  assert.ok(html.includes('data-hdone="31"') && html.includes('data-hdel="31"'));
+  assert.ok(html.includes('data-hdone="32"') && !html.includes('data-hdel="32"'));
+  assert.ok(!html.includes('data-hdone="33"'));
+});

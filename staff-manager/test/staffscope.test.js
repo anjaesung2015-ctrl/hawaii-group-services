@@ -119,3 +119,22 @@ test('매니저: 맡은 직원의 오늘 체크리스트 보기·지우기, 다�
     assert.strictEqual((await req(base, 'DELETE', `/items/${own}`, g)).status, 403, '직원이 적은 줄');
   } finally { server.close(); }
 });
+
+test('기록: 매니저는 본인+맡은 직원 기록을 보고, 지난 날짜도 완료 바꾸기·체크리스트 지우기', async () => {
+  const { server, base, ids, db } = makeServer();
+  try {
+    const g = as(ids.구엔, '구엔');
+    const add = (sid, title, tpl) => db.prepare("INSERT INTO report_items (staff_id, period, item_date, title, tpl_key) VALUES (?,'today','2026-11-20',?,?)").run(sid, title, tpl || null).lastInsertRowid;
+    const a = add(ids.바트, '바닥 청소', '피트-청소|바닥 청소'), b = add(ids.바트, '바트 메모'), c = add(ids.잠스랑, '센터 일');
+    const h = await (await req(base, 'GET', '/history?month=2026-11', g)).json();
+    const names = [...new Set(h.rows.flatMap(r => r.items.map(i => i.name)))];
+    assert.deepStrictEqual(names, ['바트']);
+    assert.strictEqual((await req(base, 'PATCH', `/items/${b}`, g, { done: true })).status, 200);
+    assert.strictEqual(db.prepare('SELECT done FROM report_items WHERE id=?').get(b).done, 1);
+    assert.strictEqual((await req(base, 'PATCH', `/items/${b}`, g, { title: 'x' })).status, 403, '완료만');
+    assert.strictEqual((await req(base, 'PATCH', `/items/${c}`, g, { done: true })).status, 403, '다른 사업장');
+    assert.strictEqual((await req(base, 'DELETE', `/items/${a}`, g)).status, 200, '지난 체크리스트 지우기');
+    assert.strictEqual((await req(base, 'DELETE', `/items/${b}`, g)).status, 403, '직원이 적은 줄');
+    assert.strictEqual((await req(base, 'PATCH', `/items/${b}`, as(ids.바트, '바트'), { title: 'y' })).status, 403, '직원은 지난 기록 못 고침');
+  } finally { server.close(); }
+});

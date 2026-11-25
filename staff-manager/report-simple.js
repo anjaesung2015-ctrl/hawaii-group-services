@@ -566,13 +566,17 @@ module.exports = function createReportRoutes(db, opts = {}) {
         ? db.prepare("SELECT id, name FROM report_users WHERE id=?").all(Number(only))
         : db.prepare("SELECT id, name FROM report_users WHERE is_active=1 ORDER BY role='staff', id").all();
     } else {
-      people = db.prepare("SELECT id, name FROM report_users WHERE id=?").all(Number(req.rsess.staff_id));
+      // 매니저·총매니저는 본인 + 맡은 직원 기록을 함께 본다
+      const scope = staffScope(req);
+      const me = Number(req.rsess.staff_id);
+      people = db.prepare("SELECT id, name, role, job FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all()
+        .filter(u => u.id === me || (scope && userAllowed(scope, u))).map(u => ({ id: u.id, name: u.name }));
     }
     // 사람별 색을 달력 범례와 똑같이 맞추려고 활성 직원 목록을 함께 준다.
     // 직원 화면은 이름 뱃지를 쓰지 않으니(본인 것만 본다) 남의 명단을 내려보내지 않는다.
     const staffList = req.rsess.isBoss
       ? db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all()
-      : [];
+      : (people.length > 1 ? people : []);
     const ids = people.map(p => p.id);
     if (!ids.length) return res.json({ month, people: staffList, rows: [] });
     const names = new Map(people.map(p => [p.id, p.name]));
@@ -676,8 +680,15 @@ module.exports = function createReportRoutes(db, opts = {}) {
   router.patch('/items/:id', (req, res) => {
     const item = db.prepare("SELECT * FROM report_items WHERE id=?").get(req.params.id);
     if (!item) return res.status(404).json({ error: 'not_found' });
-    if (!req.rsess.isBoss && item.staff_id !== Number(req.rsess.staff_id)) return res.status(403).json({ error: 'forbidden' });
     const body = req.body || {};
+    // 매니저는 맡은 직원 기록의 완료 체크만 바꿀 수 있다 (지난 날짜 포함, 사진 없이도)
+    const mgrDone = !req.rsess.isBoss && item.staff_id !== Number(req.rsess.staff_id) && managesOwner(req, item.staff_id);
+    if (mgrDone) {
+      if (!(Object.keys(body).length === 1 && 'done' in body)) return res.status(403).json({ error: 'done_only' });
+      db.prepare("UPDATE report_items SET done=?, updated_at=datetime('now','localtime') WHERE id=?").run(body.done ? 1 : 0, item.id);
+      return res.json({ ok: true });
+    }
+    if (!req.rsess.isBoss && item.staff_id !== Number(req.rsess.staff_id)) return res.status(403).json({ error: 'forbidden' });
     // 이월된 지난 할 일은 완료 체크만 열어둔다 — 끝내야 오늘 목록에서 내려가니까.
     // 제목·메모 수정과 삭제는 그대로 막는다 (뒤늦게 기록을 바꾸는 것 방지).
     const onlyDone = Object.keys(body).length > 0 && Object.keys(body).every(k => k === 'done');
@@ -722,6 +733,10 @@ module.exports = function createReportRoutes(db, opts = {}) {
     res.sendFile(photos.fileOf(p), (err) => { if (err && !res.headersSent) res.status(404).end(); });
   });
 
+  function managesOwner(req, staffId) {
+    const s = staffScope(req);
+    return !!s && userAllowed(s, db.prepare("SELECT id, role, job FROM report_users WHERE id=?").get(staffId));
+  }
   // 매니저·대표: 맡은 직원의 오늘 체크리스트·지시 보기 (직원 화면에서 지우기용)
   router.get('/staff/:id/today', (req, res) => {
     const scope = staffScope(req);
@@ -741,7 +756,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     // 사장님 지시는 받은 직원이 지울 수 없다 (완료 체크는 가능)
     if (!req.rsess.isBoss && !mgrDel && item.from_boss) return res.status(403).json({ error: 'assigned_by_boss' });
     if (!req.rsess.isBoss && !mgrDel && item.tpl_key) return res.status(403).json({ error: 'checklist_locked' });
-    if (pastLocked(req, item.period, item.item_date)) return res.status(403).json({ error: 'past_locked' });
+    if (!mgrDel && pastLocked(req, item.period, item.item_date)) return res.status(403).json({ error: 'past_locked' });
     db.prepare("DELETE FROM report_items WHERE id=?").run(req.params.id);
     res.json({ ok: true });
   });

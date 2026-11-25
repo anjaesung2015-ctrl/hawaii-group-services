@@ -310,7 +310,7 @@ function openAssign(btn, staffId, name) {
 async function renderHistory() {
   const el = $('#content');
   const month = state.calMonth || kst().slice(0, 7);
-  const allMode = isAllMode();
+  const allMode = isAllMode() || (!state.isBoss && !!state.managerSite);   // 매니저는 맡은 직원 기록도 같이 본다
   const sid = allMode ? null : currentStaffId();
   const r = await api(`/history?month=${month}` + (sid ? `&staff_id=${sid}` : ''));
   if (r.status === 401) { location.reload(); return; }
@@ -348,14 +348,17 @@ function historyCards(rows, allMode) {
     const list = (row.items || []).map(i => {
       // 전체 보기일 때만 이름을 붙인다 (한 사람만 볼 때는 같은 이름이 줄마다 반복될 뿐)
       const who = allMode ? `<span class="ev ${colorClass(i.staff_id)}">${escapeHtml(i.name || '')}</span>` : '';
-      const edit = state.isBoss;
+      // 대표: 전부 / 매니저: 맡은 직원 줄 (완료 바꾸기, 체크리스트·지시 줄 지우기)
+      const mine = !state.isBoss && i.staff_id === state.staffId;
+      const edit = state.isBoss || (!!state.managerSite && !mine);
+      const canDel = state.isBoss || (edit && (i.tpl_key || i.from_boss));
       const mk = edit
         ? `<button class="mk hchk" data-hdone="${i.id}" data-to="${i.done ? 0 : 1}" title="${t('histToggle')}">${i.done ? '✓' : '○'}</button>`
         : `<span class="mk">${i.done ? '✓' : '○'}</span>`;
       return `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}">${mk}` +
         `<span class="tx">${who}${i.tpl_key ? `<span class="tag tpl">📋</span>` : ''}${i.from_boss ? `<span class="tag">${t('boss1')}</span>` : ''}${escapeHtml((i.tpl_key ? tplText(i) : i.title) || t('noTitle'))}` +
         (i.memo ? ` <span class="m">· ${escapeHtml(i.memo)}</span>` : '') + `</span>` +
-        (edit ? `<button class="ovdel" data-hdel="${i.id}">×</button>` : '') + `</div>`;
+        (canDel ? `<button class="ovdel" data-hdel="${i.id}">×</button>` : '') + `</div>`;
     }).join('');
     return `<div class="card"><h3>${head}</h3>${list}</div>`;
   }).join('');
