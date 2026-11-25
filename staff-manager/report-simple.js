@@ -6,6 +6,7 @@ const PERIODS = ['today', 'tomorrow', 'week', 'month', 'year'];
 const DAILY = ['today', 'tomorrow'];   // 달력 한 칸에 들어가는 기간
 
 const { extractDates, stripLeadingDate } = require('./dates');
+const createChecklist = require('./checklist');
 
 module.exports = function createReportRoutes(db, opts = {}) {
   const secret = opts.secret || 'staff-mgr-2026-secret';
@@ -80,6 +81,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     return db.prepare(
       "SELECT * FROM report_items WHERE staff_id IN (" + sids.map(() => '?').join(',') + ")" +
       " AND period IN ('today','tomorrow') AND done=0 AND item_date < ?" +
+      " AND tpl_key IS NULL" +
       " AND (COALESCE(title,'') <> '' OR COALESCE(memo,'') <> '')" +
       " ORDER BY item_date, id"
     ).all(...sids, date);
@@ -122,6 +124,14 @@ module.exports = function createReportRoutes(db, opts = {}) {
 
   const icols = db.prepare("PRAGMA table_info(report_items)").all().map(c => c.name);
   if (!icols.includes('from_boss')) db.exec("ALTER TABLE report_items ADD COLUMN from_boss INTEGER NOT NULL DEFAULT 0");
+
+  // 직무별 매일 체크리스트 (jobs.json)
+  const chk = createChecklist(db, { jobs: opts.jobs, file: opts.jobsFile });
+  // 오늘 날짜를 볼 때만 채운다. 지난 날짜·미래 날짜를 넘겨볼 때 새로 만들지 않는다.
+  function ensureToday(sids, date) {
+    if (date !== bizToday()) return;
+    for (const sid of sids) chk.ensure(sid, date);
+  }
 
   const COOKIE = { path: '/staff-manager', maxAge: 2592000000, sameSite: 'Lax', httpOnly: true, secure: true };
 
@@ -233,7 +243,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     } else {
       scope = " AND staff_id=?"; scopeArgs = [Number(req.rsess.staff_id)];
     }
-    const sql = "SELECT item_date, staff_id, done, title, memo FROM report_items WHERE period IN ('today','tomorrow') AND item_date LIKE ?" + scope;
+    const sql = "SELECT item_date, staff_id, done, title, memo FROM report_items WHERE period IN ('today','tomorrow') AND tpl_key IS NULL AND item_date LIKE ?" + scope;
     const args = [month + '-%', ...scopeArgs];
 
     const days = {};
@@ -248,7 +258,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
       if (!seen[key] && staffIds.has(row.staff_id)) { seen[key] = 1; d.staff++; }
     }
     // 모든 기간의 글에서 이 달에 해당하는 날짜를 찾아 함께 표시한다
-    const mSql = "SELECT item_date, staff_id, title, memo FROM report_items WHERE 1=1" + scope;
+    const mSql = "SELECT item_date, staff_id, title, memo FROM report_items WHERE tpl_key IS NULL" + scope;
     const mArgs = [...scopeArgs];
 
     for (const row of db.prepare(mSql).all(...mArgs)) {
@@ -278,8 +288,11 @@ module.exports = function createReportRoutes(db, opts = {}) {
   // 퇴사는 삭제가 아니라 비활성화다 — 그동안 쌓인 보고·근태 기록을 지우지 않기 위해서.
   router.get('/staff', (req, res) => {
     if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
-    res.json(db.prepare("SELECT id, name, is_active FROM report_users WHERE role='staff' ORDER BY is_active DESC, id").all());
+    res.json(db.prepare("SELECT id, name, is_active, job FROM report_users WHERE role='staff' ORDER BY is_active DESC, id").all());
   });
+
+  // 고를 수 있는 직무 목록
+  router.get('/jobs', (req, res) => res.json(chk.list()));
 
   router.post('/staff', (req, res) => {
     if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
@@ -287,9 +300,11 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const password = String(req.body?.password || '');
     if (!name) return res.status(400).json({ error: 'name_required' });
     if (password.length < 4) return res.status(400).json({ error: 'weak_password' });
+    const job = req.body?.job ? String(req.body.job) : null;
+    if (job && !chk.isJob(job)) return res.status(400).json({ error: 'bad_job' });
     if (db.prepare("SELECT id FROM report_users WHERE name=?").get(name)) return res.status(409).json({ error: 'name_taken' });
-    const r = db.prepare("INSERT INTO report_users (name, pin_hash, is_active, role) VALUES (?,?,1,'staff')")
-      .run(name, bcrypt.hashSync(password, 10));
+    const r = db.prepare("INSERT INTO report_users (name, pin_hash, is_active, role, job) VALUES (?,?,1,'staff',?)")
+      .run(name, bcrypt.hashSync(password, 10), job);
     res.json({ ok: true, id: r.lastInsertRowid });
   });
 
@@ -309,9 +324,16 @@ module.exports = function createReportRoutes(db, opts = {}) {
       f.push('name=?'); v.push(name);
     }
     if ('is_active' in body) { f.push('is_active=?'); v.push(body.is_active ? 1 : 0); }
+    let newJob;
+    if ('job' in body) {
+      newJob = body.job ? String(body.job) : null;
+      if (newJob && !chk.isJob(newJob)) return res.status(400).json({ error: 'bad_job' });
+      f.push('job=?'); v.push(newJob);
+    }
     if (!f.length) return res.status(400).json({ error: 'no_changes' });
     v.push(u.id);
     db.prepare("UPDATE report_users SET " + f.join(', ') + " WHERE id=?").run(...v);
+    if ('job' in body) chk.clearUntouched(u.id, bizToday(), newJob);
     res.json({ ok: true });
   });
 
@@ -418,11 +440,12 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const ph = ids.map(() => '?').join(',');
 
     const items = db.prepare(
-      "SELECT id, staff_id, title, memo, done, from_boss FROM report_items WHERE period IN ('today','tomorrow') AND item_date=? AND staff_id IN (" + ph + ") ORDER BY id"
+      "SELECT id, staff_id, title, memo, done, from_boss, tpl_key FROM report_items WHERE period IN ('today','tomorrow') AND item_date=? AND staff_id IN (" + ph + ") ORDER BY id"
     ).all(date, ...ids);
+    chk.decorate(items);
 
     const all = db.prepare(
-      "SELECT id, staff_id, period, item_date, title, memo FROM report_items WHERE staff_id IN (" + ph + ") ORDER BY id"
+      "SELECT id, staff_id, period, item_date, title, memo FROM report_items WHERE tpl_key IS NULL AND staff_id IN (" + ph + ") ORDER BY id"
     ).all(...ids);
 
     const byId = new Map(people.map(p => [p.id, { staff_id: p.id, name: p.name, items: [], mentions: [] }]));
@@ -471,7 +494,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
 
     // 제목·메모가 둘 다 빈 항목은 기록이 아니다 — '+ 항목 추가'만 누르고 둔 빈 줄.
     const items = db.prepare(
-      "SELECT id, staff_id, item_date, title, memo, done, from_boss FROM report_items" +
+      "SELECT id, staff_id, item_date, title, memo, done, from_boss, tpl_key FROM report_items" +
       " WHERE period IN ('today','tomorrow') AND item_date LIKE ? AND staff_id IN (" + ids.map(() => '?').join(',') + ")" +
       " AND (COALESCE(title,'') <> '' OR COALESCE(memo,'') <> '')" +
       " ORDER BY item_date DESC, id"
@@ -484,7 +507,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
       if (!row) { row = { date: it.item_date, total: 0, done: 0, items: [] }; byDate.set(it.item_date, row); rows.push(row); }
       row.total++;
       if (it.done) row.done++;
-      row.items.push({ ...it, name: names.get(it.staff_id) || '' });
+      row.items.push(chk.decorate([{ ...it, name: names.get(it.staff_id) || '' }])[0]);
     }
     res.json({ month, people: staffList, rows });
   });
@@ -497,9 +520,10 @@ module.exports = function createReportRoutes(db, opts = {}) {
     const wanted = many || (PERIODS.includes(period) ? dailyExpand(period) : null);
     if (!wanted) return res.status(400).json({ error: 'bad_period' });
     if (!date) return res.status(400).json({ error: 'date_required' });
-    const staff = db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all();
+    const staff = db.prepare("SELECT id, name, job FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all();
+    if (wanted.includes('today')) ensureToday(staff.map(s => s.id), date);
     const items = db.prepare(
-      "SELECT id, staff_id, item_date, title, memo, done, from_boss FROM report_items WHERE period IN (" +
+      "SELECT id, staff_id, item_date, title, memo, done, from_boss, tpl_key FROM report_items WHERE period IN (" +
       wanted.map(() => '?').join(',') + ") AND item_date=? ORDER BY id"
     ).all(...wanted, date);
     const byStaff = new Map(staff.map(s => [s.id, []]));
@@ -507,7 +531,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
       for (const it of carryOver(staff.map(s => s.id), date)) byStaff.get(it.staff_id).push(it);
     }
     for (const it of items) if (byStaff.has(it.staff_id)) byStaff.get(it.staff_id).push(it);
-    const rows = staff.map(s => ({ staff_id: s.id, name: s.name, items: byStaff.get(s.id) }));
+    const rows = staff.map(s => ({ staff_id: s.id, name: s.name, job: s.job || null, items: chk.decorate(byStaff.get(s.id)) }));
 
     // 화면 언어와 다른 언어로 적힌 글에 번역문(title_tr/memo_tr)을 덧붙인다. 원문은 그대로 둔다.
     const lang = req.query.lang;
@@ -515,12 +539,14 @@ module.exports = function createReportRoutes(db, opts = {}) {
       try {
         const texts = [];
         for (const row of rows) for (const it of row.items) {
+          // 체크리스트는 몽골어가 이미 있다 — 번역기를 부르지 않는다
+          if (it.tpl_key) { if (lang === 'mn' && it.tpl_mn) it.title_tr = it.tpl_mn; if (it.memo) texts.push(it.memo); continue; }
           if (it.title) texts.push(it.title);
           if (it.memo) texts.push(it.memo);
         }
         const tr = await translateAll(texts, lang);
         for (const row of rows) for (const it of row.items) {
-          if (it.title && tr.has(it.title)) it.title_tr = tr.get(it.title);
+          if (it.title && !it.tpl_key && tr.has(it.title)) it.title_tr = tr.get(it.title);
           if (it.memo && tr.has(it.memo)) it.memo_tr = tr.get(it.memo);
         }
       } catch (e) { /* 번역 전체 실패 — 원문 그대로 내려보낸다 */ }
@@ -544,7 +570,8 @@ module.exports = function createReportRoutes(db, opts = {}) {
     }
     if (date) { sql += " AND item_date=?"; p.push(date); }
     sql += " ORDER BY id";
-    const rows = db.prepare(sql).all(...p);
+    if (date && (many ? many.includes('today') : DAILY.includes(period))) ensureToday([sid], date);
+    const rows = chk.decorate(db.prepare(sql).all(...p));
     const carried = (period === 'today' && !many) ? carryOver([sid], date) : [];
     res.json([...carried, ...rows]);
   });
@@ -570,6 +597,8 @@ module.exports = function createReportRoutes(db, opts = {}) {
     // 제목·메모 수정과 삭제는 그대로 막는다 (뒤늦게 기록을 바꾸는 것 방지).
     const onlyDone = Object.keys(body).length > 0 && Object.keys(body).every(k => k === 'done');
     if (!onlyDone && pastLocked(req, item.period, item.item_date)) return res.status(403).json({ error: 'past_locked' });
+    // 체크리스트 문구는 업무표에서 온다 — 직원은 체크·메모만
+    if (!req.rsess.isBoss && item.tpl_key && 'title' in body) return res.status(403).json({ error: 'checklist_locked' });
     const fields = []; const vals = [];
     for (const k of ['title', 'memo', 'done']) if (k in body) { fields.push(k + '=?'); vals.push(k === 'done' ? (body[k] ? 1 : 0) : body[k]); }
     if (!fields.length) return res.status(400).json({ error: 'no_changes' });
@@ -585,6 +614,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
     if (!req.rsess.isBoss && item.staff_id !== Number(req.rsess.staff_id)) return res.status(403).json({ error: 'forbidden' });
     // 사장님 지시는 받은 직원이 지울 수 없다 (완료 체크는 가능)
     if (!req.rsess.isBoss && item.from_boss) return res.status(403).json({ error: 'assigned_by_boss' });
+    if (!req.rsess.isBoss && item.tpl_key) return res.status(403).json({ error: 'checklist_locked' });
     if (pastLocked(req, item.period, item.item_date)) return res.status(403).json({ error: 'past_locked' });
     db.prepare("DELETE FROM report_items WHERE id=?").run(req.params.id);
     res.json({ ok: true });

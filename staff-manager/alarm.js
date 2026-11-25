@@ -42,6 +42,8 @@ module.exports = function createAlarm(db, opts = {}) {
     last_sent TEXT
   )`);
 
+  const hasTpl = () => db.prepare("PRAGMA table_info(report_items)").all().some(c => c.name === 'tpl_key');
+
   // ---- 메시지 만들기 ----
   // 그날 할 일이 하나도 없고 내일 일정도 없으면 null (보내지 않는다)
   function buildMessage(staffId, name, date) {
@@ -54,6 +56,7 @@ module.exports = function createAlarm(db, opts = {}) {
     const carried = db.prepare(
       "SELECT title, memo, done, item_date FROM report_items WHERE staff_id=?" +
       " AND period IN ('today','tomorrow') AND done=0 AND item_date < ?" +
+      (hasTpl() ? " AND tpl_key IS NULL" : "") +   // 매일 체크리스트는 이월하지 않는다
       " AND (COALESCE(title,'') <> '' OR COALESCE(memo,'') <> '') ORDER BY item_date, id"
     ).all(staffId, date);
     const allToday = [...carried, ...todays];

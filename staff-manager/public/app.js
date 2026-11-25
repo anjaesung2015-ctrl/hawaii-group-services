@@ -168,7 +168,7 @@ async function render() {
   const el = $('#content');
   if (CHECK_PERIODS.includes(period)) {
     const locked = viewLocked();
-    el.innerHTML = dayBarHtml() + items.map(renderCheckItem).join('') +
+    el.innerHTML = dayBarHtml() + chkHead(items) + items.map(renderCheckItem).join('') +
       (locked ? `<div class="hint">🔒 ${t('pastLocked')}</div>`
               : `<button class="add" id="addBtn">${t('addItem')}</button>`);
     bindDayBar();
@@ -211,9 +211,11 @@ function overviewCards(rows, isCheck) {
           const memoTx = i.memo_tr || i.memo;
           const memo = memoTx ? ` <span class="m">· ${escapeHtml(memoTx)}</span>` : '';
           // 번역된 글에는 원문을 작게 함께 보여준다 (기계번역이라 확인이 필요)
-          const orig = (i.title_tr || i.memo_tr)
+          // 체크리스트 몽골어는 업무표에 원래 있는 문구라 원문 표시가 필요 없다
+          const orig = ((i.title_tr && !i.tpl_key) || i.memo_tr)
             ? `<div class="src">🌐 ${escapeHtml(i.title || '')}${i.memo ? ' · ' + escapeHtml(i.memo) : ''}</div>` : '';
-          const tag = (i.from_boss ? `<span class="tag">${t('boss1')}</span>` : '') +
+          const tag = (i.tpl_key ? `<span class="tag tpl">${escapeHtml(tplWhen(i))}</span>` : '') +
+            (i.from_boss ? `<span class="tag">${t('boss1')}</span>` : '') +
             ((i.item_date && i.item_date !== itemDateFor(state.period)) ? `<span class="from">${dayTag(i.item_date)}</span>` : '');
           // 사장님이 내린 지시는 여기서 바로 지울 수 있다 (직원이 적은 건 건드리지 않는다)
           const del = (state.isBoss && i.from_boss) ? `<button class="ovdel" data-del="${i.id}">×</button>` : '';
@@ -317,7 +319,7 @@ function historyCards(rows, allMode) {
       // 전체 보기일 때만 이름을 붙인다 (한 사람만 볼 때는 같은 이름이 줄마다 반복될 뿐)
       const who = allMode ? `<span class="ev ${colorClass(i.staff_id)}">${escapeHtml(i.name || '')}</span>` : '';
       return `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
-        `<span class="tx">${who}${i.from_boss ? `<span class="tag">${t('boss1')}</span>` : ''}${escapeHtml(i.title || t('noTitle'))}` +
+        `<span class="tx">${who}${i.tpl_key ? `<span class="tag tpl">📋</span>` : ''}${i.from_boss ? `<span class="tag">${t('boss1')}</span>` : ''}${escapeHtml((i.tpl_key ? tplText(i) : i.title) || t('noTitle'))}` +
         (i.memo ? ` <span class="m">· ${escapeHtml(i.memo)}</span>` : '') + `</span></div>`;
     }).join('');
     return `<div class="card"><h3>${head}</h3>${list}</div>`;
@@ -626,7 +628,7 @@ async function renderDay(date) {
     const head = items.length ? `<span class="cnt">${t('doneCount', { done, total: items.length })}</span>` : '';
     const list = items.map(i =>
       `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
-      `<span class="tx">${i.from_boss ? `<span class="tag">${t('boss1')}</span>` : ''}${escapeHtml(i.title || t('noTitle'))}` +
+      `<span class="tx">${i.tpl_key ? `<span class="tag tpl">📋</span>` : ''}${i.from_boss ? `<span class="tag">${t('boss1')}</span>` : ''}${escapeHtml((i.tpl_key ? tplText(i) : i.title) || t('noTitle'))}` +
       (i.memo ? ` <span class="m">· ${escapeHtml(i.memo)}</span>` : '') + `</span>` +
       ((state.isBoss && i.from_boss) ? `<button class="ovdel" data-del="${i.id}">×</button>` : '') + `</div>`).join('');
     const notes = mentions.map(m =>
@@ -640,7 +642,28 @@ async function renderDay(date) {
   bindAssign(box);
 }
 
+// 직무 체크리스트 (업무표에서 매일 자동으로 들어오는 항목)
+function tplText(it) { return (LANG === 'mn' && it.tpl_mn) ? it.tpl_mn : (it.title || ''); }
+function tplWhen(it) { return (LANG === 'mn' && it.tpl_when_mn) ? it.tpl_when_mn : (it.tpl_when || ''); }
+function chkHead(items) {
+  const c = (items || []).filter(i => i.tpl_key);
+  if (!c.length) return '';
+  const done = c.filter(i => i.done).length;
+  const pct = Math.round(done / c.length * 100);
+  return `<div class="chkhead">📋 ${t('checklist')} <b>${done}/${c.length}</b><div class="bar"><i style="width:${pct}%"></i></div></div>`;
+}
+function renderTplItem(it) {
+  const past = viewLocked();
+  return `<div class="item tpl ${it.done ? 'done' : ''}" data-id="${it.id}">
+    <input type="checkbox" ${it.done ? 'checked' : ''} ${past ? 'disabled' : ''}>
+    <span class="tx"><span class="tag tpl">${escapeHtml(tplWhen(it))}</span>${escapeHtml(tplText(it))}</span>
+    ${(state.isBoss && !past) ? '<button class="del">×</button>' : ''}
+    <input class="memo" value="${escapeHtml(it.memo || '')}" placeholder="${t('memo')}" ${past ? 'readonly' : ''}>
+  </div>`;
+}
+
 function renderCheckItem(it) {
+  if (it.tpl_key) return renderTplItem(it);
   // 사장님이 내린 지시는 직원이 지울 수 없다 (완료 체크·메모는 가능)
   // 지난 날짜는 직원이 아예 못 건드린다
   const past = viewLocked();
@@ -662,7 +685,7 @@ function bindCheckItem(node) {
   if (viewLocked()) return;                     // 지난 날짜는 아무것도 연결하지 않는다
   node.querySelector('input[type=checkbox]').onchange = (e) => patch(id, { done: e.target.checked }).then(render);
   const ti = node.querySelector('.ti');
-  if (!ti.readOnly) ti.onblur = (e) => patch(id, { title: e.target.value });
+  if (ti && !ti.readOnly) ti.onblur = (e) => patch(id, { title: e.target.value });
   const mm = node.querySelector('.memo');
   if (!mm.readOnly) mm.onblur = (e) => patch(id, { memo: e.target.value });
   const del = node.querySelector('.del');
@@ -889,11 +912,16 @@ async function renderStaffPanel() {
   const r = await api('/staff');
   if (!r.ok) { box.innerHTML = `<div class="hint">${t('pwBossEnv')}</div>`; return; }
   const rows = await r.json();
+  const jr = await api('/jobs');
+  const jobs = jr.ok ? await jr.json() : [];
+  const jobOpts = (cur) => `<option value="">${t('jobNone')}</option>` + jobs.map(j =>
+    `<option value="${escapeHtml(j.key)}" ${cur === j.key ? 'selected' : ''}>${escapeHtml(LANG === 'mn' ? j.label_mn : j.label_ko)} (${j.count})</option>`).join('');
   const inp = 'padding:8px;border:1px solid #d1d5db;border-radius:8px;margin-right:6px';
   const go = 'padding:8px 12px;border:0;border-radius:8px;background:#7c3aed;color:#fff;cursor:pointer';
   box.innerHTML =
     rows.map(u => `<div class="strow ${u.is_active ? '' : 'off'}">
       <span class="nm">${escapeHtml(u.name)}</span>
+      <select class="jobSel" data-job="${u.id}" title="${t('staffJob')}">${jobOpts(u.job)}</select>
       <button data-ren="${u.id}">${t('staffRename')}</button>
       <button data-pw="${u.id}">${t('staffPwSet')}</button>
       <button data-act="${u.id}" data-to="${u.is_active ? 0 : 1}">${u.is_active ? t('staffQuit') : t('staffBack')}</button>
@@ -901,6 +929,7 @@ async function renderStaffPanel() {
     `<div style="margin-top:10px">
        <input id="stName" placeholder="${t('staffName')}" style="${inp};width:110px">
        <input id="stPw" placeholder="${t('staffPw')}" style="${inp};width:150px">
+       <select id="stJob" style="${inp}">${jobOpts('')}</select>
        <button id="stAdd" style="${go}">${t('staffSave')}</button>
        <span id="stMsg" style="font-size:13px;margin-left:6px"></span>
      </div>
@@ -909,10 +938,17 @@ async function renderStaffPanel() {
   $('#stAdd').onclick = async () => {
     const msg = $('#stMsg');
     const res = await api('/staff', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: $('#stName').value.trim(), password: $('#stPw').value }) });
+      body: JSON.stringify({ name: $('#stName').value.trim(), password: $('#stPw').value, job: $('#stJob').value || null }) });
     if (res.ok) { msg.style.color = '#16a34a'; msg.textContent = t('staffAdded'); await renderStaffPanel(); loadStaffList(); }
     else { msg.style.color = '#dc2626'; msg.textContent = res.status === 409 ? t('staffDup') : t('pwTooShort'); }
   };
+  // 직무를 고르면 바로 저장 — 오늘 체크리스트도 새 직무로 바뀐다
+  box.querySelectorAll('[data-job]').forEach(s => s.onchange = async () => {
+    const res = await api(`/staff/${s.dataset.job}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job: s.value || null }) });
+    s.style.borderColor = res.ok ? '#16a34a' : '#dc2626';
+    if (res.ok) render();
+  });
   box.querySelectorAll('[data-act]').forEach(b => b.onclick = async () => {
     await api(`/staff/${b.dataset.act}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active: Number(b.dataset.to) }) });
