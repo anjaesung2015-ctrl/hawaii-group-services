@@ -296,24 +296,58 @@ module.exports = function createReportRoutes(db, opts = {}) {
 
   // ---- 직원 관리 (사장님 전용) ----
   // 퇴사는 삭제가 아니라 비활성화다 — 그동안 쌓인 보고·근태 기록을 지우지 않기 위해서.
+  // 누가 어떤 직원을 관리하나
+  //  대표·사장님(isBoss) : 전부
+  //  총매니저            : 두 사업장의 일반 직원 (매니저 직무는 못 줌)
+  //  사업장 매니저        : 자기 사업장의 일반 직원
+  //  그 외               : 없음 (null)
+  const MGR_ROLES = ['매니저', '총매니저'];
+  function staffScope(req) {
+    if (req.rsess.isBoss) return { all: true };
+    const u = db.prepare("SELECT job FROM report_users WHERE id=? AND is_active=1 AND role='staff'").get(Number(req.rsess.staff_id));
+    const j = chk.job(u?.job);
+    if (!j) return null;
+    if (j.role === '총매니저') return { all: false, sites: chk.sites() };
+    if (j.role === '매니저') return { all: false, sites: [j.site] };
+    return null;
+  }
+  function jobAllowed(scope, key) {
+    if (scope.all) return !key || chk.isJob(key);
+    const j = chk.job(key);
+    return !!j && scope.sites.includes(j.site) && !MGR_ROLES.includes(j.role);
+  }
+  function userAllowed(scope, u) {
+    if (!u || u.role === 'boss') return false;
+    if (scope.all) return true;
+    return u.role === 'staff' && jobAllowed(scope, u.job);
+  }
+
   router.get('/staff', (req, res) => {
-    if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
-    res.json(db.prepare("SELECT id, name, is_active, job FROM report_users WHERE role='staff' ORDER BY is_active DESC, id").all());
+    const scope = staffScope(req);
+    if (!scope) return res.status(403).json({ error: 'boss_only' });
+    const rows = db.prepare("SELECT id, name, is_active, job, role FROM report_users WHERE role='staff' ORDER BY is_active DESC, id").all();
+    res.json(rows.filter(u => userAllowed(scope, u)).map(({ role, ...u }) => u));
   });
 
-  // 고를 수 있는 직무 목록
-  router.get('/jobs', (req, res) => res.json(chk.list()));
+  // 고를 수 있는 직무 목록 — 매니저에게는 자기가 줄 수 있는 직무만
+  router.get('/jobs', (req, res) => {
+    const scope = staffScope(req);
+    const list = chk.list();
+    res.json(scope && !scope.all ? list.filter(j => jobAllowed(scope, j.key)) : list);
+  });
   // 업무표의 예시 18개와 규칙 (모든 직원이 본다)
   router.get('/guide', (req, res) => res.json({ examples: chk.examples(), rules: chk.rules() }));
 
   router.post('/staff', (req, res) => {
-    if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
+    const scope = staffScope(req);
+    if (!scope) return res.status(403).json({ error: 'boss_only' });
     const name = String(req.body?.name || '').trim();
     const password = String(req.body?.password || '');
     if (!name) return res.status(400).json({ error: 'name_required' });
     if (password.length < 4) return res.status(400).json({ error: 'weak_password' });
     const job = req.body?.job ? String(req.body.job) : null;
     if (job && !chk.isJob(job)) return res.status(400).json({ error: 'bad_job' });
+    if (!scope.all && !jobAllowed(scope, job)) return res.status(403).json({ error: 'job_not_allowed' });
     if (db.prepare("SELECT id FROM report_users WHERE name=?").get(name)) return res.status(409).json({ error: 'name_taken' });
     const r = db.prepare("INSERT INTO report_users (name, pin_hash, is_active, role, job) VALUES (?,?,1,'staff',?)")
       .run(name, bcrypt.hashSync(password, 10), job);
@@ -321,10 +355,13 @@ module.exports = function createReportRoutes(db, opts = {}) {
   });
 
   router.patch('/staff/:id', (req, res) => {
-    if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
-    const u = db.prepare("SELECT id, role FROM report_users WHERE id=?").get(req.params.id);
+    const scope = staffScope(req);
+    if (!scope) return res.status(403).json({ error: 'boss_only' });
+    const u = db.prepare("SELECT id, role, job FROM report_users WHERE id=?").get(req.params.id);
     if (!u) return res.status(404).json({ error: 'not_found' });
     if (u.role === 'boss') return res.status(403).json({ error: 'boss_row' });
+    if (!userAllowed(scope, u)) return res.status(403).json({ error: 'not_your_staff' });
+    if ('job' in (req.body || {}) && !scope.all && !jobAllowed(scope, req.body.job || null)) return res.status(403).json({ error: 'job_not_allowed' });
 
     const body = req.body || {};
     const f = [], v = [];
@@ -646,13 +683,15 @@ module.exports = function createReportRoutes(db, opts = {}) {
 
   // 사장님이 직원 비번 리셋
   router.post("/reset-password", (req, res) => {
-    if (!req.rsess.isBoss) return res.status(403).json({ error: "boss_only" });
+    const scope = staffScope(req);
+    if (!scope) return res.status(403).json({ error: "boss_only" });
     const { staff_id, new_password } = req.body || {};
     if (!staff_id) return res.status(400).json({ error: "staff_id_required" });
     if (!new_password || String(new_password).length < 4) return res.status(400).json({ error: "weak_password" });
-    const u = db.prepare("SELECT id, role FROM report_users WHERE id=? AND is_active=1").get(staff_id);
+    const u = db.prepare("SELECT id, role, job FROM report_users WHERE id=? AND is_active=1").get(staff_id);
     if (!u) return res.status(404).json({ error: "not_found" });
     if (u.role === 'boss') return res.status(403).json({ error: "boss_row" });
+    if (!userAllowed(scope, u)) return res.status(403).json({ error: "not_your_staff" });
     db.prepare("UPDATE report_users SET pin_hash=? WHERE id=?").run(bcrypt.hashSync(String(new_password), 10), u.id);
     res.json({ ok: true });
   });

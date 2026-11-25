@@ -126,7 +126,8 @@ function enterApp() {
     state.targetStaff = selVal(bsel.value);
   } else {
     $('#whoami').textContent = state.name;
-    $('#staffBtn').style.display = 'none';
+    // 매니저·총매니저는 자기 밑 직원을 관리한다
+    $('#staffBtn').style.display = state.managerSite ? 'inline-block' : 'none';
     state.targetStaff = state.staffId;
   }
   render();
@@ -1165,7 +1166,7 @@ async function renderStaffPanel() {
   const rows = await r.json();
   const jr = await api('/jobs');
   const jobs = jr.ok ? await jr.json() : [];
-  const jobOpts = (cur) => `<option value="">${t('jobNone')}</option>` + jobs.map(j =>
+  const jobOpts = (cur) => (state.isBoss ? `<option value="">${t('jobNone')}</option>` : '') + jobs.map(j =>
     `<option value="${escapeHtml(j.key)}" ${cur === j.key ? 'selected' : ''}>${escapeHtml(LANG === 'mn' ? j.label_mn : j.label_ko)} (${j.count})</option>`).join('');
   const inp = 'padding:8px;border:1px solid #d1d5db;border-radius:8px;margin-right:6px';
   const go = 'padding:8px 12px;border:0;border-radius:8px;background:#7c3aed;color:#fff;cursor:pointer';
