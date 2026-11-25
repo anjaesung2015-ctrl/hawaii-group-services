@@ -1,9 +1,8 @@
 'use strict';
-// 인사 관리: 근무표 · 결재 · 구성원
+// 인사 관리: 근무표 · 구성원
 // 권한은 직원 관리와 같은 범위를 쓴다
 //   대표·사장님(isBoss) : 전부 / 총매니저 : 두 사업장 일반 직원 / 매니저 : 자기 사업장 일반 직원 / 직원 : 본인
 
-const APPR_KINDS = ['구매·발주', '비용', '근무 변경', '기타'];
 const DAYS = 6;   // 월~토 (일요일 휴무)
 
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
@@ -31,11 +30,6 @@ module.exports = function mountHR(router, db, ctx) {
     id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id INTEGER NOT NULL, wdate TEXT NOT NULL,
     start TEXT NOT NULL, end TEXT NOT NULL, note TEXT, updated_at TEXT DEFAULT (datetime('now','localtime')),
     UNIQUE(staff_id, wdate))`);
-  db.exec(`CREATE TABLE IF NOT EXISTS report_approvals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id INTEGER NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL,
-    amount INTEGER, body TEXT, status TEXT NOT NULL,
-    mgr_by TEXT, mgr_at TEXT, mgr_comment TEXT, boss_by TEXT, boss_at TEXT, boss_comment TEXT,
-    created_at TEXT DEFAULT (datetime('now','localtime')))`);
   const cols = () => db.prepare("PRAGMA table_info(report_users)").all().map(c => c.name);
   const have = cols();
   for (const [c, def] of [['phone', 'TEXT'], ['hire_date', 'TEXT'], ['birth', 'TEXT'], ['profile_memo', 'TEXT'],
@@ -130,73 +124,6 @@ module.exports = function mountHR(router, db, ctx) {
       }
     }
     res.json({ ok: true, copied: n });
-  });
-
-  // ================= 결재 =================
-  // status: mgr(매니저 승인 대기) → boss(대표 승인 대기) → approved / rejected / cancelled
-  const apRow = (a) => { const u = user(a.staff_id); return { ...a, name: u?.name || '', label: label(u) }; };
-  function canAct(req, a) {
-    if (!['mgr', 'boss'].includes(a.status)) return false;
-    if (req.rsess.isBoss) return true;
-    return a.status === 'mgr' && canManage(req, user(a.staff_id));
-  }
-
-  router.get('/hr/approvals', (req, res) => {
-    const me = Number(req.rsess.staff_id);
-    const mine = req.rsess.isBoss && !req.rsess.admin ? [] : db.prepare("SELECT * FROM report_approvals WHERE staff_id=? ORDER BY id DESC LIMIT 50").all(me).map(apRow);
-    const ids = visible(req, { inactive: true }).map(u => u.id).filter(id => id !== me);
-    const all = ids.length ? db.prepare(`SELECT * FROM report_approvals WHERE staff_id IN (${ids.join(',')}) ORDER BY id DESC LIMIT 200`).all() : [];
-    // 대표는 매니저 단계에 있는 것도 본다 (바로 최종 승인 가능)
-    res.json({ kinds: APPR_KINDS, mine,
-      todo: all.filter(a => canAct(req, a)).map(apRow),
-      done: all.filter(a => !canAct(req, a)).slice(0, 60).map(apRow) });
-  });
-
-  router.post('/hr/approvals', async (req, res) => {
-    if (req.rsess.isBoss && !req.rsess.admin) return res.status(400).json({ error: 'boss_no_request' });
-    const u = user(req.rsess.staff_id);
-    if (!u) return res.status(404).json({ error: 'not_found' });
-    const kind = req.body?.kind, title = clip(req.body?.title, 120);
-    if (!APPR_KINDS.includes(kind)) return res.status(400).json({ error: 'bad_kind' });
-    if (!title) return res.status(400).json({ error: 'title_required' });
-    const amount = num(req.body?.amount);
-    if (Number.isNaN(amount) || (amount != null && amount < 0)) return res.status(400).json({ error: 'bad_amount' });
-    const mg = req.rsess.isBoss ? [] : managersOf(u);
-    const status = mg.length ? 'mgr' : 'boss';
-    const r = db.prepare("INSERT INTO report_approvals (staff_id, kind, title, amount, body, status) VALUES (?,?,?,?,?,?)")
-      .run(u.id, kind, title, amount, clip(req.body?.body, 2000), status);
-    await send(status === 'mgr' ? mg : bossTargets(),
-      `🧾 결재 요청: ${u.name} · ${kind}\n${title}${amount != null ? `\n${amount.toLocaleString('ko-KR')}₮` : ''}`, '결재 요청');
-    res.json({ ok: true, id: r.lastInsertRowid, status });
-  });
-
-  router.patch('/hr/approvals/:id', async (req, res) => {
-    const a = db.prepare("SELECT * FROM report_approvals WHERE id=?").get(req.params.id);
-    if (!a) return res.status(404).json({ error: 'not_found' });
-    const act = req.body?.action, comment = clip(req.body?.comment);
-    if (act === 'cancel') {
-      if (a.staff_id !== Number(req.rsess.staff_id) || !['mgr', 'boss'].includes(a.status)) return res.status(403).json({ error: 'forbidden' });
-      db.prepare("UPDATE report_approvals SET status='cancelled' WHERE id=?").run(a.id);
-      return res.json({ ok: true });
-    }
-    if (!['approve', 'reject'].includes(act)) return res.status(400).json({ error: 'bad_action' });
-    if (!canAct(req, a)) return res.status(403).json({ error: 'forbidden' });
-    const who = actorName(req);
-    let st;
-    if (req.rsess.isBoss) {
-      st = act === 'approve' ? 'approved' : 'rejected';
-      db.prepare("UPDATE report_approvals SET status=?, boss_by=?, boss_at=datetime('now','localtime'), boss_comment=? WHERE id=?").run(st, who, comment, a.id);
-    } else {
-      st = act === 'approve' ? 'boss' : 'rejected';
-      db.prepare("UPDATE report_approvals SET status=?, mgr_by=?, mgr_at=datetime('now','localtime'), mgr_comment=? WHERE id=?").run(st, who, comment, a.id);
-      if (st === 'boss') {
-        const u = user(a.staff_id);
-        await send(bossTargets(), `🧾 결재 요청 (${who} 승인): ${u?.name || ''} · ${a.kind}\n${a.title}${a.amount != null ? `\n${a.amount.toLocaleString('ko-KR')}₮` : ''}`, '결재 요청');
-      }
-    }
-    const msg = st === 'approved' ? '최종 승인 ✅' : st === 'rejected' ? '반려 ❌' : `${who} 승인 → 대표 결재 대기`;
-    await send([a.staff_id], `🧾 결재 ${msg}: ${a.title}` + (comment ? `\n${comment}` : ''), '결재');
-    res.json({ ok: true, status: st });
   });
 
   // ================= 구성원 · 조직도 =================

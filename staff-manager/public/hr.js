@@ -1,4 +1,4 @@
-// 인사 탭: 근무표 · 결재 · 구성원  (app.js 다음에 불러온다)
+// 인사 탭: 근무표 · 구성원  (app.js 다음에 불러온다)
 const HR_T = {
   ko: {
     shift: '근무표', leave: '휴가', appr: '결재', member: '구성원', pay: '급여', myPay: '내 명세서',
@@ -60,18 +60,18 @@ const dshort = (iso) => iso ? iso.slice(5).replace('-', '/') : '';
 const stBadge = (s) => `<span class="hst ${s}">${ht('st_' + s)}</span>`;
 
 function hrTabs() {
-  const tabs = [['shift', ht('shift')], ['appr', ht('appr')], ['member', ht('member')]];
+  const tabs = [['shift', ht('shift')], ['member', ht('member')]];
   return `<div class="hrtabs">` + tabs.map(([k, l]) => `<button data-hr="${k}" class="${hrState.tab === k ? 'on' : ''}">${l}</button>`).join('') + `</div>`;
 }
 async function renderHR() {
   const el = $('#content');
-  const fn = { shift: hrShift, appr: hrAppr, member: hrMember }[hrState.tab] || hrShift;
+  const fn = { shift: hrShift, member: hrMember }[hrState.tab] || hrShift;
   let body = '';
   try { body = await fn(); } catch (e) { body = `<div class="empty">${t('noEntry')}</div>`; }
   if (body === null) { location.reload(); return; }
   el.innerHTML = hrTabs() + body;
   el.querySelectorAll('[data-hr]').forEach(b => b.onclick = () => { hrState.tab = b.dataset.hr; hrState.edit = null; renderHR(); });
-  const bind = { shift: bindShift, appr: bindAppr, member: bindMember }[hrState.tab];
+  const bind = { shift: bindShift, member: bindMember }[hrState.tab];
   if (bind) bind(el);
 }
 
@@ -142,46 +142,6 @@ function bindShift(el) {
     const r = await hrCall('/hr/shifts/copy', 'POST', { week: SHIFTS.week });
     if (r.ok) { await renderHR(); const m = $('#shMsg'); if (m) m.textContent = ht('copied', { n: r.data.copied }); }
   };
-}
-
-// ---------- 결재 ----------
-const decideBtns = (kind, id) => `<div class="acts"><input class="cmt" data-cmt="${id}" placeholder="${ht('comment')}">` +
-  `<button class="ok" data-${kind}="${id}" data-act="approve">${ht('approve')}</button><button class="no" data-${kind}="${id}" data-act="reject">${ht('reject')}</button></div>`;
-function apLine(a, acts) {
-  const steps = (a.mgr_by ? `<div class="m">① ${escapeHtml(a.mgr_by)} ${a.status === 'rejected' && !a.boss_by ? '❌' : '✅'}${a.mgr_comment ? ' · ' + escapeHtml(a.mgr_comment) : ''}</div>` : '') +
-    (a.boss_by ? `<div class="m">② ${escapeHtml(a.boss_by)} ${a.status === 'approved' ? '✅' : '❌'}${a.boss_comment ? ' · ' + escapeHtml(a.boss_comment) : ''}</div>` : '');
-  return `<div class="hline"><div><b>${escapeHtml(a.title)}</b> ${stBadge(a.status)}<div class="m">${escapeHtml(a.name)} · ${escapeHtml(kindL(a.kind))} · ${dshort(a.created_at.slice(0, 10))}` +
-    (a.amount != null ? ` · <b>${fmtN(a.amount)}₮</b>` : '') + `</div>` + (a.body ? `<div class="pre">${escapeHtml(a.body)}</div>` : '') + steps + `</div>${acts || ''}</div>`;
-}
-async function hrAppr() {
-  const r = await hrCall('/hr/approvals');
-  if (r.status === 401) return null;
-  const d = r.data;
-  let h = '';
-  if (!isCeo()) {
-    h += `<div class="card"><h3>🧾 ${ht('appr')}</h3><div class="hint">${ht('apprHint')}</div>
-      <div class="row"><label>${ht('kind')}<select id="apK">${d.kinds.map(k => `<option value="${k}">${escapeHtml(kindL(k))}</option>`).join('')}</select></label>
-      <label>${ht('amount')}<input id="apA" inputmode="numeric"></label></div>
-      <input id="apT" placeholder="${ht('title')}"><textarea id="apB" placeholder="${ht('body')}"></textarea>
-      <button class="save" id="apGo">${ht('request')}</button><span id="apMsg" class="m"></span>
-      ${d.mine.length ? `<h4>${ht('myList')}</h4>` + d.mine.map(a => apLine(a, ['mgr', 'boss'].includes(a.status) ? `<div class="acts"><button data-apc="${a.id}">${ht('cancel')}</button></div>` : '')).join('') : ''}</div>`;
-  }
-  if (d.todo.length) h += `<div class="card"><h3>✅ ${ht('todo')} <span class="m">${d.todo.length}</span></h3>` + d.todo.map(a => apLine(a, decideBtns('ap', a.id))).join('') + `</div>`;
-  if (d.done.length) h += `<div class="card"><h3>${ht('team')}</h3>` + d.done.map(a => apLine(a)).join('') + `</div>`;
-  return h || `<div class="empty">${ht('none')}</div>`;
-}
-function bindAppr(el) {
-  const go = el.querySelector('#apGo');
-  if (go) go.onclick = async () => {
-    const r = await hrCall('/hr/approvals', 'POST', { kind: $('#apK').value, title: $('#apT').value, amount: $('#apA').value, body: $('#apB').value });
-    const m = $('#apMsg');
-    if (r.ok) { flashSaved(); renderHR(); } else if (m) { m.style.color = '#dc2626'; m.textContent = ht('fail'); }
-  };
-  el.querySelectorAll('[data-apc]').forEach(b => b.onclick = async () => { await hrCall(`/hr/approvals/${b.dataset.apc}`, 'PATCH', { action: 'cancel' }); renderHR(); });
-  el.querySelectorAll('[data-ap]').forEach(b => b.onclick = async () => {
-    const c = el.querySelector(`[data-cmt="${b.dataset.ap}"]`);
-    await hrCall(`/hr/approvals/${b.dataset.ap}`, 'PATCH', { action: b.dataset.act, comment: c ? c.value : '' }); flashSaved(); renderHR();
-  });
 }
 
 // ---------- 구성원 ----------

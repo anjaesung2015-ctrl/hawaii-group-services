@@ -6,7 +6,7 @@ const Database = require('better-sqlite3');
 const jwt = require('jsonwebtoken');
 const createReportRoutes = require('../report-simple');
 
-// 인사: 근무표·결재·구성원 (실제 jobs.json)
+// 인사: 근무표·구성원 (실제 jobs.json)
 const SECRET = 'test-secret';
 const TODAY = '2026-12-02';   // 수요일
 const MON = '2026-11-30';
@@ -61,27 +61,6 @@ test('근무표: 매니저는 자기 직원만 편집, 지각·결근 표시, �
     assert.strictEqual(mine.rows[0].editable, false);
     const cp = (await call(base, 'POST', '/hr/shifts/copy', g, { week: '2026-12-07' })).data;
     assert.strictEqual(cp.copied, 2);
-  } finally { server.close(); }
-});
-
-test('결재: 직원 → 매니저 승인 → 대표 최종, 반려, 매니저 요청은 바로 대표', async () => {
-  const { server, base, ids, sent, bossId } = makeServer();
-  try {
-    const b = as(ids.바트, '바트'), g = as(ids.구엔, '구엔');
-    const a = (await call(base, 'POST', '/hr/approvals', b, { kind: '구매·발주', title: '수건 50장', amount: '250,000', body: '재고 부족' })).data;
-    assert.strictEqual(a.status, 'mgr');
-    assert.strictEqual((await call(base, 'PATCH', `/hr/approvals/${a.id}`, as(ids.톨가, '톨가'), { action: 'approve' })).status, 403);
-    assert.strictEqual((await call(base, 'PATCH', `/hr/approvals/${a.id}`, g, { action: 'approve' })).data.status, 'boss');
-    assert.ok(sent.some(s => s.id === bossId && s.text.includes('구엔 승인')));
-    assert.strictEqual((await call(base, 'PATCH', `/hr/approvals/${a.id}`, g, { action: 'approve' })).status, 403, '매니저는 최종 승인 못함');
-    const bt = (await call(base, 'GET', '/hr/approvals', boss())).data.todo;
-    assert.strictEqual(bt[0].amount, 250000);
-    assert.strictEqual((await call(base, 'PATCH', `/hr/approvals/${a.id}`, boss(), { action: 'approve' })).data.status, 'approved');
-    const m = (await call(base, 'POST', '/hr/approvals', g, { kind: '비용', title: '에어컨 수리' })).data;
-    assert.strictEqual(m.status, 'boss');
-    const x = (await call(base, 'POST', '/hr/approvals', b, { kind: '기타', title: '근무 교대' })).data;
-    assert.strictEqual((await call(base, 'PATCH', `/hr/approvals/${x.id}`, g, { action: 'reject', comment: '안됨' })).data.status, 'rejected');
-    assert.strictEqual((await call(base, 'POST', '/hr/approvals', b, { kind: '기타', title: '' })).status, 400);
   } finally { server.close(); }
 });
 
