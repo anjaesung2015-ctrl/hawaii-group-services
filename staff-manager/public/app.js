@@ -1306,7 +1306,8 @@ $('#reloadBtn').onclick = refreshNow;
 // 화면을 맨 위에서 아래로 당기면 새로고침 (홈 화면 앱에는 브라우저 새로고침이 없어서)
 (function pullToRefresh() {
   const bar = document.getElementById && document.getElementById('ptr');
-  if (!bar) return;
+  let app = false; try { app = isStandalone(); } catch (e) { }
+  if (!bar || !app) return;   // 브라우저는 자체 당겨서 새로고침이 있다
   const LIMIT = 70;
   let y0 = null, dy = 0;
   document.addEventListener('touchstart', (e) => {
@@ -1328,9 +1329,8 @@ $('#reloadBtn').onclick = refreshNow;
     y0 = null;
     if (!go) { bar.style.opacity = 0; bar.style.transform = ''; return; }
     bar.classList.add('spin');
-    try { await refreshNow(); } finally {
-      bar.classList.remove('spin', 'ready'); bar.style.opacity = 0; bar.style.transform = '';
-    }
+    if (isTyping()) document.activeElement.blur();   // 쓰던 내용 먼저 저장
+    setTimeout(() => location.reload(), 250);
   });
 })();
 
