@@ -188,28 +188,28 @@ body { margin: 0; padding-top: calc(12px + env(safe-area-inset-top, 0px)); paddi
 
   <div id="yearView" hidden style="display:flex;flex-direction:column;gap:14px">
     <div class="slip">
-      <div><div class="lbl" id="yLbl">올해 순수익</div><div class="bal num" id="yNet">0</div></div>
+      <div><div class="lbl" id="yLbl">올해 남은 돈</div><div class="bal num" id="yNet">0</div></div>
       <div class="row">
-        <div><span class="lbl">총매출</span><span class="v num" id="yIn">0</span></div>
+        <div><span class="lbl">총수입</span><span class="v num" id="yIn">0</span></div>
         <div><span class="lbl">총지출</span><span class="v num" id="yOut">0</span></div>
       </div>
       <div class="vs" id="yVs"></div>
     </div>
     <section>
-      <h2>월별 매출 · 지출 · 순수익</h2>
+      <h2>월별 수입 · 지출 · 남은 돈</h2>
       <div class="cmp"><div style="overflow-x:auto"><table class="tbl ytbl" id="yTbl"></table></div></div>
     </section>
     <section>
-      <h2>사업별 (연간)</h2>
+      <h2>분류별 (연간)</h2>
       <div class="cmp"><div style="overflow-x:auto"><table class="tbl ytbl" id="bizTbl"></table></div></div>
     </section>
   </div>
 
   <div id="monthView" style="display:flex;flex-direction:column;gap:14px">
   <div class="slip">
-    <div><div class="lbl">이번 달 순수익</div><div class="bal num" id="bal">0</div></div>
+    <div><div class="lbl">이번 달 남은 돈</div><div class="bal num" id="bal">0</div></div>
     <div class="row">
-      <div><span class="lbl">매출</span><span class="v num" id="sumIn">0</span></div>
+      <div><span class="lbl">수입</span><span class="v num" id="sumIn">0</span></div>
       <div><span class="lbl">지출</span><span class="v num" id="sumOut">0</span></div>
     </div>
     <div class="vs" id="vs" hidden></div>
@@ -220,8 +220,8 @@ body { margin: 0; padding-top: calc(12px + env(safe-area-inset-top, 0px)); paddi
   <section>
     <h2>월별 비교 (최근 6개월)</h2>
     <div class="cmp" id="cmp">
-      <div class="legend"><span><i style="background:var(--c-in)"></i>매출</span><span><i style="background:var(--c-out)"></i>지출</span></div>
-      <svg id="chart" viewBox="0 0 340 160" role="img" aria-label="최근 6개월 매출과 지출 막대그래프"></svg>
+      <div class="legend"><span><i style="background:var(--c-in)"></i>수입</span><span><i style="background:var(--c-out)"></i>지출</span></div>
+      <svg id="chart" viewBox="0 0 340 160" role="img" aria-label="최근 6개월 수입과 지출 막대그래프"></svg>
       <div class="tip" id="tip" hidden></div>
       <div style="overflow-x:auto"><table class="tbl" id="tbl"></table></div>
     </div>
@@ -251,7 +251,7 @@ body { margin: 0; padding-top: calc(12px + env(safe-area-inset-top, 0px)); paddi
   <form id="form" novalidate>
     <div class="seg">
       <button type="button" class="out" id="tOut" aria-pressed="true">지출</button>
-      <button type="button" class="in" id="tIn" aria-pressed="false">매출</button>
+      <button type="button" class="in" id="tIn" aria-pressed="false">수입</button>
     </div>
     <div class="amtbox"><input id="amt" inputmode="numeric" autocomplete="off" placeholder="0" aria-label="금액"><span id="amtUnit">₮</span></div>
     <div class="quick" id="quick"></div>
@@ -282,7 +282,7 @@ body { margin: 0; padding-top: calc(12px + env(safe-area-inset-top, 0px)); paddi
   </div>
 </div>
 <script>
-const CATS = { out: ["Fitness","센터","Shop","Tennis","개인","기타"], in: ["Fitness","센터 대관","센터 매점","센터 식당","Shop","Tennis","기타"] };
+const CATS = { out: ["식비","카페·간식","교통","쇼핑","생활·주거","통신","의료","경조사·선물","기타"], in: ["월급","용돈","부수입","기타"] };
 const QUICK = { "₮": [1000, 10000, 100000], "원": [1000, 10000, 50000] };
 const $ = s => document.querySelector(s);
 const pad = n => String(n).padStart(2, "0");
@@ -369,7 +369,7 @@ function render() {
   $("#cats").innerHTML = cats.map(([c, v]) => `<div class="cat"><span>${esc(c)}</span><div class="bar"><i style="width:${Math.max(3, v / sOut * 100).toFixed(1)}%"></i></div><span class="num">${fmt(v)}</span></div>`).join("");
 
   if (!rows.length) {
-    $("#list").innerHTML = loaded ? `<div class="empty"><b>${view.m}월 기록이 아직 없어요</b>아래 <b style="display:inline">+ 기록하기</b>를 눌러 첫 매출이나 지출을 적어 보세요.</div>` : "";
+    $("#list").innerHTML = loaded ? `<div class="empty"><b>${view.m}월 기록이 아직 없어요</b>아래 <b style="display:inline">+ 기록하기</b>를 눌러 첫 수입이나 지출을 적어 보세요.</div>` : "";
     return;
   }
   const days = {}; rows.forEach(e => (days[e.date] ||= []).push(e));
@@ -385,25 +385,25 @@ function render() {
 
 // ---- yearly view ----
 let mode = "m";
-const bizOf = c => /^센터/.test(c) ? "센터" : c;
+const bizOf = c => c;
 function renderYear() {
   const y = view.y; $("#ym").textContent = `${y}년`;
   const ms = Array.from({ length: 12 }, (_, i) => monthTotals(y, i + 1));
   const tI = ms.reduce((s, m) => s + m.i, 0), tO = ms.reduce((s, m) => s + m.o, 0), net = tI - tO;
   const sign = v => (v < 0 ? "-" : "") + fmt(Math.abs(v));
   const rate = (n, i) => i ? Math.round(n / i * 100) + "%" : "-";
-  $("#yLbl").textContent = `${y}년 순수익`;
+  $("#yLbl").textContent = `${y}년 남은 돈`;
   $("#yNet").textContent = sign(net); $("#yIn").textContent = fmt(tI); $("#yOut").textContent = fmt(tO);
   const used = ms.filter(m => m.i || m.o).length;
-  $("#yVs").textContent = used ? `기록 있는 달 ${used}개 · 순이익률 ${rate(net, tI)} · 월평균 순수익 ${sign(Math.round(net / used))}` : "이 해에는 기록이 없어요";
-  $("#yTbl").innerHTML = "<tr><th>월</th><th>매출</th><th>지출</th><th>순수익</th></tr>" + ms.map(m => {
+  $("#yVs").textContent = used ? `기록 있는 달 ${used}개 · 저축률 ${rate(net, tI)} · 월평균 남은 돈 ${sign(Math.round(net / used))}` : "이 해에는 기록이 없어요";
+  $("#yTbl").innerHTML = "<tr><th>월</th><th>수입</th><th>지출</th><th>남은 돈</th></tr>" + ms.map(m => {
     const n = m.i - m.o, none = !m.i && !m.o;
     return `<tr data-m="${m.m}" class="${none ? "none" : ""}"><td>${m.m}월</td><td class="num">${none ? "-" : fmt(m.i)}</td><td class="num">${none ? "-" : fmt(m.o)}</td><td class="num ${n < 0 ? "neg" : ""}">${none ? "-" : sign(n)}${none || !m.i ? "" : `<span class="margin">${rate(n, m.i)}</span>`}</td></tr>`;
   }).join("") + `<tr class="sum"><td>합계</td><td class="num">${fmt(tI)}</td><td class="num">${fmt(tO)}</td><td class="num ${net < 0 ? "neg" : ""}">${sign(net)}<span class="margin">${rate(net, tI)}</span></td></tr>`;
   const biz = {};
   entries.forEach(e => { if (typeof e.date !== "string" || !e.date.startsWith(y + "-")) return; const k = bizOf(e.cat); biz[k] = biz[k] || { i: 0, o: 0 }; biz[k][e.type === "in" ? "i" : "o"] += Number(e.amount) || 0; });
   const rows = Object.entries(biz).sort((a, b) => (b[1].i - b[1].o) - (a[1].i - a[1].o));
-  $("#bizTbl").innerHTML = "<tr><th>사업</th><th>매출</th><th>지출</th><th>순수익</th></tr>" + (rows.length ? rows.map(([k, v]) => { const n = v.i - v.o; return `<tr><td>${esc(k)}</td><td class="num">${fmt(v.i)}</td><td class="num">${fmt(v.o)}</td><td class="num ${n < 0 ? "neg" : ""}">${sign(n)}</td></tr>`; }).join("") : '<tr class="none"><td colspan="4">기록 없음</td></tr>');
+  $("#bizTbl").innerHTML = "<tr><th>분류</th><th>수입</th><th>지출</th><th>남은 돈</th></tr>" + (rows.length ? rows.map(([k, v]) => { const n = v.i - v.o; return `<tr><td>${esc(k)}</td><td class="num">${fmt(v.i)}</td><td class="num">${fmt(v.o)}</td><td class="num ${n < 0 ? "neg" : ""}">${sign(n)}</td></tr>`; }).join("") : '<tr class="none"><td colspan="4">기록 없음</td></tr>');
 }
 $("#yTbl").addEventListener("click", e => { const tr = e.target.closest("tr[data-m]"); if (!tr) return; view = { y: view.y, m: +tr.dataset.m }; setMode("m"); });
 function setMode(m) {
@@ -432,7 +432,7 @@ function renderCompare(sIn, sOut) {
   const prev = months[4], vs = $("#vs");
   if (prev.i || prev.o) {
     const part = (lbl, p) => p === null ? `${lbl} 지난달 없음` : `${lbl} ${p > 0 ? "▲" : p < 0 ? "▼" : ""}${Math.abs(p)}%`;
-    vs.textContent = `지난달(${prev.m}월)보다 · ` + part("매출", pct(sIn, prev.i)) + " · " + part("지출", pct(sOut, prev.o));
+    vs.textContent = `지난달(${prev.m}월)보다 · ` + part("수입", pct(sIn, prev.i)) + " · " + part("지출", pct(sOut, prev.o));
     vs.hidden = false;
   } else vs.hidden = true;
 
@@ -448,7 +448,7 @@ function renderCompare(sIn, sOut) {
   });
   $("#chart").innerHTML = s;
 
-  $("#tbl").innerHTML = `<tr><th>월</th><th>수입</th><th>지출</th><th>순수익</th></tr>` + months.slice().reverse().map((mo, idx) => {
+  $("#tbl").innerHTML = `<tr><th>월</th><th>수입</th><th>지출</th><th>남은 돈</th></tr>` + months.slice().reverse().map((mo, idx) => {
     const before = months[4 - idx]; const po = before ? pct(mo.o, before.o) : null;
     const net = mo.i - mo.o;
     return `<tr class="${idx === 0 ? "cur" : ""}"><td>${mo.y !== view.y ? mo.y + "." : ""}${mo.m}월</td><td class="num">${fmt(mo.i)}</td><td class="num">${fmt(mo.o)}${po !== null && mo.o ? `<span class="d">${po > 0 ? "▲" : po < 0 ? "▼" : ""}${Math.abs(po)}%</span>` : ""}</td><td class="num">${net < 0 ? "-" : ""}${fmt(Math.abs(net))}</td></tr>`;
@@ -458,7 +458,7 @@ function showTip(e) {
   const h = e.target.closest && e.target.closest(".hit"), tip = $("#tip");
   if (!h) { tip.hidden = true; return; }
   const mo = months[+h.dataset.k], box = $("#cmp").getBoundingClientRect();
-  tip.innerHTML = `<b>${mo.y}년 ${mo.m}월</b><br>매출 ${fmt(mo.i)}<br>지출 ${fmt(mo.o)}<br>순수익 ${mo.i - mo.o < 0 ? "-" : ""}${fmt(Math.abs(mo.i - mo.o))}`;
+  tip.innerHTML = `<b>${mo.y}년 ${mo.m}월</b><br>수입 ${fmt(mo.i)}<br>지출 ${fmt(mo.o)}<br>남은 돈 ${mo.i - mo.o < 0 ? "-" : ""}${fmt(Math.abs(mo.i - mo.o))}`;
   tip.hidden = false;
   const x = Math.min(Math.max(8, e.clientX - box.left + 12), box.width - tip.offsetWidth - 8);
   tip.style.left = x + "px"; tip.style.top = Math.max(4, e.clientY - box.top - tip.offsetHeight - 10) + "px";
