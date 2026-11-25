@@ -171,6 +171,7 @@ async function render() {
   if (state.period === 'hist') return renderHistory();
   if (state.period === 'rep') return renderDaily();
   if (state.period === 'kpi') return renderWeekly();
+  if (state.period === 'table') return renderJobTable();
   if (period === 'month') return renderMonth();
   if (state.isBoss && state.targetStaff === ALL) return renderOverview();
   const [r] = await Promise.all([api('/items' + qs(period)), loadGuide()]);
@@ -856,6 +857,49 @@ async function renderWeekly() {
   bindBoss(el, '/weekly/boss', { week: w.week });
 }
 
+// ---- 직무별 일주일 업무표 (모든 파트) ----
+const WHEN_DAYS = ['월', '화', '수', '목', '금', '토'];
+// 매일 하는 일 / 요일별 / 매월 로 나눈다
+function tableGroups(tasks) {
+  const daily = [], byDay = {}, monthly = [];
+  for (const x of tasks) {
+    if (WHEN_DAYS.includes(x.when)) (byDay[x.when] = byDay[x.when] || []).push(x);
+    else if (String(x.when).startsWith('매월')) monthly.push(x);
+    else daily.push(x);
+  }
+  return { daily, byDay, monthly };
+}
+function tableRow(x) {
+  const when = LANG === 'mn' ? (x.when_mn || x.when) : x.when;
+  return `<div class="trow"><span class="tag tpl">${escapeHtml(when)}</span><span class="tx">${escapeHtml(LANG === 'mn' ? (x.mn || x.ko) : x.ko)}` +
+    `${x.out ? ` <span class="m">→ ${escapeHtml(x.out)}</span>` : ''}${exBtn(x.ex)}</span></div>`;
+}
+function jobTableHtml(job) {
+  if (!job) return `<div class="empty">${t('noEntry')}</div>`;
+  const g = tableGroups(job.tasks);
+  const sec = (title, rows) => rows.length ? `<div class="tsec"><h4>${title} <span class="m">${rows.length}</span></h4>${rows.map(tableRow).join('')}</div>` : '';
+  return `<div class="card jtable"><h3>${escapeHtml(LANG === 'mn' ? job.label_mn : job.label_ko)} <span class="m">${t('tableTotal', { n: job.tasks.length })}</span></h3>` +
+    sec(t('tableDaily'), g.daily) +
+    WHEN_DAYS.map(d => sec(t('tableDay', { d: t('dow' + (WHEN_DAYS.indexOf(d) + 1)) }), g.byDay[d] || [])).join('') +
+    sec(t('tableMonthly'), g.monthly) + `</div>`;
+}
+let JOBTABLE = null;
+async function renderJobTable() {
+  const el = $('#content');
+  if (!JOBTABLE) {
+    const [r] = await Promise.all([api('/jobtable'), loadGuide()]);
+    if (r.status === 401) { location.reload(); return; }
+    if (!r.ok) { el.innerHTML = `<div class="empty">${t('noEntry')}</div>`; return; }
+    JOBTABLE = await r.json();
+  }
+  if (!state.tableJob || !JOBTABLE.some(j => j.key === state.tableJob)) state.tableJob = state.myJob || JOBTABLE[0].key;
+  const opts = JOBTABLE.map(j => `<option value="${escapeHtml(j.key)}" ${j.key === state.tableJob ? 'selected' : ''}>${escapeHtml(LANG === 'mn' ? j.label_mn : j.label_ko)}</option>`).join('');
+  el.innerHTML = `<div class="tpick"><select id="tableJob">${opts}</select></div>` +
+    jobTableHtml(JOBTABLE.find(j => j.key === state.tableJob)) + rulesHtml();
+  $('#tableJob').onchange = (e) => { state.tableJob = e.target.value; renderJobTable(); };
+  bindExBtns(el);
+}
+
 // ---- 업무표 예시·규칙 ----
 let GUIDE = null;
 async function loadGuide() {
@@ -876,7 +920,7 @@ function exHtml(no) {
 function bindExBtns(root) {
   root.querySelectorAll('.exBtn').forEach(b => b.onclick = (ev) => {
     ev.stopPropagation();
-    const host = b.closest('.item, .mtask div, .ov') || b.parentNode;
+    const host = b.closest('.item, .mtask div, .ov, .trow') || b.parentNode;
     const open = host.nextElementSibling;
     if (open && open.classList && open.classList.contains('exbox')) { open.remove(); return; }
     host.insertAdjacentHTML('afterend', exHtml(b.dataset.ex));
@@ -1274,6 +1318,7 @@ function applySession(d) {
   state.myId = d.my_id || null;
   state.name = d.name || '사장님';
   state.managerSite = d.manager_site || null;
+  state.myJob = d.job || null;
   enterApp();
 }
 document.querySelectorAll('.langBtn').forEach(b => {

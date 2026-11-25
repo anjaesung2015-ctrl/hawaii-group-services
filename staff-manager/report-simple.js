@@ -231,7 +231,8 @@ module.exports = function createReportRoutes(db, opts = {}) {
   router.get('/me', (req, res) => {
     if (req.rsess.isBoss && req.rsess.admin) return res.json({ isBoss: true, my_id: Number(req.rsess.staff_id), name: req.rsess.name || '' });
     if (req.rsess.isBoss) return res.json({ isBoss: true, my_id: bossRowId(), name: '대표' });
-    res.json({ isBoss: false, staff_id: Number(req.rsess.staff_id), name: req.rsess.name || '', manager_site: daily.managerSite(Number(req.rsess.staff_id)) });
+    const me = db.prepare("SELECT job FROM report_users WHERE id=?").get(Number(req.rsess.staff_id));
+    res.json({ isBoss: false, staff_id: Number(req.rsess.staff_id), name: req.rsess.name || '', manager_site: daily.managerSite(Number(req.rsess.staff_id)), job: me?.job || null });
   });
 
   // 사장님 전용 직원 현황판 — 활성 직원 전원을 항목과 함께 한 번에 반환
@@ -337,6 +338,8 @@ module.exports = function createReportRoutes(db, opts = {}) {
   });
   // 업무표의 예시 18개와 규칙 (모든 직원이 본다)
   router.get('/guide', (req, res) => res.json({ examples: chk.examples(), rules: chk.rules() }));
+  // 직무별 일주일 업무표 (모든 파트 — 누구나 볼 수 있는 참고표)
+  router.get('/jobtable', (req, res) => res.json(chk.table()));
 
   router.post('/staff', (req, res) => {
     const scope = staffScope(req);

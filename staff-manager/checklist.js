@@ -101,7 +101,9 @@ module.exports = function createChecklist(db, opts = {}) {
   }
 
   return { ensure, decorate, clearUntouched, list, isJob, sites, job, managerDayTasks,
-    examples: () => EXAMPLES, rules: () => RULES, tasksForDate: (k, d) => tasksForDate(byKey.get(k), d) };
+    examples: () => EXAMPLES, rules: () => RULES,
+    table: () => jobs.map(j => ({ key: j.key, site: j.site, role: j.role, label_ko: j.label_ko, label_mn: j.label_mn,
+      tasks: j.tasks.map(t => ({ when: t.when, when_mn: t.when_mn, ko: t.ko, mn: t.mn, ex: t.ex || null, out: t.out || null })) })), tasksForDate: (k, d) => tasksForDate(byKey.get(k), d) };
 };
 
 module.exports.loadJobs = loadJobs;
