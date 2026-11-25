@@ -56,6 +56,7 @@ async function loadStaffList() {
   const bsel = $('#bossStaffSel');
   for (const s of list) {
     sel.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`);
+    if (s.role === 'admin' && s.id === state.myId) continue;   // 본인은 '내 업무'로 이미 있음
     bsel.insertAdjacentHTML('beforeend', `<option value="${s.id}">${escapeHtml(s.name)}</option>`);
   }
 }
@@ -110,7 +111,7 @@ function enterApp() {
   $('#appView').style.display = 'block';
   applyTabVisibility();
   if (state.isBoss) {
-    $('#whoami').textContent = t('boss');
+    $('#whoami').textContent = (state.name && state.name !== '대표' && state.name !== '사장님') ? state.name : t('boss');
     $('#staffBtn').style.display = 'inline-block';
     const bsel = $('#bossStaffSel');
     // 사장님 본인 업무공간을 드롭다운 맨 위에 두고 기본 선택

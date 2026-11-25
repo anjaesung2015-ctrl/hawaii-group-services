@@ -60,9 +60,9 @@ test('요일 업무는 그 요일에만, 일요일은 없음, 매월 첫 월요�
   assert.deepStrictEqual(tasksForDate(mgr, FIRST_MON).map(t => t.ko), ['체크리스트 확인', '월간 결산']);
 });
 
-test('실제 jobs.json 이 읽히고 직무 9개', () => {
+test('실제 jobs.json 이 읽히고 직무 10개 (총매니저 포함)', () => {
   const jobs = loadJobs();
-  assert.strictEqual(jobs.length, 9);
+  assert.strictEqual(jobs.length, 10);
   for (const j of jobs) {
     assert.ok(j.label_ko && j.label_mn, j.key);
     for (const t of j.tasks) assert.ok(t.ko && t.mn && t.when, j.key + ' ' + t.ko);

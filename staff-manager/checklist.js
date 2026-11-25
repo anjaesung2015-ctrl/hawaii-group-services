@@ -84,7 +84,8 @@ module.exports = function createChecklist(db, opts = {}) {
   const list = () => jobs.map(j => ({ key: j.key, site: j.site, role: j.role, label_ko: j.label_ko, label_mn: j.label_mn, count: j.tasks.length }));
   const isJob = k => byKey.has(k);
 
-  const sites = () => [...new Set(jobs.map(j => j.site))];
+  // 실제 사업장만 ('전체' = 총매니저 같은 두 사업장 담당)
+  const sites = () => [...new Set(jobs.map(j => j.site))].filter(s => s !== '전체');
   const job = k => byKey.get(k) || null;
 
   return { ensure, decorate, clearUntouched, list, isJob, sites, job, tasksForDate: (k, d) => tasksForDate(byKey.get(k), d) };

@@ -162,7 +162,8 @@ module.exports = function createReportRoutes(db, opts = {}) {
   }
 
   router.get('/staff-list', (req, res) => {
-    res.json(db.prepare("SELECT id, name FROM report_users WHERE is_active=1 AND role='staff' ORDER BY id").all());
+    // 관리자(사장님 등)는 이름 목록 맨 앞
+    res.json(db.prepare("SELECT id, name, role FROM report_users WHERE is_active=1 AND role IN ('admin','staff') ORDER BY role='staff', id").all());
   });
 
   router.post('/login', (req, res) => {
@@ -177,7 +178,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
       res.cookie('report_sess', token, COOKIE);
       return res.json({ ok: true, isBoss: true, my_id: myId, name: '사장님' });
     }
-    const u = db.prepare("SELECT id, name, pin_hash FROM report_users WHERE name=? AND is_active=1 AND role='staff' ").get(name);
+    const u = db.prepare("SELECT id, name, pin_hash, role FROM report_users WHERE name=? AND is_active=1 AND role IN ('admin','staff') ").get(name);
     if (!u) {   // 없는 이름 / 퇴사(비활성) / 사장님 계정으로 시도
       logLoginFail(req, 'unknown_name', name);
       return res.status(401).json({ error: 'bad_login' });
@@ -185,6 +186,11 @@ module.exports = function createReportRoutes(db, opts = {}) {
     if (!bcrypt.compareSync(password || '', u.pin_hash)) {
       logLoginFail(req, 'bad_password', u.name);
       return res.status(401).json({ error: 'bad_login' });
+    }
+    if (u.role === 'admin') {   // 관리자 — 대표와 같은 화면·권한, 본인 업무공간은 자기 행
+      const token = jwt.sign({ isBoss: true, admin: true, staff_id: u.id, name: u.name }, secret, { expiresIn: '30d' });
+      res.cookie('report_sess', token, COOKIE);
+      return res.json({ ok: true, isBoss: true, my_id: u.id, name: u.name });
     }
     const token = jwt.sign({ staff_id: u.id, name: u.name, isBoss: false }, secret, { expiresIn: '30d' });
     res.cookie('report_sess', token, COOKIE);
@@ -221,7 +227,8 @@ module.exports = function createReportRoutes(db, opts = {}) {
 
   // 세션 복원 — 앱을 벗어났다 돌아와도 다시 로그인하지 않도록
   router.get('/me', (req, res) => {
-    if (req.rsess.isBoss) return res.json({ isBoss: true, my_id: bossRowId(), name: '사장님' });
+    if (req.rsess.isBoss && req.rsess.admin) return res.json({ isBoss: true, my_id: Number(req.rsess.staff_id), name: req.rsess.name || '' });
+    if (req.rsess.isBoss) return res.json({ isBoss: true, my_id: bossRowId(), name: '대표' });
     res.json({ isBoss: false, staff_id: Number(req.rsess.staff_id), name: req.rsess.name || '', manager_site: daily.managerSite(Number(req.rsess.staff_id)) });
   });
 
@@ -415,7 +422,8 @@ module.exports = function createReportRoutes(db, opts = {}) {
     let notified = false;
     if (opts.notify) {
       try {
-        await opts.notify(who.id, `📌 사장님 지시 (${date.slice(5).replace('-', '/')})\n${text}` + (memo ? `\n${memo}` : ''));
+        const from = req.rsess.admin ? (req.rsess.name || '') : '대표';
+        await opts.notify(who.id, `📌 ${from} 지시 (${date.slice(5).replace('-', '/')})\n${text}` + (memo ? `\n${memo}` : ''), `${from} 지시`);
         notified = true;
       } catch (e) { console.error('[assign] 알림 실패 staff', who.id, e.message); }
     }
@@ -623,7 +631,7 @@ module.exports = function createReportRoutes(db, opts = {}) {
 
   // 본인 비밀번호 변경 (현재 비번 확인 후)
   router.post("/change-password", (req, res) => {
-    if (req.rsess.isBoss) return res.status(403).json({ error: "boss_uses_env" });
+    if (req.rsess.isBoss && !req.rsess.admin) return res.status(403).json({ error: "boss_uses_env" });
     const { current, new_password } = req.body || {};
     if (!new_password || String(new_password).length < 4) return res.status(400).json({ error: "weak_password" });
     const u = db.prepare("SELECT id, pin_hash FROM report_users WHERE id=? AND is_active=1").get(req.rsess.staff_id);

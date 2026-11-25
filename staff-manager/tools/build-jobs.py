@@ -9,8 +9,8 @@ import sys
 from pathlib import Path
 
 DAYS = ["월", "화", "수", "목", "금", "토"]
-SITE_MN = {"피트니스": "Фитнес", "센터": "Спорт төв"}
-ROLE_MN = {"매니저": "Менежер", "리셉션": "Ресепшн", "트레이너": "Дасгалжуулагч",
+SITE_MN = {"피트니스": "Фитнес", "센터": "Спорт төв", "전체": ""}
+ROLE_MN = {"총매니저": "Ерөнхий менежер", "매니저": "Менежер", "리셉션": "Ресепшн", "트레이너": "Дасгалжуулагч",
            "청소": "Цэвэрлэгээ", "카운터": "Касс", "코치": "Теннисний дасгалжуулагч",
            "시설": "Байгууламж"}
 WHEN_MN = {"매일": "Өдөр бүр", "출근 15분 내": "Ирснээс 15 мин", "근무 중": "Ажлын үеэр",
@@ -34,18 +34,22 @@ def main():
                  for r in mt if r[1] in ("공통", site)]
         jobs.append({"key": key, "site": site, "role": "매니저", "tasks": tasks})
 
+    # 총매니저: 두 사업장 공통 매니저 업무 (매일·요일 '공통')
+    tasks = [{"when": r[0], "ko": r[2], "mn": r[3], "out": r[4]} for r in mt if r[1] == "공통"]
+    jobs.append({"key": "총매니저", "site": "전체", "role": "총매니저", "tasks": tasks})
+
     for r in d["roles"]:
         tasks = [{"when": t[0], "ko": t[1], "mn": t[2]} for t in r["tasks"]]
         jobs.append({"key": r["sheet"], "site": r["site"], "role": r["role"], "tasks": tasks})
 
     for j in jobs:
-        j["label_ko"] = f'{j["site"]} {j["role"]}'
-        j["label_mn"] = f'{SITE_MN[j["site"]]} {ROLE_MN.get(j["role"], j["role"])}'
+        j["label_ko"] = j["role"] if j["site"] == "전체" else f'{j["site"]} {j["role"]}'
+        j["label_mn"] = f'{SITE_MN[j["site"]]} {ROLE_MN.get(j["role"], j["role"])}'.strip()
         for t in j["tasks"]:
             t["when_mn"] = WHEN_MN.get(t["when"], t["when"])
 
     # 피트니스 먼저, 매니저 먼저
-    order = {"피트니스": 0, "센터": 1}
+    order = {"전체": -1, "피트니스": 0, "센터": 1}
     jobs.sort(key=lambda j: (order[j["site"]], j["role"] != "매니저"))
     out = Path(__file__).resolve().parent.parent / "jobs.json"
     out.write_text(json.dumps({"days": DAYS, "jobs": jobs}, ensure_ascii=False, indent=1), encoding="utf-8")

@@ -35,13 +35,20 @@ module.exports = function mountDailyReport(router, db, { bizToday, notify, bossR
     const u = db.prepare("SELECT job FROM report_users WHERE id=? AND is_active=1").get(staffId);
     if (!u || !u.job) return null;
     const j = chk.job(u.job);
-    return (j && j.role === '매니저') ? j.site : null;
+    return (j && (j.role === '매니저' || j.role === '총매니저')) ? j.site : null;
   }
 
   function whoSees(req) {
     if (req.rsess.isBoss) return SITES;
     const s = managerSite(Number(req.rsess.staff_id));
+    if (s === '전체') return SITES;   // 총매니저
     return s ? [s] : [];
+  }
+  // 쓸 수 있는 사업장: 각 사업장 매니저만 (대표·사장님·총매니저는 확인만)
+  function writable(req) {
+    if (req.rsess.isBoss) return [];
+    const s = managerSite(Number(req.rsess.staff_id));
+    return (s && s !== '전체') ? [s] : [];
   }
 
   // 그 사업장 직원(매니저 제외)의 그날 체크리스트 완료율
@@ -76,7 +83,7 @@ module.exports = function mountDailyReport(router, db, { bizToday, notify, bossR
     res.json({
       date,
       today: bizToday(),
-      editable: req.rsess.isBoss ? [] : sites.filter(() => canWrite(date)),
+      editable: canWrite(date) ? writable(req) : [],
       sites: sites.map(site => ({ site, report: withCalc(get.get(site, date)), checklist: checklistOf(site, date) })),
     });
   });
@@ -97,7 +104,7 @@ module.exports = function mountDailyReport(router, db, { bizToday, notify, bossR
     if (req.rsess.isBoss) return res.status(403).json({ error: 'manager_only' });
     const sid = Number(req.rsess.staff_id);
     const site = managerSite(sid);
-    if (!site) return res.status(403).json({ error: 'manager_only' });
+    if (!site || site === '전체') return res.status(403).json({ error: 'manager_only' });
     const b = req.body || {};
     const date = String(b.date || bizToday());
     if (!isDate(date)) return res.status(400).json({ error: 'bad_date' });
