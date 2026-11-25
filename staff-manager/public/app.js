@@ -10,7 +10,7 @@ if ('serviceWorker' in navigator) {
 // 상대 경로 API (nginx가 /staff-manager/ 프리픽스를 벗김)
 const API = 'api/report';
 const CHECK_PERIODS = ['today', 'tomorrow'];
-const state = { isBoss: false, staffId: null, myId: null, name: '', targetStaff: null, period: 'today', calMonth: null, calDay: null, dayOffset: 0, managerSite: null, repOffset: 0 };
+const state = { isBoss: false, staffId: null, myId: null, name: '', targetStaff: null, period: 'today', calMonth: null, calDay: null, dayOffset: 0, managerSite: null, repOffset: 0, kpiOffset: 0 };
 
 const $ = (s) => document.querySelector(s);
 async function api(pathAndQuery, opts) {
@@ -89,7 +89,7 @@ const BOSS_OPT = '__boss__';
 // 일일보고 탭은 사장님과 매니저만
 function tabHidden(p) {
   if (state.isBoss) return false;
-  if (p === 'rep') return !state.managerSite;
+  if (p === 'rep' || p === 'kpi') return !state.managerSite;
   return BOSS_TABS.includes(p);
 }
 function applyTabVisibility() {
@@ -169,9 +169,10 @@ async function render() {
   if (state.period === 'att') return renderAttendance();
   if (state.period === 'hist') return renderHistory();
   if (state.period === 'rep') return renderDaily();
+  if (state.period === 'kpi') return renderWeekly();
   if (period === 'month') return renderMonth();
   if (state.isBoss && state.targetStaff === ALL) return renderOverview();
-  const r = await api('/items' + qs(period));
+  const [r] = await Promise.all([api('/items' + qs(period)), loadGuide()]);
   if (r.status === 401) { location.reload(); return; }
   const items = await r.json();
   const el = $('#content');
@@ -183,6 +184,7 @@ async function render() {
     bindDayBar();
     if (!locked) $('#addBtn').onclick = addCheckItem;
     el.querySelectorAll('.item').forEach(bindCheckItem);
+    bindExBtns(el);
   } else {
     const memo = items[0]?.memo || '';
     const id = items[0]?.id || '';
@@ -652,10 +654,13 @@ async function renderDay(date) {
 }
 
 // ---- 매니저 일일 보고 ----
-const REP_NUM = ['headcount', 'cash', 'card', 'transfer', 'target', 'new_members', 'renewals'];
-const REP_TEXT = ['missing', 'progress', 'solved', 'decision'];
+// 숫자 칸: 센터만 코트 가동률. POS 차이는 음수도 된다.
+const REP_NUM = ['headcount', 'cash', 'card', 'transfer', 'target', 'pos_diff', 'new_members', 'renewals', 'churn', 'court_util'];
+const REP_TEXT = ['task_result', 'missing', 'progress', 'solved', 'decision', 'tomorrow'];
 const SITE_KEY = { '피트니스': 'siteFit', '센터': 'siteCen' };
+function repNums(site) { return REP_NUM.filter(k => k !== 'court_util' || site === '센터'); }
 function money(n) { return n == null ? '-' : Number(n).toLocaleString('ko-KR') + '₮'; }
+function fmtNum(v) { return (v === '' || v == null) ? '' : Number(v).toLocaleString('ko-KR'); }
 function repDayBar(date) {
   const [y, m, d] = date.split('-').map(Number);
   const w = t('dow' + new Date(Date.UTC(y, m - 1, d)).getUTCDay());
@@ -671,38 +676,53 @@ function repChecklist(c) {
   }).join(' · ');
   return `<div class="chk">📋 ${t('repChk')} <b>${c.done}/${c.total}</b><br>${who}</div>`;
 }
+// 오늘 요일 관리 과제 (업무표 '매니저 업무')
+function repTasks(tasks) {
+  if (!tasks || !tasks.length) return '';
+  return `<div class="mtask"><b>🎯 ${t('repTodayTask')}</b>` + tasks.map(x =>
+    `<div>${escapeHtml(LANG === 'mn' ? x.mn : x.ko)}${x.out ? ` <span class="m">→ ${escapeHtml(x.out)}</span>` : ''}${exBtn(x.ex)}</div>`).join('') + `</div>`;
+}
 function repSummary(r) {
   if (!r) return '';
   return `<div class="sum"><span>${t('repSales')} <b>${money(r.sales)}</b></span>` +
     (r.rate != null ? `<span>${t('repRate')} <b>${r.rate}%</b></span>` : '') +
+    (r.pos_diff != null ? `<span>${t('rep_pos_diff')} <b class="${r.pos_diff ? 'neg' : ''}">${fmtNum(r.pos_diff)}</b></span>` : '') +
     `<span>${t('repSettle')} ${r.settle_ok ? '✓' : '✗'}</span></div>`;
 }
 function repForm(site, r, date) {
   const v = k => (r && r[k] != null) ? r[k] : '';
-  const num = k => `<label>${t('rep_' + k)}<input inputmode="numeric" data-k="${k}" value="${escapeHtml(String(v(k) === '' ? '' : Number(v(k)).toLocaleString('ko-KR')))}"></label>`;
+  const num = k => `<label>${t('rep_' + k)}<input inputmode="${k === 'pos_diff' ? 'text' : 'numeric'}" data-k="${k}" value="${escapeHtml(fmtNum(v(k)))}"></label>`;
   const txt = k => `<label class="full">${t('rep_' + k)}<textarea data-k="${k}">${escapeHtml(String(v(k)))}</textarea></label>`;
-  return `<div class="grid">${REP_NUM.map(num).join('')}${REP_TEXT.map(txt).join('')}</div>` +
+  return `<div class="grid">${repNums(site).map(num).join('')}${REP_TEXT.map(txt).join('')}</div>` +
     `<label class="ok"><input type="checkbox" data-k="settle_ok" ${r && r.settle_ok ? 'checked' : ''}>${t('repSettleQ')}</label>` +
     (r && r.boss_comment ? `<div class="kv"><span>${t('repBossComment')}</span>${escapeHtml(r.boss_comment)}</div>` : '') +
     `<button class="save" data-save="${escapeHtml(site)}" data-date="${date}">${r ? t('repUpdate') : t('repSubmit')}</button>` +
     `<div class="hint" id="repMsg"></div>`;
 }
+function bossBox(kind, site, r) {
+  return `<label class="ok"><input type="checkbox" data-bok="${escapeHtml(site)}" ${r.boss_ok ? 'checked' : ''}>${t(kind === 'w' ? 'kpiApprove' : 'repBossOk')}</label>` +
+    `<label style="display:block;font-size:12px;color:#6b7280">${t('repBossComment')}<textarea data-bcm="${escapeHtml(site)}" style="width:100%;min-height:50px;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-family:inherit;box-sizing:border-box">${escapeHtml(r.boss_comment || '')}</textarea></label>`;
+}
 function repView(site, r, date) {
   if (!r) return `<div class="empty">${t('repNone')}</div>`;
   const kv = k => r[k] ? `<div class="kv"><span>${t('rep_' + k)}</span>${escapeHtml(r[k])}</div>` : '';
-  const nums = ['headcount', 'new_members', 'renewals'].map(k => `<span>${t('rep_' + k)} <b>${r[k] ?? '-'}</b></span>`).join('');
+  const nums = ['headcount', 'new_members', 'renewals', 'churn'].concat(site === '센터' ? ['court_util'] : [])
+    .map(k => `<span>${t('rep_' + k)} <b>${r[k] ?? '-'}${k === 'court_util' && r[k] != null ? '%' : ''}</b></span>`).join('');
   const pay = `<div class="hint">${t('rep_cash')} ${money(r.cash)} · ${t('rep_card')} ${money(r.card)} · ${t('rep_transfer')} ${money(r.transfer)} · ${t('rep_target')} ${money(r.target)}</div>`;
   return pay + `<div class="sum">${nums}</div>` + REP_TEXT.map(kv).join('') +
     (r.by ? `<div class="hint">✍ ${escapeHtml(r.by)} · ${escapeHtml((r.updated_at || r.submitted_at || '').slice(11, 16))}</div>` : '') +
-    (state.isBoss
-      ? `<label class="ok"><input type="checkbox" data-bok="${escapeHtml(site)}" ${r.boss_ok ? 'checked' : ''}>${t('repBossOk')}</label>` +
-        `<label style="display:block;font-size:12px;color:#6b7280">${t('repBossComment')}<textarea data-bcm="${escapeHtml(site)}" style="width:100%;min-height:50px;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-family:inherit;box-sizing:border-box">${escapeHtml(r.boss_comment || '')}</textarea></label>`
+    (state.isBoss ? bossBox('d', site, r)
       : (r.boss_comment ? `<div class="kv"><span>${t('repBossComment')}</span>${escapeHtml(r.boss_comment)}</div>` : ''));
+}
+function collect(box) {
+  const body = {};
+  box.querySelectorAll('[data-k]').forEach(i => { body[i.dataset.k] = i.type === 'checkbox' ? i.checked : i.value; });
+  return body;
 }
 async function renderDaily() {
   const el = $('#content');
   const date = kst(state.repOffset);
-  const r = await api(`/daily?date=${date}`);
+  const [r] = await Promise.all([api(`/daily?date=${date}`), loadGuide()]);
   if (r.status === 401) { location.reload(); return; }
   if (!r.ok) { el.innerHTML = `<div class="empty">${t('noEntry')}</div>`; return; }
   const d = await r.json();
@@ -712,10 +732,11 @@ async function renderDaily() {
     const badge = rep ? `<span class="badge ${rep.boss_ok ? 'on' : ''}">${rep.boss_ok ? t('repChecked') : t('repSubmitted')}</span>`
                       : `<span class="badge">${t('repMissing')}</span>`;
     return `<div class="card rep"><h3>📊 ${t(SITE_KEY[s.site] || 'siteFit')}${badge}</h3>` +
-      repSummary(rep) + repChecklist(s.checklist) +
+      repTasks(s.tasks) + repSummary(rep) + repChecklist(s.checklist) +
       (edit ? repForm(s.site, rep, date) : repView(s.site, rep, date)) + `</div>`;
   }).join('') + (!(d.editable || []).length && !state.isBoss ? `<div class="hint">🔒 ${t('pastLocked')}</div>` : '');
 
+  bindExBtns(el);
   el.querySelectorAll('[data-rday]').forEach(b => b.onclick = () => {
     const v = Number(b.dataset.rday);
     state.repOffset = v === 0 ? 0 : Math.min(0, state.repOffset + v);
@@ -723,9 +744,7 @@ async function renderDaily() {
   });
   const save = el.querySelector('[data-save]');
   if (save) save.onclick = async () => {
-    const box = save.closest('.card');
-    const body = { date: save.dataset.date };
-    box.querySelectorAll('[data-k]').forEach(i => { body[i.dataset.k] = i.type === 'checkbox' ? i.checked : i.value; });
+    const body = { date: save.dataset.date, ...collect(save.closest('.card')) };
     save.disabled = true;
     const res = await api('/daily', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     save.disabled = false;
@@ -733,12 +752,142 @@ async function renderDaily() {
     if (res.ok) { render(); flashSaved(); }
     else if (msg) { msg.style.color = '#dc2626'; msg.textContent = res.status === 400 ? t('repBadNum') : t('loginFail'); }
   };
+  bindBoss(el, '/daily/boss', { date });
+}
+function bindBoss(el, url, extra) {
   el.querySelectorAll('[data-bok]').forEach(c => c.onchange = () =>
-    api('/daily/boss', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ site: c.dataset.bok, date, boss_ok: c.checked }) }).then(render));
+    api(url, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ site: c.dataset.bok, ...extra, boss_ok: c.checked }) }).then(render));
   el.querySelectorAll('[data-bcm]').forEach(c => c.onblur = () =>
-    api('/daily/boss', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ site: c.dataset.bcm, date, boss_comment: c.value }) }).then(flashSaved));
+    api(url, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ site: c.dataset.bcm, ...extra, boss_comment: c.value }) }).then(flashSaved));
+}
+
+// ---- 주간 KPI (월: 목표·핵심 과제 3개 → 대표 승인 / 토: 주간 결산) ----
+const KPI_NUM = ['target', 'new_members', 'renewal_rate', 'churn', 'court_util'];
+const KPI_TEXT = ['last_result', 'good', 'problems', 'next_plan'];
+function kpiNums(site) { return KPI_NUM.filter(k => k !== 'court_util' || site === '센터'); }
+function weekBar(week) {
+  const [, m, d] = week.split('-').map(Number);
+  const past = state.kpiOffset !== 0;
+  return `<div class="daybar${past ? ' past' : ''}"><button data-wk="-1">‹</button><span>${t('kpiWeek', { m, d })}</span>` +
+    `<button data-wk="1">›</button>` + (past ? `<button class="back" data-wk="0">${t('goToday')}</button>` : '') + `</div>`;
+}
+function kpiSummary(s) {
+  const k = s.kpi;
+  return `<div class="sum"><span>${t('kpiActual')} <b>${money(s.actual)}</b></span>` +
+    `<span>${t('kpi_target')} <b>${money(k && k.target)}</b></span>` +
+    (s.rate != null ? `<span>${t('repRate')} <b>${s.rate}%</b></span>` : '') +
+    `<span class="m">${t('kpiDays', { n: s.days })}</span></div>`;
+}
+function kpiTaskRows(tasks, edit) {
+  const list = [0, 1, 2].map(i => (tasks || [])[i] || {});
+  return `<div class="ktasks"><b>${t('kpiTasks')}</b>` + list.map((x, i) => edit
+    ? `<div class="ktask" data-ti="${i}"><span>${'①②③'[i]}</span>` +
+      `<input data-tf="t" placeholder="${t('kpiTaskT')}" value="${escapeHtml(x.t || '')}">` +
+      `<input data-tf="goal" placeholder="${t('kpiTaskGoal')}" value="${escapeHtml(x.goal || '')}">` +
+      `<input data-tf="due" placeholder="${t('kpiTaskDue')}" value="${escapeHtml(x.due || '')}">` +
+      `<input data-tf="progress" placeholder="${t('kpiTaskProg')}" value="${escapeHtml(x.progress || '')}">` +
+      `<label><input type="checkbox" data-tf="done" ${x.done ? 'checked' : ''}>✓</label></div>`
+    : (x.t ? `<div class="ov ${x.done ? 'done' : 'undone'}"><span class="mk">${x.done ? '✓' : '○'}</span><span class="tx">${'①②③'[i]} ${escapeHtml(x.t)}` +
+        `${x.goal ? ` <span class="m">· ${escapeHtml(x.goal)}</span>` : ''}${x.due ? ` <span class="m">· ${escapeHtml(x.due)}</span>` : ''}` +
+        `${x.progress ? `<div class="src">${escapeHtml(x.progress)}</div>` : ''}</span></div>` : '')).join('') + `</div>`;
+}
+function kpiForm(site, k, week) {
+  const v = key => (k && k[key] != null) ? k[key] : '';
+  const num = key => `<label>${t('kpi_' + key)}<input inputmode="numeric" data-k="${key}" value="${escapeHtml(fmtNum(v(key)))}"></label>`;
+  const txt = key => `<label class="full">${t('kpi_' + key)}<textarea data-k="${key}">${escapeHtml(String(v(key)))}</textarea></label>`;
+  return `<div class="grid">${kpiNums(site).map(num).join('')}</div>` + kpiTaskRows(k && k.tasks, true) +
+    `<div class="grid">${KPI_TEXT.map(txt).join('')}</div>` +
+    (k && k.boss_comment ? `<div class="kv"><span>${t('repBossComment')}</span>${escapeHtml(k.boss_comment)}</div>` : '') +
+    `<button class="save" data-wsave="${escapeHtml(site)}" data-week="${week}">${k ? t('repUpdate') : t('kpiSubmit')}</button>` +
+    `<div class="hint" id="kpiMsg"></div>`;
+}
+function kpiView(site, k) {
+  if (!k) return `<div class="empty">${t('kpiNone')}</div>`;
+  const nums = kpiNums(site).filter(x => x !== 'target')
+    .map(x => `<span>${t('kpi_' + x)} <b>${k[x] ?? '-'}${(x === 'renewal_rate' || x === 'court_util') && k[x] != null ? '%' : ''}</b></span>`).join('');
+  const kv = x => k[x] ? `<div class="kv"><span>${t('kpi_' + x)}</span>${escapeHtml(k[x])}</div>` : '';
+  return `<div class="sum">${nums}</div>` + kpiTaskRows(k.tasks, false) + KPI_TEXT.map(kv).join('') +
+    (k.by ? `<div class="hint">✍ ${escapeHtml(k.by)}</div>` : '') +
+    (state.isBoss ? bossBox('w', site, k)
+      : (k.boss_comment ? `<div class="kv"><span>${t('repBossComment')}</span>${escapeHtml(k.boss_comment)}</div>` : ''));
+}
+async function renderWeekly() {
+  const el = $('#content');
+  const base = kst(0);
+  const [y, m, d] = base.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + 7 * state.kpiOffset));
+  const r = await api(`/weekly?week=${dt.toISOString().slice(0, 10)}`);
+  if (r.status === 401) { location.reload(); return; }
+  if (!r.ok) { el.innerHTML = `<div class="empty">${t('noEntry')}</div>`; return; }
+  const w = await r.json();
+  el.innerHTML = weekBar(w.week) + `<div class="hint">${t('kpiHint')}</div>` + w.sites.map(s => {
+    const k = s.kpi;
+    const edit = (w.editable || []).includes(s.site);
+    const badge = k ? `<span class="badge ${k.boss_ok ? 'on' : ''}">${k.boss_ok ? t('kpiApproved') : t('kpiWaiting')}</span>`
+                    : `<span class="badge">${t('repMissing')}</span>`;
+    return `<div class="card rep"><h3>📈 ${t(SITE_KEY[s.site] || 'siteFit')}${badge}</h3>` + kpiSummary(s) +
+      (edit ? kpiForm(s.site, k, w.week) : kpiView(s.site, k)) + `</div>`;
+  }).join('');
+
+  el.querySelectorAll('[data-wk]').forEach(b => b.onclick = () => {
+    const v = Number(b.dataset.wk);
+    state.kpiOffset = v === 0 ? 0 : Math.min(0, state.kpiOffset + v);
+    render();
+  });
+  const save = el.querySelector('[data-wsave]');
+  if (save) save.onclick = async () => {
+    const box = save.closest('.card');
+    const body = { week: save.dataset.week, ...collect(box) };
+    body.tasks = [...box.querySelectorAll('[data-ti]')].map(row => {
+      const o = {};
+      row.querySelectorAll('[data-tf]').forEach(i => { o[i.dataset.tf] = i.type === 'checkbox' ? i.checked : i.value; });
+      return o;
+    });
+    save.disabled = true;
+    const res = await api('/weekly', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    save.disabled = false;
+    const msg = $('#kpiMsg');
+    if (res.ok) { render(); flashSaved(); }
+    else if (msg) { msg.style.color = '#dc2626'; msg.textContent = res.status === 400 ? t('repBadNum') : t('loginFail'); }
+  };
+  bindBoss(el, '/weekly/boss', { week: w.week });
+}
+
+// ---- 업무표 예시·규칙 ----
+let GUIDE = null;
+async function loadGuide() {
+  if (GUIDE) return GUIDE;
+  try { const r = await api('/guide'); if (r.ok) GUIDE = await r.json(); } catch (e) { /* 없으면 버튼만 안 뜬다 */ }
+  return GUIDE;
+}
+function exBtn(ex) {
+  return ex ? ` <button type="button" class="exBtn" data-ex="${escapeHtml(ex)}">${escapeHtml(ex.replace('예시', t('exLabel')))}</button>` : '';
+}
+function exHtml(no) {
+  const e = GUIDE && GUIDE.examples && GUIDE.examples[no];
+  if (!e) return '';
+  return `<div class="exbox"><div class="exhead"><b>${escapeHtml(no.replace('예시', t('exLabel')))}</b> · ${escapeHtml(e.who)} · ${escapeHtml(e.what)}` +
+    `<button type="button" class="exClose">×</button></div><pre>${escapeHtml(LANG === 'mn' ? e.mn : e.ko)}</pre></div>`;
+}
+// 예시 버튼: 누르면 그 줄 아래에 예시가 펼쳐진다 (다시 누르면 닫힘)
+function bindExBtns(root) {
+  root.querySelectorAll('.exBtn').forEach(b => b.onclick = (ev) => {
+    ev.stopPropagation();
+    const host = b.closest('.item, .mtask div, .ov') || b.parentNode;
+    const open = host.nextElementSibling;
+    if (open && open.classList && open.classList.contains('exbox')) { open.remove(); return; }
+    host.insertAdjacentHTML('afterend', exHtml(b.dataset.ex));
+    const box = host.nextElementSibling;
+    if (box) { const c = box.querySelector('.exClose'); if (c) c.onclick = () => box.remove(); }
+  });
+}
+function rulesHtml() {
+  const rules = (GUIDE && GUIDE.rules) || [];
+  if (!rules.length) return '';
+  return `<details class="rules"><summary>📖 ${t('rulesTitle')}</summary><ol>` +
+    rules.map(r => `<li>${escapeHtml(LANG === 'mn' ? r.mn : r.ko)}</li>`).join('') + `</ol></details>`;
 }
 
 // 직무 체크리스트 (업무표에서 매일 자동으로 들어오는 항목)
@@ -748,14 +897,15 @@ function chkHead(items) {
   const c = (items || []).filter(i => i.tpl_key);
   if (!c.length) return '';
   const done = c.filter(i => i.done).length;
+  const rules = rulesHtml();
   const pct = Math.round(done / c.length * 100);
-  return `<div class="chkhead">📋 ${t('checklist')} <b>${done}/${c.length}</b><div class="bar"><i style="width:${pct}%"></i></div></div>`;
+  return rules + `<div class="chkhead">📋 ${t('checklist')} <b>${done}/${c.length}</b><div class="bar"><i style="width:${pct}%"></i></div></div>`;
 }
 function renderTplItem(it) {
   const past = viewLocked();
   return `<div class="item tpl ${it.done ? 'done' : ''}" data-id="${it.id}">
     <input type="checkbox" ${it.done ? 'checked' : ''} ${past ? 'disabled' : ''}>
-    <span class="tx"><span class="tag tpl">${escapeHtml(tplWhen(it))}</span>${escapeHtml(tplText(it))}</span>
+    <span class="tx"><span class="tag tpl">${escapeHtml(tplWhen(it))}</span>${escapeHtml(tplText(it))}${exBtn(it.tpl_ex)}</span>
     ${(state.isBoss && !past) ? '<button class="del">×</button>' : ''}
     <input class="memo" value="${escapeHtml(it.memo || '')}" placeholder="${t('memo')}" ${past ? 'readonly' : ''}>
   </div>`;

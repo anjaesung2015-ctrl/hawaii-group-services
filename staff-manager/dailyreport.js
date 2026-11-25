@@ -1,8 +1,9 @@
 // 매니저 일일 보고 — 사업장(피트니스/센터)마다 하루 한 장.
 // 매니저(직무가 'xx-매니저')가 매출·인원·과제·결정 필요 사항을 적고, 사장님이 확인·코멘트한다.
 // 총매출·달성률·직원 체크리스트 완료율은 저장하지 않고 그때그때 계산한다.
-const NUM = ['headcount', 'cash', 'card', 'transfer', 'target', 'new_members', 'renewals'];
-const TEXT = ['missing', 'progress', 'solved', 'decision'];
+const NUM = ['headcount', 'cash', 'card', 'transfer', 'target', 'new_members', 'renewals', 'churn', 'pos_diff', 'court_util'];
+const TEXT = ['task_result', 'missing', 'progress', 'solved', 'decision', 'tomorrow'];
+const SIGNED = ['pos_diff'];   // POS 차이는 음수도 된다
 
 function addDays(iso, n) {
   const [y, m, d] = iso.split('-').map(Number);
@@ -26,6 +27,11 @@ module.exports = function mountDailyReport(router, db, { bizToday, notify, bossR
     updated_at TEXT,
     UNIQUE (site, rdate)
   )`);
+  // 칸 추가 (설명서의 21시 보고 7항목에 맞춤)
+  const dcols = db.prepare("PRAGMA table_info(report_daily)").all().map(c => c.name);
+  for (const [c, type] of [['churn', 'INTEGER'], ['pos_diff', 'INTEGER'], ['court_util', 'INTEGER'], ['task_result', 'TEXT'], ['tomorrow', 'TEXT']]) {
+    if (!dcols.includes(c)) db.exec(`ALTER TABLE report_daily ADD COLUMN ${c} ${type}`);
+  }
 
   const SITES = chk.sites();
   const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
@@ -84,7 +90,8 @@ module.exports = function mountDailyReport(router, db, { bizToday, notify, bossR
       date,
       today: bizToday(),
       editable: canWrite(date) ? writable(req) : [],
-      sites: sites.map(site => ({ site, report: withCalc(get.get(site, date)), checklist: checklistOf(site, date) })),
+      sites: sites.map(site => ({ site, report: withCalc(get.get(site, date)), checklist: checklistOf(site, date),
+        tasks: chk.managerDayTasks(site, date).map(t => ({ ko: t.ko, mn: t.mn, out: t.out || '', ex: t.ex || null })) })),
     });
   });
 
@@ -94,10 +101,11 @@ module.exports = function mountDailyReport(router, db, { bizToday, notify, bossR
     return date === t || date === addDays(t, -1);
   }
 
-  function toNum(v) {
+  function toNum(v, signed) {
     if (v === '' || v == null) return null;
-    const n = Math.round(Number(String(v).replace(/[,\s₮]/g, '')));
-    return Number.isFinite(n) && n >= 0 ? n : undefined;
+    const n = Math.round(Number(String(v).replace(/[,\s₮%]/g, '')));
+    if (!Number.isFinite(n)) return undefined;
+    return (n >= 0 || signed) ? n : undefined;
   }
 
   router.put('/daily', async (req, res) => {
@@ -112,7 +120,7 @@ module.exports = function mountDailyReport(router, db, { bizToday, notify, bossR
 
     const vals = {};
     for (const k of NUM) {
-      const n = toNum(b[k]);
+      const n = toNum(b[k], SIGNED.includes(k));
       if (n === undefined) return res.status(400).json({ error: 'bad_number', field: k });
       vals[k] = n;
     }
@@ -136,7 +144,7 @@ module.exports = function mountDailyReport(router, db, { bizToday, notify, bossR
       const c = checklistOf(site, date);
       const fmt = n => n == null ? '-' : Number(n).toLocaleString('ko-KR') + '₮';
       const lines = [`📊 ${site} 일일보고 ${date.slice(5).replace('-', '/')} (${r.by || ''})`,
-        `총매출 ${fmt(r.sales)}` + (r.rate != null ? ` · 목표 대비 ${r.rate}%` : ''),
+        `총매출 ${fmt(r.sales)}` + (r.rate != null ? ` · 목표 대비 ${r.rate}%` : '') + (r.pos_diff != null ? ` · POS 차이 ${r.pos_diff}` : ''),
         `직원 체크 ${c.done}/${c.total}`];
       if (r.decision) lines.push(`대표 결정 필요: ${r.decision}`);
       try { await notify(bossRowId(), lines.join('\n'), '일일 보고'); notified = true; }
@@ -160,5 +168,6 @@ module.exports = function mountDailyReport(router, db, { bizToday, notify, bossR
     res.json({ ok: true });
   });
 
-  return { managerSite };
+  return { managerSite, checklistOf, writable, whoSees, SITES, addDays,
+    reportOf: (site, date) => withCalc(db.prepare("SELECT * FROM report_daily WHERE site=? AND rdate=?").get(site, date)) };
 };

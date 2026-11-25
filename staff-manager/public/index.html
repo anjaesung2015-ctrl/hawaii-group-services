@@ -54,6 +54,22 @@
   .rep .ok input{width:20px;height:20px}
   .rep .badge{font-size:11px;padding:1px 7px;border-radius:10px;background:#fee2e2;color:#b91c1c;margin-left:auto;font-weight:400}
   .rep .badge.on{background:#dcfce7;color:#15803d}
+  .rep .sum .neg{color:#dc2626}
+  .mtask{background:#fff7ed;border-radius:8px;padding:8px 10px;margin:4px 0 8px;font-size:13px;line-height:1.5}
+  .mtask .m{color:#9a3412}
+  .ktasks{margin:6px 0 10px;font-size:13px}
+  .ktask{display:grid;grid-template-columns:18px 1fr 70px 60px;gap:4px;align-items:center;margin:4px 0}
+  .ktask input{padding:6px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;min-width:0}
+  .ktask input[data-tf=progress]{grid-column:2/4}
+  .ktask label{font-size:13px;display:flex;align-items:center;gap:2px}
+  .exBtn{font-size:10px;padding:1px 6px;margin-left:4px;border:1px solid #c7d2fe;background:#eef2ff;color:#4338ca;border-radius:10px;cursor:pointer;vertical-align:1px}
+  .exbox{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;margin:-2px 0 8px;font-size:13px}
+  .exbox .exhead{display:flex;gap:6px;align-items:center;color:#475569;margin-bottom:4px}
+  .exbox .exClose{margin-left:auto;border:0;background:none;font-size:18px;color:#94a3b8;cursor:pointer}
+  .exbox pre{white-space:pre-wrap;font-family:inherit;margin:0;line-height:1.5}
+  details.rules{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:13px}
+  details.rules summary{cursor:pointer;font-weight:600}
+  details.rules ol{margin:6px 0 0;padding-left:20px;line-height:1.55}
   .strow .jobSel{font-size:12px;padding:4px;border:1px solid #d1d5db;border-radius:7px;max-width:160px}
   .add{width:100%;padding:11px;border:1px dashed #cbd5e1;border-radius:10px;background:#fff;color:#2563eb;font-size:14px;cursor:pointer;margin-top:4px}
   textarea.free{width:100%;min-height:180px;border:1px solid #e5e7eb;border-radius:10px;padding:12px;font-size:15px;font-family:inherit;margin-top:8px}
@@ -202,6 +218,7 @@
       <button data-p="year" data-i18n="year">연간</button>
       <button data-p="hist" data-i18n="hist">기록</button>
       <button data-p="rep" data-i18n="rep">일일보고</button>
+      <button data-p="kpi" data-i18n="kpi">주간KPI</button>
       <button data-p="att" data-i18n="att">근태</button>
       <button data-p="score" data-i18n="score">종합</button>
     </div>

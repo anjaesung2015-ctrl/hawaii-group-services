@@ -7,13 +7,14 @@ const path = require('path');
 
 const WEEK = ['일', '월', '화', '수', '목', '금', '토'];
 
+function loadRaw(file) {
+  return JSON.parse(fs.readFileSync(file || path.join(__dirname, 'jobs.json'), 'utf8'));
+}
+function withKeys(jobs) {
+  return jobs.map(j => ({ ...j, tasks: j.tasks.map(t => ({ ...t, key: j.key + '|' + t.ko })) }));
+}
 function loadJobs(file) {
-  const raw = JSON.parse(fs.readFileSync(file || path.join(__dirname, 'jobs.json'), 'utf8'));
-  const jobs = raw.jobs.map(j => ({
-    ...j,
-    tasks: j.tasks.map(t => ({ ...t, key: j.key + '|' + t.ko })),
-  }));
-  return jobs;
+  return withKeys(loadRaw(file).jobs);
 }
 
 // 'YYYY-MM-DD' 의 요일 (0=일)
@@ -36,7 +37,10 @@ function tasksForDate(job, date) {
 }
 
 module.exports = function createChecklist(db, opts = {}) {
-  const jobs = opts.jobs || loadJobs(opts.file);
+  const raw = opts.jobs ? { jobs: opts.jobs, examples: opts.examples || {}, rules: opts.rules || [] } : loadRaw(opts.file);
+  const jobs = opts.jobs ? opts.jobs.map(j => ({ ...j, tasks: j.tasks.map(t => ({ ...t, key: t.key || (j.key + '|' + t.ko) })) })) : withKeys(raw.jobs);
+  const EXAMPLES = raw.examples || {};
+  const RULES = raw.rules || [];
   const byKey = new Map(jobs.map(j => [j.key, j]));
   const taskByKey = new Map();
   for (const j of jobs) for (const t of j.tasks) taskByKey.set(t.key, t);
@@ -68,6 +72,7 @@ module.exports = function createChecklist(db, opts = {}) {
       it.tpl_when = t.when;
       it.tpl_when_mn = t.when_mn;
       it.tpl_mn = t.mn;
+      if (t.ex) it.tpl_ex = t.ex;
     }
     return items;
   }
@@ -88,7 +93,15 @@ module.exports = function createChecklist(db, opts = {}) {
   const sites = () => [...new Set(jobs.map(j => j.site))].filter(s => s !== '전체');
   const job = k => byKey.get(k) || null;
 
-  return { ensure, decorate, clearUntouched, list, isJob, sites, job, tasksForDate: (k, d) => tasksForDate(byKey.get(k), d) };
+  // 그 사업장 매니저의 그날 요일 과제 (매일 업무는 빼고 요일·월초 과제만)
+  function managerDayTasks(site, date) {
+    const j = jobs.find(x => x.site === site && x.role === '매니저');
+    if (!j) return [];
+    return tasksForDate(j, date).filter(t => t.when !== '매일');
+  }
+
+  return { ensure, decorate, clearUntouched, list, isJob, sites, job, managerDayTasks,
+    examples: () => EXAMPLES, rules: () => RULES, tasksForDate: (k, d) => tasksForDate(byKey.get(k), d) };
 };
 
 module.exports.loadJobs = loadJobs;

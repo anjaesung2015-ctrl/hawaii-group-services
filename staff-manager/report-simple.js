@@ -8,6 +8,8 @@ const DAILY = ['today', 'tomorrow'];   // 달력 한 칸에 들어가는 기간
 const { extractDates, stripLeadingDate } = require('./dates');
 const createChecklist = require('./checklist');
 const mountDailyReport = require('./dailyreport');
+const mountWeekly = require('./weekly');
+const createReminders = require('./reminders');
 
 module.exports = function createReportRoutes(db, opts = {}) {
   const secret = opts.secret || 'staff-mgr-2026-secret';
@@ -301,6 +303,8 @@ module.exports = function createReportRoutes(db, opts = {}) {
 
   // 고를 수 있는 직무 목록
   router.get('/jobs', (req, res) => res.json(chk.list()));
+  // 업무표의 예시 18개와 규칙 (모든 직원이 본다)
+  router.get('/guide', (req, res) => res.json({ examples: chk.examples(), rules: chk.rules() }));
 
   router.post('/staff', (req, res) => {
     if (!req.rsess.isBoss) return res.status(403).json({ error: 'boss_only' });
@@ -655,6 +659,10 @@ module.exports = function createReportRoutes(db, opts = {}) {
 
   // 매니저 일일 보고 (/daily)
   const daily = mountDailyReport(router, db, { bizToday, notify: opts.notify, bossRowId, chk });
+  // 주간 KPI (월요일 목표·과제 3개 → 대표 승인, 토요일 결산)
+  mountWeekly(router, db, { bizToday, notify: opts.notify, bossRowId, chk, daily });
+  // 대표 리마인드 09:40 / 21:30 (server.js 가 cron 으로 부른다)
+  router.reminders = createReminders(db, { bizToday, notify: opts.notify, bossRowId, chk, daily });
 
   return router;
 };

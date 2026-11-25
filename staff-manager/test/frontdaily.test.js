@@ -7,11 +7,12 @@ const { loadApp } = require('./apphost');
 const REP = { cash: 300000, card: 500000, transfer: null, target: 1000000, sales: 800000, rate: 80,
   headcount: 4, new_members: 1, renewals: 2, decision: '수리 승인', settle_ok: 1, boss_ok: 0, by: '바트' };
 
-test('매니저 입력칸: 숫자 7칸 + 글 4칸 + 정산 체크 + 저장 버튼', () => {
+test('매니저 입력칸(피트니스): 숫자 9칸(가동률 없음) + 글 6칸 + 정산 체크 + 저장 버튼', () => {
   const ctx = loadApp();
   const html = vm.runInContext('repForm', ctx)('피트니스', REP, '2026-12-01');
-  assert.strictEqual((html.match(/inputmode="numeric"/g) || []).length, 7);
-  assert.strictEqual((html.match(/<textarea/g) || []).length, 4);
+  assert.strictEqual((html.match(/data-k="(headcount|cash|card|transfer|target|pos_diff|new_members|renewals|churn|court_util)"/g) || []).length, 9);
+  assert.ok(!html.includes('court_util'));
+  assert.strictEqual((html.match(/<textarea/g) || []).length, 6);
   assert.ok(html.includes('data-k="settle_ok" checked'));
   assert.ok(html.includes('300,000'));
   assert.ok(html.includes('data-save="피트니스"'));
