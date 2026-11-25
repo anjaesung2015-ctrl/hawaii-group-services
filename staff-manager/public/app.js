@@ -324,6 +324,20 @@ async function renderHistory() {
     state.calMonth = shiftMonth(month, Number(b.dataset.mv));
     render();
   });
+  // 대표: ✓/○ 를 눌러 완료 바꾸기, ×를 두 번 눌러 지우기
+  el.querySelectorAll('[data-hdone]').forEach(b => b.onclick = async () => {
+    const r = await patch(b.dataset.hdone, { done: b.dataset.to === '1' });
+    if (!r || r.ok !== false) { flashSaved(); render(); }
+  });
+  el.querySelectorAll('[data-hdel]').forEach(b => b.onclick = async () => {
+    if (!b.classList.contains('ask')) {
+      b.classList.add('ask'); b.textContent = t('delAsk');
+      setTimeout(() => { if (b.isConnected) { b.classList.remove('ask'); b.textContent = '×'; } }, 3000);
+      return;
+    }
+    const r = await api(`/items/${b.dataset.hdel}`, { method: 'DELETE' });
+    if (r.ok) { flashSaved(); render(); }
+  });
 }
 
 function historyCards(rows, allMode) {
@@ -334,9 +348,14 @@ function historyCards(rows, allMode) {
     const list = (row.items || []).map(i => {
       // 전체 보기일 때만 이름을 붙인다 (한 사람만 볼 때는 같은 이름이 줄마다 반복될 뿐)
       const who = allMode ? `<span class="ev ${colorClass(i.staff_id)}">${escapeHtml(i.name || '')}</span>` : '';
-      return `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}"><span class="mk">${i.done ? '✓' : '○'}</span>` +
+      const edit = state.isBoss;
+      const mk = edit
+        ? `<button class="mk hchk" data-hdone="${i.id}" data-to="${i.done ? 0 : 1}" title="${t('histToggle')}">${i.done ? '✓' : '○'}</button>`
+        : `<span class="mk">${i.done ? '✓' : '○'}</span>`;
+      return `<div class="ov ${i.done ? 'done' : 'undone'}${i.from_boss ? ' boss' : ''}">${mk}` +
         `<span class="tx">${who}${i.tpl_key ? `<span class="tag tpl">📋</span>` : ''}${i.from_boss ? `<span class="tag">${t('boss1')}</span>` : ''}${escapeHtml((i.tpl_key ? tplText(i) : i.title) || t('noTitle'))}` +
-        (i.memo ? ` <span class="m">· ${escapeHtml(i.memo)}</span>` : '') + `</span></div>`;
+        (i.memo ? ` <span class="m">· ${escapeHtml(i.memo)}</span>` : '') + `</span>` +
+        (edit ? `<button class="ovdel" data-hdel="${i.id}">×</button>` : '') + `</div>`;
     }).join('');
     return `<div class="card"><h3>${head}</h3>${list}</div>`;
   }).join('');

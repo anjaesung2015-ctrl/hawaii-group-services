@@ -46,3 +46,18 @@ test('대표 직원 현황: 체크리스트 줄에도 지우기 버튼, 직원�
   assert.ok(html.includes('data-del="11"'));
   assert.ok(!html.includes('data-del="12"'));
 });
+
+test('기록 탭: 대표는 완료 바꾸기·지우기 버튼, 직원은 보기만', () => {
+  const { loadApp } = require('./apphost');
+  const ctx = loadApp();
+  const rows = [{ date: '2026-11-20', done: 1, total: 2, items: [
+    { id: 21, title: '바닥 청소', tpl_key: 'k', done: 1, staff_id: 1 }, { id: 22, title: '정산', done: 0, staff_id: 1 }] }];
+  ctx.state.isBoss = true;
+  const b = ctx.historyCards(rows, false);
+  assert.ok(b.includes('data-hdone="21" data-to="0"'));
+  assert.ok(b.includes('data-hdone="22" data-to="1"'));
+  assert.ok(b.includes('data-hdel="22"'));
+  ctx.state.isBoss = false;
+  const s = ctx.historyCards(rows, false);
+  assert.ok(!s.includes('data-hdone') && !s.includes('data-hdel'));
+});
