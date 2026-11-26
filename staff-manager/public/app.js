@@ -1379,19 +1379,24 @@ async function renderStaffPanel() {
   box.querySelectorAll('[data-pw]').forEach(b => b.onclick = () => {
     const row = b.closest('.strow');
     if (row.querySelector('.pwin')) { row.querySelector('.pwin').remove(); return; }
+    // 폰 키보드는 엔터가 안 먹는 경우가 많아 저장 버튼을 같이 둔다
     b.insertAdjacentHTML('beforebegin',
-      `<input class="pwin" type="text" placeholder="${t('newPassword')}" style="${inp};width:130px">`);
-    const el = row.querySelector('.pwin');
+      `<span class="pwin"><input type="text" autocomplete="off" placeholder="${t('newPassword')} (4+)" style="${inp};width:130px">` +
+      `<button class="pwok">${t('save')}</button> <span class="pwmsg" style="font-size:13px"></span></span>`);
+    const box2 = row.querySelector('.pwin');
+    const el = box2.querySelector('input'), msg = box2.querySelector('.pwmsg');
     el.focus();
-    el.onkeydown = async (e) => {
-      if (e.key !== 'Enter') return;
+    const save = async () => {
+      if (String(el.value).trim().length < 4) { msg.style.color = '#dc2626'; msg.textContent = t('pwTooShort'); return; }
       const res = await api('/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staff_id: Number(b.dataset.pw), new_password: el.value }) });
-      if (!res.ok) { el.style.borderColor = '#dc2626'; return; }
+        body: JSON.stringify({ staff_id: Number(b.dataset.pw), new_password: el.value.trim() }) });
+      if (!res.ok) { el.style.borderColor = '#dc2626'; msg.style.color = '#dc2626'; msg.textContent = t('pwFailed'); return; }
       el.style.borderColor = '#16a34a';
+      msg.style.color = '#16a34a'; msg.textContent = t('pwChanged') + ': ' + el.value.trim();
       el.value = '';
-      el.placeholder = t('pwChanged');
     };
+    box2.querySelector('.pwok').onclick = save;
+    el.onkeydown = (e) => { if (e.key === 'Enter') save(); };
   });
 
   // 그 직원의 오늘 체크리스트·지시 — ×를 두 번 눌러 지운다
